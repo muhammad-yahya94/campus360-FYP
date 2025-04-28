@@ -1,0 +1,236 @@
+{% extends "admin_base.html" %}
+
+
+{% block admin_content %}
+     <!-- Sidebar -->
+     {% include "partials/sidebar.html" %}
+    
+     <!-- Main Content -->
+     <div class="main-content" id="mainContent">
+       {% include "partials/header.html" %}
+
+        <div class="container-fluid">
+            <div class="row">
+                <!-- Student Enrollment by Faculty -->
+                <div class="col-md-6 col-12 mb-4">
+                    <div class="card card-rect">
+                        <div class="card-body">
+                            <h5 class="card-title mb-4">Student Enrollment by Faculty</h5>
+                            <div class="chart-container">
+                                <canvas id="enrollmentChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Faculty Staff Distribution -->
+                <div class="col-md-6 col-12 mb-4">
+                    <div class="card card-rect">
+                        <div class="card-body">
+                            <h5 class="card-title mb-4">Faculty Staff Distribution</h5>
+                            <div class="chart-container">
+                                <canvas id="staffChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Event Participation -->
+                <div class="col-md-6 col-12 mb-4">
+                    <div class="card card-rect">
+                        <div class="card-body">
+                            <h5 class="card-title mb-4">Event Participation (Last 12 Months)</h5>
+                            <div class="chart-container">
+                                <canvas id="eventChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- News Engagement -->
+                <div class="col-md-6 col-12 mb-4">
+                    <div class="card card-rect">
+                        <div class="card-body">
+                            <h5 class="card-title mb-4">News Engagement</h5>
+                            <div class="chart-container">
+                                <canvas id="newsChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            
+            sidebar.classList.remove('mobile-show');
+            
+            mobileMenuToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('mobile-show');
+                mainContent.classList.toggle('sidebar-open');
+            });
+            
+            document.addEventListener('click', function(event) {
+                if (window.innerWidth < 992) {
+                    const isClickInsideSidebar = sidebar.contains(event.target);
+                    const isClickOnToggle = mobileMenuToggle.contains(event.target);
+                    
+                    if (!isClickInsideSidebar && !isClickOnToggle) {
+                        sidebar.classList.remove('mobile-show');
+                        mainContent.classList.remove('sidebar-open');
+                    }
+                }
+            });
+
+            // Chart.js Configuration
+            const primaryColor = '#D27328';
+            const lightColor = '#fff5ee';
+            const darkColor = '#181d38';
+            const secondaryColor = '#b86222';
+
+            // Student Enrollment by Faculty (Bar Chart)
+            const enrollmentChart = new Chart(document.getElementById('enrollmentChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Engineering', 'Arts', 'Science', 'Business', 'Medicine'],
+                    datasets: [{
+                        label: 'Students',
+                        data: [1200, 800, 1000, 600, 400],
+                        backgroundColor: primaryColor,
+                        borderColor: secondaryColor,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Students'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Faculty'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+
+            // Faculty Staff Distribution (Pie Chart)
+            const staffChart = new Chart(document.getElementById('staffChart'), {
+                type: 'pie',
+                data: {
+                    labels: ['Professors', 'Associate Professors', 'Lecturers', 'Assistants'],
+                    datasets: [{
+                        data: [50, 70, 100, 80],
+                        backgroundColor: [primaryColor, secondaryColor, darkColor, lightColor],
+                        borderColor: '#ffffff',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Event Participation (Line Chart)
+            const eventChart = new Chart(document.getElementById('eventChart'), {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                    datasets: [{
+                        label: 'Participants',
+                        data: [200, 250, 300, 280, 320, 400, 350, 300, 280, 260, 240, 220],
+                        borderColor: primaryColor,
+                        backgroundColor: 'rgba(210, 115, 40, 0.2)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Participants'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Month'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+
+            // News Engagement (Bar Chart)
+            const newsChart = new Chart(document.getElementById('newsChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['AI Lab Opening', 'Faculty Awards', 'Tech Symposium', 'Guest Lecture'],
+                    datasets: [{
+                        label: 'Views',
+                        data: [500, 300, 400, 200],
+                        backgroundColor: darkColor,
+                        borderColor: primaryColor,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Views'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'News Article'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+{% endblock %}

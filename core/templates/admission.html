@@ -1,0 +1,333 @@
+{% extends 'core_base.html' %}
+{% load static %}
+{% block core_content %}
+{% include "navbar.html" %}
+
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+{% comment %} <link rel="stylesheet" href="{% static 'css/template.css' %}"> {% endcomment %}
+<style>
+    .registration-section {
+        background: linear-gradient(rgba(24, 29, 56, .7), rgba(24, 29, 56, .7)), url('data:image/jpeg;base64,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');
+        background-position: center center;
+        background-repeat: no-repeat;
+        background-size: cover;
+        background-attachment: fixed;
+        padding: 40px 0;
+        min-height: 100vh;
+    }
+    .registration-form-container {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 30px;
+        border-radius: 0;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        margin: 0 auto;
+        max-width: 1200px;
+    }
+    .form-label {
+        color: var(--dark);
+        font-weight: 600;
+    }
+    .form-control-rect,
+    .form-select-rect {
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: var(--dark);
+        transition: .3s;
+    }
+    .form-control-rect:focus,
+    .form-select-rect:focus {
+        background: rgba(255, 255, 255, 0.3);
+        border-color: var(--primary);
+        box-shadow: none;
+    }
+    .form-control-rect::placeholder {
+        color: rgba(24, 29, 56, 0.7);
+    }
+    .education-entry {
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 15px;
+        margin-bottom: 15px;
+        transition: .5s;
+    }
+    .education-entry:hover {
+        margin-top: -5px;
+        background: rgba(210, 115, 40, 0.3); /* Using --primary with opacity */
+        border-color: var(--primary);
+    }
+    .education-entry:hover .form-label,
+    .education-entry:hover .form-control-rect,
+    .education-entry:hover .form-select-rect {
+        color: var(--light) !important;
+        border-color: var(--light);
+    }
+    .education-entry:hover .form-control-rect::placeholder,
+    .education-entry:hover .form-select-rect option {
+        color: var(--light) !important;
+    }
+    .section-title {
+        color: var(--light);
+    }
+    .text-muted {
+        color: rgba(255, 255, 255, 0.8) !important;
+    }
+</style>
+
+
+{% comment %} {% block title %}Student Registration{% endblock %} {% endcomment %}
+
+
+<div class="registration-section">
+    <div class="container">
+        <div class="registration-form-container">
+            <h2 class="section-title text-center mb-5">Student Registration Form</h2>
+            <p class="text-center text-muted mb-4">B.S. (4 Years) Degree Programme - Government Graduate College Jhang</p>
+
+            <form action="#" method="POST" enctype="multipart/form-data">
+                <!-- Programme Details -->
+                <h5 class="section-title mb-4">Programme Details</h5>
+                <div class="row mb-4">
+                    <div class="col-md-4 mb-3">
+                        <label for="programme" class="form-label">Programme</label>
+                        <select id="programme" name="programme" class="form-select form-select-rect" required>
+                            <option value="" disabled selected>Select Programme</option>
+                            <option value="BS_IT_BDP">B.S. IT/BDP</option>
+                            <option value="BS_OTHER">B.S. Other</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="subject" class="form-label">Subject</label>
+                        <select id="subject" name="subject" class="form-select form-select-rect" required>
+                            <option value="" disabled selected>Select Subject</option>
+                            <option value="COMPUTER_SCIENCE">Computer Science</option>
+                            <option value="MATHEMATICS">Mathematics</option>
+                            <option value="PHYSICS">Physics</option>
+                            <option value="CHEMISTRY">Chemistry</option>
+                            <option value="BIOLOGY">Biology</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="qualification" class="form-label">Qualification</label>
+                        <select id="qualification" name="qualification" class="form-select form-select-rect" required>
+                            <option value="" disabled selected>Select Qualification</option>
+                            <option value="FA">F.A.</option>
+                            <option value="FSC">F.Sc.</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3">
+                        <label for="photographs" class="form-label">Upload 3 Recent Photographs (1.5" x 1.5" in Blue Background)</label>
+                        <input type="file" id="photographs" name="photographs" class="form-control form-control-rect" multiple accept="image/*" required>
+                        <small class="text-muted">Upload up to 3 photographs.</small>
+                    </div>
+                </div>
+
+                <!-- Applicant Details -->
+                <h5 class="section-title mb-4">Applicant Details</h5>
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3">
+                        <label for="name_english" class="form-label">Name (in English, Capital Letters)</label>
+                        <input type="text" id="name_english" name="name_english" class="form-control form-control-rect" style="text-transform: uppercase;" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="name_urdu" class="form-label">Name (in Urdu)</label>
+                        <input type="text" id="name_urdu" name="name_urdu" class="form-control form-control-rect" required>
+                    </div>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-md-3 mb-3">
+                        <label for="religion" class="form-label">Religion</label>
+                        <input type="text" id="religion" name="religion" class="form-control form-control-rect" required>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="caste" class="form-label">Caste</label>
+                        <input type="text" id="caste" name="caste" class="form-control form-control-rect">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="cnic" class="form-label">CNIC No.</label>
+                        <input type="text" id="cnic" name="cnic" class="form-control form-control-rect" placeholder="XXXXX-XXXXXXX-X" required>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="identification_mark" class="form-label">Identification Mark</label>
+                        <input type="text" id="identification_mark" name="identification_mark" class="form-control form-control-rect" required>
+                    </div>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-md-4 mb-3">
+                        <label for="date_of_birth" class="form-label">Date of Birth</label>
+                        <input type="date" id="date_of_birth" name="date_of_birth" class="form-control form-control-rect" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="permanent_address" class="form-label">Permanent Address</label>
+                        <input type="text" id="permanent_address" name="permanent_address" class="form-control form-control-rect" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="district" class="form-label">District</label>
+                        <input type="text" id="district" name="district" class="form-control form-control-rect" required>
+                    </div>
+                </div>
+
+                <!-- Guardian Details -->
+                <h5 class="section-title mb-4">Guardian Details</h5>
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3">
+                        <label for="guardian_name_english" class="form-label">Father/Guardian Name (in English, Capital Letters)</label>
+                        <input type="text" id="guardian_name_english" name="guardian_name_english" class="form-control form-control-rect" style="text-transform: uppercase;" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="guardian_name_urdu" class="form-label">Father/Guardian Name (in Urdu)</label>
+                        <input type="text" id="guardian_name_urdu" name="guardian_name_urdu" class="form-control form-control-rect" required>
+                    </div>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-md-4 mb-3">
+                        <label for="guardian_occupation" class="form-label">Father/Guardian Occupation</label>
+                        <input type="text" id="guardian_occupation" name="guardian_occupation" class="form-control form-control-rect" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="guardian_monthly_income" class="form-label">Guardian Monthly Income</label>
+                        <input type="number" id="guardian_monthly_income" name="guardian_monthly_income" class="form-control form-control-rect" step="0.01" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="guardian_contact" class="form-label">Guardian Contact No.</label>
+                        <input type="text" id="guardian_contact" name="guardian_contact" class="form-control form-control-rect" placeholder="03XX-XXXXXXX" required>
+                    </div>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3">
+                        <label for="guardian_cnic" class="form-label">Guardian CNIC No.</label>
+                        <input type="text" id="guardian_cnic" name="guardian_cnic" class="form-control form-control-rect" placeholder="XXXXX-XXXXXXX-X" required>
+                    </div>
+                </div>
+
+                <!-- Educational Background -->
+                <h5 class="section-title mb-4">Educational Background</h5>
+                <div class="education-entry">
+                    <h6 class="mb-3">Entry 1</h6>
+                    <div class="row">
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <label class="form-label">Examination Passed</label>
+                            <select name="exam_passed_1" class="form-select form-select-rect" required>
+                                <option value="" disabled selected>Select</option>
+                                <option value="MATRIC">Matric</option>
+                                <option value="FA_FSC">F.A./F.Sc.</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <label class="form-label">Passing Year</label>
+                            <input type="number" name="passing_year_1" class="form-control form-control-rect" required>
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <label class="form-label">Board Roll No.</label>
+                            <input type="text" name="board_roll_no_1" class="form-control form-control-rect" required>
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <label class="form-label">Marks Obtained</label>
+                            <input type="number" name="marks_obtained_1" class="form-control form-control-rect" required>
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <label class="form-label">Total Marks</label>
+                            <input type="number" name="total_marks_1" class="form-control form-control-rect" required>
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <label class="form-label">Division</label>
+                            <input type="text" name="division_1" class="form-control form-control-rect" required>
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <label class="form-label">Subjects</label>
+                            <input type="text" name="subjects_1" class="form-control form-control-rect" required>
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <label class="form-label">Institution/Board</label>
+                            <input type="text" name="institution_board_1" class="form-control form-control-rect" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="education-entry">
+                    <h6 class="mb-3">Entry 2</h6>
+                    <div class="row">
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <label class="form-label">Examination Passed</label>
+                            <select name="exam_passed_2" class="form-select form-select-rect">
+                                <option value="" disabled selected>Select</option>
+                                <option value="MATRIC">Matric</option>
+                                <option value="FA_FSC">F.A./F.Sc.</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <label class="form-label">Passing Year</label>
+                            <input type="number" name="passing_year_2" class="form-control form-control-rect">
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <label class="form-label">Board Roll No.</label>
+                            <input type="text" name="board_roll_no_2" class="form-control form-control-rect">
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <label class="form-label">Marks Obtained</label>
+                            <input type="number" name="marks_obtained_2" class="form-control form-control-rect">
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <label class="form-label">Total Marks</label>
+                            <input type="number" name="total_marks_2" class="form-control form-control-rect">
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <label class="form-label">Division</label>
+                            <input type="text" name="division_2" class="form-control form-control-rect">
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <label class="form-label">Subjects</label>
+                            <input type="text" name="subjects_2" class="form-control form-control-rect">
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <label class="form-label">Institution/Board</label>
+                            <input type="text" name="institution_board_2" class="form-control form-control-rect">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Co-Curricular & Extra-Curricular Activities -->
+                <h5 class="section-title mb-4">Co-Curricular & Extra-Curricular Activities</h5>
+                <div class="row mb-4">
+                    <div class="col-md-12 mb-3">
+                        <label for="activities" class="form-label">Activities</label>
+                        <textarea id="activities" name="activities" class="form-control form-control-rect" rows="3"></textarea>
+                    </div>
+                </div>
+
+                <!-- Signatures -->
+                <h5 class="section-title mb-4">Signatures</h5>
+                <div class="row mb-4">
+                    <div class="col-md-4 mb-3">
+                        <label for="applicant_signature" class="form-label">Signature of Applicant</label>
+                        <input type="file" id="applicant_signature" name="applicant_signature" class="form-control form-control-rect" accept="image/*" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="guardian_signature" class="form-label">Signature of Father/Guardian</label>
+                        <input type="file" id="guardian_signature" name="guardian_signature" class="form-control form-control-rect" accept="image/*" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="fingerprint" class="form-label">Fingerprint</label>
+                        <input type="file" id="fingerprint" name="fingerprint" class="form-control form-control-rect" accept="image/*" required>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="row">
+                    <div class="col-12 text-center">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i> Submit Registration
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% include "footer.html" %}
+{% endblock %}

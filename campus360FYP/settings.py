@@ -32,13 +32,21 @@ AUTH_USER_MODEL = 'users.CustomUser'
 # Application definition
 
 INSTALLED_APPS = [
+    # 'jet.dashboard',  # should be before 'jet'
+    # 'jet',  
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'users'
+    'core',            #this will handel main landing page
+    'users',           #this will handel all type of users and related stuff
+    'admin_portal',   #this will handel stuff related to admin potral
+    'widget_tweaks',
+    'django_ckeditor_5',
+    # 'flatpickr',
 ]
 
 MIDDLEWARE = [
@@ -56,10 +64,11 @@ ROOT_URLCONF = 'campus360FYP.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
@@ -128,3 +137,82 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+
+# settings.py
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'princeyahya052@gmail.com'
+EMAIL_HOST_PASSWORD = 'pmyf uvlj sxfn gald'
+
+
+
+
+
+# JET_DEFAULT_THEME = 'default'
+
+
+# JET_THEMES = [
+#     {'theme': 'default', 'color': '#47bac1', 'title': 'Default'},
+#     {'theme': 'green', 'color': '#44b78b', 'title': 'Green'},
+#     {'theme': 'light-green', 'color': '#2faa60', 'title': 'Light Green'},
+#     {'theme': 'light-violet', 'color': '#a464c4', 'title': 'Light Violet'},
+#     {'theme': 'light-blue', 'color': '#5EADDE', 'title': 'Light Blue'},
+#     {'theme': 'light-gray', 'color': '#222', 'title': 'Light Gray'},
+# ]
+
+
+
+# Default theme
+JAZZMIN_SETTINGS = {
+    'theme': 'default',  # fallback theme
+    'site_title': 'My Admin Panel',
+    'site_header': 'My Admin Dashboard',
+    'site_brand': 'Admin',
+    'site_icon': 'fas fa-cogs',
+    'welcome_sign': 'Welcome to Admin Panel',
+    'custom_css': None,  # Custom CSS path if you want to add
+    'custom_js': None,   # Custom JS path if you want to add
+}
+
+
+
+# CKEditor 5 Configuration (with upload support)
+CKEDITOR_5_CONFIGS = {
+    'default': {
+        'toolbar': [
+            'heading', '|', 'bold', 'italic', 'link',
+            'bulletedList', 'numberedList', 'blockQuote', 'imageUpload'
+        ],
+    },
+    'extends': {
+        'blockToolbar': [
+            'paragraph', 'heading1', 'heading2', 'heading3',
+            '|', 'bulletedList', 'numberedList',
+            '|', 'blockQuote', 'imageUpload'
+        ],
+        'toolbar': [
+            'heading', '|', 'bold', 'italic', 'link', 'underline', 'strikethrough',
+            'code', 'subscript', 'superscript', 'highlight', '|', 'codeBlock',
+            'bulletedList', 'numberedList', 'todoList', '|', 'blockQuote', 'imageUpload',
+            '|', 'fontSize', 'fontFamily', 'fontColor', 'fontBackgroundColor', '|',
+            'alignment', '|', 'undo', 'redo'
+        ],
+        'image': {
+            'toolbar': ['imageTextAlternative', '|', 'imageStyle:alignLeft',
+                        'imageStyle:alignRight', 'imageStyle:alignCenter', 'imageStyle:side', '|'],
+            'styles': [
+                'full',
+                'side',
+                'alignLeft',
+                'alignRight',
+                'alignCenter',
+            ]
+        },
+    }
+}

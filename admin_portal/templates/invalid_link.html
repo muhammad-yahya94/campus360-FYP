@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="alert alert-danger shadow rounded-4 p-4">
+                <h4 class="alert-heading">Invalid or Expired Link</h4>
+                <p>The verification link is either invalid or has expired.</p>
+                <hr>
+                <p class="mb-0">Please contact your administrator to resend the verification email or register again.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

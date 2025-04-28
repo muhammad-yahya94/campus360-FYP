@@ -1,0 +1,36 @@
+{% extends "core_base.html" %}
+{% load static %}
+
+{% block core_content %}
+<div class="d-flex justify-content-center align-items-center" style="min-height: 100vh;">
+    <div class="card shadow p-4" style="width: 100%; max-width: 400px;">
+        <h3 class="text-center mb-4">Admin Login</h3>
+        
+        <form method="POST">
+            {% csrf_token %}
+
+            <div class="form-floating mb-3">
+                <input type="email" class="form-control" id="email" name="email" placeholder="you@example.com" required>
+                <label for="email">Email address</label>
+            </div>
+
+            <div class="form-floating mb-3">
+                <input type="password" class="form-control" id="password" name="password" placeholder="Enter your password" required>
+                <label for="password">Password</label>
+            </div>
+
+            {% if error %}
+            <div class="mb-3 text-danger text-center">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <button type="submit" class="btn btn-primary w-100">Login</button>
+
+            <div class="text-center mt-3">
+                <a href="{% url 'password_reset' %}">Forgot password?</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

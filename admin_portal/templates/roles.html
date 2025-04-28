@@ -1,0 +1,231 @@
+{% extends "admin_base.html" %}
+
+
+{% block admin_content %}
+     <!-- Sidebar -->
+     {% include "partials/sidebar.html" %}
+    
+     <!-- Main Content -->
+     <div class="main-content" id="mainContent">
+       {% include "partials/header.html" %}
+
+        <div class="container-fluid">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-rect btn-primary me-md-2" data-bs-toggle="modal" data-bs-target="#addRoleModal">
+                            <i class="fas fa-plus me-1"></i> Add New
+                        </button>
+                        <button class="btn btn-rect btn-outline-secondary me-md-2">
+                            <i class="fas fa-file-export me-1"></i> Export
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <!-- Search and Filter -->
+            <div class="row mb-4">
+                <div class="col-md-8 col-12 mb-3 mb-md-0">
+                    <div class="input-group search-box">
+                        <input type="text" class="form-control form-control-rect" placeholder="Search roles...">
+                        <button class="btn btn-rect btn-primary" type="button">
+                            <i class="fas fa-search"></i> <span class="d-none d-md-inline">Search</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-4 col-12">
+                    <select class="form-select form-control-rect">
+                        <option selected>Filter by category</option>
+                        <option>Academic</option>
+                        <option>Administrative</option>
+                        <option>Support</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Roles Table -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card card-rect">
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Role Name</th>
+                                            <th>Description</th>
+                                            <th>Users</th>
+                                            <th>Permissions</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                <strong>Head of Department</strong>
+                                                <span class="badge role-badge bg-primary ms-2">Academic</span>
+                                            </td>
+                                            <td>Manages academic department operations</td>
+                                            <td>12</td>
+                                            <td>18</td>
+                                            <td>
+                                                <div class="d-flex flex-wrap">
+                                                    <button class="btn btn-rect btn-action btn-primary">Edit</button>
+                                                    <button class="btn btn-rect btn-action btn-danger">Delete</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <strong>College Clerk</strong>
+                                                <span class="badge role-badge bg-secondary ms-2">Administrative</span>
+                                            </td>
+                                            <td>Handles administrative paperwork and records</td>
+                                            <td>8</td>
+                                            <td>12</td>
+                                            <td>
+                                                <div class="d-flex flex-wrap">
+                                                    <button class="btn btn-rect btn-action btn-primary">Edit</button>
+                                                    <button class="btn btn-rect btn-action btn-danger">Delete</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <strong>Faculty Member</strong>
+                                                <span class="badge role-badge bg-primary ms-2">Academic</span>
+                                            </td>
+                                            <td>Teaching staff with course management access</td>
+                                            <td>45</td>
+                                            <td>10</td>
+                                            <td>
+                                                <div class="d-flex flex-wrap">
+                                                    <button class="btn btn-rect btn-action btn-primary">Edit</button>
+                                                    <button class="btn btn-rect btn-action btn-danger">Delete</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <strong>Exam Coordinator</strong>
+                                                <span class="badge role-badge bg-primary ms-2">Academic</span>
+                                            </td>
+                                            <td>Manages examination processes and schedules</td>
+                                            <td>5</td>
+                                            <td>15</td>
+                                            <td>
+                                                <div class="d-flex flex-wrap">
+                                                    <button class="btn btn-rect btn-action btn-primary">Edit</button>
+                                                    <button class="btn btn-rect btn-action btn-danger">Delete</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <strong>Librarian</strong>
+                                                <span class="badge role-badge bg-info ms-2">Support</span>
+                                            </td>
+                                            <td>Manages library resources and access</td>
+                                            <td>3</td>
+                                            <td>8</td>
+                                            <td>
+                                                <div class="d-flex flex-wrap">
+                                                    <button class="btn btn-rect btn-action btn-primary">Edit</button>
+                                                    <button class="btn btn-rect btn-action btn-danger">Delete</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Pagination -->
+                            <nav aria-label="Page navigation">
+                                <ul class="pagination justify-content-center mt-4 flex-wrap">
+                                    <li class="page-item disabled">
+                                        <a class="page-link" href="#" tabindex="-1">Previous</a>
+                                    </li>
+                                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                                    <li class="page-item"><a class="page-link" href="#">2</a></li>
+                                    <li class="page-item"><a class="page-link" href="#">3</a></li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="#">Next</a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Role Modal -->
+    <div class="modal fade" id="addRoleModal" tabindex="-1" aria-labelledby="addRoleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addRoleModalLabel">Add New Role</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="roleName" class="form-label">Role Name</label>
+                                <input type="text" class="form-control form-control-rect" id="roleName" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="roleCategory" class="form-label">Category</label>
+                                <select class="form-select form-control-rect" id="roleCategory" required>
+                                    <option value="">Select category</option>
+                                    <option value="academic">Academic</option>
+                                    <option value="administrative">Administrative</option>
+                                    <option value="support">Support</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="roleDescription" class="form-label">Description</label>
+                            <textarea class="form-control form-control-rect" id="roleDescription" rows="2"></textarea>
+                        </div>
+                        
+                        <h5 class="mb-3">Permissions</h5>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="permission-category">
+                                    <h6><i class="fas fa-users me-2"></i> User Management</h6>
+                                    <div class="permission-item">
+                                        <input type="checkbox" id="perm1" class="form-check-input">
+                                        <label for="perm1" class="form-check-label">Admin Portal</label>
+                                    </div>
+                                    <div class="permission-item">
+                                        <input type="checkbox" id="perm2" class="form-check-input">
+                                        <label for="perm2" class="form-check-label">Head of Department Portal</label>
+                                    </div>
+                                    <div class="permission-item">
+                                        <input type="checkbox" id="perm2" class="form-check-input">
+                                        <label for="perm2" class="form-check-label">Teacher Portal</label>
+                                    </div>
+                                </div>
+                                
+                               
+                            </div>
+                            
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-rect btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-rect btn-primary">Create Role</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Role Modal (example structure) -->
+    <div class="modal fade" id="editRoleModal" tabindex="-1" aria-hidden="true">
+        <!-- Similar structure to add role modal but with pre-filled data -->
+    </div>
+
+  {% endblock %}

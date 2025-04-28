@@ -1,0 +1,641 @@
+{% extends "core_base.html" %}
+{% block core_content %}  
+{% load static %}
+
+    {% include "navbar.html" %}
+
+    <!-- Carousel Start -->
+    <div class="container-fluid p-0 mb-5">
+      <div class="owl-carousel header-carousel position-relative">
+        <div class="owl-carousel-item position-relative">
+          <img
+            class="img-fluid"
+            src="{% static "college photos/p4.jpg" %}"
+            style="height: 100vh"
+            alt=""
+          />
+          <div
+            class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center"
+          ></div>
+        </div>
+        <div class="owl-carousel-item position-relative">
+          <img
+            class="img-fluid"
+            src="{% static "college photos/p6.jpg" %}"
+            style="height: 100vh"
+            alt=""
+          />
+          <div
+            class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center"
+          ></div>
+        </div>
+        <div class="owl-carousel-item position-relative">
+          <img
+            class="img-fluid"
+            src="{% static "college photos/p3.jpg" %}"
+            style="height: 100vh"
+            alt=""
+          />
+          <div
+            class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center"
+          ></div>
+        </div>
+      </div>
+    </div>
+    <!-- Carousel End -->
+
+    <!-- Events & News Start -->
+    <div class="container-xxl py-5">
+      <div class="container">
+        <div class="text-center wow fadeInUp" data-wow-delay="0.1s">
+          <h6 class="section-title bg-white text-center text-primary px-3">
+            Campus Bulletin
+          </h6>
+          <h1 class="mb-5">Upcoming Events & News</h1>
+        </div>
+
+        <div class="row g-4">
+          <!-- Events Column -->
+          <div class="col-lg-6">
+            <div class="wow fadeInUp" data-wow-delay="0.1s">
+              <h3 class="mb-4 border-bottom pb-2">
+                <i class="fa fa-calendar-alt text-primary me-2"></i>Upcoming
+                Events
+              </h3>
+
+              <!-- Event Item 1 -->
+              <div class="event-item bg-light p-3 p-md-4 mb-4 rounded">
+                <div
+                  class="d-flex flex-column flex-md-row align-items-md-center"
+                >
+                  <div
+                    class="event-date bg-primary text-white text-center p-2 me-md-4 mb-3 mb-md-0 rounded"
+                    style="min-width: 80px"
+                  >
+                    <h4 class="mb-0">15</h4>
+                    <small>JUN</small>
+                  </div>
+                  <div class="flex-grow-1 me-md-3">
+                    <h5 class="mb-2">Annual Science Symposium</h5>
+                    <p class="mb-1">
+                      <i class="fa fa-clock text-primary me-2"></i>10:00 AM -
+                      4:00 PM
+                    </p>
+                    <p class="mb-2 mb-md-0">
+                      <i class="fa fa-map-marker-alt text-primary me-2"></i
+                      >College Auditorium
+                    </p>
+                  </div>
+                  <div class="mt-3 mt-md-0">
+                    <a
+                      href="#"
+                      class="btn btn-sm btn-primary w-100 w-md-auto px-3"
+                      >Details</a
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <!-- Event Item 2 -->
+              <div class="event-item bg-light p-3 p-md-4 mb-4 rounded">
+                <div
+                  class="d-flex flex-column flex-md-row align-items-md-center"
+                >
+                  <div
+                    class="event-date bg-primary text-white text-center p-2 me-md-4 mb-3 mb-md-0 rounded"
+                    style="min-width: 80px"
+                  >
+                    <h4 class="mb-0">22</h4>
+                    <small>JUN</small>
+                  </div>
+                  <div class="flex-grow-1 me-md-3">
+                    <h5 class="mb-2">Career Fair 2023</h5>
+                    <p class="mb-1">
+                      <i class="fa fa-clock text-primary me-2"></i>9:00 AM -
+                      5:00 PM
+                    </p>
+                    <p class="mb-2 mb-md-0">
+                      <i class="fa fa-map-marker-alt text-primary me-2"></i>Main
+                      Campus Ground
+                    </p>
+                  </div>
+                  <div class="mt-3 mt-md-0">
+                    <a
+                      href="#"
+                      class="btn btn-sm btn-primary w-100 w-md-auto px-3"
+                      >Details</a
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <!-- Event Item 3 -->
+              <div class="event-item bg-light p-3 p-md-4 mb-4 rounded">
+                <div
+                  class="d-flex flex-column flex-md-row align-items-md-center"
+                >
+                  <div
+                    class="event-date bg-primary text-white text-center p-2 me-md-4 mb-3 mb-md-0 rounded"
+                    style="min-width: 80px"
+                  >
+                    <h4 class="mb-0">05</h4>
+                    <small>JUL</small>
+                  </div>
+                  <div class="flex-grow-1 me-md-3">
+                    <h5 class="mb-2">Alumni Meetup</h5>
+                    <p class="mb-1">
+                      <i class="fa fa-clock text-primary me-2"></i>6:00 PM -
+                      9:00 PM
+                    </p>
+                    <p class="mb-2 mb-md-0">
+                      <i class="fa fa-map-marker-alt text-primary me-2"></i
+                      >College Cafeteria
+                    </p>
+                  </div>
+                  <div class="mt-3 mt-md-0">
+                    <a
+                      href="#"
+                      class="btn btn-sm btn-primary w-100 w-md-auto px-3"
+                      >Details</a
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <div class="text-center mt-4">
+                <a href="#" class="btn btn-primary py-2 px-4"
+                  >View All Events</a
+                >
+              </div>
+            </div>
+          </div>
+
+          <style>
+            /* Responsive adjustments */
+            .event-item {
+              transition: transform 0.3s ease, box-shadow 0.3s ease;
+            }
+
+            .event-item:hover {
+              transform: translateY(-3px);
+              box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            }
+
+            @media (max-width: 767.98px) {
+              .event-date {
+                margin-right: 0 !important;
+                margin-bottom: 15px;
+                width: 100%;
+                max-width: 80px;
+              }
+
+              .event-item {
+                padding: 15px !important;
+              }
+
+              .btn-sm {
+                width: 100%;
+                margin-top: 10px;
+              }
+            }
+
+            @media (max-width: 575.98px) {
+              h5 {
+                font-size: 1.1rem;
+              }
+
+              p {
+                font-size: 0.9rem;
+              }
+            }
+          </style>
+
+          <!-- News Column -->
+          <div class="col-lg-6">
+            <div class="wow fadeInUp" data-wow-delay="0.3s">
+              <h3 class="mb-4 border-bottom pb-2">
+                <i class="fa fa-newspaper text-primary me-2"></i>Latest News
+              </h3>
+
+              <div class="news-item bg-light p-4 mb-4 rounded">
+                <div class="d-flex">
+                  <img
+                    src="{% static "img/course-1.jpg" %}"
+                    class="img-fluid me-3"
+                    style="width: 100px; height: 100px; object-fit: cover"
+                    alt=""
+                  />
+                  <div>
+                    <small class="text-primary"
+                      ><i class="far fa-calendar-alt me-2"></i>01 June,
+                      2023</small
+                    >
+                    <h5 class="mb-2">
+                      College Ranked #1 in State for STEM Programs
+                    </h5>
+                    <p class="mb-0">
+                      Our institution has been recognized for excellence in
+                      science and technology education.
+                    </p>
+                    <a href="#" class="btn btn-link clr-dark p-0"
+                      >Read More <i class="fa fa-arrow-right ms-2"></i
+                    ></a>
+                  </div>
+                </div>
+              </div>
+
+              <div class="news-item bg-light p-4 mb-4 rounded">
+                <div class="d-flex">
+                  <img
+                    src="{% static "img/cat-1.jpg" %}"
+                    class="img-fluid me-3"
+                    style="width: 100px; height: 100px; object-fit: cover"
+                    alt=""
+                  />
+                  <div>
+                    <small class="text-primary"
+                      ><i class="far fa-calendar-alt me-2"></i>25 May,
+                      2023</small
+                    >
+                    <h5 class="mb-2">New Research Lab Inaugurated</h5>
+                    <p class="mb-0">
+                      The state-of-the-art facility will support advanced
+                      research in biotechnology.
+                    </p>
+                    <a href="#" class="btn btn-link p-0"
+                      >Read More <i class="fa fa-arrow-right ms-2"></i
+                    ></a>
+                  </div>
+                </div>
+              </div>
+
+              <div class="news-item bg-light p-4 mb-4 rounded">
+                <div class="d-flex">
+                  <img
+                    src=" {% static "img/about.jpg" %}"
+                    class="img-fluid me-3"
+                    style="width: 100px; height: 100px; object-fit: cover"
+                    alt=""
+                  />
+                  <div>
+                    <small class="text-primary"
+                      ><i class="far fa-calendar-alt me-2"></i>18 May,
+                      2023</small
+                    >
+                    <h5 class="mb-2">
+                      Student Wins National Debate Championship
+                    </h5>
+                    <p class="mb-0">
+                      Our student has brought honor to the college by winning
+                      the prestigious competition.
+                    </p>
+                    <a href="#" class="btn btn-link p-0"
+                      >Read More <i class="fa fa-arrow-right ms-2"></i
+                    ></a>
+                  </div>
+                </div>
+              </div>
+
+              <div class="text-center mt-4">
+                <a href="#" class="btn btn-primary py-2 px-4">View All News</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Events & News End -->
+
+    <!-- Service Start -->
+    <div class="container-xxl py-5">
+      <div class="container">
+        <div class="row g-4">
+          <div class="col-lg-3 col-sm-6 wow fadeInUp" data-wow-delay="0.1s">
+            <div class="service-item text-center pt-3">
+              <div class="p-4">
+                <i class="fa fa-3x fa-graduation-cap text-primary mb-4"></i>
+                <h5 class="mb-3">Expert Faculty</h5>
+                <p>
+                  150+ highly qualified instructors with 80% holding PhDs from
+                  top universities worldwide
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-3 col-sm-6 wow fadeInUp" data-wow-delay="0.3s">
+            <div class="service-item text-center pt-3">
+              <div class="p-4">
+                <i class="fa fa-3x fa-university text-primary mb-4"></i>
+                <h5 class="mb-3">Diverse Departments</h5>
+                <p>
+                  12 specialized departments offering 45+ undergraduate and
+                  graduate programs
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-3 col-sm-6 wow fadeInUp" data-wow-delay="0.5s">
+            <div class="service-item text-center pt-3">
+              <div class="p-4">
+                <i class="fa fa-3x fa-users text-primary mb-4"></i>
+                <h5 class="mb-3">Student Community</h5>
+                <p>
+                  Over 10,000 students from 65 countries creating a vibrant
+                  multicultural environment
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-3 col-sm-6 wow fadeInUp" data-wow-delay="0.7s">
+            <div class="service-item text-center pt-3">
+              <div class="p-4">
+                <i class="fa fa-3x fa-trophy text-primary mb-4"></i>
+                <h5 class="mb-3">Success Rate</h5>
+                <p>
+                  95% graduate employment rate with strong industry partnerships
+                  for career placement
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Service End -->
+
+    <!-- About Start -->
+    <div class="container-xxl py-5">
+      <div class="container">
+        <div class="row g-5">
+          <div
+            class="col-lg-6 wow fadeInUp"
+            data-wow-delay="0.1s"
+            style="min-height: 400px"
+          >
+            <div class="position-relative h-100">
+              <img
+                class="img-fluid position-absolute w-100 h-100"
+                src="{% static "college photos/p13.jpg" %}"
+                alt="Government Postgraduate College Jhang Campus"
+                style="object-fit: cover"
+              />
+            </div>
+          </div>
+          <div class="col-lg-6 wow fadeInUp" data-wow-delay="0.3s">
+            <h6 class="section-title bg-white text-start text-primary pe-3">
+              About Us
+            </h6>
+            <h1 class="mb-4">Welcome to Government Graduate College Jhang</h1>
+            <p class="mb-4">
+              Established in 1926, our institution stands as one of Punjab's
+              most prestigious government colleges with a rich academic
+              heritage. Affiliated with the University of the Punjab, we have
+              been shaping minds and building futures for nearly a century.
+            </p>
+            <p class="mb-4">
+              Our college takes immense pride in being the alma mater of two
+              Nobel laureates - Dr. Abdus Salam (Physics) and Dr. Har Gobind
+              Khorana (Medicine) - along with numerous other distinguished
+              scholars, poets, and writers who have made significant
+              contributions to their fields.
+            </p>
+            <div class="row gy-2 gx-4 mb-4">
+              <div class="col-sm-6">
+                <p class="mb-0">
+                  <i class="fa fa-arrow-right text-primary me-2"></i>Established
+                  in 1926
+                </p>
+              </div>
+              <div class="col-sm-6">
+                <p class="mb-0">
+                  <i class="fa fa-arrow-right text-primary me-2"></i>Punjab
+                  University Affiliated
+                </p>
+              </div>
+              <div class="col-sm-6">
+                <p class="mb-0">
+                  <i class="fa fa-arrow-right text-primary me-2"></i>Nobel
+                  Laureate Alumni
+                </p>
+              </div>
+              <div class="col-sm-6">
+                <p class="mb-0">
+                  <i class="fa fa-arrow-right text-primary me-2"></i
+                  >Postgraduate Programs
+                </p>
+              </div>
+              <div class="col-sm-6">
+                <p class="mb-0">
+                  <i class="fa fa-arrow-right text-primary me-2"></i>Historic
+                  Institution
+                </p>
+              </div>
+              <div class="col-sm-6">
+                <p class="mb-0">
+                  <i class="fa fa-arrow-right text-primary me-2"></i
+                  >Distinguished Faculty
+                </p>
+              </div>
+            </div>
+            <!-- <a class="btn btn-primary py-3 px-5 mt-2" href="">Explore Our History</a> -->
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- About End -->
+
+    <!-- Alumni Start -->
+    <div class="container-xxl py-5">
+      <div class="container">
+        <div class="text-center wow fadeInUp" data-wow-delay="0.1s">
+          <h6 class="section-title bg-white text-center text-primary px-3">
+            Our Pride
+          </h6>
+          <h1 class="mb-5">Distinguished Alumni</h1>
+        </div>
+        <div class="row g-4">
+          <!-- Dr. Abdus Salam -->
+          <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
+            <div class="team-item bg-light h-100">
+              <div class="overflow-hidden" style="height: 300px">
+                <img
+                  class="img-fluid w-100 h-100"
+                  src="{% static "img/dr-abdul-salam.jpg" %}"
+                  alt="Dr. Abdus Salam"
+                  style="object-fit: cover"
+                />
+              </div>
+              <div class="text-center p-4">
+                <h5 class="mb-0">Dr. Abdus Salam</h5>
+                <small>Nobel Laureate in Physics (1979)</small>
+                <p class="mt-2">
+                  First Pakistani Nobel laureate, pioneer in electroweak
+                  unification theory
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dr. Har Gobind Khorana -->
+          <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.3s">
+            <div class="team-item bg-light h-100">
+              <div class="overflow-hidden" style="height: 300px">
+                <img
+                  class="img-fluid w-100 h-100"
+                  src="{% static "img/dr-har-gobind.jpg" %}"
+                  alt="Dr. Har Gobind Khorana"
+                  style="object-fit: cover"
+                />
+              </div>
+              <div class="text-center p-4">
+                <h5 class="mb-0">Dr. Har Gobind Khorana</h5>
+                <small>Nobel Laureate in Medicine (1968)</small>
+                <p class="mt-2">
+                  Pioneer in genetics and protein synthesis research
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Majeed Amjad -->
+          <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.5s">
+            <div class="team-item bg-light h-100">
+              <div class="overflow-hidden" style="height: 300px">
+                <img
+                  class="img-fluid w-100 h-100"
+                  src="{% static "img/majid-amjid.jpg" %}"
+                  alt="Majeed Amjad"
+                  style="object-fit: cover"
+                />
+              </div>
+              <div class="text-center p-4">
+                <h5 class="mb-0">Majeed Amjad</h5>
+                <small>Renowned Urdu Poet</small>
+                <p class="mt-2">
+                  Transformed modern Urdu poetry with philosophical depth
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Wazir Agha -->
+          <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.7s">
+            <div class="team-item bg-light h-100">
+              <div class="overflow-hidden" style="height: 300px">
+                <img
+                  class="img-fluid w-100 h-100"
+                  src=" {% static "img/wazir-agha.jpg" %}"
+                  alt="Wazir Agha"
+                  style="object-fit: cover"
+                />
+              </div>
+              <div class="text-center p-4">
+                <h5 class="mb-0">Wazir Agha</h5>
+                <small>Eminent Urdu Critic</small>
+                <p class="mt-2">
+                  Revolutionized Urdu literary criticism with modern approaches
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Alumni End -->
+
+    <!-- Campus Life Start -->
+    <div class="container-xxl py-5">
+      <div class="container">
+        <div class="text-center wow fadeInUp" data-wow-delay="0.1s">
+          <h6 class="section-title bg-white text-center text-primary px-3">
+            Campus Life
+          </h6>
+          <h1 class="mb-5">Life at Government Postgraduate College Jhang</h1>
+        </div>
+        <div class="row g-3">
+          <div class="col-lg-7 col-md-6">
+            <div class="row g-3">
+              <div class="col-lg-12 col-md-12 wow zoomIn" data-wow-delay="0.1s">
+                <a class="position-relative d-block overflow-hidden" href="">
+                  <img
+                    class="img-fluid"
+                    src="{% static "college photos/p12.jpg" %}"
+                    alt="Annual Sports Gala"
+                  />
+                  <div
+                    class="bg-white text-center position-absolute bottom-0 end-0 py-2 px-3"
+                    style="margin: 1px"
+                  >
+                    <h5 class="m-0">Annual Sports Gala</h5>
+                    <small class="text-primary">300+ Participants</small>
+                  </div>
+                </a>
+              </div>
+              <div class="col-lg-6 col-md-12 wow zoomIn" data-wow-delay="0.3s">
+                <a class="position-relative d-block overflow-hidden" href="">
+                  <img
+                    class="img-fluid"
+                    src="{% static "college photos/p10.jpg" %}"
+                    alt="Science Exhibition"
+                  />
+                  <div
+                    class="bg-white text-center position-absolute bottom-0 end-0 py-2 px-3"
+                    style="margin: 1px"
+                  >
+                    <h5 class="m-0">Science Exhibition</h5>
+                    <small class="text-primary">45 Projects Displayed</small>
+                  </div>
+                </a>
+              </div>
+              <div class="col-lg-6 col-md-12 wow zoomIn" data-wow-delay="0.5s">
+                <a class="position-relative d-block overflow-hidden" href="">
+                  <img
+                    class="img-fluid"
+                    src="{% static "college photos/p7.jpg" %}"
+                    alt="Debate Competition"
+                  />
+                  <div
+                    class="bg-white text-center position-absolute bottom-0 end-0 py-2 px-3"
+                    style="margin: 1px"
+                  >
+                    <h5 class="m-0">Inter-College Debate</h5>
+                    <small class="text-primary">12 Colleges Participated</small>
+                  </div>
+                </a>
+              </div>
+            </div>
+          </div>
+          <div
+            class="col-lg-5 col-md-6 wow zoomIn"
+            data-wow-delay="0.7s"
+            style="min-height: 350px"
+          >
+            <a class="position-relative d-block h-100 overflow-hidden" href="">
+              <img
+                class="img-fluid position-absolute w-100 h-100"
+                src=" {% static "college photos/p8.jpg" %}"
+                alt="Annual Convocation"
+                style="object-fit: cover"
+              />
+              <div
+                class="bg-white text-center position-absolute bottom-0 end-0 py-2 px-3"
+                style="margin: 1px"
+              >
+                <h5 class="m-0">Annual Convocation</h5>
+                <small class="text-primary">500+ Graduates</small>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Campus Life End -->
+
+ 
+    <!-- Back to Top -->
+    <a href="#" class="btn btn-lg btn-primary btn-lg-square back-to-top"
+      ><i class="bi bi-arrow-up"></i
+    ></a>
+  
+    {% include "footer.html" %}
+    {% endblock core_content %}

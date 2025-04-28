@@ -1,0 +1,45 @@
+{% extends "admin_base.html" %}
+
+
+{% block admin_content %}
+         <!-- Sidebar -->
+     <!-- Sidebar -->
+     {% include "partials/sidebar.html" %}
+    
+     <!-- Main Content -->
+     <div class="main-content" id="mainContent">
+       {% include "partials/header.html" %}
+
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card card-rect">
+                        <div class="card-body">
+                            <h5 class="card-title mb-4">Update Profile</h5>
+                            <form action="/update-profile" method="POST" enctype="multipart/form-data">
+                                <div class="">
+                                    <label for="fullName" class="form-label">Full Name</label>
+                                    <input type="text" class="form-control form-control-rect" id="fullName" name="full_name" value="John Doe" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email</label>
+                                    <input type="email" class="form-control form-control-rect" id="email" name="email" value="john.doe@example.com" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="profilePicture" class="form-label">Profile Picture</label>
+                                    <input type="file" class="form-control form-control-rect" id="profilePicture" name="profile_picture" accept="image/*">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="phoneNumber" class="form-label">Phone Number</label>
+                                    <input type="tel" class="form-control form-control-rect" id="phoneNumber" name="phone_number" value="+1234567890">
+                                </div>
+                                <button type="submit" class="btn btn-rect btn-primary">Update Profile</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+ {% endblock %}

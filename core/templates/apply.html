@@ -1,0 +1,806 @@
+{% extends "core_base.html" %}
+{% block core_content %}
+{% load static %}
+
+{% comment %} {% include "navbar.html" %} {% endcomment %}
+
+<!-- Font Awesome CDN -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<style>
+    :root {
+        --primary: #D27328;
+        --light: #fff5ee;
+        --dark: #181d38;
+    }
+    .admission-step {
+        border-left: 4px solid var(--primary);
+        padding-left: 15px;
+        margin-bottom: 30px;
+    }
+    .program-card {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        transition: all 0.3s;
+        margin-bottom: 15px;
+    }
+    .program-card:hover {
+        border-color: var(--primary);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    .program-card.active {
+        border-color: var(--primary);
+        background-color: rgba(210, 115, 40, 0.05);
+    }
+    .nav-pills .nav-link.active {
+        background-color: var(--primary);
+    }
+    .form-section {
+        display: none;
+    }
+    .form-section.active {
+        display: block;
+        animation: fadeIn 0.5s;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    .badge-open {
+        background-color: #28a745;
+    }
+    .faculty-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+    .error {
+        color: #dc3545 !important;
+        font-size: 0.875em;
+        margin-top: 0.25rem;
+    }
+    .is-invalid {
+        border-color: #dc3545 !important;
+    }
+    .form-control-lg, .form-select-lg {
+        padding: 0.5rem 1rem;
+        font-size: 1.1rem;
+    }
+</style>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <h2 class="text-center mb-4">Online Admission Portal</h2>
+
+            {% if not user.is_authenticated %}
+                <div class="alert alert-warning text-center">
+                    <h4>Please Log In</h4>
+                    <p>You must be logged in to submit an application.</p>
+                    <a href="{% url 'login' %}?next={% url 'apply' %}" class="btn btn-primary">Log In</a>
+                </div>
+            {% else %}
+
+            <!-- Progress Steps -->
+            <ul class="nav nav-pills mb-4 justify-content-center" id="progressSteps">
+                <li class="nav-item">
+                    <a class="nav-link active" id="step1-tab" data-bs-toggle="pill" href="#step1">1. Faculty</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link disabled" id="step2-tab" data-bs-toggle="pill" href="#step2">2. Department</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link disabled" id="step3-tab" data-bs-toggle="pill" href="#step3">3. Program</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link disabled" id="step4-tab" data-bs-toggle="pill" href="#step4">4. Application</a>
+                </li>
+            </ul>
+
+            <!-- Form Sections -->
+            <div class="tab-content">
+                <!-- Step 1: Faculty Selection -->
+                <div class="tab-pane fade show active" id="step1">
+                    <div class="admission-step">
+                        <h4><i class="fas fa-university me-2"></i>Select Faculty</h4>
+                        <p class="text-muted">Choose the faculty that offers your desired program</p>
+                        <div class="row mt-4" id="facultyContainer">
+                            {% for faculty in faculties %}
+                            <div class="col-md-4 mb-3">
+                                <div class="card program-card" data-faculty="{{ faculty.id }}"
+                                     data-faculty-name="{{ faculty.name }}">
+                                    <div class="card-body text-center">
+                                        <i class="fas {{ faculty.icon|default:'fa-building' }} faculty-icon text-primary"></i>
+                                        <h5>{{ faculty.name }}</h5>
+                                        <p class="text-muted">{{ faculty.description|default:"" }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="text-end mt-4">
+                        <button class="btn btn-primary" id="toStep2" disabled>Next <i
+                                class="fas fa-arrow-right ms-2"></i></button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Department Selection -->
+                <div class="tab-pane fade" id="step2">
+                    <div class="admission-step">
+                        <h4><i class="fas fa-building me-2"></i>Select Department</h4>
+                        <p class="text-muted" id="selectedFacultyText">Faculty: <span id="displayFaculty"></span></p>
+                        <div class="row mt-4" id="departmentContainer">
+                            <!-- Departments will be loaded here via AJAX -->
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between mt-4">
+                        <button class="btn btn-outline-secondary" id="backToStep1"><i
+                                class="fas fa-arrow-left me-2"></i> Back</button>
+                        <button class="btn btn-primary" id="toStep3" disabled>Next <i
+                                class="fas fa-arrow-right ms-2"></i></button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Program Selection -->
+                <div class="tab-pane fade" id="step3">
+                    <div class="admission-step">
+                        <h4><i class="fas fa-graduation-cap me-2"></i>Select Program</h4>
+                        <p class="text-muted" id="selectedDeptText">Department: <span id="displayDepartment"></span></p>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i> Only programs with open admissions are shown
+                        </div>
+                        <div class="row mt-4" id="programContainer">
+                            <!-- Programs will be loaded here via AJAX -->
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between mt-4">
+                        <button class="btn btn-outline-secondary" id="backToStep2"><i
+                                class="fas fa-arrow-left me-2"></i> Back</button>
+                        <button class="btn btn-primary" id="toStep4" disabled>Next <i
+                                class="fas fa-arrow-right ms-2"></i></button>
+                    </div>
+                </div>
+
+                <!-- Step 4: Application Form -->
+                <div class="tab-pane fade" id="step4">
+                    <div class="admission-step">
+                        <h4><i class="fas fa-file-alt me-2"></i>Admission Form</h4>
+                        <p class="text-muted" id="selectedProgramText">Applying for: <span id="displayProgram"></span></p>
+                        <form id="admissionForm" method="POST" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <input type="hidden" id="selectedFacultyId" name="faculty">
+                            <input type="hidden" id="selectedDepartmentId" name="department">
+                            <input type="hidden" id="selectedProgramId" name="program">
+
+                            <!-- Applicant Details Section -->
+                            <div class="card mb-4 border-0">
+                                <div class="card-header bg-primary text-white">
+                                    <h4 class="mb-0 text-white">Applicant Details</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row mb-4">
+                                        <div class="col-md-3">
+                                            <label for="applicantPhoto" class="form-label text-dark">Recent Photograph</label>
+                                            <input type="file" class="form-control form-control-lg" id="applicantPhoto"
+                                                   name="applicant_photo" accept="image/*" required>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-4 g-3">
+                                        <div class="col-md-4">
+                                            <label for="fullName" class="form-label text-dark">Full Name</label>
+                                            <input type="text" class="form-control form-control-lg" id="fullName"
+                                                   name="full_name" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="religion" class="form-label text-dark">Religion</label>
+                                            <input type="text" class="form-control form-control-lg" id="religion"
+                                                   name="religion" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="caste" class="form-label text-dark">Caste</label>
+                                            <input type="text" class="form-control form-control-lg" id="caste"
+                                                   name="caste" required>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-4 g-3">
+                                        <div class="col-md-4">
+                                            <label for="cnic" class="form-label text-dark">CNIC No.</label>
+                                            <input type="text" class="form-control form-control-lg" id="cnic"
+                                                   name="cnic" placeholder="XXXXX-XXXXXXX-X" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="dob" class="form-label text-dark">Date of Birth</label>
+                                            <input type="date" class="form-control form-control-lg" id="dob" name="dob"
+                                                   required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="contactNo" class="form-label text-dark">Contact No.</label>
+                                            <input type="tel" class="form-control form-control-lg" id="contactNo"
+                                                   name="contact_no" required>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <label for="identificationMark" class="form-label text-dark">Identification Mark</label>
+                                            <textarea class="form-control form-control-lg" id="identificationMark"
+                                                      name="identification_mark" rows="2"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Father/Guardian Details Section -->
+                            <div class="card mb-4 border-0">
+                                <div class="card-header bg-primary text-white">
+                                    <h4 class="mb-0 text-white">Father/Guardian Details</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row mb-4 g-3">
+                                        <div class="col-md-4">
+                                            <label for="fatherName" class="form-label text-dark">Full Name</label>
+                                            <input type="text" class="form-control form-control-lg" id="fatherName"
+                                                   name="father_name" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="fatherOccupation" class="form-label text-dark">Occupation</label>
+                                            <input type="text" class="form-control form-control-lg" id="fatherOccupation"
+                                                   name="father_occupation" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="fatherCnic" class="form-label text-dark">CNIC No.</label>
+                                            <input type="text" class="form-control form-control-lg" id="fatherCnic"
+                                                   name="father_cnic" placeholder="XXXXX-XXXXXXX-X" required>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-4 g-3">
+                                        <div class="col-md-6">
+                                            <label for="monthlyIncome" class="form-label text-dark">Monthly Income</label>
+                                            <input type="number" class="form-control form-control-lg" id="monthlyIncome"
+                                                   name="monthly_income" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="relationship" class="form-label text-dark">Relationship with Applicant</label>
+                                            <select class="form-select form-select-lg" id="relationship"
+                                                    name="relationship" required>
+                                                <option value="">Select</option>
+                                                <option value="father">Father</option>
+                                                <option value="guardian">Guardian</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <label for="permanentAddress" class="form-label text-dark">Permanent Address</label>
+                                            <textarea class="form-control form-control-lg" id="permanentAddress"
+                                                      name="permanent_address" rows="3" required></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Academic Qualifications Section (Matric) -->
+                            <div class="card mb-4 border-0">
+                                <div class="card-header bg-primary text-white">
+                                    <h4 class="mb-0 text-white">Academic Qualifications Matric</h4>
+                                </div>
+                                <div class="card-body">
+                                    <input type="hidden" name="matric_level" value="matric">
+                                    <div class="row mb-4 g-3">
+                                        <div class="col-md-4">
+                                            <label for="matricExamPassed" class="form-label text-dark">Examination Passed</label>
+                                            <input type="text" class="form-control form-control-lg" id="matricExamPassed"
+                                                   name="matric_exam_passed" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="matricPassingYear" class="form-label text-dark">Passing Year</label>
+                                            <input type="number" class="form-control form-control-lg"
+                                                   id="matricPassingYear" name="matric_passing_year" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="matricBoardRollNo" class="form-label text-dark">Board Roll No</label>
+                                            <input type="text" class="form-control form-control-lg"
+                                                   id="matricBoardRollNo" name="matric_roll_no" required>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-4 g-3">
+                                        <div class="col-md-3">
+                                            <label for="matricMarksObtained" class="form-label text-dark">Marks Obtained</label>
+                                            <input type="number" class="form-control form-control-lg"
+                                                   id="matricMarksObtained" name="matric_marks_obtained" required>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label for="matricTotalMarks" class="form-label text-dark">Total Marks</label>
+                                            <input type="number" class="form-control form-control-lg"
+                                                   id="matricTotalMarks" name="matric_total_marks" required>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label for="matricDivision" class="form-label text-dark">Division</label>
+                                            <input type="text" class="form-control form-control-lg" id="matricDivision"
+                                                   name="matric_division" required>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label for="matricSubjects" class="form-label text-dark">Subjects</label>
+                                            <textarea class="form-control form-control-lg" id="matricSubjects"
+                                                      name="matric_subjects" rows="2" required></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-4 g-3">
+                                        <div class="col-md-6">
+                                            <label for="matricInstitute" class="form-label text-dark">Institute</label>
+                                            <input type="text" class="form-control form-control-lg" id="matricInstitute"
+                                                   name="matric_institute" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="matricBoard" class="form-label text-dark">Board</label>
+                                            <input type="text" class="form-control form-control-lg" id="matricBoard"
+                                                   name="matric_board" required>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Academic Qualifications Section (Intermediate) -->
+                            <div class="card mb-4 border-0">
+                                <div class="card-header bg-primary text-white">
+                                    <h4 class="mb-0 text-white">Academic Qualifications Intermediate</h4>
+                                </div>
+                                <div class="card-body">
+                                    <input type="hidden" name="inter_level" value="intermediate">
+                                    <div class="row mb-4 g-3">
+                                        <div class="col-md-4">
+                                            <label for="interExamPassed" class="form-label text-dark">Examination Passed</label>
+                                            <input type="text" class="form-control form-control-lg" id="interExamPassed"
+                                                   name="inter_exam_passed" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="interPassingYear" class="form-label text-dark">Passing Year</label>
+                                            <input type="number" class="form-control form-control-lg"
+                                                   id="interPassingYear" name="inter_passing_year" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="interBoardRollNo" class="form-label text-dark">Board Roll No</label>
+                                            <input type="text" class="form-control form-control-lg" id="interBoardRollNo"
+                                                   name="inter_roll_no" required>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-4 g-3">
+                                        <div class="col-md-3">
+                                            <label for="interMarksObtained" class="form-label text-dark">Marks Obtained</label>
+                                            <input type="number" class="form-control form-control-lg"
+                                                   id="interMarksObtained" name="inter_marks_obtained" required>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label for="interTotalMarks" class="form-label text-dark">Total Marks</label>
+                                            <input type="number" class="form-control form-control-lg"
+                                                   id="interTotalMarks" name="inter_total_marks" required>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label for="interDivision" class="form-label text-dark">Division</label>
+                                            <input type="text" class="form-control form-control-lg" id="interDivision"
+                                                   name="inter_division" required>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label for="interSubjects" class="form-label text-dark">Subjects</label>
+                                            <textarea class="form-control form-control-lg" id="interSubjects"
+                                                      name="inter_subjects" rows="2" required></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-4 g-3">
+                                        <div class="col-md-6">
+                                            <label for="interInstitute" class="form-label text-dark">Institute</label>
+                                            <input type="text" class="form-control form-control-lg" id="interInstitute"
+                                                   name="inter_institute" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="interBoard" class="form-label text-dark">Board</label>
+                                            <input type="text" class="form-control form-control-lg" id="interBoard"
+                                                   name="inter_board" required>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Extra Activities Section -->
+                            <div class="card mb-4 border-0">
+                                <div class="card-header bg-primary text-white">
+                                    <h4 class="mb-0 text-white">Extra Curricular Activities</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-borderless">
+                                            <thead class="bg-light">
+                                            <tr>
+                                                <th class="text-dark">Activity</th>
+                                                <th class="text-dark">Position/Role</th>
+                                                <th class="text-dark">Achievements</th>
+                                                <th class="text-dark">Year</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            <tr>
+                                                <td><input type="text" class="form-control form-control-lg" name="activity"></td>
+                                                <td><input type="text" class="form-control form-control-lg" name="position"></td>
+                                                <td><input type="text" class="form-control form-control-lg" name="achievement"></td>
+                                                <td><input type="number" class="form-control form-control-lg" name="activity_year"></td>
+                                            </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Declaration Section -->
+                            <div class="form-check mb-4">
+                                <input class="form-check-input" type="checkbox" id="declaration" name="declaration" required>
+                                <label class="form-check-label text-dark" for="declaration">
+                                    I declare that all information provided is correct and complete. I understand that
+                                    providing false information may result in cancellation of admission.
+                                </label>
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary btn-lg py-3">Submit Application</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="d-flex justify-content-between mt-4">
+                        <button class="btn btn-outline-secondary" id="backToStep3"><i
+                                class="fas fa-arrow-left me-2"></i> Back</button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
+<!-- Bootstrap JS (required for nav pills) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // Define the submit URL using Django's URL template tag
+    const submitUrl = "{% url 'submit_application' %}";
+
+    // Current selection tracking
+    let currentSelection = {
+        faculty: null,
+        facultyName: null,
+        department: null,
+        departmentName: null,
+        program: null,
+        programName: null
+    };
+
+    // Function to update the visible step
+    function showStep(stepId, stepTabId) {
+        $('.tab-pane').removeClass('show active');
+        $(`#${stepId}`).addClass('show active');
+        $('.nav-link').removeClass('active completed').addClass('disabled');
+        $(`#${stepTabId}`).removeClass('disabled').addClass('active');
+        for (let i = 1; i < parseInt(stepId.replace('step', '')); i++) {
+            $(`#step${i}-tab`).removeClass('disabled').addClass('completed');
+        }
+    }
+
+    // Function to update URL and show step
+    function navigateToStep(stepId, stepTabId, url) {
+        history.pushState({ stepId, stepTabId }, '', url);
+        showStep(stepId, stepTabId);
+    }
+
+    // Step 1: Faculty Selection
+    $('.program-card[data-faculty]').click(function () {
+        $('.program-card').removeClass('active');
+        $(this).addClass('active');
+        currentSelection.faculty = $(this).data('faculty');
+        currentSelection.facultyName = $(this).data('faculty-name');
+        $('#toStep2').prop('disabled', false);
+    });
+
+    // Step 2: Department Selection
+    $('#toStep2').click(function () {
+        if (!currentSelection.faculty) return;
+        $('#displayFaculty').text(currentSelection.facultyName);
+        $('#selectedFacultyId').val(currentSelection.faculty);
+
+        $.ajax({
+            url: "{% url 'get_departments' %}", // Use Django URL tag
+            method: 'GET',
+            data: { faculty_id: currentSelection.faculty },
+            success: function (response) {
+                let departmentsHtml = '';
+                response.departments.forEach(dept => {
+                    departmentsHtml += `
+                        <div class="col-md-6 mb-3">
+                            <div class="card program-card department-card" 
+                                 data-dept="${dept.id}" 
+                                 data-dept-name="${dept.name}">
+                                <div class="card-body">
+                                    <h5>${dept.name}</h5>
+                                    <p class="text-muted">${dept.program_count} program(s)</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                $('#departmentContainer').html(departmentsHtml);
+
+                $('.department-card').click(function () {
+                    $('.department-card').removeClass('active');
+                    $(this).addClass('active');
+                    currentSelection.department = $(this).data('dept');
+                    currentSelection.departmentName = $(this).data('dept-name');
+                    $('#toStep3').prop('disabled', false);
+                });
+            },
+            error: function (xhr) {
+                console.error('Department AJAX error:', xhr);
+                alert("Error loading departments: " + (xhr.responseJSON?.message || "Please try again."));
+            }
+        });
+
+        navigateToStep('step2', 'step2-tab', '/apply/department/');
+    });
+
+    // Step 3: Program Selection
+    $('#toStep3').click(function () {
+        if (!currentSelection.department) return;
+        $('#displayDepartment').text(currentSelection.departmentName);
+        $('#selectedDepartmentId').val(currentSelection.department);
+
+        $.ajax({
+            url: "{% url 'get_programs' %}", // Use Django URL tag
+            method: 'GET',
+            data: { department_id: currentSelection.department },
+            success: function (response) {
+                let programsHtml = '';
+                response.forEach(program => {
+                    if (program.is_open) {
+                        programsHtml += `
+                            <div class="col-md-6 mb-3">
+                                <div class="card program-card program-option" 
+                                     data-program="${program.id}" 
+                                     data-program-name="${program.name}">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between">
+                                            <h5>${program.name}</h5>
+                                            <span class="badge badge-open">Open</span>
+                                        </div>
+                                        <p class="text-muted mt-2">${program.duration || '4-year'} degree program</p>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+                $('#programContainer').html(programsHtml);
+
+                $('.program-option').click(function () {
+                    $('.program-option').removeClass('active');
+                    $(this).addClass('active');
+                    currentSelection.program = $(this).data('program');
+                    currentSelection.programName = $(this).data('program-name');
+                    $('#toStep4').prop('disabled', false);
+                });
+            },
+            error: function (xhr) {
+                console.error('Program AJAX error:', xhr);
+                alert("Error loading programs: " + (xhr.responseJSON?.message || "Please try again."));
+            }
+        });
+
+        navigateToStep('step3', 'step3-tab', '/apply/program/');
+    });
+
+    // Step 4: Application Form
+    $('#toStep4').click(function () {
+        if (!currentSelection.program) return;
+        $('#displayProgram').text(currentSelection.programName);
+        $('#selectedProgramId').val(currentSelection.program);
+        navigateToStep('step4', 'step4-tab', '/apply/form/');
+    });
+
+    // Back buttons
+    $('#backToStep1').click(function () {
+        navigateToStep('step1', 'step1-tab', '/apply/faculty/');
+    });
+
+    $('#backToStep2').click(function () {
+        navigateToStep('step2', 'step2-tab', '/apply/department/');
+    });
+
+    $('#backToStep3').click(function () {
+        navigateToStep('step3', 'step3-tab', '/apply/program/');
+    });
+
+    // Handle browser back/forward navigation
+    window.addEventListener('popstate', function (event) {
+        if (event.state && event.state.stepId && event.state.stepTabId) {
+            showStep(event.state.stepId, event.state.stepTabId);
+        } else {
+            // Default to step 1 if no state
+            showStep('step1', 'step1-tab');
+        }
+    });
+
+    // Initialize URL on page load
+    history.replaceState({ stepId: 'step1', stepTabId: 'step1-tab' }, '', '/apply/faculty/');
+
+    // Custom CNIC validation method
+    $.validator.addMethod("cnicFormat", function(value, element) {
+        return this.optional(element) || /^[0-9]{5}-[0-9]{7}-[0-9]$/.test(value);
+    }, "Please enter a valid CNIC (XXXXX-XXXXXXX-X)");
+
+    // Form validation
+    $("#admissionForm").validate({
+        errorClass: "error",
+        validClass: "is-valid",
+        errorElement: "span",
+        highlight: function (element) {
+            $(element).addClass("is-invalid").removeClass("is-valid");
+        },
+        unhighlight: function (element) {
+            $(element).removeClass("is-invalid").addClass("is-valid");
+        },
+        rules: {
+            full_name: "required",
+            religion: "required",
+            caste: "required",
+            cnic: {
+                required: true,
+                cnicFormat: true
+            },
+            dob: "required",
+            contact_no: {
+                required: true,
+                pattern: /^\d{11,15}$/
+            },
+            father_name: "required",
+            father_occupation: "required",
+            father_cnic: {
+                required: true,
+                cnicFormat: true
+            },
+            monthly_income: {
+                required: true,
+                number: true,
+                min: 0
+            },
+            relationship: "required",
+            permanent_address: "required",
+            applicant_photo: {
+                required: true
+            },
+            declaration: "required",
+            matric_exam_passed: "required",
+            matric_passing_year: {
+                required: true,
+                digits: true,
+                min: 1950,
+                max: new Date().getFullYear()
+            },
+            matric_roll_no: "required",
+            matric_marks_obtained: {
+                required: true,
+                number: true,
+                min: 0
+            },
+            matric_total_marks: {
+                required: true,
+                number: true,
+                min: 0
+            },
+            matric_division: "required",
+            matric_subjects: "required",
+            matric_institute: "required",
+            matric_board: "required",
+            inter_exam_passed: "required",
+            inter_passing_year: {
+                required: true,
+                digits: true,
+                min: 1950,
+                max: new Date().getFullYear()
+            },
+            inter_roll_no: "required",
+            inter_marks_obtained: {
+                required: true,
+                number: true,
+                min: 0
+            },
+            inter_total_marks: {
+                required: true,
+                number: true,
+                min: 0
+            },
+            inter_division: "required",
+            inter_subjects: "required",
+            inter_institute: "required",
+            inter_board: "required",
+            activity_year: {
+                digits: true,
+                min: 1950,
+                max: new Date().getFullYear()
+            }
+        },
+        messages: {
+            cnic: {
+                cnicFormat: "Please enter a valid CNIC (XXXXX-XXXXXXX-X)"
+            },
+            father_cnic: {
+                cnicFormat: "Please enter a valid CNIC (XXXXX-XXXXXXX-X)"
+            },
+            contact_no: {
+                pattern: "Contact number must be 11-15 digits"
+            }
+        },
+        submitHandler: function (form, event) {
+            event.preventDefault(); // Prevent default form submission
+            console.log("Form submission triggered");
+            const formData = new FormData(form);
+            console.log("Form Data:");
+            for (let [key, value] of formData.entries()) {
+                console.log(`${key}: ${value}`);
+            }
+            const $submitButton = $('button[type="submit"]');
+            $submitButton.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...');
+            $submitButton.prop('disabled', true);
+
+            $.ajax({
+                url: submitUrl,
+                method: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                headers: {
+                    'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val()
+                },
+                success: function (response) {
+                    console.log('Submission success:', response);
+                    if (response.success) {
+                        window.location.href = "{% url 'application_success' %}";
+                    } else {
+                        alert(response.message || "Error submitting application");
+                        $submitButton.html('Submit Application').prop('disabled', false);
+                    }
+                },
+                error: function (xhr) {
+                    console.error("Submission error:", xhr);
+                    alert("Error: " + (xhr.responseJSON?.message || xhr.statusText || "Submission failed"));
+                    $submitButton.html('Submit Application').prop('disabled', false);
+                }
+            });
+        }
+    });
+
+    // CNIC input formatting
+    $('input[name="cnic"], input[name="father_cnic"]').on('input', function () {
+        let value = $(this).val().replace(/\D/g, '');
+        if (value.length > 5) value = value.slice(0, 5) + '-' + value.slice(5);
+        if (value.length > 13) value = value.slice(0, 13) + '-' + value.slice(13);
+        $(this).val(value.slice(0, 15));
+    });
+
+    // Phone number formatting
+    $('input[name="contact_no"]').on('input', function () {
+        $(this).val($(this).val().replace(/\D/g, '').slice(0, 15));
+    });
+
+    // Date validation (minimum age 16 years)
+    $('input[name="dob"]').on('change', function () {
+        const dob = new Date($(this).val());
+        const today = new Date();
+        let age = today.getFullYear() - dob.getFullYear();
+        const m = today.getMonth() - dob.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+        if (age < 16) {
+            $(this).val('');
+            alert('Applicant must be at least 16 years old');
+        }
+    });
+</script>
+
+{% comment %} {% include "footer.html" %} {% endcomment %}
+{% endblock core_content %}

@@ -41,12 +41,16 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'core',            #this will handel main landing page
-    'users',           #this will handel all type of users and related stuff
-    'admin_portal',   #this will handel stuff related to admin potral
+    'core',            
+    'users',           
     'widget_tweaks',
     'django_ckeditor_5',
-    # 'flatpickr',
+    'site_elements' , 
+    'announcements',
+    'admissions',
+    'academics',
+    'faculty_staff',
+    'datetimepicker',
 ]
 
 MIDDLEWARE = [
@@ -64,7 +68,7 @@ ROOT_URLCONF = 'campus360FYP.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],  # template dir
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -168,16 +172,48 @@ EMAIL_HOST_PASSWORD = 'pmyf uvlj sxfn gald'
 
 
 
-# Default theme
 JAZZMIN_SETTINGS = {
-    'theme': 'default',  # fallback theme
+    "site_logo": "img/logo.png",
+    'theme': 'default',
     'site_title': 'My Admin Panel',
     'site_header': 'My Admin Dashboard',
-    'site_brand': 'Admin',
+    'site_brand': 'Campus360',
     'site_icon': 'fas fa-cogs',
     'welcome_sign': 'Welcome to Admin Panel',
-    'custom_css': None,  # Custom CSS path if you want to add
-    'custom_js': None,   # Custom JS path if you want to add
+     "custom_css": "css/custom_admin.css",
+     "show_ui_builder": False,
+    "icons": {
+        # Auth
+        "auth": "fas fa-users",
+        "auth.User": "fas fa-user",
+        "auth.Group": "fas fa-users-cog",
+
+        # Academics App
+        "academics.DegreeType": "fas fa-graduation-cap",
+        "academics.Faculty": "fas fa-users",
+        "academics.Department": "fas fa-building",
+        "academics.Program": "fas fa-chalkboard-teacher",
+        "academics.AcademicSession": "fas fa-calendar-alt",
+        "academics.Semester": "fas fa-calendar",
+
+        # Admissions App
+        "admissions.AcademicSession": "fas fa-calendar-alt",
+        "admissions.AdmissionCycle": "fas fa-calendar-check",
+        "admissions.Applicant": "fas fa-user-tie",
+        "admissions.Course": "fas fa-book",
+        "admissions.Enrollment": "fas fa-user-graduate",
+
+        # Announcements App
+        "announcements.News": "fas fa-file-alt",
+        "announcements.Event": "fas fa-calendar-day",
+
+        # Site Elements App
+        "site_elements.Slider": "fas fa-sliders-h",
+        "site_elements.Alumni": "fas fa-user-friends",
+        "site_elements.Gallery": "fas fa-images",
+        
+        "users.CustomUser": "fas fa-users",
+    },
 }
 
 
@@ -215,4 +251,22 @@ CKEDITOR_5_CONFIGS = {
             ]
         },
     }
+}
+
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        '': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+    },
 }

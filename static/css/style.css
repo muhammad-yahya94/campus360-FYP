@@ -487,3 +487,44 @@
     padding-right: 0;
     border-right: none;
 }
+
+
+
+
+            /* Responsive adjustments */
+            .event-item {
+                transition: transform 0.3s ease, box-shadow 0.3s ease;
+              }
+  
+              .event-item:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+              }
+  
+              @media (max-width: 767.98px) {    
+                .event-date {
+                  margin-right: 0 !important;
+                  margin-bottom: 15px;
+                  width: 100%;
+                  max-width: 80px;
+                }
+  
+                .event-item {
+                  padding: 15px !important;
+                }
+  
+                .btn-sm {
+                  width: 100%;
+                  margin-top: 10px;
+                }
+              }
+  
+              @media (max-width: 575.98px) {
+                h5 {
+                  font-size: 1.1rem;
+                }
+  
+                p {
+                  font-size: 0.9rem;
+                }
+              }

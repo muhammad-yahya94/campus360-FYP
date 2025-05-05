@@ -20,15 +20,11 @@ class NewsAdmin(admin.ModelAdmin):
         }
     }
 
-from django.contrib import admin
-from django.db import models
-from .models import Event
-from .forms import EventForm
-from django_ckeditor_5.widgets import CKEditor5Widget
+
 
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
-    form = EventForm  # Use the custom form in admin
+
 
     list_display = ('title','slug', 'event_start_date', 'event_end_date', 'location')
     search_fields = ('title', 'location')

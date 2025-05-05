@@ -50,7 +50,6 @@ INSTALLED_APPS = [
     'admissions',
     'academics',
     'faculty_staff',
-    'datetimepicker',
 ]
 
 MIDDLEWARE = [

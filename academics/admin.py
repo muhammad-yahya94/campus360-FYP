@@ -1,12 +1,6 @@
 from django.contrib import admin
 from .models import *
 
-# ===== Degree Types Admin =====
-@admin.register(DegreeType)
-class DegreeTypeAdmin(admin.ModelAdmin):
-    list_display = ('code', 'name')
-    search_fields = ('code', 'name')
-
 
 # ===== Faculty Admin =====
 @admin.register(Faculty)

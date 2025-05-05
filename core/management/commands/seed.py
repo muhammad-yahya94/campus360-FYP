@@ -9,8 +9,7 @@ from site_elements.models import *
 from announcements.models import *
 from users.models import CustomUser
 from django.utils import timezone
-from datetime import timedelta
-import random
+from django.db.utils import IntegrityError
 
 
 class Command(BaseCommand):
@@ -34,14 +33,11 @@ class Command(BaseCommand):
         Program.objects.all().delete()
         Department.objects.all().delete()
         Faculty.objects.all().delete()
-        DegreeType.objects.all().delete()
-        
-        
         
         # Only delete non-admin users
         CustomUser.objects.filter(is_superuser=False).delete()
         
-                # ===== News =====
+        # ===== News =====
         self.stdout.write("Creating news...")
         for _ in range(10):
             News.objects.create(
@@ -60,7 +56,7 @@ class Command(BaseCommand):
                 description=fake.paragraph(nb_sentences=8),
                 event_start_date=start_date,
                 event_end_date=end_date,
-                created_at = datetime.now(),
+                created_at=datetime.now(),
                 location=fake.address()
             )
 
@@ -92,15 +88,6 @@ class Command(BaseCommand):
                 image=None  # Same, or add test images
             )
 
-
-        # ===== Degree Types =====
-        self.stdout.write("Creating degree types...")
-        DegreeType.objects.create(code='BS', name='Bachelor of Science')
-        DegreeType.objects.create(code='MS', name='Master of Science')
-        DegreeType.objects.create(code='PhD', name='Doctor of Philosophy')
-        DegreeType.objects.create(code='BBA', name='Bachelor of Business Administration')
-        DegreeType.objects.create(code='MBA', name='Master of Business Administration')
-
         # ===== Faculties =====
         self.stdout.write("Creating faculties...")
         faculties = [
@@ -129,11 +116,11 @@ class Command(BaseCommand):
         # ===== Programs =====
         self.stdout.write("Creating programs...")
         programs = [
-            {'name': 'BS Computer Science', 'department': Department.objects.get(name='Computer Science'), 'degree_type': DegreeType.objects.get(code='BS'), 'duration_years': 4},
-            {'name': 'MS Computer Science', 'department': Department.objects.get(name='Computer Science'), 'degree_type': DegreeType.objects.get(code='MS'), 'duration_years': 2},
-            {'name': 'BS Electrical Engineering', 'department': Department.objects.get(name='Electrical Engineering'), 'degree_type': DegreeType.objects.get(code='BS'), 'duration_years': 4},
-            {'name': 'BBA', 'department': Department.objects.get(name='Business Administration'), 'degree_type': DegreeType.objects.get(code='BBA'), 'duration_years': 4},
-            {'name': 'MBA', 'department': Department.objects.get(name='Business Administration'), 'degree_type': DegreeType.objects.get(code='MBA'), 'duration_years': 2},
+            {'name': 'BS Computer Science', 'department': Department.objects.get(name='Computer Science'), 'degree_type': 'BS', 'duration_years': 4},
+            {'name': 'MS Computer Science', 'department': Department.objects.get(name='Computer Science'), 'degree_type': 'MS', 'duration_years': 2},
+            {'name': 'BS Electrical Engineering', 'department': Department.objects.get(name='Electrical Engineering'), 'degree_type': 'BS', 'duration_years': 4},
+            {'name': 'BBA', 'department': Department.objects.get(name='Business Administration'), 'degree_type': 'BBA', 'duration_years': 4},
+            {'name': 'MBA', 'department': Department.objects.get(name='Business Administration'), 'degree_type': 'MBA', 'duration_years': 2},
         ]
         for prog in programs:
             Program.objects.create(**prog)
@@ -150,8 +137,6 @@ class Command(BaseCommand):
                     end_date=datetime(year, start_month + 4, 30),
                     is_active=(year == current_year)
                 )
-
-          
 
         # ===== Users =====
         self.stdout.write("Creating users...")

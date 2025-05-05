@@ -1,39 +1,43 @@
 from django.db import models
 
-# ===== 1. Degree Types (Separate Table) =====
-class DegreeType(models.Model):
-    code = models.CharField(max_length=10, unique=True)  # BS, MS, PhD
-    name = models.CharField(max_length=100)              # Bachelor of Science
-    
-    def __str__(self):
-        return f"{self.code} - {self.name}"
 
-
-# ===== 2. Faculty =====
+# ===== 1. Faculty =====
 class Faculty(models.Model):
-    name = models.CharField(max_length=100)  # Engineering, Languages
+    name = models.CharField(max_length=100)  # e.g., Engineering, Languages
     description = models.TextField(blank=True)
-    
+
     def __str__(self):
         return self.name
 
+    class Meta:
+        verbose_name = "Faculty"
+        verbose_name_plural = "Faculties"
 
-# ===== 3. Department =====
+
+# ===== 2. Department =====
 class Department(models.Model):
-    faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE, related_name='departments')  # Added related_name
-    name = models.CharField(max_length=100)  # Computer Science
-    code = models.CharField(max_length=10)   # CS
-    
+    faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE, related_name='departments')
+    name = models.CharField(max_length=100)  # e.g., Computer Science
+    code = models.CharField(max_length=10)   # e.g., CS
+
     def __str__(self):
         return f"{self.name} ({self.code})"
 
+    class Meta:
+        verbose_name = "Department"
+        verbose_name_plural = "Departments"
 
+
+# ===== 3. Program =====
 class Program(models.Model):
-    department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name='programs')  
+    department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name='programs')
     name = models.CharField(max_length=100)
-    degree_type = models.ForeignKey(DegreeType, on_delete=models.PROTECT)
+    degree_type = models.CharField(max_length=10, help_text='e.g., PhD, MPhil, BS')
     duration_years = models.IntegerField()
 
     def __str__(self):
         return self.name
 
+    class Meta:
+        verbose_name = "Program"
+        verbose_name_plural = "Programs"

@@ -1,0 +1,134 @@
+{% extends "core_base.html" %}
+
+{% load static %}
+
+  {% block core_content %}
+  {% include "navbar.html" %}
+    <!-- About Start -->
+    <div class="container-xxl py-5">
+        <div class="container">
+            <div class="text-center wow fadeInUp" data-wow-delay="0.1s">
+                <h6 class="section-title bg-white text-center text-primary px-3">Heritage & Excellence</h6>
+                <h1 class="mb-5">Since 1926: Shaping Minds, Building Futures</h1>
+            </div>
+            <div class="row g-5">
+                <div class="col-lg-6 wow fadeInUp" data-wow-delay="0.1s" style="min-height: 400px;">
+                    <div class="position-relative h-100">
+                        <img class="img-fluid position-absolute w-100 h-100" src="{% static "college photos/p13.jpg" %}"
+                            alt="Government Postgraduate College Jhang Campus" style="object-fit: cover;">
+                    </div>
+                </div>
+                <div class="col-lg-6 wow fadeInUp" data-wow-delay="0.3s">
+                    <h6 class="section-title bg-white text-start text-primary pe-3">About Us</h6>
+                    <h1 class="mb-4">Welcome to Government Graduate College Jhang</h1>
+                    <p class="mb-4">Established in 1926, our institution stands as one of Punjab's most prestigious
+                        government colleges with a rich academic heritage. Affiliated with the University of the Punjab,
+                        we have been shaping minds and building futures for nearly a century.</p>
+                    <p class="mb-4">Our college takes immense pride in being the alma mater of two Nobel laureates - Dr.
+                        Abdus Salam (Physics) and Dr. Har Gobind Khorana (Medicine) - along with numerous other
+                        distinguished scholars, poets, and writers who have made significant contributions to their
+                        fields.</p>
+                    <div class="row gy-2 gx-4 mb-4">
+                        <div class="col-sm-6">
+                            <p class="mb-0"><i class="fa fa-arrow-right text-primary me-2"></i>Established in 1926</p>
+                        </div>
+                        <div class="col-sm-6">
+                            <p class="mb-0"><i class="fa fa-arrow-right text-primary me-2"></i>Punjab University
+                                Affiliated</p>
+                        </div>
+                        <div class="col-sm-6">
+                            <p class="mb-0"><i class="fa fa-arrow-right text-primary me-2"></i>Nobel Laureate Alumni</p>
+                        </div>
+                        <div class="col-sm-6">
+                            <p class="mb-0"><i class="fa fa-arrow-right text-primary me-2"></i>Postgraduate Programs</p>
+                        </div>
+                        <div class="col-sm-6">
+                            <p class="mb-0"><i class="fa fa-arrow-right text-primary me-2"></i>Historic Institution</p>
+                        </div>
+                        <div class="col-sm-6">
+                            <p class="mb-0"><i class="fa fa-arrow-right text-primary me-2"></i>Distinguished Faculty</p>
+                        </div>
+                    </div>
+                    <!-- <a class="btn btn-primary py-3 px-5 mt-2" href="">Explore Our History</a> -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- About End -->
+
+
+    <!-- Alumni Start -->
+    <div class="container-xxl py-5">
+        <div class="container">
+            <div class="text-center wow fadeInUp" data-wow-delay="0.1s">
+                <h6 class="section-title bg-white text-center text-primary px-3">Our Pride</h6>
+                <h1 class="mb-5">Distinguished Alumni</h1>
+            </div>
+            <div class="row g-4">
+                <!-- Dr. Abdus Salam -->
+                <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
+                    <div class="team-item bg-light h-100">
+                        <div class="overflow-hidden" style="height: 300px;">
+                            <img class="img-fluid w-100 h-100" src="{% static "img/dr-abdul-salam.jpg" %}" alt="Dr. Abdus Salam"
+                                style="object-fit: cover;">
+                        </div>
+                        <div class="text-center p-4">
+                            <h5 class="mb-0">Dr. Abdus Salam</h5>
+                            <small>Nobel Laureate in Physics (1979)</small>
+                            <p class="mt-2">First Pakistani Nobel laureate, pioneer in electroweak unification theory
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dr. Har Gobind Khorana -->
+                <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.3s">
+                    <div class="team-item bg-light h-100">
+                        <div class="overflow-hidden" style="height: 300px;">
+                            <img class="img-fluid w-100 h-100" src="{% static "img/dr-har-gobind.jpg" %}" alt="Dr. Har Gobind Khorana"
+                                style="object-fit: cover;">
+                        </div>
+                        <div class="text-center p-4">
+                            <h5 class="mb-0">Dr. Har Gobind Khorana</h5>
+                            <small>Nobel Laureate in Medicine (1968)</small>
+                            <p class="mt-2">Pioneer in genetics and protein synthesis research</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Majeed Amjad -->
+                <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.5s">
+                    <div class="team-item bg-light h-100">
+                        <div class="overflow-hidden" style="height: 300px;">
+                            <img class="img-fluid w-100 h-100" src="{% static "img/majid-amjid.jpg" %}" alt="Majeed Amjad"
+                                style="object-fit: cover;">
+                        </div>
+                        <div class="text-center p-4">
+                            <h5 class="mb-0">Majeed Amjad</h5>
+                            <small>Renowned Urdu Poet</small>
+                            <p class="mt-2">Transformed modern Urdu poetry with philosophical depth</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Wazir Agha -->
+                <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.7s">
+                    <div class="team-item bg-light h-100">
+                        <div class="overflow-hidden" style="height: 300px;">
+                            <img class="img-fluid w-100 h-100" src="{% static "img/wazir-agha.jpg" %}" alt="Wazir Agha"
+                                style="object-fit: cover;">
+                        </div>
+                        <div class="text-center p-4">
+                            <h5 class="mb-0">Wazir Agha</h5>
+                            <small>Eminent Urdu Critic</small>
+                            <p class="mt-2">Revolutionized Urdu literary criticism with modern approaches</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Alumni End -->
+
+    {% include "footer.html" %}
+{% endblock core_content %}

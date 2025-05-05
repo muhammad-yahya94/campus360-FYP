@@ -1,0 +1,247 @@
+ {% extends "core_base.html" %}
+{% block core_content %}
+{% include "navbar.html" %}
+<style>
+    :root {
+        --primary: #D27328;
+        --light: #fff5ee;
+        --dark: #181d38;
+    }
+
+    .main-container {
+        min-height: calc(100vh - 150px);
+        padding: 60px 0;
+    }
+
+
+
+    .criteria-title {
+        color: var(--primary);
+        border-bottom: 2px solid var(--primary);
+        padding-bottom: 10px;
+        margin-bottom: 25px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .criteria-section {
+        margin-bottom: 30px;
+    }
+
+    .criteria-heading {
+        color: var(--dark);
+        font-weight: 700;
+        margin-bottom: 15px;
+        position: relative;
+        padding-left: 15px;
+    }
+
+    .criteria-heading::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        height: 70%;
+        width: 5px;
+        background-color: var(--primary);
+    }
+
+    .criteria-list {
+        padding-left: 20px;
+        list-style-type: none;
+    }
+
+    .criteria-list li {
+        margin-bottom: 10px;
+        position: relative;
+        padding-left: 25px;
+    }
+
+    .criteria-list li::before {
+        content: "\f00c";
+        font-family: "Font Awesome 6 Free";
+        font-weight: 900;
+        color: var(--primary);
+        position: absolute;
+        left: 0;
+    }
+
+    .important-note {
+        background-color: rgba(210, 115, 40, 0.1);
+        padding: 20px;
+        border-radius: 5px;
+        border-left: 4px solid var(--primary);
+        margin-top: 30px;
+    }
+
+    .section-title {
+        color: var(--primary);
+        margin-bottom: 20px;
+        font-weight: 700;
+    }
+
+    @media (max-width: 991.98px) {
+        .main-container {
+            padding: 30px 0;
+        }
+        
+        .auth-container, .criteria-container {
+            padding: 25px;
+        }
+    }
+
+    @media (max-width: 767.98px) {
+        .main-container {
+            padding: 20px 0;
+        }
+        
+        .auth-container, .criteria-container {
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .criteria-title {
+            font-size: 1.3rem;
+        }
+        
+        .btn {
+            width: 100%;
+            margin-top: 10px;
+        }
+    }
+</style>
+
+<div class="container main-container">
+    <div class="row g-5">
+        <!-- Left Side - Auth Forms -->
+        <div class="col-lg-6">
+            <!-- Login Form -->
+            <div class="auth-container">
+                <h3 class="section-title">Login</h3>
+
+                <form method="post" action="{% url 'loginview' %}">
+                    {% csrf_token %}
+                  
+                    <div class="form-floating mb-4">
+                        <input type="text" class="form-control" id="loginEmail" name="email" placeholder="Email" required>
+                        <label for="loginEmail">Email</label>
+                    </div>
+                    <div class="form-floating mb-4">
+                        <input type="password" class="form-control" id="loginPassword" name="password" placeholder="Password" required>
+                        <label for="loginPassword">Password</label>
+                    </div>
+                    <div class="mb-4 form-check">
+                        <input type="checkbox" class="form-check-input" id="rememberMe" name="remember_me">
+                        <label class="form-check-label" for="rememberMe">Remember me</label>
+                    </div>
+                    {% if login_error %}
+                    <div class="alert alert-danger alert-dismissible fade show">
+                        {{ login_error }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endif %}
+                    <button type="submit" class="btn btn-primary w-100">Login</button>
+                    <div class="text-center mt-3">
+                        <a href="{% url 'password_reset' %}" class="text-primary">Forgot password?</a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Register Form -->
+            <div class="auth-container mt-5">
+                <h3 class="section-title">Register</h3>
+                <form method="post" action="{% url 'registerview' %}">
+                    {% csrf_token %}
+                    {% if register_error %}
+                    <div class="alert alert-danger alert-dismissible fade show">
+                        {{ register_error }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endif %}
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-3 mb-md-0">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" id="firstName" name="first_name" placeholder="First Name" required>
+                                <label for="firstName">First Name</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" id="lastName" name="last_name" placeholder="Last Name" required>
+                                <label for="lastName">Last Name</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-floating mb-3">
+                        <input type="email" class="form-control" id="registerEmail" name="email" placeholder="name@example.com" required>
+                        <label for="registerEmail">Email Address</label>
+                        <div class="alert alert-info mt-2 p-2 small">
+                            <i class="fas fa-envelope me-1"></i> Important: All admission notifications will be sent to this email
+                        </div>
+                    </div>
+                    <div class="form-floating mb-4">
+                        <input type="password" class="form-control" id="registerPassword" name="password1" placeholder="Password" required>
+                        <label for="registerPassword">Password</label>
+                    </div>
+                    <div class="form-floating mb-4">
+                        <input type="password" class="form-control" id="confirmPassword" name="password2" placeholder="Confirm Password" required>
+                        <label for="confirmPassword">Confirm Password</label>
+                    </div>
+                    <div class="mb-4 form-check">
+                        <input type="checkbox" class="form-check-input" id="acceptTerms" name="accept_terms" required>
+                        <label class="form-check-label" for="acceptTerms">I accept the terms and conditions</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Register</button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Right Side - Eligibility Criteria -->
+        <div class="col-lg-6">
+            <div class="criteria-container">
+                <h3 class="criteria-title">Admission Eligibility Criteria</h3>
+                
+                <div class="criteria-section">
+                    <h5 class="criteria-heading">BS Programs Admission Requirements</h5>
+                    <ul class="criteria-list">
+                        <li>Minimum <strong>45% aggregate marks</strong> in FA/F.Sc</li>
+                        <li>Minimum <strong>60% marks</strong> in relevant subjects (for some programs)</li>
+                        <li>Maximum age limit of <strong>26 years</strong> may apply</li>
+                        <li>Original academic certificates and transcripts required</li>
+                        <li>Domicile certificate of Punjab province</li>
+                    </ul>
+                </div>
+                
+                <div class="criteria-section">
+                    <h5 class="criteria-heading">MS Programs Admission Requirements</h5>
+                    <ul class="criteria-list">
+                        <li>Minimum <strong>CGPA of 2.5</strong> on a 4.0 scale (or equivalent)</li>
+                        <li>Four-year BS degree from <strong>HEC recognized</strong> institution</li>
+                        <li>Preferably in science/engineering discipline</li>
+                        <li>Program-specific requirements may apply</li>
+                        <li>Research proposal may be required for some programs</li>
+                    </ul>
+                </div>
+                
+                <div class="important-note">
+                    <h5 class="criteria-heading">Important Notes</h5>
+                    <ul class="criteria-list">
+                        <li>Check the college website for most up-to-date information</li>
+                        <li>Ensure your previous institution is recognized by HEC</li>
+                        <li>Eligibility criteria may vary by specific program</li>
+                        <li>Admission test/interview may be required for some programs</li>
+                        <li>Submit all required documents before deadline</li>
+                    </ul>
+                </div>
+                
+                <div class="text-center mt-4">
+                    <a href="#" class="btn btn-outline-primary">Download Complete Criteria (PDF)</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include "footer.html" %}
+{% endblock core_content %}

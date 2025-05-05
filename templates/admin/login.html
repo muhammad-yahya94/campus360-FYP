@@ -1,0 +1,14 @@
+{% extends "admin/login.html" %}
+
+{% block content %}
+    {{ block.super }}
+    <style>
+        img{
+            width: 120px;
+            height:auto;
+        }
+    </style>
+    <div style="text-align: center; margin-top: 15px;">
+        <a href="{% url 'password_reset' %}" class="btn btn-outline-primary">Forgot your password?</a>
+    </div>
+{% endblock %}

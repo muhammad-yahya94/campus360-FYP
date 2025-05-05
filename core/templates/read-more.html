@@ -1,0 +1,239 @@
+{% extends "core_base.html" %} {% load static %} {% block core_content %}
+
+<!-- Navbar Start -->
+{% include "navbar.html" %}
+
+<!-- News/Event Detail Start -->
+<div class="container-xxl py-5">
+  <div class="container">
+    <div class="row g-5 align-items-start">
+      <!-- Left Column - Event Details -->
+      <div class="col-lg-8 wow fadeInUp" data-wow-delay="0.1s">
+        <h1 class="mb-4">{{ event_details.title }}</h1>
+        <p class="text-muted mb-2">
+          <i class="fa fa-calendar-alt text-primary me-2"></i>{{
+          event_details.event_start_date}}
+        </p>
+        <p class="text-muted mb-2">
+          <i class="fa fa-calendar-alt text-primary me-2"></i>{{
+          event_details.event_end_date}}
+        </p>
+        {% comment %}
+        <p class="text-muted">
+          <i class="fa fa-map-marker-alt text-primary me-2"></i>Main Auditorium,
+          eLEARNING Campus
+        </p>
+        <img
+          class="img-fluid rounded mb-4"
+          src="img/photo6.png"
+          alt="Event Image"
+        />
+
+        <p class="mb-4">
+          The Annual Science Exhibition 2025 at eLEARNING brought together
+          brilliant young minds from various departments to showcase innovative
+          projects and experiments. The event was graced by notable alumni and
+          industry experts who judged and appreciated the efforts of the
+          students.
+        </p>
+
+        <h5 class="mb-3">Highlights:</h5>
+        <ul class="list-unstyled mb-5">
+          <li>
+            <i class="fa fa-check text-primary me-2"></i>50+ Student Projects
+            Displayed
+          </li>
+          <li>
+            <i class="fa fa-check text-primary me-2"></i>Guest Lecture by Dr.
+            Sarah Malik (NASA)
+          </li>
+          <li>
+            <i class="fa fa-check text-primary me-2"></i>Live Demonstrations and
+            Robotics Show
+          </li>
+        </ul>
+
+        <p>
+          The event concluded with award distribution and a motivational talk on
+          "Innovation & AI in Education." We are proud of our students and
+          faculty who worked tirelessly to make this event a success.
+        </p>
+        {% endcomment %}
+        <style>
+          .ck-content {
+            font-size: 1rem;
+            line-height: 1.7;
+          }
+
+          .ck-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            display: block;
+          }
+
+          .ck-content h5,
+          .ck-content h4 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            color: #333;
+            font-weight: 600;
+          }
+
+          .ck-content ul {
+            padding-left: 1.2rem;
+            list-style: none;
+          }
+
+          .ck-content ul li {
+            position: relative;
+            padding-left: 2rem;
+            margin-bottom: 0.5rem;
+          }
+
+          .ck-content ul li::before {
+            content: "\f00c"; /* Font Awesome check icon */
+            font-family: "Font Awesome 5 Free";
+            font-weight: 900;
+            color: #0d6efd; /* Bootstrap primary */
+            position: absolute;
+            left: 0;
+            top: 0;
+          }
+
+          .ck-content p {
+            margin-bottom: 1.2rem;
+          }
+
+          .ck-content .text-muted {
+            color: #6c757d !important;
+          }
+
+          .ck-content .fa {
+            margin-right: 0.5rem;
+            color: #0d6efd;
+          }
+        </style>
+
+        <div class="event-description ck-content">
+          {{ event_details.description|safe }}
+        </div>
+      </div>
+
+      <!-- Right Column - Related Events & News Links -->
+      <div class="col-lg-4">
+        <div class="wow fadeInUp" data-wow-delay="0.3s">
+          <!-- Upcoming Events Section -->
+          <h3 class="mb-4 border-bottom pb-2">
+            <i class="fa fa-calendar-alt text-primary me-2"></i>Upcoming Events
+          </h3>
+
+          <div class="event-item bg-light p-4 mb-4 rounded">
+            <div class="">
+              <div
+                class="event-date bg-primary text-white text-center p-2 rounded"
+                style="max-width: 80px; margin-bottom: 10px"
+              >
+                <h4 class="mb-0">22</h4>
+                <small>JUN</small>
+              </div>
+              <div class="">
+                <h5 class="mb-2">Annual Science Symposium</h5>
+                <p class="mb-0">
+                  <i class="fa fa-clock text-primary me-2"></i>10:00 AM - 4:00
+                  PM
+                </p>
+                <p class="mb-0">
+                  <i class="fa fa-map-marker-alt text-primary pt-2"></i>College
+                  Auditorium
+                </p>
+              </div>
+              <a href="#" class="btn btn-sm w-100 btn-primary px-3 mt-4"
+                >Details</a
+              >
+            </div>
+          </div>
+
+          <div class="event-item bg-light p-4 mb-4 rounded">
+            <div class="">
+              <div
+                class="event-date bg-primary text-white text-center p-2 rounded"
+                style="max-width: 80px; margin-bottom: 10px"
+              >
+                <h4 class="mb-0">22</h4>
+                <small>JUN</small>
+              </div>
+              <div class="">
+                <h5 class="mb-2">Annual Science Symposium</h5>
+                <p class="mb-0">
+                  <i class="fa fa-clock text-primary me-2"></i>10:00 AM - 4:00
+                  PM
+                </p>
+                <p class="mb-0">
+                  <i class="fa fa-map-marker-alt text-primary pt-2"></i>College
+                  Auditorium
+                </p>
+              </div>
+              <a href="#" class="btn btn-sm w-100 btn-primary px-3 mt-4"
+                >Details</a
+              >
+            </div>
+          </div>
+
+          <!-- Latest News Section -->
+          <h3 class="mb-4 border-bottom pb-2">
+            <i class="fa fa-newspaper text-primary me-2"></i>Latest News
+          </h3>
+          {% for news in recent_news %}
+          <div class="news-item bg-light p-4 mb-4 rounded">
+            <div class="d-flex">
+              <div>
+                <small class="text-primary"
+                  ><i class="far fa-calendar-alt me-2"></i> {{
+                  news.published_date}}</small
+                >
+                <h5 class="mb-2">{{ news.title }}</h5>
+                <p class="mb-0">{{ news.content|truncatechars:100 }}</p>
+                <a href="" class="btn btn-link clr-dark p-0"
+                  >Read More <i class="fa fa-arrow-right ms-2"></i
+                ></a>
+              </div>
+            </div>
+          </div>
+
+          {% comment %}
+          <div class="news-item bg-light p-4 mb-4 rounded">
+            <div class="d-flex">
+              <img
+                src="img/cat-1.jpg"
+                class="img-fluid me-3"
+                style="width: 100px; height: 100px; object-fit: cover"
+                alt=""
+              />
+              <div>
+                <small class="text-primary"
+                  ><i class="far fa-calendar-alt me-2"></i>25 May, 2023</small
+                >
+                <h5 class="mb-2">New Research Lab Inaugurated</h5>
+                <p class="mb-0">
+                  The state-of-the-art facility will support advanced research
+                  in biotechnology.
+                </p>
+                <a href="#" class="btn btn-link p-0"
+                  >Read More <i class="fa fa-arrow-right ms-2"></i
+                ></a>
+              </div>
+            </div>
+          </div>
+          {% endcomment %} {% endfor %}
+          <div class="text-center mt-4">
+            <a href="#" class="btn btn-primary py-2 px-4">View All Events</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- News/Event Detail End -->
+{% endblock core_content %}

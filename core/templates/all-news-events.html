@@ -1,0 +1,101 @@
+{% extends "core_base.html" %}
+ {% load static %}
+ {% block core_content %}
+ {% include "navbar.html" %}
+    <!-- Events & News View All Start -->
+    <div class="container-xxl py-5">
+        <div class="container">
+            <div class="row g-5 align-items-start">
+                <div class="col-lg-8 wow fadeInUp" data-wow-delay="0.1s">
+                    <h1 class="mb-4">All Upcoming Events</h1>
+
+                    <!-- Example Event List -->
+                    <div class="event-item bg-light p-4 mb-4 rounded">
+                        <div class="d-flex align-items-center">
+                            <div class="event-date bg-primary text-white text-center p-2 me-4 rounded" style="min-width: 80px;">
+                                <h4 class="mb-0">15</h4>
+                                <small>JUN</small>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h5 class="mb-2">Annual Science Symposium</h5>
+                                <p class="mb-0"><i class="fa fa-clock text-primary me-2"></i>10:00 AM - 4:00 PM</p>
+                                <p class="mb-0"><i class="fa fa-map-marker-alt text-primary me-2"></i>College Auditorium</p>
+                            </div>
+                            <a href="event-detail.html" class="btn btn-sm btn-primary px-3">Details</a>
+                        </div>
+                    </div>
+
+                    <div class="event-item bg-light p-4 mb-4 rounded">
+                        <div class="d-flex align-items-center">
+                            <div class="event-date bg-primary text-white text-center p-2 me-4 rounded" style="min-width: 80px;">
+                                <h4 class="mb-0">22</h4>
+                                <small>JUN</small>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h5 class="mb-2">Career Fair 2023</h5>
+                                <p class="mb-0"><i class="fa fa-clock text-primary me-2"></i>9:00 AM - 5:00 PM</p>
+                                <p class="mb-0"><i class="fa fa-map-marker-alt text-primary me-2"></i>Main Campus Ground</p>
+                            </div>
+                            <a href="event-detail.html" class="btn btn-sm btn-primary px-3">Details</a>
+                        </div>
+                    </div>
+
+                    <!-- Pagination for Events -->
+                    <nav aria-label="Event Pagination">
+                        <ul class="pagination justify-content-center">
+                            <li class="page-item"><a class="page-link" href="#">Previous</a></li>
+                            <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                            <li class="page-item"><a class="page-link" href="#">2</a></li>
+                            <li class="page-item"><a class="page-link" href="#">3</a></li>
+                            <li class="page-item"><a class="page-link" href="#">Next</a></li>
+                        </ul>
+                    </nav>
+                </div>
+
+                <!-- News Section -->
+                <div class="col-lg-4 wow fadeInUp" data-wow-delay="0.1s">
+                    <h1 class="mb-4">Latest News</h1>
+
+                    <!-- Example News List -->
+                    <div class="news-item bg-light p-4 mb-4 rounded">
+                        <div class="d-flex">
+                            <img src="{% static "img/course-1.jpg" %}" class="img-fluid me-3" style="width: 100px; height: 100px; object-fit: cover;" alt="News Image">
+                            <div>
+                                <small class="text-primary"><i class="far fa-calendar-alt me-2"></i>01 June, 2023</small>
+                                <h5 class="mb-2">College Ranked #1 in State for STEM Programs</h5>
+                                <p class="mb-0">Our institution has been recognized for excellence in science and technology education.</p>
+                                <a href="news-detail.html" class="btn btn-link clr-dark p-0">Read More <i class="fa fa-arrow-right ms-2"></i></a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="news-item bg-light p-4 mb-4 rounded">
+                        <div class="d-flex">
+                            <img src="{% static "img/cat-1.jpg" %}" class="img-fluid me-3" style="width: 100px; height: 100px; object-fit: cover;" alt="News Image">
+                            <div>
+                                <small class="text-primary"><i class="far fa-calendar-alt me-2"></i>25 May, 2023</small>
+                                <h5 class="mb-2">New Research Lab Inaugurated</h5>
+                                <p class="mb-0">The state-of-the-art facility will support advanced research in biotechnology.</p>
+                                <a href="news-detail.html" class="btn btn-link p-0">Read More <i class="fa fa-arrow-right ms-2"></i></a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pagination for News -->
+                    <nav aria-label="News Pagination">
+                        <ul class="pagination justify-content-center">
+                            <li class="page-item"><a class="page-link" href="#">Previous</a></li>
+                            <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                            <li class="page-item"><a class="page-link" href="#">2</a></li>
+                            <li class="page-item"><a class="page-link" href="#">3</a></li>
+                            <li class="page-item"><a class="page-link" href="#">Next</a></li>
+                        </ul>
+                    </nav>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <!-- Events & News View All End -->
+    {% include "footer.html" %}
+    {% endblock core_content %}

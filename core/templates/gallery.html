@@ -1,0 +1,127 @@
+{% extends "core_base.html" %}
+{% load static %}
+
+{% block core_content %}
+<link href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css" rel="stylesheet" />
+
+<!-- GLightbox JS -->
+<script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
+    <style>
+        .gallery-item {
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform 0.3s ease;
+            height: 250px;
+        }
+
+        .gallery-item img {
+            object-fit: cover;
+            height: 100%;
+            transition: transform 0.5s ease;
+        }
+
+        .gallery-item:hover img {
+            transform: scale(1.05);
+        }
+
+        .gallery-overlay {
+            background: rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .gallery-item:hover .gallery-overlay {
+            opacity: 1;
+        }
+
+        .gallery-view-btn {
+            transition: all 0.3s ease;
+        }
+
+        .gallery-view-btn:hover {
+            background: var(--primary) !important;
+            color: white !important;
+        }
+
+        @media (max-width: 768px) {
+            .gallery-item {
+                height: 200px;
+            }
+        }
+    </style>
+</head>
+{% include "navbar.html" %}
+
+
+    <!-- Gallery Start -->
+    <div class="container-xxl py-5">
+        <div class="container">
+            <div class="text-center wow fadeInUp" data-wow-delay="0.1s">
+                <h6 class="section-title bg-white text-center text-primary px-3">Gallery</h6>
+                <h1 class="mb-5">Our Moments</h1>
+            </div>
+            <div class="row g-4 gallery-container">
+                <!-- Gallery Items -->
+                <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
+                    <div class="gallery-item position-relative overflow-hidden">
+                        <img class="img-fluid w-100" src="{% static 'img/college-building.jpg' %}" alt="College Building">
+                        <div class="gallery-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center">
+                            <a href="{% static 'img/college-building.jpg' %}" class="btn btn-light px-3 py-2 gallery-view-btn" data-glightbox="type: image" data-gallery="gallery1">View</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.2s">
+                    <div class="gallery-item position-relative overflow-hidden">
+                        <img class="img-fluid w-100" src="{% static 'img/photo1.png' %}" alt="Campus Photo 1">
+                        <div class="gallery-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center">
+                            <a href="{% static 'img/photo1.png' %}" class="btn btn-light px-3 py-2 gallery-view-btn" data-glightbox="type: image" data-gallery="gallery1">View</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.3s">
+                    <div class="gallery-item position-relative overflow-hidden">
+                        <img class="img-fluid w-100" src="{% static 'img/photo3.png' %}" alt="Campus Event">
+                        <div class="gallery-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center">
+                            <a href="{% static 'img/photo3.png' %}" class="btn btn-light px-3 py-2 gallery-view-btn" data-glightbox="type: image" data-gallery="gallery1">View</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.4s">
+                    <div class="gallery-item position-relative overflow-hidden">
+                        <img class="img-fluid w-100" src="{% static 'img/photo4.png' %}" alt="Student Activity">
+                        <div class="gallery-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center">
+                            <a href="{% static 'img/photo4.png' %}" class="btn btn-light px-3 py-2 gallery-view-btn" data-glightbox="type: image" data-gallery="gallery1">View</a>
+                        </div>
+                    </div>
+                </div>
+                <!-- Add more items as needed -->
+            </div>
+        </div>
+    </div>
+    <!-- Gallery End -->
+    {% include "footer.html" %}
+    <!-- JS Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/glightbox@3.2.0/dist/js/glightbox.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const lightbox = GLightbox({
+                selector: '.gallery-view-btn',
+                touchNavigation: true,
+                loop: true,
+                autoplayVideos: false,
+                closeOnOutsideClick: true
+            });
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') {
+                    lightbox.close();
+                }
+            });
+        });
+    </script>
+
+{% endblock core_content %}

@@ -10,64 +10,7 @@ from users.models import CustomUser
 from django.contrib import messages
 from django.http import HttpResponse 
 
-# def admission(request):
-#     context = {}
-    
-#     if request.method == 'POST':
-#         action = request.GET.get('action')
-        
-#         if action == 'login':
-#             # CHANGE: Use 'email' instead of 'username' to match your form
-#             email = request.POST.get('email')  # This matches your form field name
-#             password = request.POST.get('password')
-#             remember_me = request.POST.get('remember_me') == 'on'
 
-#             # CHANGE: Authenticate using email
-#             user = authenticate(request, email=email, password=password)
-#             if user is not None:
-#                 login(request, user)
-#                 if not remember_me:
-#                     request.session.set_expiry(0)
-#                 return redirect(request.GET.get('next', 'apply'))
-#             else:
-#                 context['login_error'] = 'Invalid email or password'
-#                 # Preserve the entered email
-#                 context['entered_email'] = email
-#                 print(f"Login failed for email: {email}")  # Debug
-
-#         elif action == 'register':
-#             first_name = request.POST.get('first_name')
-#             last_name = request.POST.get('last_name')
-#             email = request.POST.get('email')
-#             password1 = request.POST.get('password1')
-#             password2 = request.POST.get('password2')
-#             accept_terms = request.POST.get('accept_terms') == 'on'
-
-#             if password1 != password2:
-#                 context['register_error'] = 'Passwords do not match'
-#             elif not accept_terms:
-#                 context['register_error'] = 'You must accept the terms and conditions'
-#             else:
-#                 try:
-#                     user = CustomUser.objects.create_user(
-#                         email=email,
-#                         password=password1,
-#                         first_name=first_name,
-#                         last_name=last_name
-#                     )
-#                     login(request, user)
-#                     return redirect('apply')
-#                 except Exception as e:
-#                     context['register_error'] = str(e)
-            
-#             # Preserve form inputs
-#             context.update({
-#                 'first_name': first_name,
-#                 'last_name': last_name,
-#                 'email': email
-#             })
-
-#     return render(request, 'admission.html', context)
 def register_view(request):
     context = {}
     

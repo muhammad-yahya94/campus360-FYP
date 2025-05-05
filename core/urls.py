@@ -13,7 +13,6 @@ urlpatterns = [
     path('team/', views.team, name='team'),
     path('testimonial/', views.testimonial, name='testimonial'),
     path('contact/', views.contact, name='contact'),
-    path('apply/', views.apply, name='admission_apply'),
     path('apply/', views.apply, name='apply'),
     path('api/departments/', views.get_departments, name='get_departments'),
     path('api/programs/', views.get_programs, name='get_programs'),

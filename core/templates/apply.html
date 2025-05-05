@@ -66,6 +66,25 @@
         font-size: 1.1rem;
     }
 </style>
+{% load static %}
+<!-- Navbar Start -->
+<nav class="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0 px-4">
+  <!-- User Icon and Name -->
+  <div class="d-flex align-items-center me-auto">
+    <i class="fa fa-user fa-lg me-2 text-primary"></i>
+    <span class="fw-bold">{{ request.user.get_full_name|default:request.user.first_name }} {{ request.user.last_name }}</span>
+
+  </div>
+
+  <!-- Navbar Links -->
+  <div class="navbar-nav ms-auto">
+    <a href="" class="nav-item nav-link">My Applications</a>
+    <a href="" class="nav-item nav-link">Application Form</a>
+    <a href="{% url 'home' %}" class="btn btn-primary py-4 px-lg-5 d-none d-lg-block">
+        Go Back<i class="fa fa-arrow-right ms-3"></i>
+      </a>
+  </div>
+</nav>
 
 <div class="container py-5">
     <div class="row justify-content-center">

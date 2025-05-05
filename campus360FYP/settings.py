@@ -32,10 +32,10 @@ AUTH_USER_MODEL = 'users.CustomUser'
 # Application definition
 
 INSTALLED_APPS = [
-    # 'jet.dashboard',  # should be before 'jet'
-    # 'jet',  
-    'jazzmin',
+    'django_daisy',
     'django.contrib.admin',
+    'django.contrib.humanize',
+    # 'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -72,6 +72,7 @@ TEMPLATES = [
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                # 'django.template.context_processors.request',
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
@@ -129,13 +130,25 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+# settings.py
+
+# settings.py
+
+# For development:
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
+# Add custom static directories for your project (e.g., if your static files are in 'static/')
+STATICFILES_DIRS = [
+    BASE_DIR / "static",  # Path to your static directory
+]
 
+# For production (when you run collectstatic):
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # Static files collection directory for production
+
+# For media files (user-uploaded files):
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -172,47 +185,48 @@ EMAIL_HOST_PASSWORD = 'pmyf uvlj sxfn gald'
 
 
 
-JAZZMIN_SETTINGS = {
-    "site_logo": "img/logo.png",
-    'theme': 'default',
-    'site_title': 'My Admin Panel',
-    'site_header': 'My Admin Dashboard',
-    'site_brand': 'Campus360',
-    'site_icon': 'fas fa-cogs',
-    'welcome_sign': 'Welcome to Admin Panel',
-     "custom_css": "css/custom_admin.css",
-     "show_ui_builder": False,
-    "icons": {
-        # Auth
-        "auth": "fas fa-users",
-        "auth.User": "fas fa-user",
-        "auth.Group": "fas fa-users-cog",
-
-        # Academics App
-        "academics.DegreeType": "fas fa-graduation-cap",
-        "academics.Faculty": "fas fa-users",
-        "academics.Department": "fas fa-building",
-        "academics.Program": "fas fa-chalkboard-teacher",
-        "academics.AcademicSession": "fas fa-calendar-alt",
-        "academics.Semester": "fas fa-calendar",
-
-        # Admissions App
-        "admissions.AcademicSession": "fas fa-calendar-alt",
-        "admissions.AdmissionCycle": "fas fa-calendar-check",
-        "admissions.Applicant": "fas fa-user-tie",
-        "admissions.Course": "fas fa-book",
-        "admissions.Enrollment": "fas fa-user-graduate",
-
-        # Announcements App
-        "announcements.News": "fas fa-file-alt",
-        "announcements.Event": "fas fa-calendar-day",
-
-        # Site Elements App
-        "site_elements.Slider": "fas fa-sliders-h",
-        "site_elements.Alumni": "fas fa-user-friends",
-        "site_elements.Gallery": "fas fa-images",
-        
-        "users.CustomUser": "fas fa-users",
+DAISY_SETTINGS = {
+    'SITE_TITLE': '',  # The title of the site 
+    'SITE_HEADER': 'Campus 360',  # Header text displayed in the admin panel
+    'INDEX_TITLE': 'Hi, You are welcome ',  # The title for the index page of dashboard
+    'SITE_LOGO': '/static/img/logo.png',  # Path to the logo image displayed in the sidebar
+    'EXTRA_STYLES': [],  # List of extra stylesheets to be loaded in base.html (optional)
+    'EXTRA_SCRIPTS': [
+            'https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js',],  # List of extra script URLs to be loaded in base.html (optional)
+    'LOAD_FULL_STYLES': False,
+  # If True, loads full DaisyUI components in the admin (useful if you have custom template overrides)
+    'SHOW_CHANGELIST_FILTER': True,  # If True, the filter sidebar will open by default on changelist views
+    'DONT_SUPPORT_ME': True, # Hide github link in sidebar footer
+    'SIDEBAR_FOOTNOTE': 'Developed by Muhammad Yahya ❤️', # add footnote to sidebar
+     'APPS_REORDER': {
+        # Custom order for your apps
+        'auth': {
+            'icon': 'fa-solid fa-person-military-pointing',  # FontAwesome icon for the 'auth' app
+            'name': 'Assign roles',  # Custom name for the 'auth' app
+            'hide': False,  # Whether to hide the 'auth' app from the sidebar
+            'divider_title': "Permissions",  # Divider title for the 'auth' section
+        },
+        'users': {
+            'icon': 'fa fa-user-cog',  # FontAwesome icon for the 'auth' app
+            'name': 'Users',  # Custom name for the 'auth' app
+            'hide': False,  # Whether to hide the 'auth' app from the sidebar
+            'divider_title': "User Management",  # Divider title for the 'auth' section
+        },
+        'academics': {
+            'icon': 'fa-solid fa-university',
+            'name': 'Academics',
+            'hide': False,
+        },
+        'admissions': {
+            'icon': 'fa-solid fa-school',
+            'name': 'Admissions',
+            'hide': False,
+        },
+        'site_elements': {
+            'icon': 'fa-solid fa-cogs',
+            'name': 'Site Elements',
+            'hide': False,
+        },
     },
 }
 

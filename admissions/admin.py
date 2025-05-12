@@ -25,8 +25,8 @@ class AdmissionCycle(admin.ModelAdmin):
 class AcademicQualificationInline(admin.TabularInline):
     model = AcademicQualification
     extra = 1
-    fields = ('level', 'exam_passed', 'passing_year', 'roll_no', 'marks_obtained', 'total_marks', 'division')
-    readonly_fields = ('level', 'exam_passed', 'passing_year', 'roll_no', 'marks_obtained', 'total_marks', 'division')
+    fields = ('exam_passed', 'passing_year', 'marks_obtained', 'total_marks', 'division')
+    readonly_fields = ('exam_passed', 'passing_year', 'marks_obtained', 'total_marks', 'division')
 
 class ExtraCurricularActivityInline(admin.TabularInline):
     model = ExtraCurricularActivity

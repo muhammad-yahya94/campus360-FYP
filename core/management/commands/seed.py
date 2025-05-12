@@ -8,9 +8,12 @@ from admissions.models import *
 from site_elements.models import *
 from announcements.models import *
 from users.models import CustomUser
+from faculty_staff.models import Teacher
+from courses.models import Course, CourseOffering, Semester
+from students.models import Student, StudentEnrollment
 from django.utils import timezone
 from django.db.utils import IntegrityError
-
+import uuid
 
 class Command(BaseCommand):
     help = 'Seeds the database with test data'
@@ -22,6 +25,12 @@ class Command(BaseCommand):
         self.stdout.write(self.style.WARNING("Clearing existing data..."))
         
         # Delete in proper order to avoid foreign key constraints
+        StudentEnrollment.objects.all().delete()
+        CourseOffering.objects.all().delete()
+        Semester.objects.all().delete()
+        Course.objects.all().delete()
+        Teacher.objects.all().delete()
+        Student.objects.all().delete()
         News.objects.all().delete()
         Event.objects.all().delete()
         Gallery.objects.all().delete()
@@ -65,7 +74,7 @@ class Command(BaseCommand):
         for _ in range(5):
             Slider.objects.create(
                 title=fake.sentence(nb_words=4),
-                image=None,  # Image field left empty (or you can set a default later)
+                image=None,
                 is_active=random.choice([True, False])
             )
 
@@ -77,7 +86,7 @@ class Command(BaseCommand):
                 graduation_year=random.randint(2000, 2023),
                 profession=fake.job(),
                 testimonial=fake.paragraph(nb_sentences=5),
-                image=None  # Same here, you can add default images if you want
+                image=None
             )
 
         # ===== Gallery =====
@@ -85,7 +94,7 @@ class Command(BaseCommand):
         for _ in range(20):
             Gallery.objects.create(
                 title=fake.sentence(nb_words=5),
-                image=None  # Same, or add test images
+                image=None
             )
 
         # ===== Faculties =====
@@ -138,16 +147,73 @@ class Command(BaseCommand):
                     is_active=(year == current_year)
                 )
 
-        # ===== Users =====
-        self.stdout.write("Creating users...")
+        # ===== Semesters =====
+        self.stdout.write("Creating semesters...")
+        for session in AcademicSession.objects.all():
+            for i in range(1, 3):  # Create 2 semesters per session
+                start_date = session.start_date + timedelta(days=(i-1)*90)
+                end_date = start_date + timedelta(days=90)
+                Semester.objects.create(
+                    session=session,
+                    name=f"Semester {i}",
+                    start_date=start_date,
+                    end_date=end_date,
+                    is_current=(i == 1 and session.is_active)
+                )
+
+        # ===== Courses =====
+        self.stdout.write("Creating courses...")
+        courses = [
+            {
+                'department': Department.objects.get(name='Computer Science'),
+                'program': Program.objects.get(name='BS Computer Science'),
+                'code': 'CS101',
+                'name': 'Introduction to Programming',
+                'credits': 3,
+                'course_type': 'core',
+                'description': fake.paragraph(nb_sentences=3)
+            },
+            {
+                'department': Department.objects.get(name='Computer Science'),
+                'program': Program.objects.get(name='BS Computer Science'),
+                'code': 'CS201',
+                'name': 'Data Structures',
+                'credits': 3,
+                'course_type': 'core',
+                'description': fake.paragraph(nb_sentences=3)
+            },
+            {
+                'department': Department.objects.get(name='Electrical Engineering'),
+                'program': Program.objects.get(name='BS Electrical Engineering'),
+                'code': 'EE101',
+                'name': 'Circuit Analysis',
+                'credits': 3,
+                'course_type': 'core',
+                'description': fake.paragraph(nb_sentences=3)
+            },
+            {
+                'department': Department.objects.get(name='Business Administration'),
+                'program': Program.objects.get(name='BBA'),
+                'code': 'BA101',
+                'name': 'Principles of Management',
+                'credits': 3,
+                'course_type': 'core',
+                'description': fake.paragraph(nb_sentences=3)
+            },
+        ]
+        for course in courses:
+            Course.objects.create(**course)
+
+        # ===== Users and Teachers =====
+        self.stdout.write("Creating users and teachers...")
         user_types = ['student'] * 50 + ['faculty'] * 10 + ['admin'] * 2
         created_count = 0
         duplicate_count = 0
+        departments_list = list(Department.objects.all())
 
         for i, user_type in enumerate(user_types):
             email = f"{user_type}{i+1}@ggcj.edu.pk"
             
-            # Skip if user with this email already exists
             if CustomUser.objects.filter(email=email).exists():
                 duplicate_count += 1
                 continue
@@ -163,8 +229,26 @@ class Command(BaseCommand):
                     is_active=True
                 )
                 created_count += 1
-            except IntegrityError:
+                
+                # Create Teacher profile for faculty users, ensuring each department has teachers
+                if user_type == 'faculty':
+                    # Distribute teachers across departments
+                    department = departments_list[i % len(departments_list)]
+                    Teacher.objects.create(
+                        user=user,
+                        department=department,
+                        designation=random.choice([
+                            'head_of_department', 'professor', 'associate_professor',
+                            'assistant_professor', 'lecturer', 'visiting'
+                        ]),
+                        contact_no=f"03{random.randint(10, 99)}{random.randint(1000000, 9999999)}",
+                        qualification=fake.paragraph(nb_sentences=2),
+                        hire_date=timezone.now().date() - timedelta(days=random.randint(365, 365*5)),
+                        is_active=True
+                    )
+            except IntegrityError as e:
                 duplicate_count += 1
+                self.stdout.write(self.style.WARNING(f"Skipped user creation due to IntegrityError: {str(e)}"))
                 continue
 
         self.stdout.write(
@@ -198,24 +282,26 @@ class Command(BaseCommand):
                     is_open=False
                 )
 
-        # ===== Applicants =====
-        self.stdout.write("Creating applicants...")
-        students = CustomUser.objects.filter(is_staff=False)
-
-        # List of possible religions and castes for random selection
+        # ===== Applicants and Students =====
+        self.stdout.write("Creating applicants and students...")
+        available_students = list(CustomUser.objects.filter(is_staff=False, student_profile__isnull=True))
         religions = ['Islam', 'Christianity', 'Hinduism', 'Sikhism', 'Buddhism']
         castes = ['Arain', 'Jutt', 'Rajput', 'Sheikh', 'Mughal', 'Syed', 'Qureshi']
 
         for cycle in AdmissionCycle.objects.all():
             for _ in range(random.randint(5, 15)):
-                # Generate random date of birth between 18-25 years ago
-                dob = timezone.now().date() - timedelta(days=random.randint(365*18, 365*25))
+                if not available_students:
+                    self.stdout.write(self.style.WARNING("No more available users for student profiles."))
+                    break
                 
-                # Generate random CNIC (format: XXXXX-XXXXXXX-X)
+                dob = timezone.now().date() - timedelta(days=random.randint(365*18, 365*25))
                 cnic = f"{random.randint(10000, 99999)}-{random.randint(1000000, 9999999)}-{random.randint(0,9)}"
                 
+                user = random.choice(available_students)
+                available_students.remove(user)  # Remove user to prevent reuse
+                
                 applicant_data = {
-                    'user': random.choice(students),
+                    'user': user,
                     'faculty': cycle.program.department.faculty,
                     'department': cycle.program.department,
                     'program': cycle.program,
@@ -232,21 +318,32 @@ class Command(BaseCommand):
                     'father_cnic': f"{random.randint(10000, 99999)}-{random.randint(1000000, 9999999)}-{random.randint(0,9)}",
                     'monthly_income': random.randint(15000, 150000),
                     'relationship': random.choice(['father', 'guardian']),
-                    'permanent_address': f"{random.randint(1, 100)} {random.choice(['Main Street', 'Model Town', 'Gulberg', 'Cantt'])} {random.choice(['Lahore', 'Karachi', 'Islamabad', 'Faisalabad'])}",
+                    'permanent_address': f"{random.randint(1, 100)} {random.choice(['Main Street', 'Model Town', 'Gulberg', 'Cantt'])} {random.choice(['Lahore', 'Karachi', 'Faisalabad'])}",
                     'declaration': random.choice([True, False]),
                 }
                 
                 try:
                     applicant = Applicant.objects.create(**applicant_data)
                     
+                    # Create Student profile for accepted applicants
+                    if applicant.status == 'accepted':
+                        Student.objects.create(
+                            applicant=applicant,
+                            user=user,
+                            university_roll_no=random.randint(100000, 999999),
+                            college_roll_no=random.randint(1000, 9999),
+                            enrollment_date=timezone.now().date() - timedelta(days=random.randint(30, 365)),
+                            current_status='active',
+                            emergency_contact=fake.name(),
+                            emergency_phone=f"03{random.randint(10, 99)}{random.randint(1000000, 9999999)}"
+                        )
+                    
                     # Create academic qualifications
-                    for level in ['matric', 'intermediate']:
+                    for level in ['matric', 'intermediate', 'bachelor']:
                         AcademicQualification.objects.create(
                             applicant=applicant,
-                            level=level,
                             exam_passed=f"{level.capitalize()} in Science",
                             passing_year=random.randint(2015, 2020),
-                            roll_no=f"{random.randint(100000, 999999)}",
                             marks_obtained=random.randint(600, 900),
                             total_marks=1100,
                             division=random.choice(['First', 'Second', 'Third']),
@@ -255,7 +352,7 @@ class Command(BaseCommand):
                             board=f"{random.choice(['Lahore', 'Rawalpindi', 'Federal'])} Board",
                         )
                     
-                    # Create extracurricular activities (0-3 per applicant)
+                    # Create extracurricular activities
                     for _ in range(random.randint(0, 3)):
                         ExtraCurricularActivity.objects.create(
                             applicant=applicant,
@@ -267,6 +364,72 @@ class Command(BaseCommand):
                         
                 except Exception as e:
                     self.stdout.write(self.style.ERROR(f"Failed to create applicant: {str(e)}"))
+                    continue
+
+        # ===== Course Offerings =====
+        self.stdout.write("Creating course offerings...")
+        for semester in Semester.objects.filter(is_current=True):
+            for course in Course.objects.all():
+                teachers = list(Teacher.objects.filter(department=course.department))
+                if not teachers:
+                    self.stdout.write(self.style.WARNING(f"No teachers found for department {course.department.name}. Creating a default teacher."))
+                    # Create a default teacher for the department
+                    user = CustomUser.objects.create_user(
+                        email=f"faculty_default_{course.department.code}@ggcj.edu.pk",
+                        first_name=fake.first_name(),
+                        last_name=fake.last_name(),
+                        password='password123',
+                        is_staff=True,
+                        is_active=True
+                    )
+                    teacher = Teacher.objects.create(
+                        user=user,
+                        department=course.department,
+                        designation='lecturer',
+                        contact_no=f"03{random.randint(10, 99)}{random.randint(1000000, 9999999)}",
+                        qualification=fake.paragraph(nb_sentences=2),
+                        hire_date=timezone.now().date() - timedelta(days=365),
+                        is_active=True
+                    )
+                    teachers = [teacher]
+                
+                teacher = random.choice(teachers)
+                CourseOffering.objects.create(
+                    semester=semester,
+                    course=course,
+                    teacher=teacher,
+                    schedule=f"{random.choice(['Mon/Wed', 'Tue/Thu'])} {random.choice(['10:00-11:30', '13:00-14:30'])}",
+                    room=f"Room {random.choice(['A', 'B', 'C'])}-{random.randint(100, 999)}"
+                )
+
+        # ===== Student Enrollments =====
+        self.stdout.write("Creating student enrollments...")
+        for student in Student.objects.all():
+            # Get the session from the AdmissionCycle associated with the applicant's program
+            admission_cycle = AdmissionCycle.objects.filter(
+                program=student.applicant.program,
+                session__is_active=True
+            ).first()
+            
+            if not admission_cycle:
+                self.stdout.write(self.style.WARNING(f"No active admission cycle found for {student.applicant.full_name}'s program. Skipping enrollment."))
+                continue
+
+            course_offerings = CourseOffering.objects.filter(
+                semester__session=admission_cycle.session,
+                course__program=student.applicant.program
+            )[:random.randint(1, 3)]
+            
+            for offering in course_offerings:
+                try:
+                    StudentEnrollment.objects.create(
+                        student=student.applicant,
+                        course_offering=offering,
+                        status=random.choice(['enrolled', 'completed']),
+                        # grade=random.choice(['A', 'B+', 'B', 'C+', 'C', '']) if offering.status == 'completed' else ''
+                    )
+                except IntegrityError as e:
+                    self.stdout.write(self.style.WARNING(f"Skipped enrollment due to IntegrityError: {str(e)}"))
                     continue
 
         self.stdout.write(self.style.SUCCESS('Successfully seeded database!'))

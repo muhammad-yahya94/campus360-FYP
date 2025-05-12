@@ -69,13 +69,8 @@ class Applicant(models.Model):
 
 class AcademicQualification(models.Model):
     applicant = models.ForeignKey(Applicant, on_delete=models.CASCADE, related_name='academic_qualifications')
-    level = models.CharField(max_length=50, choices=[
-        ('matric', 'Matric'),
-        ('intermediate', 'Intermediate')
-    ])
     exam_passed = models.CharField(max_length=100)
     passing_year = models.PositiveIntegerField()
-    roll_no = models.CharField(max_length=50)
     marks_obtained = models.PositiveIntegerField()
     total_marks = models.PositiveIntegerField()
     division = models.CharField(max_length=50)

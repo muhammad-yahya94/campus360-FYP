@@ -1,0 +1,250 @@
+{% extends "core_base.html" %}
+{% block core_content %}
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --primary: #D27328;
+            --light: #fff5ee;
+            --dark: #181d38;
+        }
+
+        .fw-medium {
+            font-weight: 600 !important;
+        }
+
+        .fw-semi-bold {
+            font-weight: 700 !important;
+        }
+
+        /*** Button ***/
+        .btn {
+            font-family: 'Nunito', sans-serif;
+            font-weight: 600;
+            transition: .5s;
+        }
+
+        .btn.btn-primary,
+        .btn.btn-secondary {
+            color: #FFFFFF;
+        }
+
+        .btn-primary:hover {
+            color: #000 !important;
+            background-color: #ffffff;
+            border-color: #D27328;
+        }
+
+        /*** Section Title ***/
+        .section-title {
+            position: relative;
+            display: inline-block;
+            text-transform: uppercase;
+        }
+
+        .section-title::before {
+            position: absolute;
+            content: "";
+            width: calc(100% + 80px);
+            height: 2px;
+            top: 4px;
+            left: -40px;
+            background: var(--primary);
+            z-index: -1;
+        }
+
+        .section-title::after {
+            position: absolute;
+            content: "";
+            width: calc(100% + 120px);
+            height: 2px;
+            bottom: 5px;
+            left: -60px;
+            background: var(--primary);
+            z-index: -1;
+        }
+
+        /*** Table Styling ***/
+        .application-item {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            background: var(--light);
+        }
+
+        .application-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .table thead th {
+            background-color: var(--primary);
+            color: #FFFFFF;
+            font-family: 'Nunito', sans-serif;
+            font-weight: 600;
+        }
+
+        .table tbody tr {
+            background-color: var(--light);
+        }
+
+        .table tbody tr:hover {
+            background-color: #f8e8de;
+        }
+
+        /*** Modal Styling ***/
+        .modal-content {
+            background-color: var(--light);
+        }
+
+        .modal-header {
+            background-color: var(--primary);
+            color: #FFFFFF;
+        }
+
+        .modal-footer .btn-primary {
+            background-color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        /*** Responsive Adjustments ***/
+        @media (max-width: 767.98px) {
+            .application-item {
+                padding: 15px !important;
+            }
+
+            .btn-sm {
+                width: 100%;
+                margin-top: 10px;
+            }
+
+            .table {
+                font-size: 0.9rem;
+            }
+        }
+
+        @media (max-width: 575.98px) {
+            h2.section-title {
+                font-size: 1.5rem;
+            }
+
+            p {
+                font-size: 0.9rem;
+            }
+
+            .table {
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    {% load static %}
+<!-- Navbar Start -->
+<nav class="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0">
+    <!-- User Icon and Name -->
+    <div class="d-flex align-items-center me-auto px-4">
+        <i class="fa fa-user fa-lg me-2 text-primary"></i>
+        <span class="fw-bold">{{ request.user.get_full_name|default:request.user.first_name }} {{ request.user.last_name }}</span>
+    </div>
+
+    <!-- Toggle Button for Mobile -->
+    <button class="navbar-toggler me-4" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <!-- Navbar Links -->
+    <div class="collapse navbar-collapse" id="navbarCollapse">
+        <div class="navbar-nav ms-auto">
+            <a href="{% url 'my_applications' %}" class="nav-item nav-link {% if request.path == '/apply/my-applications/' %}active{% endif %}">My Applications</a>
+            <a href="{% url 'apply' %}" class="nav-item nav-link {% if request.path == '/apply/' %}active{% endif %}">Application Form</a>
+            <a href="{% url 'home' %}" class="btn btn-primary py-4 px-lg-5 d-none d-lg-block">
+                Go Back<i class="fa fa-arrow-right ms-3"></i>
+            </a>
+            <!-- Mobile version of Go Back button -->
+            <a href="{% url 'home' %}" class="nav-item nav-link d-lg-none">Go Back</a>
+        </div>
+    </div>
+</nav>
+
+
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <h2 class="section-title text-center mb-4 fw-semi-bold">My Applications</h2>
+
+                {% if applications %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>      
+                                    <th>Faculty</th>
+                                    <th>Department</th>
+                                    <th>Program</th>
+                                    <th>Status</th>
+                                    <th>Submitted On</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for application in applications %}
+                                    <tr class="application-item">
+                                        <td>{{ application.faculty.name }}</td>
+                                        <td>{{ application.department.name }}</td>
+                                        <td>{{ application.program.name }}</td>
+                                        <td>{{ application.status|title }}</td>
+                                        <td>{{ application.created_at|date:"F d, Y" }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info text-center">
+                        <p class="fw-medium">You have not submitted any applications yet.</p>
+                        <a href="{% url 'apply' %}" class="btn btn-primary btn-sm">Apply Now</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="errorModalLabel">Error</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="errorMessage"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <a href="{% url 'loginview' %}?next={% url 'my_applications' %}" class="btn btn-primary">Log In</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            // Check authentication on page load
+            $.ajax({
+                url: window.location.href,
+                method: 'GET',
+                success: function (response) {
+                    if (response.success === false) {
+                        $('#errorMessage').text(response.message || 'An error occurred');
+                        $('#errorModal').modal('show');
+                    }
+                },
+                error: function (xhr) {
+                    const errorMessage = xhr.responseJSON?.message || xhr.statusText || 'An error occurred';
+                    $('#errorMessage').text(errorMessage);
+                    $('#errorModal').modal('show');
+                }
+            });
+        });
+    </script>
+{% endblock %}

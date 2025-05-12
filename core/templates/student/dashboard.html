@@ -265,6 +265,12 @@
             z-index: 2000;
             overflow-y: auto;
             padding: 10px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal.active {
+            opacity: 1;
         }
 
         .modal-content {
@@ -372,7 +378,6 @@
             transition: width 0.3s ease, margin-left 0.3s ease;
         }
 
-        /* Responsive Design */
         @media (max-width: 768px) {
             .sidebar {
                 width: 200px;
@@ -569,7 +574,7 @@
         </div>
         <ul>
             <li><a href="#"><i class="fas fa-user"></i> Profile</a></li>
-            <li><a href="#"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+            <li><a href="#" class="logout-link"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
         </ul>
     </div>
 
@@ -700,6 +705,17 @@
         </div>
     </div>
 
+    <div class="modal" id="logoutModal">
+        <div class="modal-content">
+            <h2>Confirm Logout</h2>
+            <p style="color: #4b5563; font-size: 0.9rem;">Are you sure you want to log out?</p>
+            <div class="button-group">
+                <button class="save-btn" onclick="confirmLogout()">Yes, Log Out</button>
+                <button class="cancel-btn" onclick="closeLogoutModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const editBtn = document.querySelector('.edit-btn');
@@ -707,6 +723,8 @@
             const sidebar = document.querySelector('.sidebar');
             const editModal = document.getElementById('editModal');
             const registrationCardModal = document.getElementById('registrationCardModal');
+            const logoutModal = document.getElementById('logoutModal');
+            const logoutLink = document.querySelector('.logout-link');
 
             // Hamburger button
             if (hamburger) {
@@ -723,6 +741,7 @@
                 editBtn.addEventListener('click', () => {
                     console.log('Edit Profile clicked');
                     editModal.style.display = 'flex';
+                    editModal.classList.add('active');
                     const genderValue = document.querySelector('.details .value:nth-child(6)').textContent.trim();
                     document.getElementById('gender').value = genderValue;
                 });
@@ -730,9 +749,22 @@
                 console.error('Edit Profile button not found');
             }
 
+            // Logout link
+            if (logoutLink) {
+                logoutLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    console.log('Logout clicked');
+                    logoutModal.style.display = 'flex';
+                    logoutModal.classList.add('active');
+                });
+            } else {
+                console.error('Logout link not found');
+            }
+
             // Modal functions
             window.closeModal = function() {
                 console.log('Closing Edit Modal');
+                editModal.classList.remove('active');
                 editModal.style.display = 'none';
             };
 
@@ -760,7 +792,6 @@
                 document.querySelector('.program-section p:nth-child(4)').textContent = `Roll No: ${rollNo}`;
                 document.querySelector('.program-section p:nth-child(5)').textContent = `Reg No: ${regNo}`;
 
-                // Update registration card modal data
                 document.querySelector('#registrationCardModal .registration-card p:nth-child(3)').innerHTML = `<strong>Program:</strong> ${program}`;
                 document.querySelector('#registrationCardModal .registration-card p:nth-child(4)').innerHTML = `<strong>Session:</strong> ${session}`;
                 document.querySelector('#registrationCardModal .registration-card p:nth-child(5)').innerHTML = `<strong>Roll No:</strong> ${rollNo}`;
@@ -798,7 +829,7 @@
                                 <p><strong>Session:</strong> ${session}</p>
                                 <p><strong>Roll No:</strong> ${rollNo}</p>
                                 <p><strong>Reg No:</strong> ${regNo}</p>
-                                <p><strong>Date Printed:</strong> May 11, 2025</p>
+                                <p><strong>Date Printed:</strong> May 12, 2025</p>
                             </div>
                         </body>
                         </html>
@@ -817,11 +848,24 @@
             window.showRegistrationCard = function() {
                 console.log('Show Registration Card clicked');
                 registrationCardModal.style.display = 'flex';
+                registrationCardModal.classList.add('active');
             };
 
             window.closeRegistrationCardModal = function() {
                 console.log('Closing Registration Card Modal');
+                registrationCardModal.classList.remove('active');
                 registrationCardModal.style.display = 'none';
+            };
+
+            window.closeLogoutModal = function() {
+                console.log('Closing Logout Modal');
+                logoutModal.classList.remove('active');
+                logoutModal.style.display = 'none';
+            };
+
+            window.confirmLogout = function() {
+                console.log('Logout confirmed');
+                window.location.href = '/';
             };
 
             // Close modals on outside click
@@ -832,8 +876,11 @@
                 if (event.target === registrationCardModal) {
                     closeRegistrationCardModal();
                 }
+                if (event.target === logoutModal) {
+                    closeLogoutModal();
+                }
             });
         });
-    </script> 
+    </script>
 </body>
 </html>

@@ -75,6 +75,11 @@
             color: white;
         }
 
+        .sidebar ul li a.logout-link:hover {
+            background-color: #dc2626;
+            color: white;
+        }
+
         .sidebar ul li a i {
             margin-right: 12px;
         }
@@ -212,6 +217,10 @@
             font-size: 1.2rem;
         }
 
+        .profile-card .program-section .enrollment-entry {
+            margin-bottom: 15px;
+        }
+
         .profile-card .program-section p {
             color: #1f2a44;
             font-size: 0.9rem;
@@ -265,6 +274,12 @@
             z-index: 2000;
             overflow-y: auto;
             padding: 10px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal.active {
+            opacity: 1;
         }
 
         .modal-content {
@@ -282,6 +297,11 @@
             font-size: 1.5rem;
             color: #1e3a8a;
             margin-bottom: 20px;
+        }
+
+        .modal-content p {
+            color: #4b5563;
+            font-size: 0.9rem;
         }
 
         .modal-content .form-group {
@@ -372,7 +392,6 @@
             transition: width 0.3s ease, margin-left 0.3s ease;
         }
 
-        /* Responsive Design */
         @media (max-width: 768px) {
             .sidebar {
                 width: 200px;
@@ -415,6 +434,10 @@
 
             .modal-content h2 {
                 font-size: 1.3rem;
+            }
+
+            .modal-content p {
+                font-size: 0.85rem;
             }
 
             .modal-content .form-group {
@@ -568,8 +591,9 @@
             <h3>Campus 360</h3>
         </div>
         <ul>
-            <li><a href="#"><i class="fas fa-user"></i> Profile</a></li>
-            <li><a href="#"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+            <li><a href="dashboard.html" class="profile-link"><i class="fas fa-user"></i> Profile</a></li>
+            <li><a href="enrollment.html" class="enrollment-link"><i class="fas fa-book"></i> Enrollment</a></li>
+            <li><a href="#" class="logout-link"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
         </ul>
     </div>
 
@@ -614,226 +638,343 @@
             </div>
             <div class="program-section">
                 <h3>Programs You Are Enrolled In at Campus 360</h3>
-                <p><strong>B.Sc. Electrical Engineering Technology</strong></p>
-                <p>Session: 2022-2026 | FALL | MORNING</p>
-                <p>Roll No: 223163</p>
-                <p>Reg No: 2022-C360-03685</p>
+                <div class="enrollment-entry">
+                    <p><strong>B.Sc. Electrical Engineering Technology</strong></p>
+                    <p>Session: 2022-2026 | FALL | MORNING</p>
+                    <p>Roll No: 223163</p>
+                    <p>Reg No: 2022-C360-03685</p>
+                </div>
                 <button onclick="printDetails()">Print Detail</button>
                 <button onclick="showRegistrationCard()">Registration Card</button>
+                <button onclick="showEnrollmentModal()">Enroll in New Program</button>
             </div>
             <button class="edit-btn">Edit Profile</button>
         </div>
-    </div>
 
-    <div class="footer">
-        <p>Campus 360 © 2025</p>
-    </div>
+        <div class="footer">
+            <p>Campus 360 © 2025</p>
+        </div>
 
-    <div class="modal" id="editModal">
-        <div class="modal-content">
-            <h2>Edit Profile</h2>
-            <div class="form-group">
-                <label for="cnic">CNIC</label>
-                <input type="text" id="cnic" value="33303-0569341-1">
-            </div>
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" value="amir.riaz.03446617580@gmail.com">
-            </div>
-            <div class="form-group">
-                <label for="gender">Gender</label>
-                <select id="gender">
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="dob">DOB</label>
-                <input type="date" id="dob" value="2001-10-10">
-            </div>
-            <div class="form-group">
-                <label for="district">District</label>
-                <input type="text" id="district" value="Toba Tek Singh">
-            </div>
-            <div class="form-group">
-                <label for="address">Address</label>
-                <input type="text" id="address" value="Chak No. 328 G.B Tehsil and Distt Toba Tek Singh">
-            </div>
-            <div class="form-group">
-                <label for="program">Program</label>
-                <input type="text" id="program" value="B.Sc. Electrical Engineering Technology">
-            </div>
-            <div class="form-group">
-                <label for="session">Session</label>
-                <input type="text" id="session" value="2022-2026 | FALL | MORNING">
-            </div>
-            <div class="form-group">
-                <label for="rollNo">Roll No</label>
-                <input type="text" id="rollNo" value="223163">
-            </div>
-            <div class="form-group">
-                <label for="regNo">Reg No</label>
-                <input type="text" id="regNo" value="2022-C360-03685">
-            </div>
-            <div class="button-group">
-                <button class="save-btn" onclick="saveChanges()">Save</button>
-                <button class="cancel-btn" onclick="closeModal()">Cancel</button>
+        <div class="modal" id="editModal">
+            <div class="modal-content">
+                <h2>Edit Profile</h2>
+                <div class="form-group">
+                    <label for="cnic">CNIC</label>
+                    <input type="text" id="cnic" value="33303-0569341-1">
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" value="amir.riaz.03446617580@gmail.com">
+                </div>
+                <div class="form-group">
+                    <label for="gender">Gender</label>
+                    <select id="gender">
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="dob">DOB</label>
+                    <input type="date" id="dob" value="2001-10-10">
+                </div>
+                <div class="form-group">
+                    <label for="district">District</label>
+                    <input type="text" id="district" value="Toba Tek Singh">
+                </div>
+                <div class="form-group">
+                    <label for="address">Address</label>
+                    <input type="text" id="address" value="Chak No. 328 G.B Tehsil and Distt Toba Tek Singh">
+                </div>
+                <div class="form-group">
+                    <label for="program">Program</label>
+                    <input type="text" id="program" value="B.Sc. Electrical Engineering Technology">
+                </div>
+                <div class="form-group">
+                    <label for="session">Session</label>
+                    <input type="text" id="session" value="2022-2026 | FALL | MORNING">
+                </div>
+                <div class="form-group">
+                    <label for="rollNo">Roll No</label>
+                    <input type="text" id="rollNo" value="223163">
+                </div>
+                <div class="form-group">
+                    <label for="regNo">Reg No</label>
+                    <input type="text" id="regNo" value="2022-C360-03685">
+                </div>
+                <div class="button-group">
+                    <button class="save-btn" onclick="saveChanges()">Save</button>
+                    <button class="cancel-btn" onclick="closeModal()">Cancel</button>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="modal" id="registrationCardModal">
-        <div class="modal-content">
-            <div class="registration-card">
-                <h3>Campus 360 Registration Card</h3>
-                <p><strong>Student Name:</strong> AMIR RIAZ</p>
-                <p><strong>Program:</strong> B.Sc. Electrical Engineering Technology</p>
-                <p><strong>Session:</strong> 2022-2026 | FALL | MORNING</p>
-                <p><strong>Roll No:</strong> 223163</p>
-                <p><strong>Reg No:</strong> 2022-C360-03685</p>
-                <p><strong>Issue Date:</strong> May 11, 2025</p>
-            </div>
-            <div class="button-group">
-                <button class="cancel-btn" onclick="closeRegistrationCardModal()">Close</button>
+        <div class="modal" id="registrationCardModal">
+            <div class="modal-content">
+                <div class="registration-card">
+                    <h3>Campus 360 Registration Card</h3>
+                    <p><strong>Student Name:</strong> AMIR RIAZ</p>
+                    <p><strong>Program:</strong> B.Sc. Electrical Engineering Technology</p>
+                    <p><strong>Session:</strong> 2022-2026 | FALL | MORNING</p>
+                    <p><strong>Roll No:</strong> 223163</p>
+                    <p><strong>Reg No:</strong> 2022-C360-03685</p>
+                    <p><strong>Issue Date:</strong> May 12, 2025</p>
+                </div>
+                <div class="button-group">
+                    <button class="cancel-btn" onclick="closeRegistrationCardModal()">Close</button>
+                </div>
             </div>
         </div>
-    </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const editBtn = document.querySelector('.edit-btn');
-            const hamburger = document.querySelector('.hamburger');
-            const sidebar = document.querySelector('.sidebar');
-            const editModal = document.getElementById('editModal');
-            const registrationCardModal = document.getElementById('registrationCardModal');
+        <div class="modal" id="logoutModal">
+            <div class="modal-content">
+                <h2>Confirm Logout</h2>
+                <p style="color: #4b5563; font-size: 0.9rem;">Are you sure you want to log out?</p>
+                <div class="button-group">
+                    <button class="save-btn" onclick="confirmLogout()">Yes, Log Out</button>
+                    <button class="cancel-btn" onclick="closeLogoutModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
 
-            // Hamburger button
-            if (hamburger) {
-                hamburger.addEventListener('click', () => {
-                    console.log('Hamburger clicked');
-                    sidebar.classList.toggle('active');
-                });
-            } else {
-                console.error('Hamburger button not found');
-            }
+        <div class="modal" id="enrollmentModal">
+            <div class="modal-content">
+                <h2>Enroll in New Program</h2>
+                <div class="form-group">
+                    <label for="newProgram">Program</label>
+                    <input type="text" id="newProgram" placeholder="e.g., B.Sc. Computer Science">
+                </div>
+                <div class="form-group">
+                    <label for="newSession">Session</label>
+                    <input type="text" id="newSession" placeholder="e.g., 2023-2027 | SPRING | EVENING">
+                </div>
+                <div class="form-group">
+                    <label for="newRollNo">Roll No</label>
+                    <input type="text" id="newRollNo" placeholder="e.g., 223164">
+                </div>
+                <div class="form-group">
+                    <label for="newRegNo">Reg No</label>
+                    <input type="text" id="newRegNo" placeholder="e.g., 2023-C360-03686">
+                </div>
+                <div class="button-group">
+                    <button class="save-btn" onclick="saveEnrollment()">Enroll</button>
+                    <button class="cancel-btn" onclick="closeEnrollmentModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
 
-            // Edit Profile button
-            if (editBtn) {
-                editBtn.addEventListener('click', () => {
-                    console.log('Edit Profile clicked');
-                    editModal.style.display = 'flex';
-                    const genderValue = document.querySelector('.details .value:nth-child(6)').textContent.trim();
-                    document.getElementById('gender').value = genderValue;
-                });
-            } else {
-                console.error('Edit Profile button not found');
-            }
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const editBtn = document.querySelector('.edit-btn');
+                const hamburger = document.querySelector('.hamburger');
+                const sidebar = document.querySelector('.sidebar');
+                const editModal = document.getElementById('editModal');
+                const registrationCardModal = document.getElementById('registrationCardModal');
+                const logoutModal = document.getElementById('logoutModal');
+                const enrollmentModal = document.getElementById('enrollmentModal');
+                const logoutLink = document.querySelector('.logout-link');
 
-            // Modal functions
-            window.closeModal = function() {
-                console.log('Closing Edit Modal');
-                editModal.style.display = 'none';
-            };
-
-            window.saveChanges = function() {
-                console.log('Saving changes');
-                const cnic = document.getElementById('cnic').value;
-                const email = document.getElementById('email').value;
-                const gender = document.getElementById('gender').value;
-                const dob = document.getElementById('dob').value;
-                const district = document.getElementById('district').value;
-                const address = document.getElementById('address').value;
-                const program = document.getElementById('program').value;
-                const session = document.getElementById('session').value;
-                const rollNo = document.getElementById('rollNo').value;
-                const regNo = document.getElementById('regNo').value;
-
-                document.querySelector('.details .value:nth-child(2)').innerHTML = `<i class="fas fa-id-card"></i> ${cnic}`;
-                document.querySelector('.details .value:nth-child(4)').innerHTML = `<i class="fas fa-envelope"></i> ${email}`;
-                document.querySelector('.details .value:nth-child(6)').innerHTML = `<i class="fas fa-male"></i> ${gender}`;
-                document.querySelector('.details .value:nth-child(8)').innerHTML = `<i class="fas fa-calendar-alt"></i> ${dob}`;
-                document.querySelector('.details .value:nth-child(10)').innerHTML = `<i class="fas fa-map-marker-alt"></i> ${district}`;
-                document.querySelector('.details .value:nth-child(12)').innerHTML = `<i class="fas fa-home"></i> ${address}`;
-                document.querySelector('.program-section p:nth-child(2)').textContent = program;
-                document.querySelector('.program-section p:nth-child(3)').textContent = session;
-                document.querySelector('.program-section p:nth-child(4)').textContent = `Roll No: ${rollNo}`;
-                document.querySelector('.program-section p:nth-child(5)').textContent = `Reg No: ${regNo}`;
-
-                // Update registration card modal data
-                document.querySelector('#registrationCardModal .registration-card p:nth-child(3)').innerHTML = `<strong>Program:</strong> ${program}`;
-                document.querySelector('#registrationCardModal .registration-card p:nth-child(4)').innerHTML = `<strong>Session:</strong> ${session}`;
-                document.querySelector('#registrationCardModal .registration-card p:nth-child(5)').innerHTML = `<strong>Roll No:</strong> ${rollNo}`;
-                document.querySelector('#registrationCardModal .registration-card p:nth-child(6)').innerHTML = `<strong>Reg No:</strong> ${regNo}`;
-
-                closeModal();
-            };
-
-            window.printDetails = function() {
-                console.log('Print Details clicked');
-                const program = document.querySelector('.program-section p:nth-child(2)').textContent;
-                const session = document.querySelector('.program-section p:nth-child(3)').textContent;
-                const rollNo = document.querySelector('.program-section p:nth-child(4)').textContent.replace('Roll No: ', '');
-                const regNo = document.querySelector('.program-section p:nth-child(5)').textContent.replace('Reg No: ', '');
-
-                const printWindow = window.open('', '_blank');
-                if (printWindow) {
-                    printWindow.document.write(`
-                        <html>
-                        <head>
-                            <title>Program Details - Campus 360</title>
-                            <style>
-                                body { font-family: 'Poppins', sans-serif; padding: 20px; }
-                                h2 { color: #1e3a8a; text-align: center; }
-                                .details { max-width: 600px; margin: 0 auto; padding: 20px; border: 2px solid #2563eb; border-radius: 8px; }
-                                p { font-size: 1rem; margin: 10px 0; }
-                                strong { color: #1e3a8a; }
-                            </style>
-                        </head>
-                        <body>
-                            <h2>Program Details</h2>
-                            <div class="details">
-                                <p><strong>Student Name:</strong> AMIR RIAZ</p>
-                                <p><strong>Program:</strong> ${program}</p>
-                                <p><strong>Session:</strong> ${session}</p>
-                                <p><strong>Roll No:</strong> ${rollNo}</p>
-                                <p><strong>Reg No:</strong> ${regNo}</p>
-                                <p><strong>Date Printed:</strong> May 11, 2025</p>
-                            </div>
-                        </body>
-                        </html>
-                    `);
-                    printWindow.document.close();
-                    printWindow.focus();
-                    setTimeout(() => {
-                        printWindow.print();
-                    }, 500);
+                // Hamburger button
+                if (hamburger) {
+                    hamburger.addEventListener('click', () => {
+                        console.log('Hamburger clicked');
+                        sidebar.classList.toggle('active');
+                    });
                 } else {
-                    console.error('Failed to open print window. Check if pop-ups are blocked.');
-                    alert('Failed to open print window. Please allow pop-ups and try again.');
+                    console.error('Hamburger button not found');
                 }
-            };
 
-            window.showRegistrationCard = function() {
-                console.log('Show Registration Card clicked');
-                registrationCardModal.style.display = 'flex';
-            };
+                // Edit Profile button
+                if (editBtn) {
+                    editBtn.addEventListener('click', () => {
+                        console.log('Edit Profile clicked');
+                        editModal.style.display = 'flex';
+                        editModal.classList.add('active');
+                        const genderValue = document.querySelector('.details .value:nth-child(6)').textContent.trim();
+                        document.getElementById('gender').value = genderValue;
+                    });
+                } else {
+                    console.error('Edit Profile button not found');
+                }
 
-            window.closeRegistrationCardModal = function() {
-                console.log('Closing Registration Card Modal');
-                registrationCardModal.style.display = 'none';
-            };
+                // Logout link
+                if (logoutLink) {
+                    logoutLink.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        console.log('Logout clicked');
+                        logoutModal.style.display = 'flex';
+                        logoutModal.classList.add('active');
+                    });
+                } else {
+                    console.error('Logout link not found');
+                }
 
-            // Close modals on outside click
-            window.addEventListener('click', (event) => {
-                if (event.target === editModal) {
+                // Modal functions
+                window.closeModal = function() {
+                    console.log('Closing Edit Modal');
+                    editModal.classList.remove('active');
+                    editModal.style.display = 'none';
+                };
+
+                window.saveChanges = function() {
+                    console.log('Saving changes');
+                    const cnic = document.getElementById('cnic').value;
+                    const email = document.getElementById('email').value;
+                    const gender = document.getElementById('gender').value;
+                    const dob = document.getElementById('dob').value;
+                    const district = document.getElementById('district').value;
+                    const address = document.getElementById('address').value;
+                    const program = document.getElementById('program').value;
+                    const session = document.getElementById('session').value;
+                    const rollNo = document.getElementById('rollNo').value;
+                    const regNo = document.getElementById('regNo').value;
+
+                    document.querySelector('.details .value:nth-child(2)').innerHTML = `<i class="fas fa-id-card"></i> ${cnic}`;
+                    document.querySelector('.details .value:nth-child(4)').innerHTML = `<i class="fas fa-envelope"></i> ${email}`;
+                    document.querySelector('.details .value:nth-child(6)').innerHTML = `<i class="fas fa-male"></i> ${gender}`;
+                    document.querySelector('.details .value:nth-child(8)').innerHTML = `<i class="fas fa-calendar-alt"></i> ${dob}`;
+                    document.querySelector('.details .value:nth-child(10)').innerHTML = `<i class="fas fa-map-marker-alt"></i> ${district}`;
+                    document.querySelector('.details .value:nth-child(12)').innerHTML = `<i class="fas fa-home"></i> ${address}`;
+                    document.querySelector('.program-section .enrollment-entry p:nth-child(1)').innerHTML = `<strong>${program}</strong>`;
+                    document.querySelector('.program-section .enrollment-entry p:nth-child(2)').textContent = `Session: ${session}`;
+                    document.querySelector('.program-section .enrollment-entry p:nth-child(3)').textContent = `Roll No: ${rollNo}`;
+                    document.querySelector('.program-section .enrollment-entry p:nth-child(4)').textContent = `Reg No: ${regNo}`;
+
+                    document.querySelector('#registrationCardModal .registration-card p:nth-child(3)').innerHTML = `<strong>Program:</strong> ${program}`;
+                    document.querySelector('#registrationCardModal .registration-card p:nth-child(4)').innerHTML = `<strong>Session:</strong> ${session}`;
+                    document.querySelector('#registrationCardModal .registration-card p:nth-child(5)').innerHTML = `<strong>Roll No:</strong> ${rollNo}`;
+                    document.querySelector('#registrationCardModal .registration-card p:nth-child(6)').innerHTML = `<strong>Reg No:</strong> ${regNo}`;
+
                     closeModal();
-                }
-                if (event.target === registrationCardModal) {
-                    closeRegistrationCardModal();
-                }
+                };
+
+                window.printDetails = function() {
+                    console.log('Print Details clicked');
+                    const program = document.querySelector('.program-section .enrollment-entry p:nth-child(1)').textContent;
+                    const session = document.querySelector('.program-section .enrollment-entry p:nth-child(2)').textContent.replace('Session: ', '');
+                    const rollNo = document.querySelector('.program-section .enrollment-entry p:nth-child(3)').textContent.replace('Roll No: ', '');
+                    const regNo = document.querySelector('.program-section .enrollment-entry p:nth-child(4)').textContent.replace('Reg No: ', '');
+
+                    const printWindow = window.open('', '_blank');
+                    if (printWindow) {
+                        printWindow.document.write(`
+                            <html>
+                            <head>
+                                <title>Program Details - Campus 360</title>
+                                <style>
+                                    body { font-family: 'Poppins', sans-serif; padding: 20px; }
+                                    h2 { color: #1e3a8a; text-align: center; }
+                                    .details { max-width: 600px; margin: 0 auto; padding: 20px; border: 2px solid #2563eb; border-radius: 8px; }
+                                    p { font-size: 1rem; margin: 10px 0; }
+                                    strong { color: #1e3a8a; }
+                                </style>
+                            </head>
+                            <body>
+                                <h2>Program Details</h2>
+                                <div class="details">
+                                    <p><strong>Student Name:</strong> AMIR RIAZ</p>
+                                    <p><strong>Program:</strong> ${program}</p>
+                                    <p><strong>Session:</strong> ${session}</p>
+                                    <p><strong>Roll No:</strong> ${rollNo}</p>
+                                    <p><strong>Reg No:</strong> ${regNo}</p>
+                                    <p><strong>Date Printed:</strong> May 12, 2025</p>
+                                </div>
+                            </body>
+                            </html>
+                        `);
+                        printWindow.document.close();
+                        printWindow.focus();
+                        setTimeout(() => {
+                            printWindow.print();
+                        }, 500);
+                    } else {
+                        console.error('Failed to open print window. Check if pop-ups are blocked.');
+                        alert('Failed to open print window. Please allow pop-ups and try again.');
+                    }
+                };
+
+                window.showRegistrationCard = function() {
+                    console.log('Show Registration Card clicked');
+                    registrationCardModal.style.display = 'flex';
+                    registrationCardModal.classList.add('active');
+                };
+
+                window.closeRegistrationCardModal = function() {
+                    console.log('Closing Registration Card Modal');
+                    registrationCardModal.classList.remove('active');
+                    registrationCardModal.style.display = 'none';
+                };
+
+                window.closeLogoutModal = function() {
+                    console.log('Closing Logout Modal');
+                    logoutModal.classList.remove('active');
+                    logoutModal.style.display = 'none';
+                };
+
+                window.confirmLogout = function() {
+                    console.log('Logout confirmed');
+                    window.location.href = '/';
+                };
+
+                window.showEnrollmentModal = function() {
+                    console.log('Show Enrollment Modal clicked');
+                    enrollmentModal.style.display = 'flex';
+                    enrollmentModal.classList.add('active');
+                };
+
+                window.closeEnrollmentModal = function() {
+                    console.log('Closing Enrollment Modal');
+                    enrollmentModal.classList.remove('active');
+                    enrollmentModal.style.display = 'none';
+                };
+
+                window.saveEnrollment = function() {
+                    console.log('Saving new enrollment');
+                    const newProgram = document.getElementById('newProgram').value;
+                    const newSession = document.getElementById('newSession').value;
+                    const newRollNo = document.getElementById('newRollNo').value;
+                    const newRegNo = document.getElementById('newRegNo').value;
+
+                    if (newProgram && newSession && newRollNo && newRegNo) {
+                        const newEnrollmentDiv = document.createElement('div');
+                        newEnrollmentDiv.classList.add('enrollment-entry');
+                        newEnrollmentDiv.innerHTML = `
+                            <p><strong>${newProgram}</strong></p>
+                            <p>Session: ${newSession}</p>
+                            <p>Roll No: ${newRollNo}</p>
+                            <p>Reg No: ${newRegNo}</p>
+                        `;
+                        const programSection = document.querySelector('.program-section');
+                        programSection.insertBefore(newEnrollmentDiv, programSection.querySelector('.enrollment-entry').nextSibling);
+
+                        document.getElementById('newProgram').value = '';
+                        document.getElementById('newSession').value = '';
+                        document.getElementById('newRollNo').value = '';
+                        document.getElementById('newRegNo').value = '';
+
+                        closeEnrollmentModal();
+                    } else {
+                        alert('Please fill in all fields to enroll in a new program.');
+                    }
+                };
+
+                // Close modals on outside click
+                window.addEventListener('click', (event) => {
+                    if (event.target === editModal) {
+                        closeModal();
+                    }
+                    if (event.target === registrationCardModal) {
+                        closeRegistrationCardModal();
+                    }
+                    if (event.target === logoutModal) {
+                        closeLogoutModal();
+                    }
+                    if (event.target === enrollmentModal) {
+                        closeEnrollmentModal();
+                    }
+                });
             });
-        });
-    </script>
+        </script>
+    </div>
 </body>
 </html>

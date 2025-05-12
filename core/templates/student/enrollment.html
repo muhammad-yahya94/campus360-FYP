@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus 360 - Enrollment</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="campus360-FYP\static\css\style.css">
+    <link rel="stylesheet" href="campus360-FYP\static\css\bootstrap.min.css">
+    <link rel="stylesheet" href="campus360-FYP\static\css\bootstrap-icon.min.css">
+    <link rel="stylesheet" href="campus360-FYP\static\css\all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0f4f8;
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .sidebar {
+            width: 260px;
+            background: linear-gradient(180deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white;
+            padding: 20px;
+            position: fixed;
+            height: 100%;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .sidebar .logo {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .sidebar .logo img {
+            width: 40px;
+            margin-right: 15px;
+        }
+
+        .sidebar .logo h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .sidebar ul {
+            list-style: none;
+        }
+
+        .sidebar ul li {
+            margin: 15px 0;
+        }
+
+        .sidebar ul li a {
+            color: #d1e7ff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-radius: 5px;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .sidebar ul li a:hover {
+            background-color: #2563eb;
+            color: white;
+        }
+
+        .sidebar ul li a.logout-link:hover {
+            background-color: #dc2626;
+            color: white;
+        }
+
+        .sidebar ul li a i {
+            margin-right: 12px;
+        }
+
+        .main-content {
+            margin-left: 260px;
+            flex: 1;
+            padding: 30px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .header {
+            background: linear-gradient(90deg, #2563eb 0%, #1e3a8a 100%);
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header .hamburger {
+            display: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .header .user-info {
+            display: flex;
+            align-items: center;
+        }
+
+        .header .user-info i {
+            font-size: 1.5rem;
+            margin-right: 15px;
+        }
+
+        .header .user-info span {
+            font-weight: 600;
+        }
+
+        .header .breadcrumbs a {
+            color: #d1e7ff;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .header .breadcrumbs a:hover {
+            color: white;
+        }
+
+        .welcome-message {
+            background-color: #e0f2fe;
+            padding: 15px;
+            margin: 20px 0;
+            color: #1e40af;
+            border-radius: 8px;
+            font-size: 0.95rem;
+        }
+
+        .enrollment-section {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .enrollment-section h1 {
+            font-size: 2rem;
+            color: #1e3a8a;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .enrollment-section .degree-details {
+            font-size: 1.1rem;
+            color: #1e40af;
+            margin-bottom: 20px;
+            text-align: center;
+            background-color: #e0f2fe;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .enrollment-section .semesters {
+            margin-top: 20px;
+        }
+
+        .enrollment-section details {
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .enrollment-section details summary {
+            padding: 10px;
+            background-color: #2563eb;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .enrollment-section details summary:hover {
+            background-color: #1e40af;
+        }
+
+        .enrollment-section details[open] summary {
+            background-color: #1e3a8a;
+        }
+
+        .enrollment-section details div {
+            padding: 10px;
+            background-color: #f9fafb;
+        }
+
+        .enrollment-section details p {
+            margin: 5px 0;
+            color: #4b5563;
+            font-size: 0.9rem;
+        }
+
+        .enrollment-section .back-btn,
+        .enrollment-section .print-btn {
+            background-color: #2563eb;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            width: 100%;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .enrollment-section .back-btn:hover,
+        .enrollment-section .print-btn:hover {
+            background-color: #1e40af;
+        }
+
+        .enrollment-section .back-btn {
+            margin-bottom: 10px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            overflow-y: auto;
+            padding: 10px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal.active {
+            opacity: 1;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-content h2 {
+            font-size: 1.5rem;
+            color: #1e3a8a;
+            margin-bottom: 20px;
+        }
+
+        .modal-content p {
+            color: #4b5563;
+            font-size: 0.9rem;
+        }
+
+        .modal-content .button-group {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-content button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .modal-content .save-btn {
+            background-color: #16a34a;
+            color: white;
+        }
+
+        .modal-content .save-btn:hover {
+            background-color: #15803d;
+        }
+
+        .modal-content .cancel-btn {
+            background-color: #dc2626;
+            color: white;
+        }
+
+        .modal-content .cancel-btn:hover {
+            background-color: #b91c1c;
+        }
+
+        .footer {
+            background: linear-gradient(90deg, #1e3a8a 0%, #2563eb 100%);
+            color: white;
+            padding: 15px;
+            text-align: center;
+            position: fixed;
+            bottom: 0;
+            width: calc(100% - 260px);
+            margin-left: 260px;
+            font-size: 0.85rem;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            transition: width 0.3s ease, margin-left 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 200px;
+                transform: translateX(-100%);
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .header .hamburger {
+                display: block;
+            }
+
+            .header .user-info i {
+                font-size: 1.3rem;
+            }
+
+            .header .user-info span {
+                font-size: 0.9rem;
+            }
+
+            .header .breadcrumbs a {
+                font-size: 0.8rem;
+            }
+
+            .enrollment-section h1 {
+                font-size: 1.5rem;
+            }
+
+            .enrollment-section .degree-details {
+                font-size: 1rem;
+            }
+
+            .enrollment-section details summary {
+                padding: 8px;
+                font-size: 0.9rem;
+            }
+
+            .enrollment-section details div {
+                padding: 8px;
+            }
+
+            .enrollment-section details p {
+                font-size: 0.85rem;
+            }
+
+            .enrollment-section .back-btn,
+            .enrollment-section .print-btn {
+                padding: 10px;
+                font-size: 0.9rem;
+            }
+
+            .footer {
+                width: 100%;
+                margin-left: 0;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .sidebar {
+                width: 180px;
+                padding: 15px;
+            }
+
+            .sidebar .logo h3 {
+                font-size: 1.2rem;
+            }
+
+            .sidebar ul li a {
+                padding: 8px;
+                font-size: 0.9rem;
+            }
+
+            .sidebar ul li a i {
+                margin-right: 8px;
+            }
+
+            .header {
+                padding: 10px 20px;
+            }
+
+            .welcome-message {
+                font-size: 0.85rem;
+                padding: 10px;
+            }
+
+            .enrollment-section {
+                padding: 15px;
+            }
+
+            .enrollment-section h1 {
+                font-size: 1.2rem;
+            }
+
+            .enrollment-section .degree-details {
+                font-size: 0.9rem;
+            }
+
+            .enrollment-section details summary {
+                padding: 6px;
+                font-size: 0.8rem;
+            }
+
+            .enrollment-section details div {
+                padding: 6px;
+            }
+
+            .enrollment-section details p {
+                font-size: 0.75rem;
+            }
+
+            .enrollment-section .back-btn,
+            .enrollment-section .print-btn {
+                padding: 8px;
+                font-size: 0.8rem;
+            }
+
+            .footer {
+                font-size: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">
+            <img src="campus360-FYP\static\img\logo.png" alt="Campus 360 Logo">
+            <h3>Campus 360</h3>
+        </div>
+        <ul>
+            <li><a href="dashboard.html" class="profile-link"><i class="fas fa-user"></i> Profile</a></li>
+            <li><a href="enrollment.html" class="enrollment-link"><i class="fas fa-book"></i> Enrollment</a></li>
+            <li><a href="#" class="logout-link"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <i class="fas fa-bars hamburger"></i>
+            <div class="user-info">
+                <i class="fas fa-user-graduate"></i>
+                <span>AMIR RIAZ</span>
+            </div>
+            <div class="breadcrumbs">
+                <a href="#">Home</a> / <a href="#">Enrollment</a>
+            </div>
+        </div>
+
+        <div class="welcome-message">
+            Welcome to the Campus 360 Student Portal! Access your degree details, schedules, progress, and more.
+        </div>
+
+        <div class="enrollment-section">
+            <h1>Enroll Page</h1>
+            <div class="degree-details">
+                B.Sc. Electrical Engineering Technology | 2022-2026 | FALL | MORNING
+            </div>
+            <div class="semesters">
+                <details>
+                    <summary>1st Semester</summary>
+                    <div>
+                        <p>PST-321 - Pakistani Studies (2-0)</p>
+                        <p>PHY-321 - Applied Physics 3(2-1)</p>
+                        <p>MTH-323 - Calculus and Analytical Geometry 3(3-0)</p>
+                        <p>ISL-311* - Translation of The Holy Quran-I (Audit)</p>
+                    </div>
+                </details>
+                <details>
+                    <summary>2nd Semester</summary>
+                    <div>
+                        <p>CS-212 - Computer Programming (3-1)</p>
+                        <p>EET-305 - Communication Skills for Technologists (3-0)</p>
+                    </div>
+                </details>
+                <details>
+                    <summary>3rd Semester</summary>
+                    <div>
+                        <p>EET-303 - Electrical Workshop (2-0)</p>
+                    </div>
+                </details>
+                <details>
+                    <summary>4th Semester</summary>
+                    <div>
+                        <p>EET-301 - Information and Communication Technology 3(2-1)</p>
+                    </div>
+                </details>
+                <details>
+                    <summary>5th Semester (Current)</summary>
+                    <div>
+                        <p>EET-401 - Circuit Analysis (3-1)</p>
+                        <p>EET-402 - Digital Electronics (3-0)</p>
+                    </div>
+                </details>
+                <details>
+                    <summary>6th Semester</summary>
+                    <div>
+                        <p>EET-501 - Power Systems (3-1)</p>
+                    </div>
+                </details>
+            </div>
+            <button class="print-btn" onclick="printDegreeSubjects()">Print Degree Subjects</button>
+        </div>
+
+        <div class="footer">
+            <p>Campus 360 © 2025</p>
+        </div>
+
+        <div class="modal" id="logoutModal">
+            <div class="modal-content">
+                <h2>Confirm Logout</h2>
+                <p style="color: #4b5563; font-size: 0.9rem;">Are you sure you want to log out?</p>
+                <div class="button-group">
+                    <button class="save-btn" onclick="confirmLogout()">Yes, Log Out</button>
+                    <button class="cancel-btn" onclick="closeLogoutModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const hamburger = document.querySelector('.hamburger');
+                const sidebar = document.querySelector('.sidebar');
+                const logoutModal = document.getElementById('logoutModal');
+                const logoutLink = document.querySelector('.logout-link');
+
+                // Hamburger button
+                if (hamburger) {
+                    hamburger.addEventListener('click', () => {
+                        console.log('Hamburger clicked');
+                        sidebar.classList.toggle('active');
+                    });
+                } else {
+                    console.error('Hamburger button not found');
+                }
+
+                // Logout link
+                if (logoutLink) {
+                    logoutLink.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        console.log('Logout clicked');
+                        logoutModal.style.display = 'flex';
+                        logoutModal.classList.add('active');
+                    });
+                } else {
+                    console.error('Logout link not found');
+                }
+
+                window.printDegreeSubjects = function() {
+                    console.log('Print Degree Subjects clicked');
+                    const degreeDetails = document.querySelector('.enrollment-section .degree-details').textContent.trim();
+                    const semesters = document.querySelectorAll('.enrollment-section details');
+                    let semesterContent = '';
+
+                    semesters.forEach((semester, index) => {
+                        const semesterTitle = semester.querySelector('summary').textContent.trim();
+                        const subjects = Array.from(semester.querySelectorAll('div p')).map(p => p.textContent.trim());
+                        semesterContent += `
+                            <h3 style="color: #1e3a8a; margin-top: 20px;">${semesterTitle}</h3>
+                            ${subjects.map(subject => `<p style="margin: 5px 0;">${subject}</p>`).join('')}
+                        `;
+                    });
+
+                    const printWindow = window.open('', '_blank');
+                    if (printWindow) {
+                        printWindow.document.write(`
+                            <html>
+                            <head>
+                                <title>Degree Subjects - Campus 360</title>
+                                <style>
+                                    body { font-family: 'Poppins', sans-serif; padding: 20px; }
+                                    h1 { color: #1e3a8a; text-align: center; }
+                                    .degree-details { text-align: center; font-size: 1.1rem; color: #1e40af; margin-bottom: 20px; }
+                                    .semesters { max-width: 800px; margin: 0 auto; padding: 20px; border: 2px solid #2563eb; border-radius: 8px; }
+                                    h3 { color: #1e3a8a; }
+                                    p { font-size: 1rem; margin: 5px 0; }
+                                </style>
+                            </head>
+                            <body>
+                                <h1>Degree Subjects</h1>
+                                <div class="degree-details">${degreeDetails}</div>
+                                <div class="semesters">
+                                    ${semesterContent}
+                                    <p style="margin-top: 20px;"><strong>Date Printed:</strong> May 12, 2025</p>
+                                </div>
+                            </body>
+                            </html>
+                        `);
+                        printWindow.document.close();
+                        printWindow.focus();
+                        setTimeout(() => {
+                            printWindow.print();
+                        }, 500);
+                    } else {
+                        console.error('Failed to open print window. Check if pop-ups are blocked.');
+                        alert('Failed to open print window. Please allow pop-ups and try again.');
+                    }
+                };
+                window.closeLogoutModal = function() {
+                    console.log('Closing Logout Modal');
+                    logoutModal.classList.remove('active');
+                    logoutModal.style.display = 'none';
+                };
+
+                window.confirmLogout = function() {
+                    console.log('Logout confirmed');
+                    window.location.href = '/logout/';
+                };
+
+                // Close modals on outside click
+                window.addEventListener('click', (event) => {
+                    if (event.target === logoutModal) {
+                        closeLogoutModal();
+                    }
+                });
+            });
+        </script>
+    </div>
+</body>
+</html>

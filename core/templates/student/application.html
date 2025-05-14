@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Application Page - Campus360</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Arial, sans-serif;
+    }
+
+    body {
+      display: flex;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 250px;
+      background: linear-gradient(180deg, #1e3c72 0%, #2a5298 100%);
+      color: white;
+      padding: 20px;
+      position: fixed;
+      height: 100%;
+      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .sidebar-title {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 30px;
+      text-align: center;
+      color: #ffffff;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .sidebar nav a {
+      display: flex;
+      align-items: center;
+      color: #e0e7ff;
+      text-decoration: none;
+      padding: 12px 15px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .sidebar nav a .icon {
+      margin-right: 10px;
+      font-size: 1.2rem;
+    }
+
+    .sidebar nav a:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateX(5px);
+    }
+
+    .sidebar nav a.active {
+      background: #00ddeb;
+      color: #1e3c72;
+      font-weight: 600;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Main Content */
+    .main-content {
+      margin-left: 250px;
+      padding: 40px;
+      flex: 1;
+      background: #ffffff;
+      border-radius: 20px 0 0 20px;
+      box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .main-content h2 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #1e3c72;
+      margin-bottom: 30px;
+      background: linear-gradient(to right, #1e3c72, #00ddeb);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* Loader */
+    .loader {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #00ddeb;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Degree Details */
+    .degree-details {
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      margin-bottom: 30px;
+      animation: fadeIn 0.5s ease-in;
+    }
+
+    .degree-details h3 {
+      font-size: 1.5rem;
+      color: #1e3c72;
+      margin-bottom: 15px;
+    }
+
+    .degree-details p {
+      font-size: 1rem;
+      color: #333;
+      margin-bottom: 10px;
+      transition: color 0.3s;
+    }
+
+    .degree-details p:hover {
+      color: #00ddeb;
+    }
+
+    /* Write Application Section */
+    .write-application-section {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .write-application-btn {
+      display: inline-block;
+      padding: 10px 20px;
+      background: #00ddeb;
+      color: #1e3c72;
+      font-weight: 600;
+      border-radius: 5px;
+      text-decoration: none;
+      transition: background 0.3s;
+    }
+
+    .write-application-btn:hover {
+      background: #1e3c72;
+      color: #ffffff;
+    }
+
+    /* Applications Table */
+    .applications-table {
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      animation: fadeIn 0.5s ease-in;
+    }
+
+    .applications-table h3 {
+      font-size: 1.5rem;
+      color: #1e3c72;
+      margin-bottom: 15px;
+    }
+
+    table {
+      width:  W-full;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
+    th, td {
+      padding: 15px;
+      text-align: left;
+    }
+
+    th {
+      background: #f8f9fa;
+      color: #1e3c72;
+      font-weight: 600;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+    }
+
+    td {
+      border-bottom: 1px solid #e9ecef;
+      color: #333;
+    }
+
+    tr:nth-child(even) {
+      background: #f8f9fa;
+    }
+
+    tr:hover {
+      background: #e0f7fa;
+      transition: background 0.3s;
+    }
+
+    .status {
+      padding: 6px 12px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .status.pending {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .status.approved {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status.rejected {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .view-btn {
+      padding: 6px 12px;
+      background: #1e3c72;
+      color: #ffffff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: background 0.3s;
+    }
+
+    .view-btn:hover {
+      background: #00ddeb;
+      color: #1e3c72;
+    }
+
+    /* Fade-in Animation */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 200px;
+      }
+
+      .main-content {
+        margin-left: 200px;
+        padding: 20px;
+        border-radius: 10px 0 0 10px;
+      }
+
+      .main-content h2 {
+        font-size: 2rem;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .sidebar {
+        width: 100%;
+        height: auto;
+        position: static;
+        padding: 15px;
+      }
+
+      .main-content {
+        margin-left: 0;
+        padding: 15px;
+        border-radius: 0;
+      }
+
+      table {
+        font-size: 0.85rem;
+      }
+
+      th, td {
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <h3 class="sidebar-title">Campus360</h3>
+    <nav>
+      <a href="campus360-FYP\core\templates\student\dashboard.html"><span class="icon">👤</span> Profile</a>
+      <a href="campus360-FYP\core\templates\student\enrollment.html"><span class="icon">📚</span> Enrollment</a>
+      <a href="application.html" class="active"><span class="icon">📝</span> Application</a>
+      <a href="#" onclick="logout()"><span class="icon">🚪</span> Logout</a>
+    </nav>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <h2>Application Page</h2>
+
+    <!-- Loading Spinner -->
+    <div class="loader" id="loader"></div>
+
+    <!-- Degree Details -->
+    <div class="degree-details" id="degree-details" style="display: none;">
+      <h3>Degree Details</h3>
+      <p><strong>Program:</strong> <span id="degree-program">Loading...</span></p>
+      <p><strong>Department:</strong> <span id="degree-department">Loading...</span></p>
+      <p><strong>Year:</strong> <span id="degree-year">Loading...</span></p>
+    </div>
+
+    <!-- Write Application Section -->
+    <div class="write-application-section" id="write-application-section" style="display: none;">
+      <a href="#" onclick="writeApplication()" class="write-application-btn">Write Application</a>
+    </div>
+
+    <!-- Applications Table -->
+    <div class="applications-table" id="applications-table" style="display: none;">
+      <h3>Applications</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Srno</th>
+            <th>Application ID</th>
+            <th>Application Title</th>
+            <th>Submission Date</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="applications-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // Mock API data (replace with real API calls)
+    const mockDegree = {
+      program: "Computer Science",
+      department: "Faculty of Engineering",
+      year: "3rd Year"
+    };
+
+    const mockApplications = [
+      { id: "APP001", title: "Scholarship Application", submissionDate: "2025-05-01", status: "Pending" },
+      { id: "APP002", title: "Leave Request", submissionDate: "2025-04-15", status: "Approved" },
+      { id: "APP003", title: "Course Withdrawal", submissionDate: "2025-04-20", status: "Rejected" }
+    ];
+
+    // Show loader and hide content
+    function showLoader() {
+      document.getElementById('loader').style.display = 'block';
+      document.getElementById('degree-details').style.display = 'none';
+      document.getElementById('write-application-section').style.display = 'none';
+      document.getElementById('applications-table').style.display = 'none';
+    }
+
+    // Hide loader and show content
+    function hideLoader() {
+      document.getElementById('loader').style.display = 'none';
+      document.getElementById('degree-details').style.display = 'block';
+      document.getElementById('write-application-section').style.display = 'block';
+      document.getElementById('applications-table').style.display = 'block';
+    }
+
+    // Fetch and display degree details
+    function loadDegreeDetails() {
+      setTimeout(() => {
+        document.getElementById('degree-program').textContent = mockDegree.program;
+        document.getElementById('degree-department').textContent = mockDegree.department;
+        document.getElementById('degree-year').textContent = mockDegree.year;
+        hideLoader();
+      }, 1000);
+
+      // Real API call example (uncomment and adjust):
+      /*
+      fetch('/api/student/degree')
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('degree-program').textContent = data.program || 'N/A';
+          document.getElementById('degree-department').textContent = data.department || 'N/A';
+          document.getElementById('degree-year').textContent = data.year || 'N/A';
+          hideLoader();
+        })
+        .catch(error => {
+          console.error('Error fetching degree:', error);
+          document.getElementById('degree-program').textContent = 'Error';
+          document.getElementById('degree-department').textContent = 'Error';
+          document.getElementById('degree-year').textContent = 'Error';
+          hideLoader();
+        });
+      */
+    }
+
+    // Fetch and display applications
+    function loadApplications() {
+      const tbody = document.getElementById('applications-body');
+      tbody.innerHTML = '';
+
+      setTimeout(() => {
+        if (mockApplications.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No applications found.</td></tr>';
+          return;
+        }
+
+        mockApplications.forEach((app, index) => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${index + 1}</td>
+            <td>${app.id}</td>
+            <td>${app.title}</td>
+            <td>${app.submissionDate}</td>
+            <td><span class="status ${app.status.toLowerCase()}">${app.status}</span></td>
+            <td><button class="view-btn" onclick="viewApplication('${app.id}', '${app.title}')">View</button></td>
+          `;
+          tbody.appendChild(row);
+decoder: utf-8
+        });
+      }, 1000);
+
+      // Real API call example (uncomment and adjust):
+      /*
+      fetch('/api/student/applications')
+        .then(response => response.json())
+        .then(data => {
+          if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No applications found.</td></tr>';
+            return;
+          }
+          data.forEach((app, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${index + 1}</td>
+              <td>${app.id}</td>
+              <td>${app.title || 'N/A'}</td>
+              <td>${app.submissionDate || 'N/A'}</td>
+              <td><span class="status ${app.status.toLowerCase()}">${app.status || 'N/A'}</span></td>
+              <td><button class="view-btn" onclick="viewApplication('${app.id}', '${app.title}')">View</button></td>
+            `;
+            tbody.appendChild(row);
+          });
+        })
+        .catch(error => {
+          console.error('Error fetching applications:', error);
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Error loading applications.</td></tr>';
+        });
+      */
+    }
+
+    // View application (placeholder)
+    function viewApplication(id, title) {
+      alert(`Viewing application: ${id} - ${title}`);
+      // Replace with modal or redirect, e.g.:
+      // window.location.href = `view-application.html?id=${id}`;
+    }
+
+    // Write application (placeholder)
+    function writeApplication() {
+      alert('Opening application form');
+      // Replace with form or redirect, failures e.g.:
+      // window.location.href = 'write-application.html';
+    }
+
+    // Logout (placeholder)
+    function logout() {
+      if (confirm('Are you sure you want to logout?')) {
+        alert('Logging out...');
+        window.location.href = 'login.html';
+        // Replace with real logout, e.g.:
+        /*
+        fetch('/api/logout', { method: 'POST' })
+          .then(() => {
+            window.location.href = 'login.html';
+          })
+          .catch(error => console.error('Logout failed:', error));
+        */
+      }
+    }
+
+    // Load data on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      showLoader();
+      loadDegreeDetails();
+      loadApplications();
+    });
+  </script>
+</body>
+</html>

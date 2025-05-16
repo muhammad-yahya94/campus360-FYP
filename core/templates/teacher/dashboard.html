@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard - Sunrise Institute</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #D27328;
+            --light: #fff5ee;
+            --dark: #181d38;
+        }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, var(--light) 0%, #f8e1d9 100%);
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        .sidebar {
+            background: linear-gradient(180deg, var(--dark) 0%, #2c3e50 100%);
+            color: #fff;
+            width: 270px;
+            padding: 30px 20px;
+            box-shadow: 3px 0 10px rgba(0,0,0,0.2);
+            position: fixed;
+            height: 100%;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+        .sidebar.hidden {
+            transform: translateX(-100%);
+        }
+        .sidebar h3 {
+            font-size: 1.8rem;
+            margin-bottom: 30px;
+            text-align: center;
+            color: var(--primary);
+            text-shadow: 0 0 5px rgba(0,0,0,0.3);
+            font-weight: 700;
+        }
+        .sidebar a {
+            color: #fff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            margin: 8px 0;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            background: rgba(255,255,255,0.1);
+            font-weight: 600;
+        }
+        .sidebar a:hover {
+            background: var(--primary);
+            transform: translateX(5px);
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            color: var(--light);
+        }
+        .sidebar a::before {
+            content: '\f0c1';
+            font-family: "Font Awesome 5 Free";
+            font-weight: 900;
+            margin-right: 12px;
+            font-size: 1.2rem;
+        }
+        .main-content {
+            flex-grow: 1;
+            padding: 20px;
+            margin-left: 270px;
+            transition: margin-left 0.3s ease;
+        }
+        .main-content.full-width {
+            margin-left: 0;
+        }
+        .navbar {
+            background: linear-gradient(90deg, var(--dark) 0%, #2c3e50 100%);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        .navbar span {
+            font-size: 1.3rem;
+            color: var(--light);
+            font-weight: 600;
+            text-shadow: 0 0 3px rgba(0,0,0,0.3);
+        }
+        .menu-toggle {
+            display: none;
+            background: var(--primary);
+            color: var(--light);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        .menu-toggle:hover {
+            background: #e89b5e;
+        }
+        .header {
+            background: var(--light);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: var(--dark);
+            font-size: 1.8rem;
+            background: linear-gradient(90deg, var(--primary), #e89b5e);
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .profile-header .avatar {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(45deg, var(--primary), #e89b5e);
+            color: var(--light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            box-shadow: 0 0 8px rgba(0,0,0,0.2);
+        }
+        .profile-header span {
+            color: var(--dark);
+            font-weight: 600;
+        }
+        .profile-header a {
+            color: #dc3545;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+        .profile-header a:hover {
+            color: #a71d2a;
+        }
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+        .welcome-section {
+            background: linear-gradient(135deg, var(--light) 0%, #f8e1d9 100%);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            margin-bottom: 30px;
+            color: var(--dark);
+        }
+        .welcome-section h2 {
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+            color: var(--primary);
+            font-weight: 700;
+        }
+        .welcome-section p {
+            line-height: 1.7;
+            font-size: 1rem;
+            color: #555;
+        }
+        .analytics-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .analytics-card {
+            background: var(--light);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        .analytics-card:hover {
+            transform: translateY(-5px);
+            background: linear-gradient(135deg, #fff 0%, #f8e1d9 100%);
+        }
+        .analytics-card h3 {
+            color: var(--dark);
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        .analytics-card canvas {
+            max-width: 100%;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, var(--light) 0%, #f8e1d9 100%);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            text-align: center;
+            margin-bottom: 20px;
+            color: var(--dark);
+        }
+        .stat-card h3 {
+            margin-bottom: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        .stat-card p {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--primary), #e89b5e);
+            background-clip: text; 
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Responsive Styles */
+        @media (min-width: 769px) {
+            .sidebar {
+                transform: translateX(0) !important;
+            }
+            .main-content {
+                margin-left: 270px !important;
+            }
+            .menu-toggle {
+                display: none !important;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0;
+            }
+            .menu-toggle {
+                display: block;
+            }
+            .navbar {
+                flex-direction: row;
+                align-items: center;
+            }
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            .profile-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .analytics-section {
+                grid-template-columns: 1fr;
+            }
+            .stat-card p {
+                font-size: 1.8rem;
+            }
+            .analytics-card h3 {
+                font-size: 1.1rem;
+            }
+        }
+        @media (max-width: 576px) {
+            .welcome-section h2 {
+                font-size: 1.3rem;
+            }
+            .welcome-section p {
+                font-size: 0.9rem;
+            }
+            .navbar span {
+                font-size: 1.1rem;
+            }
+            .menu-toggle {
+                padding: 6px 10px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar hidden" id="sidebar">
+        <h3>Sunrise Institute</h3>
+        <a href="#profile">Profile</a>
+        <a href="#upload-content">Upload Course Content</a>
+        <a href="#apply-leave">Apply for Leave</a>
+        <a href="#take-attendance">Take Attendance</a>
+        <a href="#track-progress">Track Student Progress</a>
+        <a href="#submit-marksheet">Submit Marksheet</a>
+        <a href="#provide-feedback">Provide Feedback</a>
+        <a href="#manage-assignments">Manage Assignments</a>
+        <a href="#submit-complaint">Submit Complaint</a>
+    </div>
+
+    <div class="main-content full-width" id="mainContent">
+        <div class="navbar">
+            <button class="menu-toggle" onclick="toggleSidebar()">Menu</button>
+            <span>Welcome to Teacher Dashboard</span>
+        </div>
+
+        <div class="header">
+            <h1>Teacher Dashboard</h1>
+            <div class="profile-header">
+                <div>
+                    <span class="avatar">TR</span>
+                    <span>Teacher Name</span>
+                </div>
+                <a href="#">Logout</a>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="welcome-section">
+                <h2>Welcome, Teacher!</h2>
+                <p>Explore the vibrant dashboard and use the sidebar to manage your profile, upload course content, track student progress, and more. Let's make teaching engaging!</p>
+            </div>
+
+            <div class="analytics-section">
+                <div class="stat-card">
+                    <h3>Total Students</h3>
+                    <p>120</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Courses Assigned</h3>
+                    <p>5</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Attendance Rate</h3>
+                    <p>92%</p>
+                </div>
+                <div class="analytics-card">
+                    <h3>Student Performance</h3>
+                    <canvas id="performanceChart"></canvas>
+                </div>
+                <div class="analytics-card">
+                    <h3>Assignment Submission</h3>
+                    <canvas id="submissionChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            sidebar.classList.toggle('hidden');
+            sidebar.classList.toggle('active');
+            mainContent.classList.toggle('full-width');
+        }
+
+        // Performance Chart
+        const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+        new Chart(performanceCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Course A', 'Course B', 'Course C', 'Course D', 'Course E'],
+                datasets: [{
+                    label: 'Average Grade (%)',
+                    data: [85, 78, 92, 65, 80],
+                    backgroundColor: ['#D27328', '#e89b5e', '#f4a261', '#e76f51', '#f4c1ab'],
+                    borderColor: '#181d38',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+
+        // Submission Chart
+        const submissionCtx = document.getElementById('submissionChart').getContext('2d');
+        new Chart(submissionCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Submitted', 'Pending', 'Late'],
+                datasets: [{
+                    data: [70, 20, 10],
+                    backgroundColor: ['#D27328', '#f4a261', '#e74c3c'],
+                    borderColor: '#fff5ee',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

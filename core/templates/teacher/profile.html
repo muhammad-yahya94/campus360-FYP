@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Profile - Sunrise Institute</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #D27328;
+            --light: #fff5ee;
+            --dark: #181d38;
+        }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, var(--light) 0%, #f8e1d9 100%);
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        .sidebar {
+            background: linear-gradient(180deg, var(--dark) 0%, #2c3e50 100%);
+            color: #fff;
+            width: 270px;
+            padding: 30px 20px;
+            box-shadow: 3px 0 10px rgba(0,0,0,0.2);
+            position: fixed;
+            height: 100%;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+        .sidebar.hidden {
+            transform: translateX(-100%);
+        }
+        .sidebar h3 {
+            font-size: 1.8rem;
+            margin-bottom: 30px;
+            text-align: center;
+            color: var(--primary);
+            text-shadow: 0 0 5px rgba(0,0,0,0.3);
+            font-weight: 700;
+        }
+        .sidebar a {
+            color: #fff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            margin: 8px 0;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            background: rgba(255,255,255,0.1);
+            font-weight: 600;
+        }
+        .sidebar a:hover {
+            background: var(--primary);
+            transform: translateX(5px);
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            color: var(--light);
+        }
+        .sidebar a::before {
+            content: '\f0c1';
+            font-family: "Font Awesome 5 Free";
+            font-weight: 900;
+            margin-right: 12px;
+            font-size: 1.2rem;
+        }
+        .sidebar a.dashboard::before {
+            content: '\f0e4'; /* Font Awesome dashboard icon */
+        }
+        .main-content {
+            flex-grow: 1;
+            padding: 20px;
+            margin-left: 270px;
+            transition: margin-left 0.3s ease;
+        }
+        .main-content.full-width {
+            margin-left: 0;
+        }
+        .navbar {
+            background: linear-gradient(90deg, var(--dark) 0%, #2c3e50 100%);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        .navbar span {
+            font-size: 1.3rem;
+            color: var(--light);
+            font-weight: 600;
+            text-shadow: 0 0 3px rgba(0,0,0,0.3);
+        }
+        .menu-toggle {
+            display: none;
+            background: var(--primary);
+            color: var(--light);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        .menu-toggle:hover {
+            background: #e89b5e;
+        }
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+        .profile-section {
+            background: var(--light);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            display: flex;
+            gap: 30px;
+            color: var(--dark);
+        }
+        .profile-picture {
+            flex: 0 0 auto;
+        }
+        .profile-picture img {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid var(--primary);
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+        }
+        .profile-picture img:hover {
+            transform: scale(1.05);
+        }
+        .profile-info {
+            flex: 1;
+        }
+        .profile-info h2 {
+            font-size: 1.8rem;
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 20px;
+            background: linear-gradient(90deg, var(--primary), #e89b5e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .profile-info .info-item {
+            margin-bottom: 15px;
+            font-size: 1rem;
+        }
+        .profile-info .info-item label {
+            font-weight: 600;
+            color: var(--dark);
+            display: inline-block;
+            width: 150px;
+        }
+        .profile-info .info-item span {
+            color: #555;
+        }
+        .edit-button {
+            background: var(--primary);
+            color: var(--light);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            margin-top: 20px;
+        }
+        .edit-button:hover {
+            background: #e89b5e;
+        }
+
+        /* Responsive Styles */
+        @media (min-width: 769px) {
+            .sidebar {
+                transform: translateX(0) !important;
+            }
+            .main-content {
+                margin-left: 270px !important;
+            }
+            .menu-toggle {
+                display: none !important;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0;
+            }
+            .menu-toggle {
+                display: block;
+            }
+            .navbar {
+                flex-direction: row;
+                align-items: center;
+            }
+            .profile-section {
+                flex-direction: column;
+                align-items: center;
+                gap: 20px;
+            }
+            .profile-picture img {
+                width: 150px;
+                height: 150px;
+            }
+            .profile-info .info-item label {
+                width: 120px;
+            }
+        }
+        @media (max-width: 576px) {
+            .profile-info h2 {
+                font-size: 1.5rem;
+            }
+            .profile-info .info-item {
+                font-size: 0.9rem;
+            }
+            .profile-info .info-item label {
+                width: 100px;
+            }
+            .navbar span {
+                font-size: 1.1rem;
+            }
+            .menu-toggle {
+                padding: 6px 10px;
+                font-size: 0.9rem;
+            }
+            .edit-button {
+                padding: 8px 15px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar" id="sidebar">
+        <h3>Sunrise Institute</h3>
+        <a href="teacher_dashboard.html" class="dashboard">Dashboard</a>
+        <a href="#profile">Profile</a>
+        <a href="#upload-content">Upload Course Content</a>
+        <a href="#apply-leave">Apply for Leave</a>
+        <a href="#take-attendance">Take Attendance</a>
+        <a href="#track-progress">Track Student Progress</a>
+        <a href="#submit-marksheet">Submit Marksheet</a>
+        <a href="#provide-feedback">Provide Feedback</a>
+        <a href="#manage-assignments">Manage Assignments</a>
+        <a href="#submit-complaint">Submit Complaint</a>
+    </div>
+
+    <div class="main-content" id="mainContent">
+        <div class="navbar">
+            <button class="menu-toggle" onclick="toggleSidebar()">Menu</button>
+            <span>Teacher Profile</span>
+        </div>
+
+        <div class="container">
+            <div class="profile-section">
+                <div class="profile-picture">
+                    <img src="https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg" alt="Teacher Profile Picture">
+                </div>
+                <div class="profile-info">
+                    <h2>Teacher Profile</h2>
+                    <div class="info-item">
+                        <label>Full Name:</label>
+                        <span>John Doe</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Teacher ID:</label>
+                        <span>TD123456</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Email:</label>
+                        <span>johndoe@sunriseinstitute.edu</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Contact:</label>
+                        <span>+92 123 456 7890</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Gender:</label>
+                        <span>Male</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Department:</label>
+                        <span>Computer Science</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Courses Assigned:</label>
+                        <span>Data Structures, Algorithms</span>
+                    </div>
+                    <button class="edit-button">Edit Profile</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            sidebar.classList.toggle('hidden');
+            sidebar.classList.toggle('active');
+            mainContent.classList.toggle('full-width');
+        }
+    </script>
+</body>
+</html>

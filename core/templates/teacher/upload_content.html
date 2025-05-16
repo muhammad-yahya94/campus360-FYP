@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Course Content - Sunrise Institute</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #D27328;
+            --light: #fff5ee;
+            --dark: #181d38;
+        }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, var(--light) 0%, #f8e1d9 100%);
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+            font-size: 16px;
+        }
+        .sidebar {
+            background: linear-gradient(180deg, var(--dark) 0%, #2c3e50 100%);
+            color: #fff;
+            width: 270px;
+            padding: 20px;
+            box-shadow: 3px 0 10px rgba(0,0,0,0.2);
+            position: fixed;
+            height: 100%;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            overflow-x: hidden;
+        }
+        .sidebar.hidden {
+            transform: translateX(-100%);
+        }
+        .sidebar h3 {
+            font-size: 1.6rem;
+            margin-bottom: 20px;
+            text-align: center;
+            color: var(--primary);
+            text-shadow: 0 0 5px rgba(0,0,0,0.3);
+            font-weight: 700;
+        }
+        .sidebar a {
+            color: #fff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            margin: 6px 0;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            background: rgba(255,255,255,0.1);
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        .sidebar a:hover {
+            background: var(--primary);
+            transform: translateX(5px);
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            color: var(--light);
+        }
+        .sidebar a::before {
+            content: '\f0c1';
+            font-family: "Font Awesome 5 Free";
+            font-weight: 900;
+            margin-right: 10px;
+            font-size: 1.1rem;
+        }
+        .sidebar a.dashboard::before {
+            content: '\f0e4';
+        }
+        .sidebar a.upload-content::before {
+            content: '\f093';
+        }
+        .close-sidebar {
+            display: none;
+            background: var(--primary);
+            color: var(--light);
+            border: none;
+            padding: 8px;
+            border-radius: 50%;
+            font-size: 1rem;
+            cursor: pointer;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 32px;
+            height: 32px;
+            text-align: center;
+            transition: background 0.3s ease;
+        }
+        .close-sidebar:hover {
+            background: #e89b5e;
+        }
+        .main-content {
+            flex-grow: 1;
+            padding: 15px;
+            margin-left: 270px;
+            transition: margin-left 0.3s ease;
+            overflow-x: hidden;
+        }
+        .main-content.full-width {
+            margin-left: 0;
+        }
+        .navbar {
+            background: linear-gradient(90deg, var(--dark) 0%, #2c3e50 100%);
+            padding: 12px 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .navbar span {
+            font-size: 1.2rem;
+            color: var(--light);
+            font-weight: 600;
+            text-shadow: 0 0 3px rgba(0,0,0,0.3);
+        }
+        .menu-toggle {
+            display: none;
+            background: var(--primary);
+            color: var(--light);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        .menu-toggle:hover {
+            background: #e89b5e;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 10px;
+            overflow-x: hidden;
+        }
+        .upload-section {
+            background: var(--light);
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            color: var(--dark);
+            margin-bottom: 25px;
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+        .upload-section h2 {
+            font-size: 1.6rem;
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 15px;
+            background: linear-gradient(90deg, var(--primary), #e89b5e);
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .upload-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-width: 100%;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-width: 100%;
+        }
+        .form-group label {
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 0.95rem;
+        }
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-family: 'Nunito', sans-serif;
+            background: #fff;
+            transition: border-color 0.3s ease;
+            max-width: 100%;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        .submit-button {
+            background: var(--primary);
+            color: var(--light);
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            align-self: flex-start;
+            max-width: 100%;
+        }
+        .submit-button:hover {
+            background: #e89b5e;
+        }
+        .history-section {
+            background: var(--light);
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            color: var(--dark);
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+        .history-section h2 {
+            font-size: 1.6rem;
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 15px;
+            background: linear-gradient(90deg, var(--primary), #e89b5e);
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+        .history-table th,
+        .history-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .history-table th {
+            background: linear-gradient(90deg, var(--primary), #e89b5e);
+            color: var(--light);
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .history-table tr:hover {
+            background: #f8e1d9;
+        }
+        .history-table .status-approved {
+            color: #28a745;
+            font-weight: 600;
+        }
+        .history-table .status-pending {
+            color: #ffc107;
+            font-weight: 600;
+        }
+        .history-table .status-rejected {
+            color: #dc3545;
+            font-weight: 600;
+        }
+
+        /* Responsive Styles */
+        @media (min-width: 1200px) {
+            .container {
+                max-width: 1600px;
+            }
+            .upload-section,
+            .history-section {
+                padding: 30px;
+            }
+            .upload-section h2,
+            .history-section h2 {
+                font-size: 1.8rem;
+            }
+            .form-group input,
+            .form-group textarea,
+            .form-group select {
+                padding: 10px;
+                font-size: 1rem;
+            }
+            .history-table {
+                font-size: 1rem;
+            }
+            .history-table th,
+            .history-table td {
+                padding: 12px;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .sidebar {
+                transform: translateX(0) !important;
+            }
+            .main-content {
+                margin-left: 270px !important;
+            }
+            .menu-toggle {
+                display: none !important;
+            }
+            .close-sidebar {
+                display: none !important;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 220px;
+            }
+            .main-content {
+                margin-left: 220px;
+            }
+            .main-content.full-width {
+                margin-left: 0;
+            }
+            .upload-section,
+            .history-section {
+                padding: 20px;
+            }
+            .upload-form {
+                gap: 12px;
+            }
+            .history-table {
+                font-size: 0.9rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                width: 200px;
+            }
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0;
+                padding: 10px;
+            }
+            .menu-toggle {
+                display: block;
+            }
+            .close-sidebar {
+                display: block;
+            }
+            .navbar {
+                flex-direction: row;
+                align-items: center;
+                padding: 10px;
+            }
+            .navbar span {
+                font-size: 1.1rem;
+            }
+            .upload-section {
+                padding: 12px;
+                margin-bottom: 15px;
+                max-width: 100%;
+                width: 100%;
+            }
+            .history-section {
+                padding: 15px;
+                margin-bottom: 15px;
+            }
+            .upload-form {
+                gap: 10px;
+            }
+            .form-group label {
+                font-size: 0.9rem;
+                line-height: 1.4;
+            }
+            .form-group input,
+            .form-group textarea,
+            .form-group select {
+                font-size: 0.9rem;
+                padding: 10px;
+                min-height: 44px;
+                border-radius: 5px;
+                max-width: 100%;
+            }
+            .form-group textarea {
+                min-height: 70px;
+            }
+            .submit-button {
+                width: 100%;
+                padding: 12px;
+                font-size: 0.9rem;
+                border-radius: 6px;
+                min-height: 48px;
+            }
+            .history-table {
+                font-size: 0.85rem;
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+            .history-table th,
+            .history-table td {
+                padding: 8px;
+                min-width: 120px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            body {
+                font-size: 14px;
+            }
+            .sidebar {
+                width: 180px;
+                padding: 15px;
+            }
+            .sidebar h3 {
+                font-size: 1.4rem;
+                margin-bottom: 15px;
+            }
+            .sidebar a {
+                padding: 8px 10px;
+                font-size: 0.85rem;
+            }
+            .sidebar a::before {
+                font-size: 1rem;
+                margin-right: 8px;
+            }
+            .close-sidebar {
+                top: 15px;
+                right: 15px;
+                width: 28px;
+                height: 28px;
+                font-size: 0.9rem;
+            }
+            .navbar {
+                padding: 8px 10px;
+            }
+            .navbar span {
+                font-size: 1rem;
+            }
+            .menu-toggle {
+                padding: 6px 10px;
+                font-size: 0.85rem;
+                min-height: 36px;
+            }
+            .container {
+                padding: 0 5px;
+            }
+            .upload-section h2,
+            .history-section h2 {
+                font-size: 1.4rem;
+                margin-bottom: 12px;
+            }
+            .upload-section {
+                padding: 10px;
+                margin-bottom: 12px;
+            }
+            .history-section {
+                padding: 12px;
+                margin-bottom: 12px;
+            }
+            .upload-form {
+                gap: 8px;
+            }
+            .form-group label {
+                font-size: 0.85rem;
+                line-height: 1.4;
+            }
+            .form-group input,
+            .form-group textarea,
+            .form-group select {
+                font-size: 0.85rem;
+                padding: 8px;
+                min-height: 40px;
+                border-radius: 4px;
+            }
+            .form-group textarea {
+                min-height: 60px;
+            }
+            .submit-button {
+                padding: 10px;
+                font-size: 0.85rem;
+                min-height: 44px;
+            }
+            .history-table {
+                font-size: 0.8rem;
+            }
+            .history-table th,
+            .history-table td {
+                padding: 6px;
+                min-width: 100px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .sidebar {
+                width: 160px;
+            }
+            .sidebar h3 {
+                font-size: 1.2rem;
+            }
+            .sidebar a {
+                padding: 6px 8px;
+                font-size: 0.8rem;
+            }
+            .close-sidebar {
+                top: 12px;
+                right: 12px;
+                width: 24px;
+                height: 24px;
+                font-size: 0.8rem;
+            }
+            .navbar span {
+                font-size: 0.9rem;
+            }
+            .menu-toggle {
+                padding: 5px 8px;
+                font-size: 0.8rem;
+                min-height: 32px;
+            }
+            .upload-section h2,
+            .history-section h2 {
+                font-size: 1.2rem;
+            }
+            .upload-section {
+                padding: 8px;
+                margin-bottom: 10px;
+            }
+            .history-section {
+                padding: 10px;
+                margin-bottom: 10px;
+            }
+            .form-group label {
+                font-size: 0.8rem;
+                line-height: 1.3;
+            }
+            .form-group input,
+            .form-group textarea,
+            .form-group select {
+                font-size: 0.8rem;
+                padding: 7px;
+                min-height: 36px;
+                border-radius: 4px;
+            }
+            .form-group textarea {
+                min-height: 50px;
+            }
+            .submit-button {
+                font-size: 0.8rem;
+                padding: 8px;
+                min-height: 40px;
+            }
+            .history-table {
+                font-size: 0.75rem;
+            }
+            .history-table th,
+            .history-table td {
+                padding: 5px;
+                min-width: 80px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar" id="sidebar">
+        <button class="close-sidebar" onclick="toggleSidebar()">✕</button>
+        <h3>Sunrise Institute</h3>
+        <a href="teacher_dashboard.html" class="dashboard">Dashboard</a>
+        <a href="teacher_profile.html">Profile</a>
+        <a href="upload_course_content.html" class="upload-content">Upload Course Content</a>
+        <a href="apply_for_leave.html" class="apply-leave">Apply for Leave</a>
+        <a href="#take-attendance">Take Attendance</a>
+        <a href="#track-progress">Track Student Progress</a>
+        <a href="#submit-marksheet">Submit Marksheet</a>
+        <a href="#provide-feedback">Provide Feedback</a>
+        <a href="#manage-assignments">Manage Assignments</a>
+        <a href="#submit-complaint">Submit Complaint</a>
+    </div>
+
+    <div class="main-content" id="mainContent">
+        <div class="navbar">
+            <button class="menu-toggle" onclick="toggleSidebar()">Menu</button>
+            <span>Upload Course Content</span>
+        </div>
+
+        <div class="container">
+            <div class="upload-section">
+                <h2>Upload Course Content</h2>
+                <form class="upload-form">
+                    <div class="form-group">
+                        <label for="course-title">Course Title</label>
+                        <input type="text" id="course-title" name="course-title" placeholder="Enter course title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea id="description" name="description" placeholder="Provide a brief description of the course content" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="file-upload">Upload File</label>
+                        <input type="file" id="file-upload" name="file-upload" accept=".pdf,.doc,.docx,.ppt,.pptx" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="category">Category</label>
+                        <select id="category" name="category" required>
+                            <option value="" disabled selected>Select category</option>
+                            <option value="lecture">Lecture Notes</option>
+                            <option value="assignment">Assignment</option>
+                            <option value="quiz">Quiz</option>
+                            <option value="reading">Reading Material</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="submit-button">Upload Content</button>
+                </form>
+            </div>
+
+            <div class="history-section">
+                <h2>Upload History</h2>
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Sr. No.</th>
+                            <th>Course Title</th>
+                            <th>Category</th>
+                            <th>Submission Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1</td>
+                            <td>Introduction to Calculus</td>
+                            <td>Lecture Notes</td>
+                            <td>2025-04-05</td>
+                            <td class="status-approved">Approved</td>
+                        </tr>
+                        <tr>
+                            <td>2</td>
+                            <td>Programming Assignment 1</td>
+                            <td>Assignment</td>
+                            <td>2025-03-20</td>
+                            <td class="status-pending">Pending</td>
+                        </tr>
+                        <tr>
+                            <td>3</td>
+                            <td>Physics Quiz</td>
+                            <td>Quiz</td>
+                            <td>2025-02-15</td>
+                            <td class="status-rejected">Rejected</td>
+                        </tr>
+                        <tr>
+                            <td>4</td>
+                            <td>Recommended Reading List</td>
+                            <td>Reading Material</td>
+                            <td>2025-05-10</td>
+                            <td class="status-approved">Approved</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            sidebar.classList.toggle('hidden');
+            sidebar.classList.toggle('active');
+            mainContent.classList.toggle('full-width');
+        }
+    </script>
+</body>
+</html>

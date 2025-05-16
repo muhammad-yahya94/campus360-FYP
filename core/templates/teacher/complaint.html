@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submit Complaint - Sunrise Institute</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #D27328;
+            --light: #fff5ee;
+            --dark: #181d38;
+        }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, var(--light) 0%, #f8e1d9 100%);
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+            font-size: 16px;
+        }
+        .sidebar {
+            background: linear-gradient(180deg, var(--dark) 0%, #2c3e50 100%);
+            color: #fff;
+            width: 270px;
+            padding: 20px;
+            box-shadow: 3px 0 10px rgba(0,0,0,0.2);
+            position: fixed;
+            height: 100%;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            overflow-x: hidden;
+        }
+        .sidebar.hidden {
+            transform: translateX(-100%);
+        }
+        .sidebar h3 {
+            font-size: 1.6rem;
+            margin-bottom: 20px;
+            text-align: center;
+            color: var(--primary);
+            text-shadow: 0 0 5px rgba(0,0,0,0.3);
+            font-weight: 700;
+        }
+        .sidebar a {
+            color: #fff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            margin: 6px 0;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            background: rgba(255,255,255,0.1);
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        .sidebar a:hover {
+            background: var(--primary);
+            transform: translateX(5px);
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            color: var(--light);
+        }
+        .sidebar a::before {
+            content: '\f0c1';
+            font-family: "Font Awesome 5 Free";
+            font-weight: 900;
+            margin-right: 10px;
+            font-size: 1.1rem;
+        }
+        .sidebar a.dashboard::before { content: '\f0e4'; }
+        .sidebar a.take-attendance::before { content: '\f0c0'; }
+        .sidebar a.track-progress::before { content: '\f080'; }
+        .sidebar a.submit-marksheet::before { content: '\f15c'; }
+        .sidebar a.manage-assignments::before { content: '\f0ae'; }
+        .sidebar a.submit-complaint::before { content: '\f086'; }
+        .close-sidebar {
+            display: none;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 8px;
+            border-radius: 50%;
+            font-size: 1rem;
+            cursor: pointer;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 32px;
+            height: 32px;
+            text-align: center;
+            transition: background 0.3s ease;
+        }
+        .close-sidebar:hover {
+            background: #e89b5e;
+        }
+        .main-content {
+            flex-grow: 1;
+            padding: 15px;
+            margin-left: 270px;
+            transition: margin-left 0.3s ease;
+            overflow-x: hidden;
+        }
+        .main-content.full-width {
+            margin-left: 0;
+        }
+        .navbar {
+            background: linear-gradient(90deg, var(--dark) 0%, #2c3e50 100%);
+            padding: 12px 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .navbar span {
+            font-size: 1.2rem;
+            color: #fff;
+            font-weight: 600;
+            text-shadow: 0 0 3px rgba(0,0,0,0.3);
+        }
+        .menu-toggle {
+            display: none;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        .menu-toggle:hover {
+            background: #e89b5e;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 10px;
+            overflow-x: hidden;
+        }
+        .complaint-section, .submitted-complaints-section {
+            background: var(--light);
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            color: var(--dark);
+            margin-bottom: 25px;
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+        .complaint-section h2, .submitted-complaints-section h2 {
+            font-size: 1.6rem;
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 15px;
+            background: linear-gradient(90deg, var(--primary), #e89b5e);
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .complaint-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-width: 100%;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-width: 100%;
+        }
+        .form-group label {
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 0.95rem;
+        }
+        .form-group input[type="text"], .form-group textarea, .form-group input[type="file"] {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-family: 'Nunito', sans-serif;
+            background: #fff;
+            transition: border-color 0.3s ease;
+            max-width: 100%;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        .form-group input:focus, .form-group textarea:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+        .complaints-table, .view-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+            margin-top: 15px;
+            display: none;
+        }
+        .complaints-table th, .view-table th, .complaints-table td, .view-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .complaints-table th, .view-table th {
+            background: linear-gradient(90deg, var(--primary), #e89b5e);
+            color: #fff;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .complaints-table tr:hover, .view-table tr:hover {
+            background: #f8e1d9;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .submit-button, .view-button, .view-close {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            max-width: 100%;
+        }
+        .submit-button:hover, .view-button:hover, .view-close:hover {
+            background: #e89b5e;
+        }
+        .view-dialog {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        .view-dialog-content {
+            background: var(--light);
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 800px;
+            width: 90%;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            position: relative;
+            overflow-x: auto;
+        }
+        .view-dialog-content h3 {
+            font-size: 1.4rem;
+            color: var(--primary);
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+        .view-dialog-content .view-table {
+            display: table;
+            margin-bottom: 20px;
+        }
+        .view-close {
+            width: 100%;
+        }
+
+        /* Responsive Styles */
+        @media (min-width: 1200px) {
+            .container { max-width: 1600px; }
+            .complaint-section, .submitted-complaints-section { padding: 30px; }
+            .complaint-section h2, .submitted-complaints-section h2 { font-size: 1.8rem; }
+            .form-group input, .form-group textarea, .complaints-table, .view-table { font-size: 1rem; }
+            .complaints-table th, .complaints-table td, .view-table th, .view-table td { padding: 12px; }
+            .view-dialog-content { padding: 25px; }
+            .view-dialog-content h3 { font-size: 1.6rem; }
+        }
+        @media (min-width: 769px) {
+            .sidebar { transform: translateX(0) !important; }
+            .main-content { margin-left: 270px !important; }
+            .menu-toggle, .close-sidebar { display: none !important; }
+        }
+        @media (max-width: 1024px) {
+            .sidebar { width: 220px; }
+            .main-content { margin-left: 220px; }
+            .main-content.full-width { margin-left: 0; }
+            .complaint-section, .submitted-complaints-section { padding: 20px; }
+            .complaint-form { gap: 12px; }
+            .complaints-table, .view-table { font-size: 0.9rem; }
+            .view-dialog-content { max-width: 700px; }
+        }
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); width: 200px; }
+            .sidebar.active { transform: translateX(0); }
+            .main-content { margin-left: 0; padding: 10px; }
+            .menu-toggle, .close-sidebar { display: block; }
+            .navbar { flex-direction: row; align-items: center; padding: 10px; }
+            .navbar span { font-size: 1.1rem; }
+            .complaint-section, .submitted-complaints-section { padding: 12px; margin-bottom: 15px; max-width: 100%; width: 100%; }
+            .complaint-form { gap: 10px; }
+            .form-group label { font-size: 0.9rem; line-height: 1.4; }
+            .form-group input, .form-group textarea { font-size: 0.9rem; padding: 10px; min-height: 44px; border-radius: 5px; max-width: 100%; }
+            .submit-button, .view-button, .view-close { width: 100%; padding: 12px; font-size: 0.9rem; border-radius: 6px; min-height: 48px; }
+            .complaints-table, .view-table { font-size: 0.85rem; display: block; overflow-x: auto; white-space: nowrap; }
+            .complaints-table th, .complaints-table td, .view-table th, .view-table td { padding: 8px; min-width: 80px; }
+            .view-dialog-content { padding: 15px; max-width: 90%; }
+            .view-dialog-content h3 { font-size: 1.3rem; }
+            .view-close { padding: 10px; min-height: 44px; }
+        }
+        @media (max-width: 576px) {
+            body { font-size: 14px; }
+            .sidebar { width: 180px; padding: 15px; }
+            .sidebar h3 { font-size: 1.4rem; margin-bottom: 15px; }
+            .sidebar a { padding: 8px 10px; font-size: 0.85rem; }
+            .sidebar a::before { font-size: 1rem; margin-right: 8px; }
+            .close-sidebar { top: 15px; right: 15px; width: 28px; height: 28px; font-size: 0.9rem; }
+            .navbar { padding: 8px 10px; }
+            .navbar span { font-size: 1rem; }
+            .menu-toggle { padding: 6px 10px; font-size: 0.85rem; min-height: 36px; }
+            .container { padding: 0 5px; }
+            .complaint-section h2, .submitted-complaints-section h2 { font-size: 1.4rem; margin-bottom: 12px; }
+            .complaint-section, .submitted-complaints-section { padding: 10px; margin-bottom: 12px; }
+            .complaint-form { gap: 8px; }
+            .form-group label { font-size: 0.85rem; line-height: 1.4; }
+            .form-group input, .form-group textarea { font-size: 0.85rem; padding: 8px; min-height: 40px; border-radius: 4px; }
+            .submit-button, .view-button, .view-close { padding: 10px; font-size: 0.85rem; min-height: 44px; }
+            .complaints-table, .view-table { font-size: 0.8rem; }
+            .complaints-table th, .complaints-table td, .view-table th, .view-table td { padding: 6px; min-width: 70px; }
+            .view-dialog-content { padding: 12px; }
+            .view-dialog-content h3 { font-size: 1.2rem; }
+            .view-close { padding: 8px; min-height: 40px; }
+        }
+        @media (max-width: 360px) {
+            .sidebar { width: 160px; }
+            .sidebar h3 { font-size: 1.2rem; }
+            .sidebar a { padding: 6px 8px; font-size: 0.8rem; }
+            .close-sidebar { top: 12px; right: 12px; width: 24px; height: 24px; font-size: 0.8rem; }
+            .navbar span { font-size: 0.9rem; }
+            .menu-toggle { padding: 5px 8px; font-size: 0.8rem; min-height: 32px; }
+            .complaint-section h2, .submitted-complaints-section h2 { font-size: 1.2rem; }
+            .complaint-section, .submitted-complaints-section { padding: 8px; margin-bottom: 10px; }
+            .form-group label { font-size: 0.8rem; line-height: 1.3; }
+            .form-group input, .form-group textarea { font-size: 0.8rem; padding: 7px; min-height: 36px; border-radius: 4px; }
+            .submit-button, .view-button, .view-close { font-size: 0.8rem; padding: 8px; min-height: 40px; }
+            .complaints-table, .view-table { font-size: 0.75rem; }
+            .complaints-table th, .complaints-table td, .view-table th, .view-table td { padding: 5px; min-width: 60px; }
+            .view-dialog-content { padding: 10px; }
+            .view-dialog-content h3 { font-size: 1.1rem; }
+            .view-close { padding: 7px; min-height: 36px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar" id="sidebar">
+        <button class="close-sidebar" onclick="toggleSidebar()">✕</button>
+        <h3>Sunrise Institute</h3>
+        <a href="teacher_dashboard.html" class="dashboard">Dashboard</a>
+        <a href="teacher_profile.html">Profile</a>
+        <a href="upload_course_content.html" class="upload-content">Upload Course Content</a>
+        <a href="apply_for_leave.html" class="apply-leave">Apply for Leave</a>
+        <a href="take_attendance.html" class="take-attendance">Take Attendance</a>
+        <a href="track_student_progress.html" class="track-progress">Track Student Progress</a>
+        <a href="submit_marksheet.html" class="submit-marksheet">Submit Marksheet</a>
+        <a href="manage_assignments.html" class="manage-assignments">Manage Assignments</a>
+        <a href="#provide-feedback">Provide Feedback</a>
+        <a href="submit_complaint.html" class="submit-complaint">Submit Complaint</a>
+    </div>
+
+    <div class="main-content" id="mainContent">
+        <div class="navbar">
+            <button class="menu-toggle" onclick="toggleSidebar()">Menu</button>
+            <span>Submit Complaint</span>
+        </div>
+
+        <div class="container">
+            <div class="complaint-section">
+                <h2>Submit New Complaint</h2>
+                <form class="complaint-form" id="complaint-form">
+                    <div class="form-group">
+                        <label for="complaint-title">Complaint Title</label>
+                        <input type="text" id="complaint-title" name="complaint-title" required placeholder="Enter complaint title">
+                    </div>
+                    <div class="form-group">
+                        <label for="complaint-description">Description</label>
+                        <textarea id="complaint-description" name="complaint-description" required placeholder="Describe the issue in detail"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="attachment">Attachment (Optional)</label>
+                        <input type="file" id="attachment" name="attachment" accept=".pdf,.doc,.docx,.jpg,.png">
+                    </div>
+                    <div class="action-buttons">
+                        <button type="button" class="submit-button" onclick="submitComplaint()">Submit Complaint</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="submitted-complaints-section">
+                <h2>Submitted Complaints</h2>
+                <table class="complaints-table" id="complaints-table">
+                    <thead>
+                        <tr>
+                            <th>SR.no</th>
+                            <th>Title</th>
+                            <th>Submission Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="complaints-table-body">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Dialog for viewing complaint details -->
+        <div class="view-dialog" id="view-dialog">
+            <div class="view-dialog-content">
+                <h3 id="view-dialog-title">Complaint Details</h3>
+                <table class="view-table" id="view-table">
+                    <thead>
+                        <tr>
+                            <th>Attribute</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="view-table-body">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+                <button class="view-close" onclick="closeViewDialog()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let submittedComplaints = [];
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            sidebar.classList.toggle('hidden');
+            sidebar.classList.toggle('active');
+            mainContent.classList.toggle('full-width');
+        }
+
+        function submitComplaint() {
+            const title = document.getElementById('complaint-title').value;
+            const description = document.getElementById('complaint-description').value;
+            const attachment = document.getElementById('attachment').files[0];
+
+            if (!title) {
+                alert('Please enter a complaint title.');
+                return;
+            }
+            if (!description) {
+                alert('Please provide a description.');
+                return;
+            }
+
+            // Record complaint
+            const complaint = {
+                title,
+                description,
+                attachment: attachment ? attachment.name : 'None',
+                submissionDate: new Date().toLocaleString()
+            };
+            submittedComplaints.push(complaint);
+
+            // Update complaints table
+            updateComplaintsTable();
+
+            // Reset form
+            document.getElementById('complaint-form').reset();
+
+            alert('Complaint submitted successfully!');
+        }
+
+        function updateComplaintsTable() {
+            const tableBody = document.getElementById('complaints-table-body');
+            const table = document.getElementById('complaints-table');
+
+            tableBody.innerHTML = '';
+            submittedComplaints.forEach((complaint, index) => {
+                tableBody.innerHTML += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${complaint.title}</td>
+                        <td>${complaint.submissionDate}</td>
+                        <td><button class="view-button" onclick="viewComplaint(${index})">View</button></td>
+                    </tr>
+                `;
+            });
+
+            table.style.display = submittedComplaints.length > 0 ? 'table' : 'none';
+        }
+
+        function viewComplaint(index) {
+            const complaint = submittedComplaints[index];
+            const dialog = document.getElementById('view-dialog');
+            const dialogTitle = document.getElementById('view-dialog-title');
+            const tableBody = document.getElementById('view-table-body');
+            const table = document.getElementById('view-table');
+
+            dialogTitle.textContent = `Complaint: ${complaint.title}`;
+            tableBody.innerHTML = `
+                <tr><td>Title</td><td>${complaint.title}</td></tr>
+                <tr><td>Description</td><td>${complaint.description}</td></tr>
+                <tr><td>Attachment</td><td>${complaint.attachment}</td></tr>
+                <tr><td>Submission Date</td><td>${complaint.submissionDate}</td></tr>
+            `;
+
+            table.style.display = 'table';
+            dialog.style.display = 'flex';
+        }
+
+        function closeViewDialog() {
+            const dialog = document.getElementById('view-dialog');
+            const table = document.getElementById('view-table');
+            dialog.style.display = 'none';
+            table.style.display = 'none';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Track Student Progress - Sunrise Institute</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #D27328;
+            --light: #fff5ee;
+            --dark: #181d38;
+        }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, var(--light) 0%, #f8e1d9 100%);
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+            font-size: 16px;
+        }
+        .sidebar {
+            background: linear-gradient(180deg, var(--dark) 0%, #2c3e50 100%);
+            color: #fff;
+            width: 270px;
+            padding: 20px;
+            box-shadow: 3px 0 10px rgba(0,0,0,0.2);
+            position: fixed;
+            height: 100%;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            overflow-x: hidden;
+        }
+        .sidebar.hidden {
+            transform: translateX(-100%);
+        }
+        .sidebar h3 {
+            font-size: 1.6rem;
+            margin-bottom: 20px;
+            text-align: center;
+            color: var(--primary);
+            text-shadow: 0 0 5px rgba(0,0,0,0.3);
+            font-weight: 700;
+        }
+        .sidebar a {
+            color: #fff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            margin: 6px 0;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            background: rgba(255,255,255,0.1);
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        .sidebar a:hover {
+            background: var(--primary);
+            transform: translateX(5px);
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            color: var(--light);
+        }
+        .sidebar a::before {
+            content: '\f0c1';
+            font-family: "Font Awesome 5 Free";
+            font-weight: 900;
+            margin-right: 10px;
+            font-size: 1.1rem;
+        }
+        .sidebar a.dashboard::before {
+            content: '\f0e4';
+        }
+        .sidebar a.take-attendance::before {
+            content: '\f0c0';
+        }
+        .sidebar a.track-progress::before {
+            content: '\f080';
+        }
+        .close-sidebar {
+            display: none;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 8px;
+            border-radius: 50%;
+            font-size: 1rem;
+            cursor: pointer;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 32px;
+            height: 32px;
+            text-align: center;
+            transition: background 0.3s ease;
+        }
+        .close-sidebar:hover {
+            background: #e89b5e;
+        }
+        .main-content {
+            flex-grow: 1;
+            padding: 15px;
+            margin-left: 270px;
+            transition: margin-left 0.3s ease;
+            overflow-x: hidden;
+        }
+        .main-content.full-width {
+            margin-left: 0;
+        }
+        .navbar {
+            background: linear-gradient(90deg, var(--dark) 0%, #2c3e50 100%);
+            padding: 12px 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .navbar span {
+            font-size: 1.2rem;
+            color: #fff;
+            font-weight: 600;
+            text-shadow: 0 0 3px rgba(0,0,0,0.3);
+        }
+        .menu-toggle {
+            display: none;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        .menu-toggle:hover {
+            background: #e89b5e;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 10px;
+            overflow-x: hidden;
+        }
+        .progress-section {
+            background: var(--light);
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            color: var(--dark);
+            margin-bottom: 25px;
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+        .progress-section h2 {
+            font-size: 1.6rem;
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 15px;
+            background: linear-gradient(90deg, var(--primary), #e89b5e);
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .progress-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-width: 100%;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-width: 100%;
+        }
+        .form-group label {
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 0.95rem;
+        }
+        .form-group select {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-family: 'Nunito', sans-serif;
+            background: #fff;
+            transition: border-color 0.3s ease;
+            max-width: 100%;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .form-group select:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+        .view-button {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            align-self: flex-start;
+            max-width: 100%;
+        }
+        .view-button:hover {
+            background: #e89b5e;
+        }
+        .progress-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+            margin-top: 15px;
+            display: none;
+        }
+        .progress-table th,
+        .progress-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .progress-table th {
+            background: linear-gradient(90deg, var(--primary), #e89b5e);
+            color: #fff;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .progress-table tr:hover {
+            background: #f8e1d9;
+        }
+        .summary-section {
+            background: var(--light);
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            color: var(--dark);
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+        .summary-section h2 {
+            font-size: 1.6rem;
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 15px;
+            background: linear-gradient(90deg, var(--primary), #e89b5e);
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+        .summary-table th,
+        .summary-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .summary-table th {
+            background: linear-gradient(90deg, var(--primary), #e89b5e);
+            color: #fff;
+            font-weight: 600;
+        }
+        .summary-table tr:hover {
+            background: #f8e1d9;
+        }
+
+        /* Responsive Styles */
+        @media (min-width: 1200px) {
+            .container { max-width: 1600px; }
+            .progress-section, .summary-section { padding: 30px; }
+            .progress-section h2, .summary-section h2 { font-size: 1.8rem; }
+            .form-group select, .progress-table, .summary-table { font-size: 1rem; }
+            .progress-table th, .progress-table td, .summary-table th, .summary-table td { padding: 12px; }
+        }
+        @media (min-width: 769px) {
+            .sidebar { transform: translateX(0) !important; }
+            .main-content { margin-left: 270px !important; }
+            .menu-toggle, .close-sidebar { display: none !important; }
+        }
+        @media (max-width: 1024px) {
+            .sidebar { width: 220px; }
+            .main-content { margin-left: 220px; }
+            .main-content.full-width { margin-left: 0; }
+            .progress-section, .summary-section { padding: 20px; }
+            .progress-form { gap: 12px; }
+            .progress-table, .summary-table { font-size: 0.9rem; }
+        }
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); width: 200px; }
+            .sidebar.active { transform: translateX(0); }
+            .main-content { margin-left: 0; padding: 10px; }
+            .menu-toggle, .close-sidebar { display: block; }
+            .navbar { flex-direction: row; align-items: center; padding: 10px; }
+            .navbar span { font-size: 1.1rem; }
+            .progress-section { padding: 12px; margin-bottom: 15px; max-width: 100%; width: 100%; }
+            .summary-section { padding: 15px; margin-bottom: 15px; }
+            .progress-form { gap: 10px; }
+            .form-group label { font-size: 0.9rem; line-height: 1.4; }
+            .form-group select { font-size: 0.9rem; padding: 10px; min-height: 44px; border-radius: 5px; max-width: 100%; }
+            .view-button { width: 100%; padding: 12px; font-size: 0.9rem; border-radius: 6px; min-height: 48px; }
+            .progress-table, .summary-table { font-size: 0.85rem; display: block; overflow-x: auto; white-space: nowrap; }
+            .progress-table th, .progress-table td, .summary-table th, .summary-table td { padding: 8px; min-width: 120px; }
+        }
+        @media (max-width: 576px) {
+            body { font-size: 14px; }
+            .sidebar { width: 180px; padding: 15px; }
+            .sidebar h3 { font-size: 1.4rem; margin-bottom: 15px; }
+            .sidebar a { padding: 8px 10px; font-size: 0.85rem; }
+            .sidebar a::before { font-size: 1rem; margin-right: 8px; }
+            .close-sidebar { top: 15px; right: 15px; width: 28px; height: 28px; font-size: 0.9rem; }
+            .navbar { padding: 8px 10px; }
+            .navbar span { font-size: 1rem; }
+            .menu-toggle { padding: 6px 10px; font-size: 0.85rem; min-height: 36px; }
+            .container { padding: 0 5px; }
+            .progress-section h2, .summary-section h2 { font-size: 1.4rem; margin-bottom: 12px; }
+            .progress-section { padding: 10px; margin-bottom: 12px; }
+            .summary-section { padding: 12px; margin-bottom: 12px; }
+            .progress-form { gap: 8px; }
+            .form-group label { font-size: 0.85rem; line-height: 1.4; }
+            .form-group select { font-size: 0.85rem; padding: 8px; min-height: 40px; border-radius: 4px; }
+            .view-button { padding: 10px; font-size: 0.85rem; min-height: 44px; }
+            .progress-table, .summary-table { font-size: 0.8rem; }
+            .progress-table th, .progress-table td, .summary-table th, .summary-table td { padding: 6px; min-width: 100px; }
+        }
+        @media (max-width: 360px) {
+            .sidebar { width: 160px; }
+            .sidebar h3 { font-size: 1.2rem; }
+            .sidebar a { padding: 6px 8px; font-size: 0.8rem; }
+            .close-sidebar { top: 12px; right: 12px; width: 24px; height: 24px; font-size: 0.8rem; }
+            .navbar span { font-size: 0.9rem; }
+            .menu-toggle { padding: 5px 8px; font-size: 0.8rem; min-height: 32px; }
+            .progress-section h2, .summary-section h2 { font-size: 1.2rem; }
+            .progress-section { padding: 8px; margin-bottom: 10px; }
+            .summary-section { padding: 10px; margin-bottom: 10px; }
+            .form-group label { font-size: 0.8rem; line-height: 1.3; }
+            .form-group select { font-size: 0.8rem; padding: 7px; min-height: 36px; border-radius: 4px; }
+            .view-button { font-size: 0.8rem; padding: 8px; min-height: 40px; }
+            .progress-table, .summary-table { font-size: 0.75rem; }
+            .progress-table th, .progress-table td, .summary-table th, .summary-table td { padding: 5px; min-width: 80px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar" id="sidebar">
+        <button class="close-sidebar" onclick="toggleSidebar()">✕</button>
+        <h3>Sunrise Institute</h3>
+        <a href="teacher_dashboard.html" class="dashboard">Dashboard</a>
+        <a href="teacher_profile.html">Profile</a>
+        <a href="upload_course_content.html" class="upload-content">Upload Course Content</a>
+        <a href="apply_for_leave.html" class="apply-leave">Apply for Leave</a>
+        <a href="take_attendance.html" class="take-attendance">Take Attendance</a>
+        <a href="track_student_progress.html" class="track-progress">Track Student Progress</a>
+        <a href="#submit-marksheet">Submit Marksheet</a>
+        <a href="#provide-feedback">Provide Feedback</a>
+        <a href="#manage-assignments">Manage Assignments</a>
+        <a href="#submit-complaint">Submit Complaint</a>
+    </div>
+
+    <div class="main-content" id="mainContent">
+        <div class="navbar">
+            <button class="menu-toggle" onclick="toggleSidebar()">Menu</button>
+            <span>Track Student Progress</span>
+        </div>
+
+        <div class="container">
+            <div class="progress-section">
+                <h2>Student Progress</h2>
+                <form class="progress-form" id="progress-form">
+                    <div class="form-group">
+                        <label for="course">Course</label>
+                        <select id="course" name="course" required onchange="updateRollNumbers()">
+                            <option value="" disabled selected>Select course</option>
+                            <option value="calculus">Introduction to Calculus</option>
+                            <option value="programming">Programming Fundamentals</option>
+                            <option value="physics">Physics 101</option>
+                            <option value="literature">English Literature</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="roll-number">Student Roll Number</label>
+                        <select id="roll-number" name="roll-number" required disabled>
+                            <option value="" disabled selected>Select roll number</option>
+                        </select>
+                    </div>
+                    <button type="button" class="view-button" onclick="viewProgress()">View Progress</button>
+                    <div class="form-group" id="progress-container" style="display: none;">
+                        <label>Student Progress Details</label>
+                        <table class="progress-table">
+                            <thead>
+                                <tr>
+                                    <th>Student Name</th>
+                                    <th>Attendance (%)</th>
+                                    <th>Assignment Score (%)</th>
+                                    <th>Quiz Score (%)</th>
+                                    <th>Overall Progress (%)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="progress-table-body">
+                                <!-- Populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </form>
+            </div>
+
+            <div class="summary-section">
+                <h2>Course Summary</h2>
+                <table class="summary-table">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Average Attendance (%)</td>
+                            <td>88</td>
+                        </tr>
+                        <tr>
+                            <td>Average Assignment Score (%)</td>
+                            <td>84</td>
+                        </tr>
+                        <tr>
+                            <td>Average Quiz Score (%)</td>
+                            <td>83</td>
+                        </tr>
+                        <tr>
+                            <td>Average Overall Progress (%)</td>
+                            <td>85</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            sidebar.classList.toggle('hidden');
+            sidebar.classList.toggle('active');
+            mainContent.classList.toggle('full-width');
+        }
+
+        function updateRollNumbers() {
+            const course = document.getElementById('course').value;
+            const rollNumberSelect = document.getElementById('roll-number');
+            rollNumberSelect.innerHTML = '<option value="" disabled selected>Select roll number</option>';
+            rollNumberSelect.disabled = !course;
+
+            if (!course) return;
+
+            // Mock student roll numbers and names for each course
+            const students = {
+                calculus: [
+                    { roll: 'CAL101', name: 'John Doe' },
+                    { roll: 'CAL102', name: 'Jane Smith' },
+                    { roll: 'CAL103', name: 'Alice Johnson' }
+                ],
+                programming: [
+                    { roll: 'PRG201', name: 'Bob Wilson' },
+                    { roll: 'PRG202', name: 'Emma Brown' },
+                    { roll: 'PRG203', name: 'Michael Lee' }
+                ],
+                physics: [
+                    { roll: 'PHY301', name: 'Sarah Davis' },
+                    { roll: 'PHY302', name: 'David Clark' },
+                    { roll: 'PHY303', name: 'Laura Adams' }
+                ],
+                literature: [
+                    { roll: 'LIT401', name: 'Chris Evans' },
+                    { roll: 'LIT402', name: 'Olivia Taylor' },
+                    { roll: 'LIT403', name: 'James White' }
+                ]
+            };
+
+            const courseStudents = students[course] || [];
+            courseStudents.forEach(student => {
+                const option = document.createElement('option');
+                option.value = student.roll;
+                option.textContent = `${student.roll} - ${student.name}`;
+                rollNumberSelect.appendChild(option);
+            });
+        }
+
+        function viewProgress() {
+            const course = document.getElementById('course').value;
+            const rollNumber = document.getElementById('roll-number').value;
+            const progressContainer = document.getElementById('progress-container');
+            const progressTableBody = document.getElementById('progress-table-body');
+
+            if (!course || !rollNumber) {
+                alert('Please select both a course and a student roll number.');
+                return;
+            }
+
+            // Mock progress data for students
+            const progressData = {
+                'CAL101': { name: 'John Doe', attendance: 90, assignment: 85, quiz: 88, overall: 87 },
+                'CAL102': { name: 'Jane Smith', attendance: 95, assignment: 92, quiz: 90, overall: 92 },
+                'CAL103': { name: 'Alice Johnson', attendance: 80, assignment: 75, quiz: 70, overall: 75 },
+                'PRG201': { name: 'Bob Wilson', attendance: 88, assignment: 80, quiz: 85, overall: 84 },
+                'PRG202': { name: 'Emma Brown', attendance: 92, assignment: 89, quiz: 87, overall: 89 },
+                'PRG203': { name: 'Michael Lee', attendance: 85, assignment: 78, quiz: 80, overall: 81 },
+                'PHY301': { name: 'Sarah Davis', attendance: 87, assignment: 82, quiz: 84, overall: 84 },
+                'PHY302': { name: 'David Clark', attendance: 90, assignment: 88, quiz: 86, overall: 88 },
+                'PHY303': { name: 'Laura Adams', attendance: 82, assignment: 76, quiz: 78, overall: 78 },
+                'LIT401': { name: 'Chris Evans', attendance: 89, assignment: 84, quiz: 86, overall: 86 },
+                'LIT402': { name: 'Olivia Taylor', attendance: 93, assignment: 90, quiz: 88, overall: 90 },
+                'LIT403': { name: 'James White', attendance: 86, assignment: 79, quiz: 81, overall: 82 }
+            };
+
+            const student = progressData[rollNumber];
+            if (student) {
+                progressTableBody.innerHTML = `
+                    <tr>
+                        <td>${student.name}</td>
+                        <td>${student.attendance}</td>
+                        <td>${student.assignment}</td>
+                        <td>${student.quiz}</td>
+                        <td>${student.overall}</td>
+                    </tr>
+                `;
+                progressContainer.style.display = 'block';
+            } else {
+                alert('No progress data found for the selected student.');
+                progressContainer.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

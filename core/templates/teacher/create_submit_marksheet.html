@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create and Submit Marksheet - Sunrise Institute</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #D27328;
+            --light: #fff5ee;
+            --dark: #181d38;
+        }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, var(--light) 0%, #f8e1d9 100%);
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+            font-size: 16px;
+        }
+        .sidebar {
+            background: linear-gradient(180deg, var(--dark) 0%, #2c3e50 100%);
+            color: #fff;
+            width: 270px;
+            padding: 20px;
+            box-shadow: 3px 0 10px rgba(0,0,0,0.2);
+            position: fixed;
+            height: 100%;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            overflow-x: hidden;
+        }
+        .sidebar.hidden {
+            transform: translateX(-100%);
+        }
+        .sidebar h3 {
+            font-size: 1.6rem;
+            margin-bottom: 20px;
+            text-align: center;
+            color: var(--primary);
+            text-shadow: 0 0 5px rgba(0,0,0,0.3);
+            font-weight: 700;
+        }
+        .sidebar a {
+            color: #fff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            margin: 6px 0;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            background: rgba(255,255,255,0.1);
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        .sidebar a:hover {
+            background: var(--primary);
+            transform: translateX(5px);
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            color: var(--light);
+        }
+        .sidebar a::before {
+            content: '\f0c1';
+            font-family: "Font Awesome 5 Free";
+            font-weight: 900;
+            margin-right: 10px;
+            font-size: 1.1rem;
+        }
+        .sidebar a.dashboard::before {
+            content: '\f0e4';
+        }
+        .sidebar a.take-attendance::before {
+            content: '\f0c0';
+        }
+        .sidebar a.track-progress::before {
+            content: '\f080';
+        }
+        .sidebar a.submit-marksheet::before {
+            content: '\f15c';
+        }
+        .close-sidebar {
+            display: none;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 8px;
+            border-radius: 50%;
+            font-size: 1rem;
+            cursor: pointer;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 32px;
+            height: 32px;
+            text-align: center;
+            transition: background 0.3s ease;
+        }
+        .close-sidebar:hover {
+            background: #e89b5e;
+        }
+        .main-content {
+            flex-grow: 1;
+            padding: 15px;
+            margin-left: 270px;
+            transition: margin-left 0.3s ease;
+            overflow-x: hidden;
+        }
+        .main-content.full-width {
+            margin-left: 0;
+        }
+        .navbar {
+            background: linear-gradient(90deg, var(--dark) 0%, #2c3e50 100%);
+            padding: 12px 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .navbar span {
+            font-size: 1.2rem;
+            color: #fff;
+            font-weight: 600;
+            text-shadow: 0 0 3px rgba(0,0,0,0.3);
+        }
+        .menu-toggle {
+            display: none;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        .menu-toggle:hover {
+            background: #e89b5e;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 10px;
+            overflow-x: hidden;
+        }
+        .marksheet-section, .submitted-marksheets-section {
+            background: var(--light);
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            color: var(--dark);
+            margin-bottom: 25px;
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+        .marksheet-section h2, .submitted-marksheets-section h2 {
+            font-size: 1.6rem;
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 15px;
+            background: linear-gradient(90deg, var(--primary), #e89b5e);
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .marksheet-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-width: 100%;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-width: 100%;
+        }
+        .form-group label {
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 0.95rem;
+        }
+        .form-group select {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-family: 'Nunito', sans-serif;
+            background: #fff;
+            transition: border-color 0.3s ease;
+            max-width: 100%;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .form-group select:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+        .marks-table, .dialog-table, .submitted-marksheets-table, .view-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+            margin-top: 15px;
+            display: none;
+        }
+        .marks-table th, .dialog-table th, .submitted-marksheets-table th, .view-table th,
+        .marks-table td, .dialog-table td, .submitted-marksheets-table td, .view-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .marks-table th, .dialog-table th, .submitted-marksheets-table th, .view-table th {
+            background: linear-gradient(90deg, var(--primary), #e89b5e);
+            color: #fff;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .marks-table tr:hover, .dialog-table tr:hover, .submitted-marksheets-table tr:hover, .view-table tr:hover {
+            background: #f8e1d9;
+        }
+        .marks-table input[type="number"], .dialog-table input[type="number"], .view-table input[type="number"] {
+            width: 80px;
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-family: 'Nunito', sans-serif;
+            transition: border-color 0.3s ease;
+        }
+        .marks-table input[type="number"]:focus, .dialog-table input[type="number"]:focus, .view-table input[type="number"]:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+        .marks-table input[readonly], .dialog-table input[readonly], .view-table input[readonly] {
+            background: #f0f0f0;
+            border-color: #ddd;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .view-button, .submit-button, .dialog-submit, .view-marksheet-button, .view-close {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            max-width: 100%;
+        }
+        .view-button:hover, .submit-button:hover, .dialog-submit:hover, .view-marksheet-button:hover, .view-close:hover {
+            background: #e89b5e;
+        }
+        .dialog, .view-dialog {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        .dialog-content, .view-dialog-content {
+            background: var(--light);
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 800px;
+            width: 90%;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            position: relative;
+            overflow-x: auto;
+        }
+        .dialog-content h3, .view-dialog-content h3 {
+            font-size: 1.4rem;
+            color: var(--primary);
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+        .dialog-content .dialog-table, .view-dialog-content .view-table {
+            display: table;
+            margin-bottom: 20px;
+        }
+        .dialog-submit, .view-close {
+            width: 100%;
+        }
+
+        /* Responsive Styles */
+        @media (min-width: 1200px) {
+            .container { max-width: 1600px; }
+            .marksheet-section, .submitted-marksheets-section { padding: 30px; }
+            .marksheet-section h2, .submitted-marksheets-section h2 { font-size: 1.8rem; }
+            .form-group select, .marks-table, .dialog-table, .submitted-marksheets-table, .view-table { font-size: 1rem; }
+            .marks-table th, .marks-table td, .dialog-table th, .dialog-table td, .submitted-marksheets-table th, .submitted-marksheets-table td, .view-table th, .view-table td { padding: 12px; }
+            .marks-table input[type="number"], .dialog-table input[type="number"], .view-table input[type="number"] { width: 90px; font-size: 0.95rem; }
+            .dialog-content, .view-dialog-content { padding: 25px; }
+            .dialog-content h3, .view-dialog-content h3 { font-size: 1.6rem; }
+        }
+        @media (min-width: 769px) {
+            .sidebar { transform: translateX(0) !important; }
+            .main-content { margin-left: 270px !important; }
+            .menu-toggle, .close-sidebar { display: none !important; }
+        }
+        @media (max-width: 1024px) {
+            .sidebar { width: 220px; }
+            .main-content { margin-left: 220px; }
+            .main-content.full-width { margin-left: 0; }
+            .marksheet-section, .submitted-marksheets-section { padding: 20px; }
+            .marksheet-form { gap: 12px; }
+            .marks-table, .dialog-table, .submitted-marksheets-table, .view-table { font-size: 0.9rem; }
+            .marks-table input[type="number"], .dialog-table input[type="number"], .view-table input[type="number"] { width: 70px; }
+            .dialog-content, .view-dialog-content { max-width: 700px; }
+        }
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); width: 200px; }
+            .sidebar.active { transform: translateX(0); }
+            .main-content { margin-left: 0; padding: 10px; }
+            .menu-toggle, .close-sidebar { display: block; }
+            .navbar { flex-direction: row; align-items: center; padding: 10px; }
+            .navbar span { font-size: 1.1rem; }
+            .marksheet-section, .submitted-marksheets-section { padding: 12px; margin-bottom: 15px; max-width: 100%; width: 100%; }
+            .marksheet-form { gap: 10px; }
+            .form-group label { font-size: 0.9rem; line-height: 1.4; }
+            .form-group select { font-size: 0.9rem; padding: 10px; min-height: 44px; border-radius: 5px; max-width: 100%; }
+            .view-button, .submit-button, .dialog-submit, .view-marksheet-button, .view-close { width: 100%; padding: 12px; font-size: 0.9rem; border-radius: 6px; min-height: 48px; }
+            .marks-table, .dialog-table, .submitted-marksheets-table, .view-table { font-size: 0.85rem; display: block; overflow-x: auto; white-space: nowrap; }
+            .marks-table th, .marks-table td, .dialog-table th, .dialog-table td, .submitted-marksheets-table th, .submitted-marksheets-table td, .view-table th, .view-table td { padding: 8px; min-width: 80px; }
+            .marks-table input[type="number"], .dialog-table input[type="number"], .view-table input[type="number"] { width: 60px; font-size: 0.85rem; }
+            .dialog-content, .view-dialog-content { padding: 15px; max-width: 90%; }
+            .dialog-content h3, .view-dialog-content h3 { font-size: 1.3rem; }
+            .dialog-submit, .view-close { padding: 10px; min-height: 44px; }
+        }
+        @media (max-width: 576px) {
+            body { font-size: 14px; }
+            .sidebar { width: 180px; padding: 15px; }
+            .sidebar h3 { font-size: 1.4rem; margin-bottom: 15px; }
+            .sidebar a { padding: 8px 10px; font-size: 0.85rem; }
+            .sidebar a::before { font-size: 1rem; margin-right: 8px; }
+            .close-sidebar { top: 15px; right: 15px; width: 28px; height: 28px; font-size: 0.9rem; }
+            .navbar { padding: 8px 10px; }
+            .navbar span { font-size: 1rem; }
+            .menu-toggle { padding: 6px 10px; font-size: 0.85rem; min-height: 36px; }
+            .container { padding: 0 5px; }
+            .marksheet-section h2, .submitted-marksheets-section h2 { font-size: 1.4rem; margin-bottom: 12px; }
+            .marksheet-section, .submitted-marksheets-section { padding: 10px; margin-bottom: 12px; }
+            .marksheet-form { gap: 8px; }
+            .form-group label { font-size: 0.85rem; line-height: 1.4; }
+            .form-group select { font-size: 0.85rem; padding: 8px; min-height: 40px; border-radius: 4px; }
+            .view-button, .submit-button, .dialog-submit, .view-marksheet-button, .view-close { padding: 10px; font-size: 0.85rem; min-height: 44px; }
+            .marks-table, .dialog-table, .submitted-marksheets-table, .view-table { font-size: 0.8rem; }
+            .marks-table th, .marks-table td, .dialog-table th, .dialog-table td, .submitted-marksheets-table th, .submitted-marksheets-table td, .view-table th, .view-table td { padding: 6px; min-width: 70px; }
+            .marks-table input[type="number"], .dialog-table input[type="number"], .view-table input[type="number"] { width: 50px; font-size: 0.8rem; }
+            .dialog-content, .view-dialog-content { padding: 12px; }
+            .dialog-content h3, .view-dialog-content h3 { font-size: 1.2rem; }
+            .dialog-submit, .view-close { padding: 8px; min-height: 40px; }
+        }
+        @media (max-width: 360px) {
+            .sidebar { width: 160px; }
+            .sidebar h3 { font-size: 1.2rem; }
+            .sidebar a { padding: 6px 8px; font-size: 0.8rem; }
+            .close-sidebar { top: 12px; right: 12px; width: 24px; height: 24px; font-size: 0.8rem; }
+            .navbar span { font-size: 0.9rem; }
+            .menu-toggle { padding: 5px 8px; font-size: 0.8rem; min-height: 32px; }
+            .marksheet-section h2, .submitted-marksheets-section h2 { font-size: 1.2rem; }
+            .marksheet-section, .submitted-marksheets-section { padding: 8px; margin-bottom: 10px; }
+            .form-group label { font-size: 0.8rem; line-height: 1.3; }
+            .form-group select { font-size: 0.8rem; padding: 7px; min-height: 36px; border-radius: 4px; }
+            .view-button, .submit-button, .dialog-submit, .view-marksheet-button, .view-close { font-size: 0.8rem; padding: 8px; min-height: 40px; }
+            .marks-table, .dialog-table, .submitted-marksheets-table, .view-table { font-size: 0.75rem; }
+            .marks-table th, .marks-table td, .dialog-table th, .dialog-table td, .submitted-marksheets-table th, .submitted-marksheets-table td, .view-table th, .view-table td { padding: 5px; min-width: 60px; }
+            .marks-table input[type="number"], .dialog-table input[type="number"], .view-table input[type="number"] { width: 45px; font-size: 0.75rem; }
+            .dialog-content, .view-dialog-content { padding: 10px; }
+            .dialog-content h3, .view-dialog-content h3 { font-size: 1.1rem; }
+            .dialog-submit, .view-close { padding: 7px; min-height: 36px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar" id="sidebar">
+        <button class="close-sidebar" onclick="toggleSidebar()">✕</button>
+        <h3>Sunrise Institute</h3>
+        <a href="teacher_dashboard.html" class="dashboard">Dashboard</a>
+        <a href="teacher_profile.html">Profile</a>
+        <a href="upload_course_content.html" class="upload-content">Upload Course Content</a>
+        <a href="apply_for_leave.html" class="apply-leave">Apply for Leave</a>
+        <a href="take_attendance.html" class="take-attendance">Take Attendance</a>
+        <a href="track_student_progress.html" class="track-progress">Track Student Progress</a>
+        <a href="submit_marksheet.html" class="submit-marksheet">Submit Marksheet</a>
+        <a href="#provide-feedback">Provide Feedback</a>
+        <a href="#manage-assignments">Manage Assignments</a>
+        <a href="#submit-complaint">Submit Complaint</a>
+    </div>
+
+    <div class="main-content" id="mainContent">
+        <div class="navbar">
+            <button class="menu-toggle" onclick="toggleSidebar()">Menu</button>
+            <span>Create and Submit Marksheet</span>
+        </div>
+
+        <div class="container">
+            <div class="marksheet-section">
+                <h2>Create Marksheet</h2>
+                <form class="marksheet-form" id="marksheet-form">
+                    <div class="form-group">
+                        <label for="course">Course</label>
+                        <select id="course" name="course" required>
+                            <option value="" disabled selected>Select course</option>
+                            <option value="calculus">Introduction to Calculus</option>
+                            <option value="programming">Programming Fundamentals</option>
+                            <option value="physics">Physics 101</option>
+                            <option value="literature">English Literature</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="marks-container" style="display: none;">
+                        <label>Enter Student Marks</label>
+                        <table class="marks-table">
+                            <thead>
+                                <tr>
+                                    <th>SR.no</th>
+                                    <th>Roll No</th>
+                                    <th>Name</th>
+                                    <th>Internal (0-6)</th>
+                                    <th>Mid (0-12)</th>
+                                    <th>Final (0-24)</th>
+                                    <th>Practical (0-18)</th>
+                                    <th>Total Marks</th>
+                                </tr>
+                            </thead>
+                            <tbody id="marks-table-body">
+                                <!-- Populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="action-buttons">
+                        <button type="button" class="view-button" onclick="loadStudents()">Load Students</button>
+                        <button type="button" class="submit-button" onclick="submitMarksheet()" style="display: none;">Submit Marksheet</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="submitted-marksheets-section">
+                <h2>Submitted Marksheets</h2>
+                <table class="submitted-marksheets-table" id="submitted-marksheets-table">
+                    <thead>
+                        <tr>
+                            <th>SR.no</th>
+                            <th>Course</th>
+                            <th>Submission Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="submitted-marksheets-body">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Dialog for entering marks -->
+        <div class="dialog" id="student-dialog">
+            <div class="dialog-content">
+                <h3 id="dialog-title">Students Enrolled</h3>
+                <table class="dialog-table" id="dialog-table">
+                    <thead>
+                        <tr>
+                            <th>SR.no</th>
+                            <th>Roll No</th>
+                            <th>Name</th>
+                            <th>Internal (0-6)</th>
+                            <th>Mid (0-12)</th>
+                            <th>Final (0-24)</th>
+                            <th>Practical (0-18)</th>
+                            <th>Total Marks</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dialog-table-body">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+                <button class="dialog-submit" onclick="submitDialog()">Submit</button>
+            </div>
+        </div>
+
+        <!-- Dialog for viewing submitted marksheets -->
+        <div class="view-dialog" id="view-dialog">
+            <div class="view-dialog-content">
+                <h3 id="view-dialog-title">Marksheet Details</h3>
+                <table class="view-table" id="view-table">
+                    <thead>
+                        <tr>
+                            <th>SR.no</th>
+                            <th>Roll No</th>
+                            <th>Name</th>
+                            <th>Internal (0-6)</th>
+                            <th>Mid (0-12)</th>
+                            <th>Final (0-24)</th>
+                            <th>Practical (0-18)</th>
+                            <th>Total Marks</th>
+                        </tr>
+                    </thead>
+                    <tbody id="view-table-body">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+                <button class="view-close" onclick="closeViewDialog()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedCourseStudents = [];
+        let dialogMarks = [];
+        let submittedMarksheets = [];
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            sidebar.classList.toggle('hidden');
+            sidebar.classList.toggle('active');
+            mainContent.classList.toggle('full-width');
+        }
+
+        function loadStudents() {
+            const course = document.getElementById('course').value;
+            const marksContainer = document.getElementById('marks-container');
+            const submitButton = document.querySelector('.submit-button');
+
+            if (!course) {
+                alert('Please select a course.');
+                marksContainer.style.display = 'none';
+                submitButton.style.display = 'none';
+                return;
+            }
+
+            // Dummy student data
+            const students = {
+                calculus: [
+                    { roll: 'CAL101', name: 'John Doe' },
+                    { roll: 'CAL102', name: 'Jane Smith' },
+                    { roll: 'CAL103', name: 'Alice Johnson' }
+                ],
+                programming: [
+                    { roll: 'PRG201', name: 'Bob Wilson' },
+                    { roll: 'PRG202', name: 'Emma Brown' },
+                    { roll: 'PRG203', name: 'Michael Lee' }
+                ],
+                physics: [
+                    { roll: 'PHY301', name: 'Sarah Davis' },
+                    { roll: 'PHY302', name: 'David Clark' },
+                    { roll: 'PHY303', name: 'Laura Adams' }
+                ],
+                literature: [
+                    { roll: 'LIT401', name: 'Chris Evans' },
+                    { roll: 'LIT402', name: 'Olivia Taylor' },
+                    { roll: 'LIT403', name: 'James White' }
+                ]
+            };
+
+            selectedCourseStudents = students[course] || [];
+            if (selectedCourseStudents.length === 0) {
+                alert('No students enrolled in this course.');
+                marksContainer.style.display = 'none';
+                submitButton.style.display = 'none';
+                return;
+            }
+
+            // Initialize dialogMarks
+            dialogMarks = selectedCourseStudents.map(() => ({
+                internal: '',
+                mid: '',
+                final: '',
+                practical: '',
+                total: ''
+            }));
+
+            // Show dialog
+            showStudentDialog(course, selectedCourseStudents);
+        }
+
+        function showStudentDialog(course, students) {
+            const dialog = document.getElementById('student-dialog');
+            const dialogTitle = document.getElementById('dialog-title');
+            const dialogTable = document.getElementById('dialog-table');
+            const dialogTableBody = document.getElementById('dialog-table-body');
+
+            const courseNames = {
+                calculus: 'Introduction to Calculus',
+                programming: 'Programming Fundamentals',
+                physics: 'Physics 101',
+                literature: 'English Literature'
+            };
+
+            dialogTitle.textContent = `Students Enrolled in ${courseNames[course]}`;
+            dialogTableBody.innerHTML = '';
+
+            students.forEach((student, index) => {
+                dialogTableBody.innerHTML += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${student.roll}</td>
+                        <td>${student.name}</td>
+                        <td><input type="number" min="0" max="6" class="dialog-marks-input" data-type="internal" data-student-index="${index}" oninput="calculateDialogTotal(${index})"></td>
+                        <td><input type="number" min="0" max="12" class="dialog-marks-input" data-type="mid" data-student-index="${index}" oninput="calculateDialogTotal(${index})"></td>
+                        <td><input type="number" min="0" max="24" class="dialog-marks-input" data-type="final" data-student-index="${index}" oninput="calculateDialogTotal(${index})"></td>
+                        <td><input type="number" min="0" max="18" class="dialog-marks-input" data-type="practical" data-student-index="${index}" oninput="calculateDialogTotal(${index})"></td>
+                        <td><input type="number" readonly class="dialog-total-marks" data-student-index="${index}"></td>
+                    </tr>
+                `;
+            });
+
+            dialogTable.style.display = 'table';
+            dialog.style.display = 'flex';
+        }
+
+        function calculateDialogTotal(studentIndex) {
+            const internalInput = document.querySelector(`.dialog-marks-input[data-type="internal"][data-student-index="${studentIndex}"]`);
+            const midInput = document.querySelector(`.dialog-marks-input[data-type="mid"][data-student-index="${studentIndex}"]`);
+            const finalInput = document.querySelector(`.dialog-marks-input[data-type="final"][data-student-index="${studentIndex}"]`);
+            const practicalInput = document.querySelector(`.dialog-marks-input[data-type="practical"][data-student-index="${studentIndex}"]`);
+            const totalInput = document.querySelector(`.dialog-total-marks[data-student-index="${studentIndex}"]`);
+
+            const internal = parseFloat(internalInput.value) || 0;
+            const mid = parseFloat(midInput.value) || 0;
+            const final = parseFloat(finalInput.value) || 0;
+            const practical = parseFloat(practicalInput.value) || 0;
+            const total = (internal + mid + final + practical).toFixed(2);
+
+            totalInput.value = total > 0 ? total : '';
+            dialogMarks[studentIndex] = { internal: internalInput.value, mid: midInput.value, final: finalInput.value, practical: practicalInput.value, total };
+        }
+
+        function submitDialog() {
+            const dialog = document.getElementById('student-dialog');
+            const dialogTable = document.getElementById('dialog-table');
+            const marksContainer = document.getElementById('marks-container');
+            const marksTableBody = document.getElementById('marks-table-body');
+            const submitButton = document.querySelector('.submit-button');
+            const course = document.getElementById('course').value;
+
+            // Populate main table
+            marksTableBody.innerHTML = '';
+            selectedCourseStudents.forEach((student, index) => {
+                const marks = dialogMarks[index] || { internal: '', mid: '', final: '', practical: '', total: '' };
+                marksTableBody.innerHTML += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${student.roll}</td>
+                        <td>${student.name}</td>
+                        <td><input type="number" min="0" max="6" class="marks-input" data-type="internal" data-roll="${student.roll}" value="${marks.internal}" oninput="calculateTotal('${student.roll}')"></td>
+                        <td><input type="number" min="0" max="12" class="marks-input" data-type="mid" data-roll="${student.roll}" value="${marks.mid}" oninput="calculateTotal('${student.roll}')"></td>
+                        <td><input type="number" min="0" max="24" class="marks-input" data-type="final" data-roll="${student.roll}" value="${marks.final}" oninput="calculateTotal('${student.roll}')"></td>
+                        <td><input type="number" min="0" max="18" class="marks-input" data-type="practical" data-roll="${student.roll}" value="${marks.practical}" oninput="calculateTotal('${student.roll}')"></td>
+                        <td><input type="number" readonly class="total-marks" data-roll="${student.roll}" value="${marks.total}"></td>
+                    </tr>
+                `;
+            });
+
+            // Record marksheet
+            const marksData = selectedCourseStudents.map((student, index) => ({
+                roll: student.roll,
+                name: student.name,
+                internal: dialogMarks[index].internal,
+                mid: dialogMarks[index].mid,
+                final: dialogMarks[index].final,
+                practical: dialogMarks[index].practical,
+                total: dialogMarks[index].total
+            }));
+            submittedMarksheets.push({
+                course,
+                date: new Date().toLocaleString(),
+                marks: marksData
+            });
+
+            // Update submitted marksheets table
+            updateSubmittedMarksheetsTable();
+
+            dialog.style.display = 'none';
+            dialogTable.style.display = 'none';
+            marksContainer.style.display = 'block';
+            submitButton.style.display = 'inline-block';
+        }
+
+        function calculateTotal(roll) {
+            const internalInput = document.querySelector(`.marks-input[data-type="internal"][data-roll="${roll}"]`);
+            const midInput = document.querySelector(`.marks-input[data-type="mid"][data-roll="${roll}"]`);
+            const finalInput = document.querySelector(`.marks-input[data-type="final"][data-roll="${roll}"]`);
+            const practicalInput = document.querySelector(`.marks-input[data-type="practical"][data-roll="${roll}"]`);
+            const totalInput = document.querySelector(`.total-marks[data-roll="${roll}"]`);
+
+            const internal = parseFloat(internalInput.value) || 0;
+            const mid = parseFloat(midInput.value) || 0;
+            const final = parseFloat(finalInput.value) || 0;
+            const practical = parseFloat(practicalInput.value) || 0;
+            const total = (internal + mid + final + practical).toFixed(2);
+
+            totalInput.value = total > 0 ? total : '';
+        }
+
+        function submitMarksheet() {
+            const course = document.getElementById('course').value;
+            const marksInputs = document.querySelectorAll('.marks-input');
+            let hasMarks = false;
+            let marksData = [];
+
+            marksInputs.forEach(input => {
+                if (input.value) {
+                    hasMarks = true;
+                    const roll = input.dataset.roll;
+                    const type = input.dataset.type;
+                    marksData.push({ roll, type, marks: parseFloat(input.value) });
+                }
+            });
+
+            if (!course) {
+                alert('Please select a course.');
+                return;
+            }
+
+            if (!hasMarks) {
+                alert('Please enter marks for at least one student.');
+                return;
+            }
+
+            // Record marksheet
+            const fullMarksData = selectedCourseStudents.map(student => {
+                const marks = marksData.filter(m => m.roll === student.roll);
+                return {
+                    roll: student.roll,
+                    name: student.name,
+                    internal: marks.find(m => m.type === 'internal')?.marks || '',
+                    mid: marks.find(m => m.type === 'mid')?.marks || '',
+                    final: marks.find(m => m.type === 'final')?.marks || '',
+                    practical: marks.find(m => m.type === 'practical')?.marks || '',
+                    total: marks.reduce((sum, m) => sum + (parseFloat(m.marks) || 0), 0).toFixed(2)
+                };
+            });
+            submittedMarksheets.push({
+                course,
+                date: new Date().toLocaleString(),
+                marks: fullMarksData
+            });
+
+            // Update submitted marksheets table
+            updateSubmittedMarksheetsTable();
+
+            console.log('Submitting marksheet for course:', course, 'Marks:', marksData);
+            alert('Marksheet submitted successfully!');
+        }
+
+        function updateSubmittedMarksheetsTable() {
+            const tableBody = document.getElementById('submitted-marksheets-body');
+            const table = document.getElementById('submitted-marksheets-table');
+            const courseNames = {
+                calculus: 'Introduction to Calculus',
+                programming: 'Programming Fundamentals',
+                physics: 'Physics 101',
+                literature: 'English Literature'
+            };
+
+            tableBody.innerHTML = '';
+            submittedMarksheets.forEach((marksheet, index) => {
+                tableBody.innerHTML += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${courseNames[marksheet.course]}</td>
+                        <td>${marksheet.date}</td>
+                        <td><button class="view-marksheet-button" onclick="viewMarksheet(${index})">View</button></td>
+                    </tr>
+                `;
+            });
+
+            table.style.display = submittedMarksheets.length > 0 ? 'table' : 'none';
+        }
+
+        function viewMarksheet(index) {
+            const marksheet = submittedMarksheets[index];
+            const dialog = document.getElementById('view-dialog');
+            const dialogTitle = document.getElementById('view-dialog-title');
+            const tableBody = document.getElementById('view-table-body');
+            const table = document.getElementById('view-table');
+            const courseNames = {
+                calculus: 'Introduction to Calculus',
+                programming: 'Programming Fundamentals',
+                physics: 'Physics 101',
+                literature: 'English Literature'
+            };
+
+            dialogTitle.textContent = `Marksheet for ${courseNames[marksheet.course]}`;
+            tableBody.innerHTML = '';
+
+            marksheet.marks.forEach((student, i) => {
+                tableBody.innerHTML += `
+                    <tr>
+                        <td>${i + 1}</td>
+                        <td>${student.roll}</td>
+                        <td>${student.name}</td>
+                        <td><input type="number" min="0" max="6" value="${student.internal}" readonly></td>
+                        <td><input type="number" min="0" max="12" value="${student.mid}" readonly></td>
+                        <td><input type="number" min="0" max="24" value="${student.final}" readonly></td>
+                        <td><input type="number" min="0" max="18" value="${student.practical}" readonly></td>
+                        <td><input type="number" value="${student.total}" readonly></td>
+                    </tr>
+                `;
+            });
+
+            table.style.display = 'table';
+            dialog.style.display = 'flex';
+        }
+
+        function closeViewDialog() {
+            const dialog = document.getElementById('view-dialog');
+            const table = document.getElementById('view-table');
+            dialog.style.display = 'none';
+            table.style.display = 'none';
+        }
+    </script>
+</body>
+</html>

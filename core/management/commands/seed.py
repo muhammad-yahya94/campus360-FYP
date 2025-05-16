@@ -125,40 +125,33 @@ class Command(BaseCommand):
         # ===== Programs =====
         self.stdout.write("Creating programs...")
         programs = [
-            {'name': 'BS Computer Science', 'department': Department.objects.get(name='Computer Science'), 'degree_type': 'BS', 'duration_years': 4},
-            {'name': 'MS Computer Science', 'department': Department.objects.get(name='Computer Science'), 'degree_type': 'MS', 'duration_years': 2},
-            {'name': 'BS Electrical Engineering', 'department': Department.objects.get(name='Electrical Engineering'), 'degree_type': 'BS', 'duration_years': 4},
-            {'name': 'BBA', 'department': Department.objects.get(name='Business Administration'), 'degree_type': 'BBA', 'duration_years': 4},
-            {'name': 'MBA', 'department': Department.objects.get(name='Business Administration'), 'degree_type': 'MBA', 'duration_years': 2},
+            {'name': 'BS Computer Science', 'department': Department.objects.get(name='Computer Science'), 'degree_type': 'BS', 'duration_years': 4, 'total_semesters': 8},
+            {'name': 'MS Computer Science', 'department': Department.objects.get(name='Computer Science'), 'degree_type': 'MS', 'duration_years': 2, 'total_semesters': 8},
+            {'name': 'BS Electrical Engineering', 'department': Department.objects.get(name='Electrical Engineering'), 'degree_type': 'BS', 'duration_years': 4, 'total_semesters': 8},
+            {'name': 'BBA', 'department': Department.objects.get(name='Business Administration'), 'degree_type': 'BBA', 'duration_years': 4, 'total_semesters': 8},
+            {'name': 'MBA', 'department': Department.objects.get(name='Business Administration'), 'degree_type': 'MBA', 'duration_years': 2, 'total_semesters': 8},
         ]
         for prog in programs:
             Program.objects.create(**prog)
 
-        # ===== Academic Sessions =====
-        self.stdout.write("Creating academic sessions...")
-        current_year = datetime.now().year
-        for year in range(current_year - 2, current_year + 1):
-            for season in ['Spring', 'Fall']:
-                start_month = 1 if season == 'Spring' else 8
-                AcademicSession.objects.create(
-                    name=f"{season} {year}",
-                    start_date=datetime(year, start_month, 1),
-                    end_date=datetime(year, start_month + 4, 30),
-                    is_active=(year == current_year)
-                )
-
         # ===== Semesters =====
         self.stdout.write("Creating semesters...")
-        for session in AcademicSession.objects.all():
-            for i in range(1, 3):  # Create 2 semesters per session
-                start_date = session.start_date + timedelta(days=(i-1)*90)
-                end_date = start_date + timedelta(days=90)
+        base_year = 2022  # Start year for semesters
+        for program in Program.objects.all():
+            for i in range(1, 9):  # Create 8 semesters per program
+                year = base_year + (i - 1) // 2  # Alternate years (e.g., 2022, 2023, 2024, 2025)
+                season = "Fall" if i % 2 == 1 else "Spring"  # Alternate Fall and Spring
+                semester_name = f"{season} {year} - Semester {i}"
+                start_month = 8 if season == "Fall" else 1  # Fall starts in August, Spring in January
+                start_date = datetime(year, start_month, 1).date()
+                end_date = start_date + timedelta(days=120)  # Approx 4-month semester
+
                 Semester.objects.create(
-                    session=session,
-                    name=f"Semester {i}",
+                    program=program,
+                    name=semester_name,
                     start_date=start_date,
                     end_date=end_date,
-                    is_current=(i == 1 and session.is_active)
+                    is_current=(i == 8 and year == 2025)  # Set the last semester of 2025 as current
                 )
 
         # ===== Courses =====
@@ -273,14 +266,15 @@ class Command(BaseCommand):
         # ===== Admission Cycles =====
         self.stdout.write("Creating admission cycles...")
         for program in Program.objects.all():
-            for session in AcademicSession.objects.filter(is_active=True):
-                AdmissionCycle.objects.create(
-                    program=program,
-                    session=session,
-                    application_start=session.start_date - timedelta(days=60),
-                    application_end=session.start_date - timedelta(days=30),
-                    is_open=False
-                )
+            for year in range(2022, 2026):  # 4 years of cycles
+                for season in ['Fall', 'Spring']:
+                    AdmissionCycle.objects.create(
+                        program=program,
+                        session=None,  # No AcademicSession, so set to None
+                        application_start=datetime(year, 1 if season == 'Spring' else 8, 1) - timedelta(days=60),
+                        application_end=datetime(year, 1 if season == 'Spring' else 8, 1) - timedelta(days=30),
+                        is_open=(year == 2025 and season == 'Spring')  # Only 2025 Spring is open
+                    )
 
         # ===== Applicants and Students =====
         self.stdout.write("Creating applicants and students...")
@@ -298,7 +292,7 @@ class Command(BaseCommand):
                 cnic = f"{random.randint(10000, 99999)}-{random.randint(1000000, 9999999)}-{random.randint(0,9)}"
                 
                 user = random.choice(available_students)
-                available_students.remove(user)  # Remove user to prevent reuse
+                available_students.remove(user)
                 
                 applicant_data = {
                     'user': user,
@@ -325,7 +319,6 @@ class Command(BaseCommand):
                 try:
                     applicant = Applicant.objects.create(**applicant_data)
                     
-                    # Create Student profile for accepted applicants
                     if applicant.status == 'accepted':
                         Student.objects.create(
                             applicant=applicant,
@@ -338,7 +331,6 @@ class Command(BaseCommand):
                             emergency_phone=f"03{random.randint(10, 99)}{random.randint(1000000, 9999999)}"
                         )
                     
-                    # Create academic qualifications
                     for level in ['matric', 'intermediate', 'bachelor']:
                         AcademicQualification.objects.create(
                             applicant=applicant,
@@ -352,7 +344,6 @@ class Command(BaseCommand):
                             board=f"{random.choice(['Lahore', 'Rawalpindi', 'Federal'])} Board",
                         )
                     
-                    # Create extracurricular activities
                     for _ in range(random.randint(0, 3)):
                         ExtraCurricularActivity.objects.create(
                             applicant=applicant,
@@ -361,7 +352,6 @@ class Command(BaseCommand):
                             achievement=random.choice(['Won competition', 'Participated', 'Received award']),
                             activity_year=random.randint(2018, 2020),
                         )
-                        
                 except Exception as e:
                     self.stdout.write(self.style.ERROR(f"Failed to create applicant: {str(e)}"))
                     continue
@@ -369,11 +359,10 @@ class Command(BaseCommand):
         # ===== Course Offerings =====
         self.stdout.write("Creating course offerings...")
         for semester in Semester.objects.filter(is_current=True):
-            for course in Course.objects.all():
+            for course in Course.objects.filter(program=semester.program):
                 teachers = list(Teacher.objects.filter(department=course.department))
                 if not teachers:
                     self.stdout.write(self.style.WARNING(f"No teachers found for department {course.department.name}. Creating a default teacher."))
-                    # Create a default teacher for the department
                     user = CustomUser.objects.create_user(
                         email=f"faculty_default_{course.department.code}@ggcj.edu.pk",
                         first_name=fake.first_name(),
@@ -405,28 +394,18 @@ class Command(BaseCommand):
         # ===== Student Enrollments =====
         self.stdout.write("Creating student enrollments...")
         for student in Student.objects.all():
-            # Get the session from the AdmissionCycle associated with the applicant's program
-            admission_cycle = AdmissionCycle.objects.filter(
-                program=student.applicant.program,
-                session__is_active=True
-            ).first()
-            
-            if not admission_cycle:
-                self.stdout.write(self.style.WARNING(f"No active admission cycle found for {student.applicant.full_name}'s program. Skipping enrollment."))
+            semester = Semester.objects.filter(program=student.applicant.program, is_current=True).first()
+            if not semester:
+                self.stdout.write(self.style.WARNING(f"No current semester found for {student.applicant.full_name}'s program. Skipping enrollment."))
                 continue
 
-            course_offerings = CourseOffering.objects.filter(
-                semester__session=admission_cycle.session,
-                course__program=student.applicant.program
-            )[:random.randint(1, 3)]
-            
+            course_offerings = CourseOffering.objects.filter(semester=semester, course__program=student.applicant.program)[:random.randint(1, 3)]
             for offering in course_offerings:
                 try:
                     StudentEnrollment.objects.create(
                         student=student.applicant,
                         course_offering=offering,
                         status=random.choice(['enrolled', 'completed']),
-                        # grade=random.choice(['A', 'B+', 'B', 'C+', 'C', '']) if offering.status == 'completed' else ''
                     )
                 except IntegrityError as e:
                     self.stdout.write(self.style.WARNING(f"Skipped enrollment due to IntegrityError: {str(e)}"))

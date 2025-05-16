@@ -1,47 +1,45 @@
-
-// Function to close modal by simulating a click on modal backdrop
 function close_modal() {
-    const backdrop = document.querySelector('.modal-backdrop');
-    if (backdrop) {
-        backdrop.click();
-    }
+    $('.modal-backdrop').click()
 }
 
-// Toggle sidebar visibility
-document.addEventListener("DOMContentLoaded", function () {
-    const toggleButton = document.getElementById("menu-toggle");
-    const sidebar = document.getElementById("sidebar");
+$('#menu-toggle').click(() => {
+    let sidebar = $('#sidebar')
 
-    if (toggleButton && sidebar) {
-        toggleButton.addEventListener("click", function () {
-            if (sidebar.classList.contains("!hidden")) {
-                sidebar.classList.remove("!hidden");
-                sidebar.classList.add("!block");
-            } else {
-                sidebar.classList.remove("!block");
-                sidebar.classList.add("!hidden");
-            }
-        });
+    if (sidebar.is(":visible")) {
+        sidebar.removeClass('!block')
+        sidebar.addClass('!hidden')
+    } else {
+        sidebar.addClass('!block')
+        sidebar.removeClass('!hidden')
     }
+
 });
 
-// Toggle entire attribute (add/remove)
-function toggleAttr(element, attr, val) {
-    if (element.hasAttribute(attr)) {
-        element.removeAttribute(attr);
-    } else {
-        element.setAttribute(attr, val);
-    }
-}
 
-// Toggle attribute value between two values
-function toggleAttrVal(element, attr, val1, val2) {
-    const current = element.getAttribute(attr);
-    if (current === val1) {
-        element.setAttribute(attr, val2);
-    } else if (current === val2) {
-        element.setAttribute(attr, val1);
+// jquery toggle whole attribute
+$.fn.toggleAttr = function (attr, val) {
+    var test = $(this).attr(attr);
+    if (test) {
+        // if attrib exists with ANY value, still remove it
+        $(this).removeAttr(attr);
     } else {
-        element.setAttribute(attr, val1);
+        $(this).attr(attr, val);
     }
-}
+    return this;
+};
+
+// jquery toggle just the attribute value
+$.fn.toggleAttrVal = function (attr, val1, val2) {
+    var test = $(this).attr(attr);
+    if (test === val1) {
+        $(this).attr(attr, val2);
+        return this;
+    }
+    if (test === val2) {
+        $(this).attr(attr, val1);
+        return this;
+    }
+    // default to val1 if neither
+    $(this).attr(attr, val1);
+    return this;
+};

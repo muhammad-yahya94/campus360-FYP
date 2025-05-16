@@ -77,6 +77,7 @@ class AcademicQualification(models.Model):
     subjects = models.TextField()
     institute = models.CharField(max_length=200)
     board = models.CharField(max_length=200)
+    level = models.CharField(max_length=50, default='N/A')
 
     def __str__(self):
         return f"{self.applicant.full_name} - {self.level}"

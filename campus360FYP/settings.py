@@ -137,14 +137,8 @@ USE_TZ = True
 
 # For development:
 STATIC_URL = '/static/'
-
-# Add custom static directories for your project (e.g., if your static files are in 'static/')
-STATICFILES_DIRS = [
-    BASE_DIR / "static",  # Path to your static directory
-]
-
-# For production (when you run collectstatic):
-STATIC_ROOT = BASE_DIR / 'staticfiles'  # Static files collection directory for production
+STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = BASE_DIR / "staticfiles"  # For collectstatic
 
 # For media files (user-uploaded files):
 MEDIA_URL = '/media/'

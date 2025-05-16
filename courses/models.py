@@ -10,23 +10,23 @@ from faculty_staff.models import Teacher
 
 # ===== Semester =====
 class Semester(models.Model):
-    session = models.ForeignKey(AcademicSession, on_delete=models.CASCADE, related_name='semesters')
+    program = models.ForeignKey(Program, on_delete=models.CASCADE, related_name='semesters')  # Renamed to lowercase 'program'
     name = models.CharField(max_length=50)  # e.g., Semester 1, Fall 2024 - Semester 1
     start_date = models.DateField()
     end_date = models.DateField()
     is_current = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.session.name} - {self.name}"
+        return f"{self.program.name} - {self.name}"  # Updated to use 'program'
 
     class Meta:
         verbose_name = "Semester"
         verbose_name_plural = "Semesters"
 
     def save(self, *args, **kwargs):
-        # Ensure only one semester is current per session
+        # Ensure only one semester is current per program
         if self.is_current:
-            Semester.objects.filter(session=self.session, is_current=True).exclude(id=self.id).update(is_current=False)
+            Semester.objects.filter(program=self.program, is_current=True).exclude(id=self.id).update(is_current=False)
         super().save(*args, **kwargs)
 
 # ===== Course =====

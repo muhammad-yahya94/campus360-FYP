@@ -1,8 +1,40 @@
 from django.contrib import admin
+from django import forms
 from .models import Student, StudentEnrollment
+
+# Custom form for StudentAdmin to hide related data outside dropdowns
+class StudentAdminForm(forms.ModelForm):
+    class Meta:
+        model = Student
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['applicant'].widget.can_add_related = False
+        self.fields['applicant'].widget.can_change_related = False
+        self.fields['applicant'].widget.can_delete_related = False
+        self.fields['user'].widget.can_add_related = False
+        self.fields['user'].widget.can_change_related = False
+        self.fields['user'].widget.can_delete_related = False
+
+# Custom form for StudentEnrollmentAdmin to hide related data outside dropdowns
+class StudentEnrollmentAdminForm(forms.ModelForm):
+    class Meta:
+        model = Student
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['student'].widget.can_add_related = False
+        self.fields['student'].widget.can_change_related = False
+        self.fields['student'].widget.can_delete_related = False
+        self.fields['course_offering'].widget.can_add_related = False
+        self.fields['course_offering'].widget.can_change_related = False
+        self.fields['course_offering'].widget.can_delete_related = False
 
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
+    form = StudentAdminForm  # Use the custom form
     list_display = ('get_full_name', 'university_roll_no', 'college_roll_no', 'current_status', 'enrollment_date')
     list_filter = ('current_status', 'applicant__department', 'enrollment_date')
     search_fields = (
@@ -11,7 +43,8 @@ class StudentAdmin(admin.ModelAdmin):
         'college_roll_no',
         'applicant__cnic'
     )
-    raw_id_fields = ('applicant', 'user')
+    # Remove raw_id_fields to use dropdowns
+    # raw_id_fields = ('applicant', 'user')  # Comment this out
     date_hierarchy = 'enrollment_date'
     ordering = ('-enrollment_date',)
     
@@ -40,6 +73,7 @@ class StudentAdmin(admin.ModelAdmin):
 
 @admin.register(StudentEnrollment)
 class StudentEnrollmentAdmin(admin.ModelAdmin):
+    form = StudentEnrollmentAdminForm  # Use the custom form
     list_display = ('get_student_name', 'get_course_name', 'get_teacher', 'status', 'enrollment_date')
     list_filter = ('status', 'course_offering__semester', 'course_offering__course__department')
     search_fields = (
@@ -47,7 +81,8 @@ class StudentEnrollmentAdmin(admin.ModelAdmin):
         'course_offering__course__name',
         'course_offering__course__code'
     )
-    raw_id_fields = ('student', 'course_offering')
+    # Remove raw_id_fields to use dropdowns
+    # raw_id_fields = ('student', 'course_offering')  # Comment this out
     date_hierarchy = 'enrollment_date'
     
     fieldsets = (

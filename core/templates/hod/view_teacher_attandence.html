@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Attendance - Campus 360</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #D27328;
+            --light: #fff5ee;
+            --dark: #181d38;
+        }
+        body {
+            font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, var(--light) 0%, #f8e1d9 100%);
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        .sidebar {
+            background: linear-gradient(180deg, var(--dark) 0%, #2c3e50 100%);
+            color: #fff;
+            width: 270px;
+            padding: 30px 20px;
+            box-shadow: 3px 0 10px rgba(0,0,0,0.2);
+            position: fixed;
+            height: 100%;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+        .sidebar.hidden {
+            transform: translateX(-100%);
+        }
+        .sidebar h3 {
+            font-size: 1.8rem;
+            margin-bottom: 30px;
+            text-align: center;
+            color: var(--primary);
+            text-shadow: 0 0 5px rgba(0,0,0,0.3);
+            font-weight: 700;
+        }
+        .sidebar a {
+            color: #fff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            margin: 8px 0;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            background: rgba(255,255,255,0.1);
+            font-weight: 600;
+            touch-action: manipulation;
+        }
+        .sidebar a:hover {
+            background: var(--primary);
+            transform: translateX(5px);
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            color: var(--light);
+        }
+        .sidebar a.active {
+            background: var(--primary);
+            color: var(--light);
+        }
+        .sidebar a i {
+            margin-right: 12px;
+            font-size: 1.2rem;
+            min-width: 24px;
+        }
+        .close-btn {
+            display: block;
+            background: none;
+            border: none;
+            color: var(--light);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 10px;
+            text-align: right;
+            margin-bottom: 10px;
+        }
+        .main-content {
+            flex-grow: 1;
+            padding: 20px;
+            margin-left: 270px;
+            transition: margin-left 0.3s ease;
+        }
+        .main-content.full-width {
+            margin-left: 0;
+        }
+        .navbar {
+            background: linear-gradient(90deg, var(--dark) 0%, #2c3e50 100%);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        .navbar span {
+            font-size: 1.3rem;
+            color: var(--light);
+            font-weight: 600;
+            text-shadow: 0 0 3px rgba(0,0,0,0.3);
+        }
+        .menu-toggle {
+            display: none;
+            background: var(--primary);
+            color: var(--light);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        .menu-toggle:hover {
+            background: #e89b5e;
+        }
+        .header {
+            background: var(--light);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: var(--dark);
+            font-size: 1.8rem;
+            background: linear-gradient(90deg, var(--primary), #e89b5e);
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .profile-header .avatar {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(45deg, var(--primary), #e89b5e);
+            color: var(--light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            box-shadow: 0 0 8px rgba(0,0,0,0.2);
+        }
+        .profile-header span {
+            color: var(--dark);
+            font-weight: 600;
+        }
+        .profile-header a {
+            color: #dc3545;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+        .profile-header a:hover {
+            color: #a71d2a;
+        }
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+        .welcome-section {
+            background: linear-gradient(135deg, var(--light) 0%, #f8e1d9 100%);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            margin-bottom: 30px;
+            color: var(--dark);
+        }
+        .welcome-section h2 {
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+            color: var(--primary);
+            font-weight: 700;
+        }
+        .welcome-section p {
+            line-height: 1.7;
+            font-size: 1rem;
+            color: #555;
+        }
+        .filter-form {
+            background: var(--light);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            margin-bottom: 30px;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .form-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 5px;
+        }
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            color: var(--dark);
+            background: #fff;
+        }
+        .attendance-table {
+            background: var(--light);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: linear-gradient(90deg, var(--primary), #e89b5e);
+            color: var(--light);
+            font-weight: 600;
+        }
+        tr:hover {
+            background: linear-gradient(135deg, #fff 0%, #f8e1d9 100%);
+        }
+        .status-present {
+            color: #28a745;
+            font-weight: 600;
+        }
+        .status-absent {
+            color: #dc3545;
+            font-weight: 600;
+        }
+        .status-leave {
+            color: #f4a261;
+            font-weight: 600;
+        }
+
+        /* Responsive Styles */
+        @media (min-width: 769px) {
+            .sidebar {
+                transform: translateX(0) !important;
+            }
+            .main-content {
+                margin-left: 270px !important;
+            }
+            .menu-toggle, .close-btn {
+                display: none !important;
+            }
+            .filter-form {
+                flex-wrap: nowrap;
+            }
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0;
+            }
+            .menu-toggle {
+                display: block;
+            }
+            .close-btn {
+                display: block;
+            }
+            .navbar {
+                flex-direction: row;
+                align-items: center;
+            }
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            .profile-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            table {
+                font-size: 0.9rem;
+            }
+            th, td {
+                padding: 10px;
+            }
+            .form-group select {
+                font-size: 0.9rem;
+                padding: 8px;
+            }
+        }
+        @media (max-width: 576px) {
+            .welcome-section h2 {
+                font-size: 1.3rem;
+            }
+            .welcome-section p {
+                font-size: 0.9rem;
+            }
+            .navbar span {
+                font-size: 1.1rem;
+            }
+            .menu-toggle {
+                padding: 6px 10px;
+                font-size: 0.9rem;
+            }
+            table {
+                display: block;
+                overflow-x: auto;
+            }
+            th, td {
+                min-width: 120px;
+            }
+            .filter-form {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .form-group {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar hidden" id="sidebar">
+        <button class="close-btn" id="close-btn"><i class="fas fa-times"></i></button>
+        <h3>Campus 360</h3>
+        <a href="hod_dashboard.html"><i class="fas fa-tachometer-alt"></i>Dashboard</a>
+        <a href="hod_applications.html"><i class="fas fa-file-alt"></i>Approve/Reject Applications</a>
+        <a href="hod_timetable.html"><i class="fas fa-calendar-alt"></i>Schedule Timetable</a>
+        <a href="hod_assign_course.html"><i class="fas fa-book"></i>Assign Course</a>
+        <a href="hod_teacher_attendance.html" class="active"><i class="fas fa-user-check"></i>Teacher Attendance</a>
+        <a href="hod_updates.html"><i class="fas fa-bullhorn"></i>Updates</a>
+        <a href="hod_leave_applications.html"><i class="fas fa-envelope-open-text"></i>Leave Applications</a>
+        <a href="hod_student_applications.html"><i class="fas fa-user-graduate"></i>Student Applications</a>
+        <a href="hod_marksheets.html"><i class="fas fa-clipboard-list"></i>Marksheets</a>
+        <a href="hod_settings.html"><i class="fas fa-cog"></i>Settings</a>
+        <a href="logout.html"><i class="fas fa-sign-out-alt"></i>Logout</a>
+    </div>
+
+    <div class="main-content full-width" id="mainContent">
+        <div class="navbar">
+            <button class="menu-toggle" id="menu-toggle">Menu</button>
+            <span>View Teacher Attendance</span>
+        </div>
+
+        <div class="header">
+            <h1>Teacher Attendance</h1>
+            <div class="profile-header">
+                <div>
+                    <span class="avatar">HD</span>
+                    <span>HOD Name</span>
+                </div>
+                <a href="logout.html">Logout</a>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="welcome-section">
+                <h2>Monitor Teacher Attendance</h2>
+                <p>View attendance records for teachers at Campus 360. Use the filters below to select a teacher or date.</p>
+            </div>
+
+            <div class="filter-form">
+                <div class="form-group">
+                    <label for="teacher">Select Teacher</label>
+                    <select id="teacher" name="teacher" onchange="filterAttendance()">
+                        <option value="">All Teachers</option>
+                        <option value="Prof. Smith">Prof. Smith</option>
+                        <option value="Prof. Lee">Prof. Lee</option>
+                        <option value="Dr. Brown">Dr. Brown</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="date">Select Date</label>
+                    <select id="date" name="date" onchange="filterAttendance()">
+                        <option value="">All Dates</option>
+                        <option value="2025-05-14">2025-05-14</option>
+                        <option value="2025-05-15">2025-05-15</option>
+                        <option value="2025-05-16">2025-05-16</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="attendance-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Teacher</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendance-table-body">
+                        <tr data-teacher="Prof. Smith" data-date="2025-05-14">
+                            <td>Prof. Smith</td>
+                            <td>2025-05-14</td>
+                            <td class="status-present">Present</td>
+                            <td>-</td>
+                        </tr>
+                        <tr data-teacher="Prof. Smith" data-date="2025-05-15">
+                            <td>Prof. Smith</td>
+                            <td>2025-05-15</td>
+                            <td class="status-absent">Absent</td>
+                            <td>Unplanned absence</td>
+                        </tr>
+                        <tr data-teacher="Prof. Lee" data-date="2025-05-14">
+                            <td>Prof. Lee</td>
+                            <td>2025-05-14</td>
+                            <td class="status-present">Present</td>
+                            <td>-</td>
+                        </tr>
+                        <tr data-teacher="Prof. Lee" data-date="2025-05-15">
+                            <td>Prof. Lee</td>
+                            <td>2025-05-15</td>
+                            <td class="status-leave">Leave</td>
+                            <td>Approved medical leave</td>
+                        </tr>
+                        <tr data-teacher="Dr. Brown" data-date="2025-05-16">
+                            <td>Dr. Brown</td>
+                            <td>2025-05-16</td>
+                            <td class="status-present">Present</td>
+                            <td>-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sidebar Toggle
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
+        const menuToggle = document.getElementById('menu-toggle');
+        const closeBtn = document.getElementById('close-btn');
+
+        menuToggle.addEventListener('click', toggleSidebar);
+        closeBtn.addEventListener('click', toggleSidebar);
+
+        function toggleSidebar() {
+            sidebar.classList.toggle('hidden');
+            sidebar.classList.toggle('active');
+            mainContent.classList.toggle('full-width');
+        }
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function (event) {
+            if (window.innerWidth <= 768 && sidebar.classList.contains('active')) {
+                if (!sidebar.contains(event.target) && !menuToggle.contains(event.target)) {
+                    toggleSidebar();
+                }
+            }
+        });
+
+        // Filter Attendance
+        function filterAttendance() {
+            const teacherFilter = document.getElementById('teacher').value;
+            const dateFilter = document.getElementById('date').value;
+            const rows = document.querySelectorAll('#attendance-table-body tr');
+
+            rows.forEach(row => {
+                const teacher = row.getAttribute('data-teacher');
+                const date = row.getAttribute('data-date');
+                const showRow = (!teacherFilter || teacher === teacherFilter) && (!dateFilter || date === dateFilter);
+                row.style.display = showRow ? '' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>

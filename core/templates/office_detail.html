@@ -1,0 +1,127 @@
+{% extends "core_base.html" %}
+{% load static %}
+
+{% block title %}{{ office.name }} - Office Details{% endblock %}
+
+{% block core_content %}
+
+    {% include "navbar.html" %}
+
+    <!-- Page Header Start -->
+    <div class="container-fluid bg-primary py-5 mb-5 wow fadeIn" data-wow-delay="0.1s"
+        {% if office.image %}
+            style="background: linear-gradient(rgba(24, 29, 56, .7), rgba(24, 29, 56, .7)), url({{ office.image.url }}); background-size: cover; background-position: center;"
+        {% endif %}>
+        <div class="container py-5">
+            <div class="row justify-content-center">
+                <div class="col-lg-10 text-center">
+                    <h1 class="display-3 text-white animated slideInDown">{{ office.name }}</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb justify-content-center">
+                            <li class="breadcrumb-item"><a class="text-white" href="{% url 'home' %}">Home</a></li>
+                            <li class="breadcrumb-item text-white active" aria-current="page">Office</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Page Header End -->
+
+    <!-- Office Details Start -->
+    <div class="container-xxl py-5">
+        <div class="container">
+            <div class="row g-5">
+                <div class="col-lg-8 wow fadeInUp" data-wow-delay="0.1s">
+                    <h3 class="mb-4">About the {{ office.name }}</h3>
+                    {% if office.description %}
+                        <p>{{ office.description|linebreaksbr }}</p>
+                    {% endif %}
+
+                    <h4 class="mt-5 mb-3">Contact Information</h4>
+                    <ul class="list-group list-group-flush">
+                        {% if office.location %}
+                            <li class="list-group-item"><i class="fas fa-map-marker-alt me-2 text-primary"></i><strong>Location:</strong> {{ office.location }}</li>
+                        {% endif %}
+                        {% if office.contact_email %}
+                            <li class="list-group-item"><i class="fas fa-envelope me-2 text-primary"></i><strong>Email:</strong> {{ office.contact_email }}</li>
+                        {% endif %}
+                        {% if office.contact_phone %}
+                            <li class="list-group-item"><i class="fas fa-phone me-2 text-primary"></i><strong>Phone:</strong> {{ office.contact_phone }}</li>
+                        {% endif %}
+                    </ul>
+                </div>
+
+                {% if office.image %}
+                 <div class="col-lg-4 wow fadeInUp" data-wow-delay="0.3s">
+                     <img src="{{ office.image.url }}" alt="{{ office.name }} Image" class="img-fluid rounded" style="max-width: 100%; height: auto; object-fit: cover;">
+                  </div>
+                 {% endif %}
+
+            </div>
+
+            {% if staff %}
+                <div class="row g-4 mt-5">
+                    <div class="col-12 wow fadeInUp" data-wow-delay="0.1s">
+                        <h3 class="mb-4 text-center">Office Staff</h3>
+                    </div>
+                    {% for person in staff %}
+                    <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="{% cycle '0.1' '0.3' '0.5' '0.7' %}s">
+                        <div class="team-item bg-light rounded overflow-hidden">
+                            <div class="overflow-hidden staff-image-container">
+                                {% if person.user.profile_picture %}
+                                    <img class="img-fluid staff-image" src="{{ person.user.profile_picture.url }}" alt="{{ person.user.full_name }}">
+                                {% else %}
+                                     <img class="img-fluid staff-image" src="{% static 'img/default-profile.png' %}" alt="{{ person.user.full_name }}">
+                                {% endif %}
+                            </div>
+                            <div class="text-center p-4">
+                                <h5 class="mb-0">{{ person.user.get_full_name|default:person.user.first_name }}</h5>
+                                <small>{{ person.position }}</small>
+                                {% if person.contact_no %}
+                                    <p class="text-muted">Contact: {{ person.contact_no }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+        </div>
+    </div>
+    <!-- Office Details End -->
+
+    <!-- Custom CSS for Staff Image Consistency -->
+    <style>
+        .staff-image-container {
+            width: 100%;
+            height: 250px; /* Fixed height for consistency */
+            overflow: hidden;
+            position: relative;
+        }
+        .staff-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Ensures image fills the container without distortion */
+            object-position: center; /* Centers the image */
+            transition: transform 0.3s ease; /* Smooth zoom effect on hover */
+        }
+        .team-item:hover .staff-image {
+            transform: scale(1.05); /* Slight zoom effect on hover */
+        }
+        @media (max-width: 768px) {
+            .staff-image-container {
+                height: 200px; /* Slightly smaller on tablets */
+            }
+        }
+        @media (max-width: 576px) {
+            .staff-image-container {
+                height: 180px; /* Even smaller on mobile */
+            }
+        }
+    </style>
+
+    {% include "footer.html" %}
+
+{% endblock core_content %} 

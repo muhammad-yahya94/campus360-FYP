@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'faculty_staff',
     'courses',
     'students',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [
@@ -78,6 +79,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'core.context_processors.faculty_context',
+                'core.context_processors.offices_context',
             ],
         },
     },
@@ -211,16 +214,49 @@ DAISY_SETTINGS = {
             'icon': 'fa-solid fa-university',
             'name': 'Academics',
             'hide': False,
+            'divider_title': "Academic Structure",
         },
         'admissions': {
             'icon': 'fa-solid fa-school',
             'name': 'Admissions',
             'hide': False,
+            'divider_title': "Admissions Management",
         },
         'site_elements': {
             'icon': 'fa-solid fa-cogs',
             'name': 'Site Elements',
             'hide': False,
+            'divider_title': "Site Content",
+        },
+        'announcements': {
+            'icon': 'fa-solid fa-bullhorn',
+            'name': 'Announcements',
+            'hide': False,
+            'divider_title': "Announcements",
+        },
+        'faculty_staff': {
+            'icon': 'fa-solid fa-people-group',
+            'name': 'Faculty & Staff',
+            'hide': False,
+            'divider_title': "People and Offices",
+        },
+        'courses': {
+            'icon': 'fa-solid fa-book-open',
+            'name': 'Courses',
+            'hide': False,
+            'divider_title': "Course Management",
+        },
+        'students': {
+            'icon': 'fa-solid fa-user-graduate',
+            'name': 'Students',
+            'hide': False,
+            'divider_title': "Student Management",
+        },
+        'core': {
+            'icon': 'fa-solid fa-wrench',
+            'name': 'Core Settings',
+            'hide': False,
+            'divider_title': "Site Configuration",
         },
     },
 }

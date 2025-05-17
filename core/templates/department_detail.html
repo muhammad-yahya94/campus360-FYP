@@ -1,0 +1,173 @@
+{% extends "core_base.html" %}
+{% load static %}
+
+{% block title %}{{ department.name }} - Department Details{% endblock %}
+
+{% block core_content %}
+
+    {% include "navbar.html" %}
+
+    <!-- Page Header Start -->
+    <div class="container-fluid bg-primary py-5 mb-5 wow fadeIn" data-wow-delay="0.1s"
+        {% if department.image %}
+            style="background: linear-gradient(rgba(24, 29, 56, .7), rgba(24, 29, 56, .7)), url({{ department.image.url }}); background-size: cover; background-position: center;"
+        {% endif %}>
+        <div class="container py-5">
+            <div class="row justify-content-center">
+                <div class="col-lg-10 text-center">
+                    <h1 class="display-3 text-white animated slideInDown">{{ department.name }}</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb justify-content-center">
+                            <li class="breadcrumb-item"><a class="text-white" href="{% url 'home' %}">Home</a></li>
+                            <li class="breadcrumb-item text-white active" aria-current="page">Department</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Page Header End -->
+
+    <!-- Department Details Start -->
+    <div class="container-xxl py-5">
+        <div class="container">
+            <div class="row g-5">
+                <div class="col-lg-8 wow fadeInUp" data-wow-delay="0.1s">
+                    <h3 class="mb-4">About the {{ department.name }} Department</h3>
+                    {% if department.introduction %}
+                        <p>{{ department.introduction|linebreaksbr }}</p>
+                    {% endif %}
+                    {% if department.details %}
+                        <p>{{ department.details|linebreaksbr }}</p>
+                    {% endif %}
+                    {% if department.code %}
+                        <p><strong>Department Code:</strong> {{ department.code }}</p>
+                    {% endif %}
+                    
+                    <!-- Useful Links Section -->
+                    <h4 class="mt-5 mb-3">Useful Links</h4>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item">
+                            <a href="/faculties/{{ department.faculty.name|slugify }}/" class="text-primary">
+                                <i class="fas fa-university me-2"></i>{{ department.faculty.name }} Faculty
+                            </a>
+                        </li>
+                        <li class="list-group-item">
+                            <a href="{% url 'admission' %}?department={{ department.code|lower }}" class="text-primary">
+                                <i class="fas fa-graduation-cap me-2"></i>Apply to {{ department.name }} Programs
+                            </a>
+                        </li>
+                        {% if 'computer' in department.name|lower or 'cs' in department.code|lower %}
+                        <li class="list-group-item">
+                            <a href="https://www.acm.org/publications" class="text-primary" target="_blank" rel="noopener noreferrer">
+                                <i class="fas fa-book me-2"></i>ACM Publications (Computer Science Resources)
+                            </a>
+                        </li>
+                        {% elif 'medical' in department.name|lower or 'mbbs' in department.code|lower %}
+                        <li class="list-group-item">
+                            <a href="https://www.ncbi.nlm.nih.gov/pubmed/" class="text-primary" target="_blank" rel="noopener noreferrer">
+                                <i class="fas fa-book me-2"></i>PubMed (Medical Research Database)
+                            </a>
+                        </li>
+                        {% elif 'engineering' in department.name|lower %}
+                        <li class="list-group-item">
+                            <a href="https://www.ieee.org/publications/" class="text-primary" target="_blank" rel="noopener noreferrer">
+                                <i class="fas fa-book me-2"></i>IEEE Publications (Engineering Resources)
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="list-group-item">
+                            <a href="https://scholar.google.com/" class="text-primary" target="_blank" rel="noopener noreferrer">
+                                <i class="fas fa-book me-2"></i>Google Scholar (Academic Research)
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+
+                    {% if programs %}
+                        <h4 class="mt-5 mb-3">Offered Programs</h4>
+                        <ul class="list-group list-group-flush">
+                            {% for program in programs %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    {{ program.name }} ({{ program.degree_type }})
+                                    <span class="badge bg-secondary rounded-pill">{{ program.duration_years }} Years</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+
+                {% if department.image %}
+                <div class="col-lg-4 wow fadeInUp" data-wow-delay="0.3s">
+                    <img src="{{ department.image.url }}" alt="{{ department.name }} Image" class="img-fluid rounded" style="max-width: 100%; height: auto; object-fit: cover;">
+                </div>
+                {% endif %}
+            </div>
+
+            {% if teachers %}
+                <div class="row g-4 mt-5">
+                    <div class="col-12 wow fadeInUp" data-wow-delay="0.1s">
+                        <h3 class="mb-4 text-center">Department Staff</h3>
+                    </div>
+                    {% for teacher in teachers %}
+                    <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="{% cycle '0.1' '0.3' '0.5' '0.7' %}s">
+                        <div class="team-item bg-light rounded overflow-hidden">
+                            <div class="overflow-hidden staff-image-container">
+                                {% if teacher.user.profile_picture %}
+                                    <img class="img-fluid staff-image" src="{{ teacher.user.profile_picture.url }}" alt="{{ teacher.user.full_name }}">
+                                {% else %}
+                                    <img class="img-fluid staff-image" src="{% static 'img/default-profile.png' %}" alt="{{ teacher.user.full_name }}">
+                                {% endif %}
+                            </div>
+                            <div class="text-center p-4">
+                                <h5 class="mb-0">{{ teacher.user.full_name|default:teacher.user.first_name }}</h5>
+                                <small>{{ teacher.get_designation_display }}</small>
+                                {% if teacher.qualification %}
+                                    <p class="text-muted mb-1">{{ teacher.qualification }}</p>
+                                {% endif %}
+                                {% if teacher.contact_no %}
+                                    <p class="text-muted">Contact: {{ teacher.contact_no }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    <!-- Department Details End -->
+
+    <!-- Custom CSS for Staff Image Consistency -->
+    <style>
+        .staff-image-container {
+            width: 100%;
+            height: 250px; /* Fixed height for consistency */
+            overflow: hidden;
+            position: relative;
+        }
+        .staff-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Ensures image fills the container without distortion */
+            object-position: center; /* Centers the image */
+            transition: transform 0.3s ease; /* Smooth zoom effect on hover */
+        }
+        .team-item:hover .staff-image {
+            transform: scale(1.05); /* Slight zoom effect on hover */
+        }
+        @media (max-width: 768px) {
+            .staff-image-container {
+                height: 200px; /* Slightly smaller on tablets */
+            }
+        }
+        @media (max-width: 576px) {
+            .staff-image-container {
+                height: 180px; /* Even smaller on mobile */
+            }
+        }
+    </style>
+
+    {% include "footer.html" %}
+
+{% endblock core_content %}

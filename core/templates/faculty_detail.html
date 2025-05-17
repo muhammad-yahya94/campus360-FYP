@@ -1,0 +1,65 @@
+{% extends "core_base.html" %}
+{% load static %}
+
+{% block title %}{{ faculty.name }} - Faculty Details{% endblock %}
+
+{% block core_content %}
+
+    {% include "navbar.html" %}
+
+    <!-- Page Header Start -->
+    <div class="container-fluid bg-primary py-5 mb-5 wow fadeIn" data-wow-delay="0.1s">
+        <div class="container py-5">
+            <div class="row justify-content-center">
+                <div class="col-lg-10 text-center">
+                    <h1 class="display-3 text-white animated slideInDown">{{ faculty.name }} Faculty</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb justify-content-center">
+                            <li class="breadcrumb-item"><a class="text-white" href="{% url 'home' %}">Home</a></li>
+                            <li class="breadcrumb-item"><a class="text-white" href="#">Faculties</a></li> {# Placeholder, update later if a faculty list page exists #}
+                            <li class="breadcrumb-item text-white active" aria-current="page">{{ faculty.name }}</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Page Header End -->
+
+    <!-- Faculty Details Start -->
+    <div class="container-xxl py-5">
+        <div class="container">
+            <div class="row g-5">
+                <div class="col-lg-8 wow fadeInUp" data-wow-delay="0.1s">
+                    <h3 class="mb-4">About the {{ faculty.name }} Faculty</h3>
+                    {# Add faculty introduction/description here if available #}
+                    <p>Details about the {{ faculty.name }} faculty will be displayed here.</p>
+
+                    {# List departments in this faculty #}
+                    <h4 class="mt-5 mb-3">Departments in this Faculty</h4>
+                    {% if departments %}
+                        <ul class="list-group list-group-flush">
+                            {% for department in departments %}
+                                <li class="list-group-item">
+                                    <a href="{% url 'department_detail' slug=department.slug %}" class="text-primary">{{ department.name }}</a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p>No departments found for this faculty.</p>
+                    {% endif %}
+
+                </div>
+
+                <div class="col-lg-4 wow fadeInUp" data-wow-delay="0.3s">
+                    {# Add faculty image or other relevant info here #}
+                     <img src="{% static 'img/default-faculty.jpg' %}" alt="{{ faculty.name }} Image" class="img-fluid rounded" style="max-width: 100%; height: auto; object-fit: cover;">
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Faculty Details End -->
+
+    {% include "footer.html" %}
+
+{% endblock core_content %} 

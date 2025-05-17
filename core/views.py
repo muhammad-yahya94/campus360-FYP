@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
@@ -11,6 +11,8 @@ from users.models import CustomUser
 import json
 import logging
 from datetime import datetime
+from site_elements.models import Alumni, Gallery
+from faculty_staff.models import Teacher, Office, OfficeStaff
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +39,7 @@ def register_view(request):
                 )
                 login(request, user)
                 return redirect('apply')
-            except Exception as e:
+            except Exception as e:   
                 context['register_error'] = str(e)
         
         # Preserve form inputs
@@ -87,30 +89,85 @@ def home(request):
     }
     return render(request, 'index.html', context)
 
+from django.shortcuts import render, get_object_or_404
+from academics.models import Department
+
+def department_detail(request, slug):
+    department = get_object_or_404(Department, slug=slug)
+    teachers = department.teachers.all()
+    programs = department.programs.all()
+    context = {
+        'department': department,
+        'teachers': teachers,
+        'programs': programs,
+    }
+    return render(request, 'department_detail.html', context)
+
 
 def about(request):
     return render(request, 'about.html')
 
 
 def gallery(request):
-    return render(request, 'gallery.html')
+    gallery_items = Gallery.objects.all().order_by('-date_added')
+    context = {
+        'gallery_items': gallery_items
+    }
+    return render(request, 'gallery.html', context)
 
 
-def events(request):
-    return render(request, 'all-news-events.html')
+from django.shortcuts import render, get_object_or_404
+from announcements.models import News, Event
+from django.core.paginator import Paginator
+from django.utils import timezone
 
+def news_events(request):
+    # Fetch recent events (all, ordered by start date descending)
+    recent_events = Event.objects.all().order_by('-event_start_date')
+    
+    # Paginate events (5 per page)
+    events_paginator = Paginator(recent_events, 5)
+    events_page_number = request.GET.get('events_page')
+    events_page_obj = events_paginator.get_page(events_page_number)
+    
+    # Fetch recent news (all published, for pagination)
+    recent_news = News.objects.filter(is_published=True).order_by('-published_date')
+    
+    # Paginate news (5 per page)
+    news_paginator = Paginator(recent_news, 5)
+    news_page_number = request.GET.get('news_page')
+    news_page_obj = news_paginator.get_page(news_page_number)
+    
+    context = {
+        'events': events_page_obj,
+        'recent_news': news_page_obj,
+    }
+    return render(request, 'all-news-events.html', context)
 
 def read_more_event(request, slug):
-    print(f"This is slug field: {slug}")
-    event_detail = Event.objects.get(slug=slug)
-    recent_news = News.objects.all().order_by('-published_date')[:5]
+    event_detail = get_object_or_404(Event, slug=slug)
+    recent_news = News.objects.filter(is_published=True).order_by('-published_date')[:5]
     recent_events = Event.objects.all().order_by('-event_start_date')[:5]
-    
-    return render(request, 'read-more.html', {
+    print(f"Recent events: {recent_events}")  # Debug   
+    return render(request, 'read-more-events.html', {
         'event_details': event_detail,
         'recent_news': recent_news,
         'recent_events': recent_events,
     })
+
+def read_more_news(request, slug):
+    news_detail = get_object_or_404(News, slug=slug, is_published=True)
+    recent_news = News.objects.filter(is_published=True).exclude(slug=slug).order_by('-published_date')[:5]
+    recent_events = Event.objects.filter(
+        event_start_date__gte=timezone.now()
+    ).order_by('event_start_date')[:5]
+    
+    return render(request, 'read-more-news.html', {
+        'news_details': news_detail,
+        'recent_news': recent_news,
+        'recent_events': recent_events,
+    })
+
 
 
 def team(request):
@@ -271,7 +328,6 @@ def application_success(request):
 def my_applications(request):
     if not request.user.is_authenticated:
         return render('admission')
-def my_applications(request):
     if not request.user.is_authenticated:
         return render('admission')
 
@@ -286,3 +342,29 @@ def my_applications(request):
 
 def admission(request):
     return render(request, 'admission.html')
+
+def alumni_view(request):
+    alumni_list = Alumni.objects.all().order_by('graduation_year', 'name')
+    context = {
+        'alumni_list': alumni_list
+    }
+    return render(request, 'alumni.html', context)
+
+def office_detail(request, slug):
+    office = get_object_or_404(Office, slug=slug)
+    officestaff = office.staff.all()
+    context = {
+        'office': office,
+        'officestaff': officestaff,
+    }
+    return render(request, 'office_detail.html', context)
+
+# New Faculty Detail View
+def faculty_detail_view(request, slug):
+    faculty = get_object_or_404(Faculty, slug=slug)
+    departments = faculty.departments.all()
+    context = {
+        'faculty': faculty,
+        'departments': departments,
+    }
+    return render(request, 'faculty_detail.html', context)

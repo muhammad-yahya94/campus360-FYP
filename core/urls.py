@@ -7,9 +7,12 @@ urlpatterns = [
     path('about/', views.about, name='about'),
     path('gallery/', views.gallery, name='gallery'),
     
-    # Event-related pages
-    path('events/', views.events, name='events'),
+    # News-Event-related pages
+    path('news-events/', views.news_events, name='events'),
     path('event/<slug:slug>/', views.read_more_event, name='events_detail'),
+    path('news/<slug:slug>/', views.read_more_news, name='news_detail'),
+    
+    path('departments/<slug:slug>/', views.department_detail, name='department_detail'),
     
     # Team and testimonial pages
     path('team/', views.team, name='team'),
@@ -30,4 +33,13 @@ urlpatterns = [
     path('admission/', views.admission, name='admission'),
     path('admission/login/', views.login_view, name='loginview'),
     path('admission/register/', views.register_view, name='registerview'),
+    
+    # Alumni page
+    path('alumni/', views.alumni_view, name='alumni'),
+
+    # Office detail page
+    path('offices/<slug:slug>/', views.office_detail, name='office_detail'),
+
+    # Faculty detail page
+    path('faculties/<slug:slug>/', views.faculty_detail_view, name='faculty_detail'),
 ]

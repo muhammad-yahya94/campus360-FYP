@@ -1,0 +1,152 @@
+{% extends "core_base.html" %}
+{% load static %}
+{% block core_content %}
+<!-- Navbar Start -->
+{% include "navbar.html" %}
+<!-- News Detail Start -->
+<div class="container-xxl py-5">
+    <div class="container">
+        <div class="row g-5 align-items-start">
+            <!-- Left Column - News Details -->
+            <div class="col-lg-8 wow fadeInUp" data-wow-delay="0.1s">
+                <h1 class="mb-4">{{ news_details.title }}</h1>
+                <p class="text-muted mb-2">
+                    <i class="fa fa-calendar-alt text-primary me-2"></i>{{ news_details.published_date|date:"d M, Y" }}
+                </p>
+                {% if news_details.image %}
+                <img src="{{ news_details.image.url }}" class="img-fluid mb-4" style="max-width: 100%; height: auto; border-radius: 0.5rem;" alt="{{ news_details.title }}">
+                {% endif %}
+                <div class="news-content ck-content">
+                    {{ news_details.content|safe }}
+                </div>
+            </div>
+
+            <!-- Right Column - Related Events & News Links -->
+            <div class="col-lg-4">
+                <div class="wow fadeInUp" data-wow-delay="0.3s">
+                    <!-- Upcoming Events Section -->
+                    <h3 class="mb-4 border-bottom pb-2">
+                        <i class="fa fa-calendar-alt text-primary me-2"></i>Upcoming Events
+                    </h3>
+                    {% for event in recent_events %}
+                    <div class="event-item bg-light p-4 mb-4 rounded">
+                        <div>
+                            <div class="event-date bg-primary text-white text-center p-2 rounded" style="max-width: 80px; margin-bottom: 10px">
+                                <h4 class="mb-0">{{ event.event_start_date|date:"d" }}</h4>
+                                <small>{{ event.event_start_date|date:"M" }}</small>
+                            </div>
+                            <div>
+                                <h5 class="mb-2">{{ event.title }}</h5>
+                                <p class="mb-0"><i class="fa fa-clock text-primary me-2"></i>{{ event.event_start_date|date:"h:i A" }} - {{ event.event_end_date|date:"h:i A" }}</p>
+                                <p class="mb-0"><i class="fa fa-map-marker-alt text-primary pt-2"></i>{{ event.location }}</p>
+                            </div>
+                            <a href="{% url 'events_detail' event.slug %}" class="btn btn-sm w-100 btn-primary px-3 mt-4">Details</a>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted">No upcoming events.</p>
+                    {% endfor %}
+
+                    <!-- Latest News Section -->
+                    <h3 class="mb-4 border-bottom pb-2">
+                        <i class="fa fa-newspaper text-primary me-2"></i>Latest News
+                    </h3>
+                    {% for news in recent_news %}
+                    <div class="news-item bg-light p-4 mb-4 rounded">
+                        <div class="d-flex">
+                            {% if news.image %}
+                            <img src="{{ news.image.url }}" class="img-fluid me-3" style="width: 100px; height: 100px; object-fit: cover;" alt="{{ news.title }}">
+                            {% else %}
+                            <img src="{% static 'img/course-1.jpg' %}" class="img-fluid me-3" style="width: 100px; height: 100px; object-fit: cover;" alt="{{ news.title }}">
+                            {% endif %}
+                            <div>
+                                <small class="text-primary"><i class="far fa-calendar-alt me-2"></i>{{ news.published_date|date:"d M, Y" }}</small>
+                                <h5 class="mb-2">{{ news.title }}</h5>
+                                <div class="ck-content">
+                                    <p class="mb-0">{{ news.content|truncatechars_html:100|safe }}</p>
+                                </div>
+                                <a href="{% url 'news_detail' news.slug %}" class="btn btn-link clr-dark p-0">Read More <i class="fa fa-arrow-right ms-2"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted">No news available.</p>
+                    {% endfor %}
+                    <div class="text-center mt-4">
+                        <a href="{% url 'events' %}" class="btn btn-primary py-2 px-4">View All Events & News</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- News Detail End -->
+{% include "footer.html" %}
+<style>
+    .ck-content {
+        font-size: 1rem;
+        line-height: 1.7;
+    }
+    .ck-content img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        display: block;
+    }
+    .ck-content h1, .ck-content h2, .ck-content h3, .ck-content h4, .ck-content h5, .ck-content h6 {
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        color: #333;
+        font-weight: 600;
+    }
+    .ck-content ul, .ck-content ol {
+        padding-left: 1.2rem;
+        margin-bottom: 1rem;
+    }
+    .ck-content ul {
+        list-style: none;
+    }
+    .ck-content ul li {
+        position: relative;
+        padding-left: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    .ck-content ul li::before {
+        content: "\f00c"; /* Font Awesome check icon */
+        font-family: "Font Awesome 5 Free";
+        font-weight: 900;
+        color: #0d6efd; /* Bootstrap primary */
+        position: absolute;
+        left: 0;
+        top: 0;
+    }
+    .ck-content ol li {
+        margin-bottom: 0.5rem;
+    }
+    .ck-content p {
+        margin-bottom: 1.2rem;
+    }
+    .ck-content .text-muted {
+        color: #6c757d !important;
+    }
+    .ck-content .fa {
+        margin-right: 0.5rem;
+        color: #0d6efd;
+    }
+    @media (max-width: 768px) {
+        .ck-content {
+            font-size: 0.9rem;
+        }
+        .ck-content img {
+            margin: 0 auto 1rem;
+        }
+        .ck-content h1, .ck-content h2, .ck-content h3 {
+            font-size: 1.5rem;
+        }
+        .ck-content h4, .ck-content h5, .ck-content h6 {
+            font-size: 1.2rem;
+        }
+    }
+</style>
+{% endblock core_content %}

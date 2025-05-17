@@ -61,43 +61,22 @@
                 <h1 class="mb-5">Our Moments</h1>
             </div>
             <div class="row g-4 gallery-container">
-                <!-- Gallery Items -->
-                <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
-                    <div class="gallery-item position-relative overflow-hidden">
-                        <img class="img-fluid w-100" src="{% static 'img/college-building.jpg' %}" alt="College Building">
-                        <div class="gallery-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center">
-                            <a href="{% static 'img/college-building.jpg' %}" class="btn btn-light px-3 py-2 gallery-view-btn" data-glightbox="type: image" data-gallery="gallery1">View</a>
+                {% for item in gallery_items %}
+                    <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="{% cycle '0.1' '0.3' '0.5' '0.7' %}s">
+                        <div class="gallery-item position-relative overflow-hidden">
+                            {% if item.image %}
+                                <img class="img-fluid w-100" src="{{ item.image.url }}" alt="{{ item.title }}">
+                            {% endif %}
+                            <div class="gallery-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center">
+                                <a href="{{ item.image.url }}" class="btn btn-light px-3 py-2 gallery-view-btn" data-glightbox="type: image" data-gallery="gallery1" {% if item.title %}data-description="{{ item.title }}"{% endif %}>View</a>
+                            </div>
                         </div>
                     </div>
+                {% empty %}
+                <div class="col-12 text-center">
+                    <p>No gallery items available yet.</p>
                 </div>
-
-                <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.2s">
-                    <div class="gallery-item position-relative overflow-hidden">
-                        <img class="img-fluid w-100" src="{% static 'img/photo1.png' %}" alt="Campus Photo 1">
-                        <div class="gallery-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center">
-                            <a href="{% static 'img/photo1.png' %}" class="btn btn-light px-3 py-2 gallery-view-btn" data-glightbox="type: image" data-gallery="gallery1">View</a>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.3s">
-                    <div class="gallery-item position-relative overflow-hidden">
-                        <img class="img-fluid w-100" src="{% static 'img/photo3.png' %}" alt="Campus Event">
-                        <div class="gallery-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center">
-                            <a href="{% static 'img/photo3.png' %}" class="btn btn-light px-3 py-2 gallery-view-btn" data-glightbox="type: image" data-gallery="gallery1">View</a>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.4s">
-                    <div class="gallery-item position-relative overflow-hidden">
-                        <img class="img-fluid w-100" src="{% static 'img/photo4.png' %}" alt="Student Activity">
-                        <div class="gallery-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center">
-                            <a href="{% static 'img/photo4.png' %}" class="btn btn-light px-3 py-2 gallery-view-btn" data-glightbox="type: image" data-gallery="gallery1">View</a>
-                        </div>
-                    </div>
-                </div>
-                <!-- Add more items as needed -->
+                {% endfor %}
             </div>
         </div>
     </div>

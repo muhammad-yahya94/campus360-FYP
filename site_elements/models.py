@@ -2,9 +2,6 @@ from django.db import models
 from users.models import CustomUser
 
 
-
-
-
 class Slider(models.Model):
     title = models.CharField(max_length=200)
     image = models.ImageField(upload_to='slider/')

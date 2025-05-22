@@ -11,19 +11,21 @@ class Student(models.Model):
         Applicant,
         on_delete=models.CASCADE,
         related_name='student_profile',
-        primary_key=True
+        primary_key=True,
+        help_text="Select the applicant record associated with this student."
     )
     user = models.OneToOneField(
         CustomUser,
         on_delete=models.CASCADE,
         related_name='student_profile',
         null=True,
-        blank=True
+        blank=True,
+        help_text="Select the user account linked to this student profile (optional, automatically linked if available)."
     )
-    university_roll_no = models.IntegerField(blank=True,null=True)
-    college_roll_no = models.IntegerField(blank=True,null=True)
-    enrollment_date = models.DateField()  # Official enrollment date
-    graduation_date = models.DateField(null=True, blank=True)
+    university_roll_no = models.IntegerField(blank=True,null=True, help_text="Enter the student's official university roll number.")
+    college_roll_no = models.IntegerField(blank=True,null=True, help_text="Enter the student's college roll number (if applicable).")
+    enrollment_date = models.DateField(help_text="Select the official date when the student was enrolled.")  # Official enrollment date
+    graduation_date = models.DateField(null=True, blank=True, help_text="Select the date when the student graduated (optional).")
     current_status = models.CharField(
         max_length=20,
         choices=[
@@ -32,11 +34,12 @@ class Student(models.Model):
             ('graduated', 'Graduated'),
             ('withdrawn', 'Withdrawn'),
         ],
-        default='active'
+        default='active',
+        help_text="Select the current academic status of the student."
     )
     # You can add more student-specific fields here
-    emergency_contact = models.CharField(max_length=100, blank=True)
-    emergency_phone = models.CharField(max_length=15, blank=True)
+    emergency_contact = models.CharField(max_length=100, blank=True, help_text="Enter the name of an emergency contact person.")
+    emergency_phone = models.CharField(max_length=15, blank=True, help_text="Enter the phone number for the emergency contact.")
     
     class Meta:
         verbose_name = "Student"
@@ -58,14 +61,14 @@ class Student(models.Model):
 
 # ===== Student Enrollment =====
 class StudentEnrollment(models.Model):
-    student = models.ForeignKey(Applicant, on_delete=models.CASCADE, related_name='enrollments')
-    course_offering = models.ForeignKey(CourseOffering, on_delete=models.CASCADE, related_name='enrollments')
-    enrollment_date = models.DateTimeField(auto_now_add=True)
+    student = models.ForeignKey(Applicant, on_delete=models.CASCADE, related_name='enrollments', help_text="Select the student for this enrollment.")
+    course_offering = models.ForeignKey(CourseOffering, on_delete=models.CASCADE, related_name='enrollments', help_text="Select the specific course offering the student is enrolling in.")
+    enrollment_date = models.DateTimeField(auto_now_add=True, help_text="The date and time this enrollment was recorded.")
     status = models.CharField(max_length=20, choices=[
     ('enrolled', 'Enrolled'),
     ('completed', 'Completed'),
     ('dropped', 'Dropped'),
-], default='enrolled')
+], default='enrolled', help_text="Select the status of this course enrollment.")
 
 
 

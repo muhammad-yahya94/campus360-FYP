@@ -2,23 +2,27 @@ from django.contrib import admin
 from .models import *
 from .forms import AdmissionCycleForm
 from django.utils.html import format_html
+from users.models import CustomUser
+from academics.models import Program, Department, Faculty
 
 
 # ===== Academic Session Admin =====
 @admin.register(AcademicSession)
 class AcademicSessionAdmin(admin.ModelAdmin):
     list_display = ('name', 'start_date', 'end_date', 'is_active')
-    search_fields = ('name',)
+    list_filter = ('is_active',)
+    search_fields = ['name']
 
 
 # ===== Admission procedure =====
 @admin.register(AdmissionCycle)
-class AdmissionCycle(admin.ModelAdmin):
+class AdmissionCycleAdmin(admin.ModelAdmin):
     form = AdmissionCycleForm
     
     list_display = ('program', 'session', 'application_start', 'application_end', 'is_open')
-    list_filter = ('program','is_open')
-    search_fields = ('program__title',)
+    list_filter = ('session', 'program__department__faculty', 'program__department', 'program', 'is_open')
+    search_fields = ['program__name', 'session__name']
+    autocomplete_fields = ['program', 'session']
 
 
 
@@ -36,9 +40,11 @@ class ExtraCurricularActivityInline(admin.TabularInline):
 
 @admin.register(Applicant)
 class ApplicantAdmin(admin.ModelAdmin):
-    list_display = ('full_name', 'user_email', 'program', 'status', 'applied_at', 'view_photo')
-    list_filter = ('status', 'program', 'department', 'faculty', 'applied_at')
-    search_fields = ('full_name', 'user__email', 'cnic', 'contact_no')
+    list_display = ('full_name', 'program', 'status', 'applied_at')
+    list_filter = ('status', 'program__department__faculty', 'program__department', 'program', 'applied_at')
+    search_fields = ['full_name', 'cnic', 'program__name']
+    autocomplete_fields = ['user', 'faculty', 'department', 'program']
+    raw_id_fields = ['user']
     readonly_fields = ('applied_at', 'created_at')
     fieldsets = (
         ('Application Information', {
@@ -76,23 +82,16 @@ class ApplicantAdmin(admin.ModelAdmin):
         return "-"
     view_photo.short_description = 'Photo'
 
-# @admin.register(AcademicQualification)
-# class AcademicQualificationAdmin(admin.ModelAdmin):
-#     list_display = ('applicant_name', 'level', 'exam_passed', 'passing_year', 'board')
-#     list_filter = ('level', 'board')
-#     search_fields = ('applicant__full_name', 'exam_passed', 'roll_no')
-    
-#     def applicant_name(self, obj):
-#         return obj.applicant.full_name
-#     applicant_name.short_description = 'Applicant'
-#     applicant_name.admin_order_field = 'applicant__full_name'
+@admin.register(AcademicQualification)
+class AcademicQualificationAdmin(admin.ModelAdmin):
+    list_display = ('applicant', 'exam_passed', 'passing_year', 'institute')
+    list_filter = ('passing_year', 'institute')
+    search_fields = ['applicant__full_name', 'exam_passed', 'institute', 'board']
+    autocomplete_fields = ['applicant']
 
-# @admin.register(ExtraCurricularActivity)
-# class ExtraCurricularActivityAdmin(admin.ModelAdmin):
-#     list_display = ('applicant_name', 'activity', 'position', 'achievement', 'activity_year')
-#     search_fields = ('applicant__full_name', 'activity', 'achievement')
-    
-#     def applicant_name(self, obj):
-#         return obj.applicant.full_name
-#     applicant_name.short_description = 'Applicant'
-#     applicant_name.admin_order_field = 'applicant__full_name'
+@admin.register(ExtraCurricularActivity)
+class ExtraCurricularActivityAdmin(admin.ModelAdmin):
+    list_display = ('applicant', 'activity', 'position', 'activity_year')
+    list_filter = ('activity_year',)
+    search_fields = ['applicant__full_name', 'activity', 'position']
+    autocomplete_fields = ['applicant']

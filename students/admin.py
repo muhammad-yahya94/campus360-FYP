@@ -1,6 +1,9 @@
 from django.contrib import admin
 from django import forms
 from .models import Student, StudentEnrollment
+from admissions.models import Applicant
+from users.models import CustomUser
+from courses.models import CourseOffering
 
 # Custom form for StudentAdmin to hide related data outside dropdowns
 class StudentAdminForm(forms.ModelForm):
@@ -35,16 +38,10 @@ class StudentEnrollmentAdminForm(forms.ModelForm):
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
     form = StudentAdminForm  # Use the custom form
-    list_display = ('get_full_name', 'university_roll_no', 'college_roll_no', 'current_status', 'enrollment_date')
-    list_filter = ('current_status', 'applicant__department', 'enrollment_date')
-    search_fields = (
-        'applicant__full_name', 
-        'university_roll_no', 
-        'college_roll_no',
-        'applicant__cnic'
-    )
-    # Remove raw_id_fields to use dropdowns
-    # raw_id_fields = ('applicant', 'user')  # Comment this out
+    list_display = ('applicant', 'user', 'university_roll_no', 'current_status', 'enrollment_date')
+    list_filter = ('current_status', 'enrollment_date')
+    search_fields = ['applicant__full_name', 'user__email', 'university_roll_no', 'college_roll_no'] # Added for autocomplete
+    autocomplete_fields = ['applicant', 'user'] # Added autocomplete for ForeignKeys
     date_hierarchy = 'enrollment_date'
     ordering = ('-enrollment_date',)
     
@@ -74,15 +71,10 @@ class StudentAdmin(admin.ModelAdmin):
 @admin.register(StudentEnrollment)
 class StudentEnrollmentAdmin(admin.ModelAdmin):
     form = StudentEnrollmentAdminForm  # Use the custom form
-    list_display = ('get_student_name', 'get_course_name', 'get_teacher', 'status', 'enrollment_date')
-    list_filter = ('status', 'course_offering__semester', 'course_offering__course__department')
-    search_fields = (
-        'student__full_name',
-        'course_offering__course__name',
-        'course_offering__course__code'
-    )
-    # Remove raw_id_fields to use dropdowns
-    # raw_id_fields = ('student', 'course_offering')  # Comment this out
+    list_display = ('student', 'course_offering', 'enrollment_date', 'status')
+    list_filter = ('status', 'course_offering__course')
+    search_fields = ['student__applicant__full_name', 'course_offering__course__name', 'course_offering__course__code'] # Added for autocomplete
+    autocomplete_fields = ['student', 'course_offering'] # Added autocomplete for ForeignKeys
     date_hierarchy = 'enrollment_date'
     
     fieldsets = (
@@ -114,5 +106,4 @@ class StudentEnrollmentAdmin(admin.ModelAdmin):
             'course_offering',
             'course_offering__course',
             'course_offering__teacher',
-            'course_offering__semester'
         )

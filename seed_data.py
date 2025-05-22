@@ -21,7 +21,7 @@ from site_elements.models import Slider, Alumni, Gallery
 from announcements.models import News, Event
 from admissions.models import AcademicSession, AdmissionCycle, Applicant, AcademicQualification, ExtraCurricularActivity
 from faculty_staff.models import Teacher, Office, OfficeStaff, DESIGNATION_CHOICES
-from courses.models import Semester, Course, CourseOffering, Assignment, Submission
+from courses.models import Course, CourseOffering
 from students.models import Student, StudentEnrollment
 
 
@@ -532,42 +532,31 @@ def create_fake_office_staff(num_staff_per_office=3):
 
     return officestaff
 
-def create_fake_semesters(num_semesters_per_program=8):
-    print(f'Creating fake semesters...')
-    programs = Program.objects.all()
-    if not programs.exists():
-        print('No programs found. Please create some programs first.')
-        return []
-    semesters = []
-    for program in programs:
-        print(f'  Adding semesters for {program.name}...')
-        current_year = timezone.now().year
-        for i in range(num_semesters_per_program):
-            try:
-                # Approximate start/end dates for semesters across several years
-                start_date = datetime(current_year - (num_semesters_per_program // 2) + (i // 2), (i % 2) * 6 + 1, 1)
-                end_date = start_date + timedelta(days=random.randint(150, 180))
-                name = f'Semester {i + 1}'
-
-                semester, created = Semester.objects.get_or_create(
-                    program=program,
-                    name=name,
-                    start_date=start_date,
-                    end_date=end_date,
-                    defaults={
-                        'is_current': (i == num_semesters_per_program - 1) and (start_date.year == current_year)
-                    }
-                )
-                if created:
-                    semesters.append(semester)
-                    print(f'    Created semester: {semester}')
-                else:
-                    print(f'    Semester already exists: {semester}')
-            except IntegrityError:
-                print(f'    Skipping semester creation due to unique constraint violation.')
-                continue
-
-    return semesters
+def delete_all_data():
+    print("Deleting all existing data...")
+    # Delete in reverse order of dependencies
+    StudentEnrollment.objects.all().delete()
+    Student.objects.all().delete()
+    CourseOffering.objects.all().delete()
+    Course.objects.all().delete()
+    OfficeStaff.objects.all().delete()
+    Teacher.objects.all().delete()
+    Office.objects.all().delete()
+    ExtraCurricularActivity.objects.all().delete()
+    AcademicQualification.objects.all().delete()
+    Applicant.objects.all().delete()
+    AdmissionCycle.objects.all().delete()
+    AcademicSession.objects.all().delete()
+    Program.objects.all().delete()
+    Department.objects.all().delete()
+    Faculty.objects.all().delete()
+    Gallery.objects.all().delete()
+    Alumni.objects.all().delete()
+    Slider.objects.all().delete()
+    Event.objects.all().delete()
+    News.objects.all().delete()
+    CustomUser.objects.filter(is_superuser=False).delete()  # Keep superusers
+    print("All existing data deleted.")
 
 def create_fake_courses(num_courses_per_department=5):
     print(f'Creating fake courses...')
@@ -595,16 +584,12 @@ def create_fake_courses(num_courses_per_department=5):
             try:
                 code = f'{department.code[:2].upper()}{random.randint(100, 499)}'
                 name = fake.catch_phrase() + ' ' + random.choice(['I', 'II', 'III', ''])
-                course_type = random.choice([choice[0] for choice in Course.COURSE_TYPES])
 
                 course, created = Course.objects.get_or_create(
                     code=code,
                     defaults={
-                        'department': department,
-                        'program': program,
                         'name': name,
                         'credits': random.randint(1, 4),
-                        'course_type': course_type,
                         'description': fake.text(max_nb_chars=300),
                         'is_active': True,
                     }
@@ -618,26 +603,19 @@ def create_fake_courses(num_courses_per_department=5):
                 print(f'    Skipping course creation due to unique code violation.')
                 continue
 
-    # Add prerequisites (optional and can create complex dependencies, do this after all courses exist)
-    # print('Adding fake prerequisites...')
-    # all_courses = list(Course.objects.all())
-    # for course in all_courses:\n    #     num_prerequisites = random.randint(0, 2)
-    #     prerequisites = random.sample(all_courses, min(num_prerequisites, len(all_courses)))
-    #     course.prerequisites.set(prerequisites)
-    #     if prerequisites:\
-    #         print(f'  Added {len(prerequisites)} prerequisites to {course.code}')
-
     return courses
 
 def create_fake_course_offerings():
     print(f'Creating fake course offerings...')
-    semesters = Semester.objects.all()
+    departments = Department.objects.all()
+    programs = Program.objects.all()
     courses = Course.objects.all()
     teachers = Teacher.objects.all()
 
-    if not semesters.exists():
-        print('No semesters found. Please create some semesters first.')
+    if not departments.exists() or not programs.exists():
+        print('No departments or programs found. Cannot create course offerings.')
         return []
+
     if not courses.exists():
         print('No courses found. Please create some courses first.')
         return []
@@ -646,35 +624,53 @@ def create_fake_course_offerings():
         return []
 
     offerings = []
-    # Simple strategy: assign a random teacher to each course in each semester
-    # More complex logic could ensure teachers are in relevant departments, etc.
-    for semester in semesters:
-        print(f'  Adding course offerings for {semester}...')
-        available_teachers = list(teachers)
-        random.shuffle(available_teachers)
-        teacher_index = 0
+    # Create offerings for each course with a random department, program, teacher, and offering type
+    available_departments = list(departments)
+    available_programs = list(programs)
+    available_teachers = list(teachers)
 
-        for course in courses:
-            if teacher_index >= len(available_teachers):
-                teacher_index = 0 # Cycle through teachers if needed
-            teacher = available_teachers[teacher_index]
-            teacher_index += 1
+    if not available_departments or not available_programs or not available_teachers:
+        print('Not enough departments, programs, or teachers to create course offerings.')
+        return []
 
-            try:
-                offering, created = CourseOffering.objects.get_or_create(
-                    semester=semester,
-                    course=course,
-                    teacher=teacher
-                )
-                if created:
-                    offerings.append(offering)
-                    print(f'    Created offering: {offering}')
-                else:
-                    print(f'    Offering already exists: {offering}')
+    random.shuffle(available_teachers)
+    teacher_index = 0
 
-            except IntegrityError:
-                print(f'    Skipping course offering creation due to unique constraint.')
-                continue
+    offering_types = [choice[0] for choice in CourseOffering.OFFERING_TYPES]
+
+    for course in courses:
+        # Ensure we have enough teachers, departments, and programs
+        if not available_teachers or not available_departments or not available_programs:
+             print(f'  Not enough teachers, departments, or programs to create offering for {course.name}. Skipping.')
+             break # Stop creating offerings if we run out
+
+        teacher = available_teachers[teacher_index % len(available_teachers)]
+        department = random.choice(available_departments)
+        program = random.choice(available_programs)
+        offering_type = random.choice(offering_types)
+
+        teacher_index += 1
+
+        try:
+            # Ensure department and program are compatible with the course if needed
+            # (based on how courses are created - currently they are linked to one program)
+            # For now, we'll just assign randomly.
+            offering, created = CourseOffering.objects.get_or_create(
+                course=course,
+                teacher=teacher,
+                department=department,
+                program=program,
+                offering_type=offering_type,
+            )
+            if created:
+                offerings.append(offering)
+                print(f'    Created offering: {offering}')
+            else:
+                print(f'    Offering already exists: {offering}')
+
+        except IntegrityError:
+            print(f'    Skipping course offering creation due to unique constraint.')
+            continue
 
     return offerings
 
@@ -693,10 +689,8 @@ def create_fake_assignments(num_assignments_per_offering=3):
         print(f'  Adding assignments for {offering}...')
         for i in range(num_assignments_per_offering):
             try:
-                due_date = fake.date_time_between_dates(
-                    datetime_start=offering.semester.start_date,
-                    datetime_end=offering.semester.end_date
-                )
+                # Generate a plausible due date within the current year for simplicity
+                due_date = fake.date_time_this_year()
                 assignment_type = random.choice([choice[0] for choice in Assignment.ASSIGNMENT_TYPES])
 
                 assignment, created = Assignment.objects.get_or_create(
@@ -792,8 +786,9 @@ def create_fake_student_enrollments():
 
         for offering in offerings_to_enroll:
             try:
+                # StudentEnrollment links to Applicant, so use student.applicant
                 enrollment, created = StudentEnrollment.objects.get_or_create(
-                    student=student.applicant, # StudentEnrollment links to Applicant due to model definition
+                    student=student.applicant, # Link to the Applicant instance
                     course_offering=offering,
                     defaults={
                         'status': 'enrolled',
@@ -807,6 +802,8 @@ def create_fake_student_enrollments():
             except IntegrityError:
                 print(f'    Skipping enrollment for {student.applicant.full_name} in {offering.course} due to unique constraint.')
                 continue
+            except Exception as e:
+                print(f'    Error creating enrollment for {student.applicant.full_name} in {offering.course}: {e}')
 
     return enrollments
 
@@ -986,8 +983,11 @@ def create_fake_events(num_events=10):
 
 
 if __name__ == '__main__':
-    print("Starting fake data generation for all apps except courses...")
-
+    print("Starting fake data generation...")
+    
+    # First delete all existing data
+    delete_all_data()
+    
     # Create core data first (essential for relationships)
     fake_users = create_fake_users(num_users=15) # Generate some users
     fake_faculties = create_fake_faculties(num_faculties=3) # Generate some faculties
@@ -1006,23 +1006,19 @@ if __name__ == '__main__':
     fake_teachers = create_fake_teachers(num_teachers_per_department=2) # Generate some teachers
     create_fake_office_staff(num_staff_per_office=3) # Generate some office staff
 
-    # Commenting out courses app data generation as requested
-    # fake_semesters = create_fake_semesters(num_semesters_per_program=8)
-    # fake_courses = create_fake_courses(num_courses_per_department=5)
-    # fake_course_offerings = create_fake_course_offerings()
-    # fake_assignments = create_fake_assignments(num_assignments_per_offering=3)
-    # Skip CourseOfferingTeacherChanges and Submissions for simplicity
-    # Note: StudentEnrollment depends on CourseOffering, so it's also commented out
+    # Create courses and related data
+    fake_courses = create_fake_courses(num_courses_per_department=5)
+    fake_course_offerings = create_fake_course_offerings()
 
     # Create students from accepted applicants (depends on applicants)
     fake_students = create_fake_students() # Create students from accepted applicants
-    # create_fake_student_enrollments() # Keep commented out as it depends on CourseOfferings
+    create_fake_student_enrollments() # Create enrollments
 
     # Create independent data used in core templates (site_elements, announcements)
-    create_fake_sliders(num_sliders=3) # Generate some sliders
-    create_fake_alumni(num_alumni=8) # Generate some alumni
-    create_fake_gallery_items(num_items=12) # Generate some gallery items
-    create_fake_news(num_news=7) # Generate some news articles
-    create_fake_events(num_events=7) # Generate some events
+    create_fake_sliders(num_sliders=3)
+    create_fake_alumni(num_alumni=8)
+    create_fake_gallery_items(num_items=12)
+    create_fake_news(num_news=7)
+    create_fake_events(num_events=7)
 
     print("Fake data generation complete.") 

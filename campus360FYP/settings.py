@@ -169,17 +169,7 @@ EMAIL_HOST_PASSWORD = 'pmyf uvlj sxfn gald'
 
 
 
-# JET_DEFAULT_THEME = 'default'
 
-
-# JET_THEMES = [
-#     {'theme': 'default', 'color': '#47bac1', 'title': 'Default'},
-#     {'theme': 'green', 'color': '#44b78b', 'title': 'Green'},
-#     {'theme': 'light-green', 'color': '#2faa60', 'title': 'Light Green'},
-#     {'theme': 'light-violet', 'color': '#a464c4', 'title': 'Light Violet'},
-#     {'theme': 'light-blue', 'color': '#5EADDE', 'title': 'Light Blue'},
-#     {'theme': 'light-gray', 'color': '#222', 'title': 'Light Gray'},
-# ]
 
 
 
@@ -192,73 +182,82 @@ DAISY_SETTINGS = {
     'EXTRA_SCRIPTS': [
             'https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js',],  # List of extra script URLs to be loaded in base.html (optional)
     'LOAD_FULL_STYLES': False,
-  # If True, loads full DaisyUI components in the admin (useful if you have custom template overrides)
     'SHOW_CHANGELIST_FILTER': True,  # If True, the filter sidebar will open by default on changelist views
     'DONT_SUPPORT_ME': True, # Hide github link in sidebar footer
     'SIDEBAR_FOOTNOTE': 'Developed by Muhammad Yahya ❤️', # add footnote to sidebar
-     'APPS_REORDER': {
-        # Custom order for your apps
-        'auth': {
-            'icon': 'fa-solid fa-person-military-pointing',  # FontAwesome icon for the 'auth' app
-            'name': 'Assign roles',  # Custom name for the 'auth' app
-            'hide': False,  # Whether to hide the 'auth' app from the sidebar
-            'divider_title': "Permissions",  # Divider title for the 'auth' section
-        },
-        'users': {
-            'icon': 'fa fa-user-cog',  # FontAwesome icon for the 'auth' app
-            'name': 'Users',  # Custom name for the 'auth' app
-            'hide': False,  # Whether to hide the 'auth' app from the sidebar
-            'divider_title': "User Management",  # Divider title for the 'auth' section
-        },
-        'academics': {
-            'icon': 'fa-solid fa-university',
-            'name': 'Academics',
-            'hide': False,
-            'divider_title': "Academic Structure",
-        },
-        'admissions': {
-            'icon': 'fa-solid fa-school',
-            'name': 'Admissions',
-            'hide': False,
-            'divider_title': "Admissions Management",
-        },
-        'site_elements': {
-            'icon': 'fa-solid fa-cogs',
-            'name': 'Site Elements',
-            'hide': False,
-            'divider_title': "Site Content",
-        },
-        'announcements': {
-            'icon': 'fa-solid fa-bullhorn',
-            'name': 'Announcements',
-            'hide': False,
-            'divider_title': "Announcements",
-        },
-        'faculty_staff': {
-            'icon': 'fa-solid fa-people-group',
-            'name': 'Faculty & Staff',
-            'hide': False,
-            'divider_title': "People and Offices",
-        },
-        'courses': {
-            'icon': 'fa-solid fa-book-open',
-            'name': 'Courses',
-            'hide': False,
-            'divider_title': "Course Management",
-        },
-        'students': {
-            'icon': 'fa-solid fa-user-graduate',
-            'name': 'Students',
-            'hide': False,
-            'divider_title': "Student Management",
-        },
-        'core': {
-            'icon': 'fa-solid fa-wrench',
-            'name': 'Core Settings',
-            'hide': False,
-            'divider_title': "Site Configuration",
-        },
-    },
+    'APPS_REORDER': {
+        # Core and User Management first
+'core': {
+    'icon': 'fa-solid fa-wrench',
+    'name': 'Core Settings',
+    'hide': False,
+    'divider_title': "Site Configuration",
+    'priority': 10,
+},
+'users': {
+    'icon': 'fa fa-user-cog',
+    'name': 'Users',
+    'hide': False,
+    'divider_title': "User Management",
+    'priority': 9,
+},
+'auth': {
+    'icon': 'fa-solid fa-person-military-pointing',
+    'name': 'Assign roles',
+    'hide': False,
+    'divider_title': "Permissions",
+    'priority': 8,
+},
+'academics': {
+    'icon': 'fa-solid fa-university',
+    'name': 'Academics',
+    'hide': False,
+    'divider_title': "Academic Structure",
+    'priority': 7,
+},
+'students': {
+    'icon': 'fa-solid fa-user-graduate',
+    'name': 'Students',
+    'hide': False,
+    'divider_title': "Student Management",
+    'priority': 5,
+},
+'courses': {
+    'icon': 'fa-solid fa-book-open',
+    'name': 'Courses',
+    'hide': False,
+    'divider_title': "Course Management",
+    'priority': 4,
+},
+'faculty_staff': {
+    'icon': 'fa-solid fa-people-group',
+    'name': 'Faculty & Staff',
+    'hide': False,
+    'divider_title': "People and Offices",
+    'priority': 6,
+},
+'admissions': {
+    'icon': 'fa-solid fa-school',
+    'name': 'Admissions',
+    'hide': False,
+    'divider_title': "Admissions Management",
+    'priority': 8,
+},
+'announcements': {
+    'icon': 'fa-solid fa-bullhorn',
+    'name': 'Announcements',
+    'hide': False,
+    'divider_title': "Announcements",
+    'priority': 2,
+},
+'site_elements': {
+    'icon': 'fa-solid fa-cogs',
+    'name': 'Site Elements',
+    'hide': False,
+    'divider_title': "Site Content",
+    'priority': 3,
+},
+    }
 }
 
 

@@ -34,6 +34,10 @@ urlpatterns = [
     path('admission/login/', views.login_view, name='loginview'),
     path('admission/register/', views.register_view, name='registerview'),
     
+    # Email verification
+    path('verify/<str:uidb64>/<str:token>/', views.verify_email_view, name='verify_email'),
+    path('email-verification-success/', views.email_verification_success, name='email_verification_success'),
+    
     # Alumni page
     path('alumni/', views.alumni_view, name='alumni'),
 

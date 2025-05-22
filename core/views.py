@@ -49,11 +49,8 @@ def register_view(request):
                 # Generate token and send verification email
                 token = default_token_generator.make_token(user)
                 uid = urlsafe_base64_encode(force_bytes(user.pk))
-                # Replace 'your_domain.com' with your actual domain
-                # You might want to dynamically get the domain from the request or settings
-                # For development, localhost:8000 is fine.
-                domain = 'localhost:8000' # <<<--- UPDATE THIS WITH YOUR DOMAIN
-                verify_url = f'http://{domain}/verify/{uid}/{token}/' # <<<--- UPDATE '/verify/' WITH YOUR VERIFICATION URL PATH
+                domain = request.get_host() # Get the current domain
+                verify_url = f'http://{domain}/verify/{uid}/{token}/'
                 
                 subject = 'Verify your email address'
                 message = render_to_string('emails/verify_email.html', {
@@ -61,16 +58,13 @@ def register_view(request):
                     'verify_url': verify_url,
                 })
                 
-                # Configure your email settings in settings.py
-                # Example: EMAIL_BACKEND, EMAIL_HOST, EMAIL_PORT, EMAIL_USE_TLS, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD
                 send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
                 
                 messages.success(request, 'Please check your email to verify your account.')
-                return redirect('') # Redirect back to admission page with success message
+                return redirect('email_verification_success') # Redirect to success page
 
             except Exception as e:   
                 context['register_error'] = str(e)
-                # Log the error for debugging
                 logger.error(f"Error during user registration: {e}", exc_info=True)
 
         # Preserve form inputs on error
@@ -219,10 +213,15 @@ def contact(request):
 
 
 # Application and Admission Views
+@login_required
 def apply(request):
+    # Check if user is verified
+    if not request.user.is_active:
+        messages.warning(request, 'Please verify your email address before submitting an application.')
+        return redirect('admission')
+        
     faculties = Faculty.objects.prefetch_related('departments')
     admission_cycle = AdmissionCycle.objects.filter(is_open=True)
-    print(admission_cycle)
     
     return render(request, 'apply.html', {
         'faculties': faculties,
@@ -416,8 +415,14 @@ def verify_email_view(request, uidb64, token):
     if user is not None and default_token_generator.check_token(user, token):
         user.is_active = True # Activate user after successful verification
         user.save()
-        messages.success(request, 'Your email has been successfully verified! You can now log in.')
-        return redirect('admission') # Redirect to admission page after verification
+        # Log the user in automatically after verification
+        login(request, user)
+        messages.success(request, 'Your email has been successfully verified! You can now submit applications.')
+        return redirect('apply') # Redirect to apply page after verification
     else:
         messages.error(request, 'The verification link is invalid or has expired.')
         return redirect('admission') # Redirect to admission page with error message
+
+# Add the email verification success view
+def email_verification_success(request):
+    return render(request, 'email_verification_success.html')

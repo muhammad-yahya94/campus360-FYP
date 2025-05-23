@@ -3,13 +3,14 @@ from .models import *
 from .forms import AdmissionCycleForm
 from django.utils.html import format_html
 from users.models import CustomUser
+from admissions.models import AcademicSession
 from academics.models import Program, Department, Faculty
 
 
 # ===== Academic Session Admin =====
 @admin.register(AcademicSession)
 class AcademicSessionAdmin(admin.ModelAdmin):
-    list_display = ('name', 'start_date', 'end_date', 'is_active')
+    list_display = ('name', 'start_year', 'end_year', 'is_active')
     list_filter = ('is_active',)
     search_fields = ['name']
 
@@ -84,14 +85,89 @@ class ApplicantAdmin(admin.ModelAdmin):
 
 @admin.register(AcademicQualification)
 class AcademicQualificationAdmin(admin.ModelAdmin):
-    list_display = ('applicant', 'exam_passed', 'passing_year', 'institute')
-    list_filter = ('passing_year', 'institute')
-    search_fields = ['applicant__full_name', 'exam_passed', 'institute', 'board']
-    autocomplete_fields = ['applicant']
+    list_display = ('applicant', 'exam_passed', 'passing_year', 'marks_obtained', 'total_marks', 'division', 'board', 'view_certificate')
+    list_filter = ('passing_year', 'board')
+    search_fields = ('applicant__full_name', 'exam_passed', 'board')
+    fieldsets = (
+        ('Applicant Information', {
+            'fields': ('applicant',)
+        }),
+        ('Qualification Details', {
+            'fields': ('exam_passed', 'passing_year')
+        }),
+        ('Marks Information', {
+            'fields': ('marks_obtained', 'total_marks', 'division')
+        }),
+        ('Additional Information', {
+            'fields': ('board', 'subjects')
+        }),
+        ('Document', {
+            'fields': ('certificate_file',),
+            'description': 'Upload certificate or transcript (PDF, JPG, PNG)'
+        })
+    )
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # editing an existing object
+            return ('applicant',)
+        return ()
+
+    def save_model(self, request, obj, form, change):
+        if 'certificate_file' in request.FILES:
+            file = request.FILES['certificate_file']
+            # Validate file type
+            allowed_types = ['application/pdf', 'image/jpeg', 'image/png']
+            if file.content_type not in allowed_types:
+                self.message_user(request, "Invalid file type. Please upload PDF, JPG, or PNG files only.", level='error')
+                return
+            # Validate file size (5MB limit)
+            if file.size > 5 * 1024 * 1024:  # 5MB in bytes
+                self.message_user(request, "File size too large. Maximum size is 5MB.", level='error')
+                return
+            obj.certificate_file = file
+        super().save_model(request, obj, form, change)
+
+    def view_certificate(self, obj):
+        if obj.certificate_file:
+            return format_html('<a href="{}" target="_blank">View Certificate</a>', obj.certificate_file.url)
+        return "No certificate uploaded"
+    view_certificate.short_description = 'Certificate'
 
 @admin.register(ExtraCurricularActivity)
 class ExtraCurricularActivityAdmin(admin.ModelAdmin):
-    list_display = ('applicant', 'activity', 'position', 'activity_year')
+    list_display = ('applicant', 'activity', 'position', 'achievement', 'activity_year', 'view_certificate')
     list_filter = ('activity_year',)
-    search_fields = ['applicant__full_name', 'activity', 'position']
-    autocomplete_fields = ['applicant']
+    search_fields = ('applicant__full_name', 'activity', 'position', 'achievement')
+    fieldsets = (
+        ('Applicant Information', {
+            'fields': ('applicant',)
+        }),
+        ('Activity Details', {
+            'fields': ('activity', 'position', 'achievement', 'activity_year')
+        }),
+        ('Document', {
+            'fields': ('certificate_file',),
+            'description': 'Upload certificate or proof of participation/achievement (PDF, JPG, PNG)'
+        })
+    )
+
+    def save_model(self, request, obj, form, change):
+        if 'certificate_file' in request.FILES:
+            file = request.FILES['certificate_file']
+            # Validate file type
+            allowed_types = ['application/pdf', 'image/jpeg', 'image/png']
+            if file.content_type not in allowed_types:
+                self.message_user(request, "Invalid file type. Please upload PDF, JPG, or PNG files only.", level='error')
+                return
+            # Validate file size (5MB limit)
+            if file.size > 5 * 1024 * 1024:  # 5MB in bytes
+                self.message_user(request, "File size too large. Maximum size is 5MB.", level='error')
+                return
+            obj.certificate_file = file
+        super().save_model(request, obj, form, change)
+
+    def view_certificate(self, obj):
+        if obj.certificate_file:
+            return format_html('<a href="{}" target="_blank">View Certificate</a>', obj.certificate_file.url)
+        return "No certificate uploaded"
+    view_certificate.short_description = 'Certificate'

@@ -273,88 +273,89 @@ def get_programs(request):
 
 @require_POST
 def submit_application(request):
-    if not request.user.is_authenticated:
-        return render('admission')
-    if request.method == 'POST':
-        form_data = request.POST
-        files = request.FILES
+    try:
+        # Create Applicant
+        applicant = Applicant.objects.create(
+            user=request.user,
+            faculty_id=request.POST.get('faculty'),
+            department_id=request.POST.get('department'),
+            program_id=request.POST.get('program'),
+            status='pending',
+            full_name=request.POST.get('full_name'),
+            religion=request.POST.get('religion'),
+            caste=request.POST.get('caste'),
+            cnic=request.POST.get('cnic'),
+            dob=request.POST.get('dob'),
+            contact_no=request.POST.get('contact_no'),
+            identification_mark=request.POST.get('identification_mark'),
+            father_name=request.POST.get('father_name'),
+            father_occupation=request.POST.get('father_occupation'),
+            father_cnic=request.POST.get('father_cnic'),
+            monthly_income=request.POST.get('monthly_income'),
+            relationship=request.POST.get('relationship'),
+            permanent_address=request.POST.get('permanent_address'),
+            declaration=request.POST.get('declaration') == 'on'
+        )
 
-        try:
-            # Get foreign key instances
-            faculty = Faculty.objects.get(id=form_data['faculty'])
-            department = Department.objects.get(id=form_data['department'])
-            program = Program.objects.get(id=form_data['program'])
-            user = request.user
-
-            # Create Applicant instance
-            applicant = Applicant(
-                user=user,
-                faculty=faculty,
-                department=department,
-                program=program,
-                status='pending',
-                applicant_photo=files.get('applicant_photo'),
-                full_name=form_data['full_name'],
-                religion=form_data['religion'],
-                caste=form_data['caste'],
-                cnic=form_data['cnic'],
-                dob=form_data['dob'],
-                contact_no=form_data['contact_no'],
-                identification_mark=form_data.get('identification_mark', ''),
-                father_name=form_data['father_name'],
-                father_occupation=form_data['father_occupation'],
-                father_cnic=form_data['father_cnic'],
-                monthly_income=int(form_data['monthly_income']),
-                relationship=form_data['relationship'],
-                permanent_address=form_data['permanent_address'],
-                declaration=bool(form_data.get('declaration', False))
-            )
+        # Handle applicant photo
+        if 'applicant_photo' in request.FILES:
+            applicant.applicant_photo = request.FILES['applicant_photo']
             applicant.save()
 
-            # Handle academic qualifications
-            academic_degrees = form_data.getlist('academic_degree[]')
-            academic_boards = form_data.getlist('academic_board[]')
-            academic_passing_years = form_data.getlist('academic_passing_year[]')
-            academic_total_marks = form_data.getlist('academic_total_marks[]')
-            academic_marks_obtained = form_data.getlist('academic_marks_obtained[]')
-            academic_grades = form_data.getlist('academic_grade[]')
-            academic_majors = form_data.getlist('academic_major[]')
+        # Handle Academic Qualifications
+        academic_degrees = request.POST.getlist('academic_degree[]')
+        academic_boards = request.POST.getlist('academic_board[]')
+        academic_passing_years = request.POST.getlist('academic_passing_year[]')
+        academic_total_marks = request.POST.getlist('academic_total_marks[]')
+        academic_marks_obtained = request.POST.getlist('academic_marks_obtained[]')
+        academic_grades = request.POST.getlist('academic_grade[]')
+        academic_majors = request.POST.getlist('academic_major[]')
+        academic_certificates = request.FILES.getlist('academic_certificate[]')
 
-            for i in range(len(academic_degrees)):
-                AcademicQualification.objects.create(
+        for i in range(len(academic_degrees)):
+            if academic_degrees[i]:  # Only create if degree is not empty
+                qualification = AcademicQualification.objects.create(
                     applicant=applicant,
                     exam_passed=academic_degrees[i],
                     board=academic_boards[i],
-                    passing_year=int(academic_passing_years[i]),
-                    total_marks=int(academic_total_marks[i]),
-                    marks_obtained=int(academic_marks_obtained[i]),
+                    passing_year=academic_passing_years[i],
+                    total_marks=academic_total_marks[i] if academic_total_marks[i] else None,
+                    marks_obtained=academic_marks_obtained[i] if academic_marks_obtained[i] else None,
                     division=academic_grades[i],
                     subjects=academic_majors[i]
                 )
+                # Handle certificate file if provided
+                if i < len(academic_certificates) and academic_certificates[i]:
+                    qualification.certificate_file = academic_certificates[i]
+                    qualification.save()
 
-            # Handle extra-curricular activities
-            activities = form_data.getlist('activity[]')
-            positions = form_data.getlist('position[]')
-            achievements = form_data.getlist('achievement[]')
-            activity_years = form_data.getlist('activity_year[]')
+        # Handle Extra Curricular Activities
+        activities = request.POST.getlist('activity[]')
+        positions = request.POST.getlist('position[]')
+        achievements = request.POST.getlist('achievement[]')
+        activity_years = request.POST.getlist('activity_year[]')
+        activity_certificates = request.FILES.getlist('certificate_file[]')
 
-            for i in range(len(activities)):
-                if activities[i]:
-                    ExtraCurricularActivity.objects.create(
-                        applicant=applicant,
-                        activity=activities[i],
-                        position=positions[i] or '',
-                        achievement=achievements[i] or '',
-                        activity_year=int(activity_years[i]) if activity_years[i] else None
-                    )
+        for i in range(len(activities)):
+            if activities[i]:  # Only create if activity is not empty
+                activity = ExtraCurricularActivity.objects.create(
+                    applicant=applicant,
+                    activity=activities[i],
+                    position=positions[i],
+                    achievement=achievements[i],
+                    activity_year=activity_years[i] if activity_years[i] else None
+                )
+                # Handle certificate file if provided
+                if i < len(activity_certificates) and activity_certificates[i]:
+                    activity.certificate_file = activity_certificates[i]
+                    activity.save()
 
-            return redirect('application_success')
+        messages.success(request, 'Application submitted successfully!')
+        return redirect('application_success')
 
-        except Exception as e:
-            logger.error(f"Application submission error: {str(e)}")
-            return JsonResponse({'success': False, 'message': str(e)}, status=400)
-
-    return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=405)
+    except Exception as e:
+        messages.error(request, f'Error submitting application: {str(e)}')
+        return redirect('apply')
 
 
 def application_success(request):

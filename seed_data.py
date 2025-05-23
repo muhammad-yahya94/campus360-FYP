@@ -7,7 +7,7 @@ from django.utils.text import slugify
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError
 from django.utils import timezone
-import random
+import random   
 from datetime import timedelta, datetime
 
 # Configure Django settings
@@ -16,7 +16,7 @@ django.setup()
 
 # Import models from your apps
 from users.models import CustomUser
-from academics.models import Faculty, Department, Program
+from academics.models import Faculty, Department, Program, Semester, GradingSystem, StudentGrade
 from site_elements.models import Slider, Alumni, Gallery
 from announcements.models import News, Event
 from admissions.models import AcademicSession, AdmissionCycle, Applicant, AcademicQualification, ExtraCurricularActivity
@@ -33,17 +33,20 @@ def create_fake_users(num_users=20):
     users = []
     for _ in range(num_users):
         try:
+            # Increase probability of staff users to 40%
+            is_staff = random.random() < 0.4
+            
             user = CustomUser.objects.create_user(
                 email=fake.unique.email(),
                 password='password123', # Default password
                 first_name=fake.first_name(),
                 last_name=fake.last_name(),
                 info=fake.sentence(),
-                is_staff=random.choice([True, False, False]), # More regular users
+                is_staff=is_staff,
                 is_superuser=False # Don't create fake superusers by default
             )
             users.append(user)
-            print(f'  Created user: {user.email}')
+            print(f'  Created user: {user.email} (Staff: {is_staff})')
         except IntegrityError:
             print('  Skipping user creation due to unique constraint violation (email).')
             continue # Skip if email is not unique
@@ -147,18 +150,76 @@ def create_fake_programs(num_programs_per_department=2):
             try:
                 name = fake.catch_phrase() + ' Program'
                 degree_type = random.choice(degree_types)
+                total_semesters = random.choice([4, 6, 8, 10])
+                
                 program, created = Program.objects.get_or_create(
                     department=department,
                     name=name,
                     degree_type=degree_type,
                     defaults={
-                        'duration_years': random.randint(2, 5),
-                        'total_semesters': random.choice([4, 6, 8, 10]),
+                        'duration_years': total_semesters // 2,  # Assuming 2 semesters per year
+                        'total_semesters': total_semesters,
                     }
                 )
                 if created:
                     programs.append(program)
                     print(f'    Created program: {program.name} ({program.degree_type})')
+                    
+                    # Create semesters for this program
+                    for sem_num in range(1, total_semesters + 1):
+                        semester_name = f'Semester {sem_num}'
+                        
+                        # Get or create academic session
+                        current_year = timezone.now().year
+                        session_name = f'Fall {current_year}'
+                        current_session, session_created = AcademicSession.objects.get_or_create(
+                            name=session_name,
+                            defaults={
+                                'start_date': datetime(current_year, 9, 1),
+                                'end_date': datetime(current_year, 12, 31),
+                                'is_active': True
+                            }
+                        )
+                        
+                        if session_created:
+                            print(f'    Created academic session: {current_session.name}')
+                        
+                        # Calculate semester dates
+                        start_date = current_session.start_date
+                        end_date = current_session.end_date
+                        mid_term_start = start_date + timedelta(days=30)
+                        mid_term_end = mid_term_start + timedelta(days=15)
+                        final_term_start = end_date - timedelta(days=30)
+                        final_term_end = end_date
+                        registration_start = start_date - timedelta(days=30)
+                        registration_end = start_date - timedelta(days=7)
+                        classes_start = start_date
+                        
+                        try:
+                            semester, sem_created = Semester.objects.get_or_create(
+                                program=program,
+                                semester_number=sem_num,
+                                academic_session=current_session,
+                                defaults={
+                                    'semester_type': 'regular',
+                                    'name': semester_name,
+                                    'is_active': True,
+                                    'start_date': start_date,
+                                    'end_date': end_date,
+                                    'registration_start': registration_start,
+                                    'registration_end': registration_end,
+                                    'classes_start': classes_start,
+                                    'mid_term_start': mid_term_start,
+                                    'mid_term_end': mid_term_end,
+                                    'final_term_start': final_term_start,
+                                    'final_term_end': final_term_end
+                                }
+                            )
+                            if sem_created:
+                                print(f'      Created semester: {semester.name} for {program.name}')
+                        except Exception as e:
+                            print(f'      Error creating semester: {e}')
+                            continue
                 else:
                     print(f'    Program already exists: {program.name} ({program.degree_type})')
             except IntegrityError:
@@ -167,23 +228,24 @@ def create_fake_programs(num_programs_per_department=2):
 
     return programs
 
-def create_fake_academic_sessions(num_sessions=5):
-    print(f'Creating {num_sessions} fake academic sessions...')
+def create_fake_academic_sessions(num_sessions=4):
+    print(f'Creating {num_sessions} academic sessions...')
     sessions = []
     current_year = timezone.now().year
+    
     for i in range(num_sessions):
         try:
-            year = current_year + i - num_sessions // 2
-            name = f'{random.choice(['Fall', 'Spring', 'Summer'])} {year}'
-            start_date = fake.date_between_dates(date_start=datetime(year, 1, 1), date_end=datetime(year, 6, 30))
-            end_date = fake.date_between_dates(date_start=datetime(year, 7, 1), date_end=datetime(year, 12, 31))
-
+            start_year = current_year - (num_sessions - i - 1)
+            end_year = start_year + 4  # 4-year program
+            name = f'Fall {start_year}'
+            
             session, created = AcademicSession.objects.get_or_create(
                 name=name,
                 defaults={
-                    'start_date': start_date,
-                    'end_date': end_date,
-                    'is_active': (year == current_year)
+                    'start_year': start_year,
+                    'end_year': end_year,
+                    'is_active': (i == num_sessions - 1),  # Make the last one active
+                    'description': f'Academic session for {start_year}-{end_year}'
                 }
             )
             if created:
@@ -191,11 +253,78 @@ def create_fake_academic_sessions(num_sessions=5):
                 print(f'  Created academic session: {session.name}')
             else:
                 print(f'  Academic session already exists: {session.name}')
-        except IntegrityError:
-            print(f'  Skipping academic session creation due to unique constraint violation.')
-            continue
-
+        except Exception as e:
+            print(f'  Error creating academic session: {e}')
+    
     return sessions
+
+def create_fake_semesters():
+    print(f'Creating semesters...')
+    programs = Program.objects.all()
+    academic_sessions = AcademicSession.objects.all()
+
+    if not programs.exists():
+        print('No programs found. Please create some programs first.')
+        return []
+    if not academic_sessions.exists():
+        print('No academic sessions found. Please create some academic sessions first.')
+        return []
+
+    semesters = []
+    for program in programs:
+        print(f'  Creating semesters for program: {program.name}...')
+        for session in academic_sessions:
+            print(f'    Creating semesters for session: {session.name}...')
+            for i in range(1, program.total_semesters + 1):
+                try:
+                    # Calculate semester dates based on academic session
+                    is_fall = i % 2 == 1
+                    start_month = 9 if is_fall else 2
+                    end_month = 12 if is_fall else 5
+                    
+                    start_date = datetime(session.start_year, start_month, 1)
+                    end_date = datetime(session.start_year, end_month, 31)
+                    
+                    # Calculate other dates
+                    registration_start = start_date - timedelta(days=30)
+                    registration_end = start_date - timedelta(days=7)
+                    classes_start = start_date
+                    mid_term_start = start_date + timedelta(days=45)
+                    mid_term_end = mid_term_start + timedelta(days=15)
+                    final_term_start = end_date - timedelta(days=30)
+                    final_term_end = end_date
+                    
+                    semester, created = Semester.objects.get_or_create(
+                        academic_session=session,  # Use the session instance directly
+                        semester_number=i,
+                        defaults={
+                            'semester_type': 'fall' if is_fall else 'spring',
+                            'start_date': start_date,
+                            'end_date': end_date,
+                            'registration_start': registration_start,
+                            'registration_end': registration_end,
+                            'classes_start': classes_start,
+                            'mid_term_start': mid_term_start,
+                            'mid_term_end': mid_term_end,
+                            'final_term_start': final_term_start,
+                            'final_term_end': final_term_end,
+                            'is_active': True
+                        }
+                    )
+                    if created:
+                        semesters.append(semester)
+                        print(f'      Created semester: {semester.semester_number} for {session.name}')
+                    else:
+                        print(f'      Semester already exists: {semester.semester_number} for {session.name}')
+                except IntegrityError:
+                    print(f'      Skipping semester creation due to unique constraint.')
+                    continue
+                except Exception as e:
+                    print(f'      Error creating semester: {e}')
+                    print(f'      Session: {session} (type: {type(session)})')
+                    continue
+
+    return semesters
 
 def create_fake_admission_cycles(num_cycles_per_program=1):
     print(f'Creating fake admission cycles...')
@@ -241,7 +370,7 @@ def create_fake_admission_cycles(num_cycles_per_program=1):
 
     return cycles
 
-def create_fake_applicants(num_applicants_per_program=5):
+def create_fake_applicants(num_applicants_per_program=10):
     print(f'Creating fake applicants...')
     programs = Program.objects.all()
     users = list(CustomUser.objects.filter(is_superuser=False, is_staff=False)) # Use non-staff, non-superusers
@@ -267,7 +396,12 @@ def create_fake_applicants(num_applicants_per_program=5):
             user = users[user_index]
             user_index += 1
             try:
-                status = random.choice(['pending', 'accepted', 'rejected'])
+                # Ensure at least 50% of applicants are accepted
+                if i < num_applicants_per_program * 0.5:
+                    status = 'accepted'
+                else:
+                    status = random.choice(['pending', 'rejected'])
+                
                 dob = fake.date_of_birth(minimum_age=18, maximum_age=30)
 
                 # Create a dummy photo file
@@ -282,13 +416,13 @@ def create_fake_applicants(num_applicants_per_program=5):
                     user=user,
                     program=program,
                     defaults={
-                        'faculty': program.department.faculty, # Infer from program
-                        'department': program.department, # Infer from program
+                        'faculty': program.department.faculty,
+                        'department': program.department,
                         'status': status,
                         'applicant_photo': photo_file,
                         'full_name': user.full_name or fake.name(),
                         'religion': fake.word(ext_word_list=['Christianity', 'Islam', 'Hinduism', 'Buddhism', 'Other']),
-                        'caste': fake.word(), # Use a generic word
+                        'caste': fake.word(),
                         'cnic': fake.unique.bothify(text='#####-#######-#'),
                         'dob': dob,
                         'contact_no': fake.phone_number(),
@@ -304,13 +438,13 @@ def create_fake_applicants(num_applicants_per_program=5):
                 )
                 if created:
                     applicants.append(applicant)
-                    print(f'    Created applicant: {applicant.full_name} for {applicant.program.name}')
+                    print(f'    Created applicant: {applicant.full_name} for {applicant.program.name} (Status: {status})')
                 else:
                     print(f'    Applicant already exists for user {user.email} and program {program.name}')
 
             except IntegrityError:
-                 print(f'    Skipping applicant creation for user {user.email} due to unique constraint.')
-                 continue
+                print(f'    Skipping applicant creation for user {user.email} due to unique constraint.')
+                continue
             except Exception as e:
                 print(f'    Error creating applicant for user {user.email}: {e}')
 
@@ -323,12 +457,10 @@ def create_fake_academic_qualifications(num_qualifications_per_applicant=2):
         print('No applicants found. Please create some applicants first.')
         return []
     qualifications = []
-    exam_levels = ['Matric', 'Intermediate', 'Bachelors']
     for applicant in applicants:
         print(f'  Adding qualifications for {applicant.full_name}...')
         for i in range(num_qualifications_per_applicant):
             try:
-                exam_passed = random.choice(exam_levels)
                 passing_year = random.randint(applicant.dob.year + 16 + i, applicant.dob.year + 18 + i)
                 total_marks = random.choice([1100, 1000, 500, 400])
                 marks_obtained = random.randint(int(total_marks * 0.5), int(total_marks * 0.95))
@@ -336,7 +468,6 @@ def create_fake_academic_qualifications(num_qualifications_per_applicant=2):
 
                 qualification, created = AcademicQualification.objects.get_or_create(
                     applicant=applicant,
-                    exam_passed=exam_passed,
                      # Add unique constraint fields here if necessary for get_or_create
                     defaults={
                         'passing_year': passing_year,
@@ -344,16 +475,15 @@ def create_fake_academic_qualifications(num_qualifications_per_applicant=2):
                         'total_marks': total_marks,
                         'division': division,
                         'subjects': fake.catch_phrase(),
-                        'institute': fake.school_name(),
                         'board': fake.city() + ' Board',
-                        'level': exam_passed
+                  
                     }
                 )
                 if created:
                     qualifications.append(qualification)
                     print(f'    Created qualification: {qualification}')
                 else:
-                    print(f'    Qualification already exists for {applicant.full_name} - {exam_passed}')
+                    print(f'    Qualification already exists for {applicant.full_name} ')
 
             except IntegrityError:
                  print(f'    Skipping qualification creation for {applicant.full_name} due to unique constraint.')
@@ -611,6 +741,7 @@ def create_fake_course_offerings():
     programs = Program.objects.all()
     courses = Course.objects.all()
     teachers = Teacher.objects.all()
+    semesters = Semester.objects.all()
 
     if not departments.exists() or not programs.exists():
         print('No departments or programs found. Cannot create course offerings.')
@@ -622,15 +753,18 @@ def create_fake_course_offerings():
     if not teachers.exists():
         print('No teachers found. Please create some teachers first.')
         return []
+    if not semesters.exists():
+        print('No semesters found. Please create some semesters first.')
+        return []
 
     offerings = []
-    # Create offerings for each course with a random department, program, teacher, and offering type
     available_departments = list(departments)
     available_programs = list(programs)
     available_teachers = list(teachers)
+    available_semesters = list(semesters)
 
-    if not available_departments or not available_programs or not available_teachers:
-        print('Not enough departments, programs, or teachers to create course offerings.')
+    if not available_departments or not available_programs or not available_teachers or not available_semesters:
+        print('Not enough departments, programs, teachers, or semesters to create course offerings.')
         return []
 
     random.shuffle(available_teachers)
@@ -639,28 +773,32 @@ def create_fake_course_offerings():
     offering_types = [choice[0] for choice in CourseOffering.OFFERING_TYPES]
 
     for course in courses:
-        # Ensure we have enough teachers, departments, and programs
-        if not available_teachers or not available_departments or not available_programs:
-             print(f'  Not enough teachers, departments, or programs to create offering for {course.name}. Skipping.')
-             break # Stop creating offerings if we run out
+        if not available_teachers or not available_departments or not available_programs or not available_semesters:
+            print(f'  Not enough resources to create offering for {course.name}. Skipping.')
+            break
 
         teacher = available_teachers[teacher_index % len(available_teachers)]
         department = random.choice(available_departments)
         program = random.choice(available_programs)
+        semester = random.choice([s for s in available_semesters if s.program == program])
         offering_type = random.choice(offering_types)
 
         teacher_index += 1
 
         try:
-            # Ensure department and program are compatible with the course if needed
-            # (based on how courses are created - currently they are linked to one program)
-            # For now, we'll just assign randomly.
             offering, created = CourseOffering.objects.get_or_create(
                 course=course,
                 teacher=teacher,
                 department=department,
                 program=program,
+                semester=semester,
+                academic_session=semester.academic_session,
                 offering_type=offering_type,
+                defaults={
+                    'is_active': True,
+                    'max_capacity': random.randint(20, 40),
+                    'current_enrollment': 0
+                }
             )
             if created:
                 offerings.append(offering)
@@ -722,7 +860,6 @@ def create_fake_assignments(num_assignments_per_offering=3):
 
 def create_fake_students():
     print(f'Creating fake students...')
-    # Use applicants with status 'accepted' to create students
     accepted_applicants = Applicant.objects.filter(status='accepted')
 
     if not accepted_applicants.exists():
@@ -732,15 +869,61 @@ def create_fake_students():
     students = []
     for applicant in accepted_applicants:
         try:
-            # Check if a student profile already exists for this applicant or user
-            if hasattr(applicant, 'student_profile') or (applicant.user and hasattr(applicant.user, 'student_profile')):
-                 print(f'  Student profile already exists for applicant {applicant.full_name}. Skipping.')
-                 continue
+            if hasattr(applicant, 'student_profile'):
+                print(f'  Student profile already exists for applicant {applicant.full_name}. Skipping.')
+                continue
+
+            # Get the program from the applicant
+            program = applicant.program
+            if not program:
+                print(f'  No program found for applicant {applicant.full_name}. Skipping.')
+                continue
+
+            # Get or create active academic session
+            current_year = timezone.now().year
+            current_session = AcademicSession.objects.filter(is_active=True).first()
+            if not current_session:
+                print(f'  No active academic session found. Creating one...')
+                current_session = AcademicSession.objects.create(
+                    name=f'Fall {current_year}',
+                    start_date=datetime(current_year, 9, 1),
+                    end_date=datetime(current_year + 1, 5, 31),
+                    is_active=True
+                )
+                print(f'  Created new academic session: {current_session.name}')
+
+            # Get or create first semester
+            first_semester = Semester.objects.filter(
+                semester_number=1,
+                is_active=True,
+                academic_session=current_session  # Use the session instance directly
+            ).first()
+            
+            if not first_semester:
+                print(f'  No first semester found. Creating one...')
+                first_semester = Semester.objects.create(
+                    academic_session=current_session,  # Use the session instance directly
+                    semester_number=1,
+                    semester_type='fall',
+                    start_date=datetime(current_year, 9, 1),
+                    end_date=datetime(current_year, 12, 31),
+                    registration_start=datetime(current_year, 8, 1),
+                    registration_end=datetime(current_year, 8, 15),
+                    classes_start=datetime(current_year, 9, 1),
+                    mid_term_start=datetime(current_year, 10, 15),
+                    mid_term_end=datetime(current_year, 10, 30),
+                    final_term_start=datetime(current_year, 12, 15),
+                    final_term_end=datetime(current_year, 12, 31),
+                    is_active=True
+                )
+                print(f'  Created new semester: {first_semester.semester_number}')
 
             student, created = Student.objects.get_or_create(
                 applicant=applicant,
                 defaults={
-                    'user': applicant.user, # Link to the applicant\'s user if available
+                    'user': applicant.user,
+                    'program': program,
+                    'current_semester': first_semester,
                     'university_roll_no': fake.unique.random_int(min=10000, max=99999),
                     'college_roll_no': fake.unique.random_int(min=1000, max=9999),
                     'enrollment_date': fake.date_this_year(),
@@ -752,8 +935,8 @@ def create_fake_students():
             if created:
                 students.append(student)
                 print(f'  Created student profile for: {student.applicant.full_name}')
-            # No else needed, get_or_create handles existing
-
+            else:
+                print(f'  Student already exists for applicant {applicant.full_name}')
         except IntegrityError:
             print(f'  Skipping student creation for applicant {applicant.full_name} due to unique constraint.')
             continue
@@ -775,20 +958,26 @@ def create_fake_student_enrollments():
         return []
 
     enrollments = []
-    # Enroll each student in a random selection of course offerings
-    num_offerings_to_enroll = random.randint(3, 7) # Enroll in 3 to 7 courses
-
     for student in students:
         print(f'  Enrolling student {student.applicant.full_name}...')
-        available_offerings = list(course_offerings)
-        random.shuffle(available_offerings)
-        offerings_to_enroll = available_offerings[:num_offerings_to_enroll]
+        # Get course offerings for the student's current semester
+        available_offerings = course_offerings.filter(
+            semester=student.current_semester,
+            program=student.program
+        )
+        
+        if not available_offerings.exists():
+            print(f'    No course offerings available for semester {student.current_semester.name}.')
+            continue
+
+        # Enroll in 3-5 courses for the current semester
+        num_offerings_to_enroll = random.randint(3, min(5, available_offerings.count()))
+        offerings_to_enroll = random.sample(list(available_offerings), num_offerings_to_enroll)
 
         for offering in offerings_to_enroll:
             try:
-                # StudentEnrollment links to Applicant, so use student.applicant
                 enrollment, created = StudentEnrollment.objects.get_or_create(
-                    student=student.applicant, # Link to the Applicant instance
+                    student=student.applicant,
                     course_offering=offering,
                     defaults={
                         'status': 'enrolled',
@@ -797,8 +986,6 @@ def create_fake_student_enrollments():
                 if created:
                     enrollments.append(enrollment)
                     print(f'    Enrolled {student.applicant.full_name} in {offering.course}')
-                # No else needed, get_or_create handles existing
-
             except IntegrityError:
                 print(f'    Skipping enrollment for {student.applicant.full_name} in {offering.course} due to unique constraint.')
                 continue
@@ -981,6 +1168,82 @@ def create_fake_events(num_events=10):
 
     return events_list
 
+def create_fake_grading_system():
+    print(f'Creating grading system...')
+    grades = [
+        ('A+', 90, 100, 4.0, 'Excellent'),
+        ('A', 85, 89.99, 3.7, 'Very Good'),
+        ('B+', 80, 84.99, 3.3, 'Good'),
+        ('B', 75, 79.99, 3.0, 'Above Average'),
+        ('C+', 70, 74.99, 2.7, 'Average'),
+        ('C', 65, 69.99, 2.3, 'Below Average'),
+        ('D+', 60, 64.99, 2.0, 'Passing'),
+        ('D', 55, 59.99, 1.7, 'Barely Passing'),
+        ('F', 0, 54.99, 0.0, 'Failing', False),
+    ]
+    
+    for grade_data in grades:
+        try:
+            grade, min_marks, max_marks, points, desc = grade_data[:5]
+            is_passing = grade_data[5] if len(grade_data) > 5 else True
+            
+            grade_obj, created = GradingSystem.objects.get_or_create(
+                grade=grade,
+                defaults={
+                    'min_marks': min_marks,
+                    'max_marks': max_marks,
+                    'grade_points': points,
+                    'description': desc,
+                    'is_passing': is_passing
+                }
+            )
+            if created:
+                print(f'  Created grade: {grade} ({desc})')
+        except Exception as e:
+            print(f'  Error creating grade {grade}: {e}')
+
+def create_fake_student_grades():
+    print(f'Creating student grades...')
+    enrollments = StudentEnrollment.objects.filter(status='enrolled')
+    
+    for enrollment in enrollments:
+        try:
+            # Generate random marks
+            mid_term = random.randint(0, 100)
+            final_term = random.randint(0, 100)
+            assignment = random.randint(0, 100)
+            quiz = random.randint(0, 100)
+            
+            # Calculate total marks
+            total_marks = sum([mid_term, final_term, assignment, quiz])
+            
+            # Get the appropriate grade based on total marks
+            grade = GradingSystem.objects.filter(
+                min_marks__lte=total_marks,
+                max_marks__gte=total_marks
+            ).first()
+            
+            if not grade:
+                print(f'  No grade found for marks {total_marks}. Skipping grade creation.')
+                continue
+            
+            grade_obj, created = StudentGrade.objects.get_or_create(
+                student=enrollment.student,
+                course_offering=enrollment.course_offering,
+                defaults={
+                    'mid_term_marks': mid_term,
+                    'final_term_marks': final_term,
+                    'assignment_marks': assignment,
+                    'quiz_marks': quiz,
+                    'total_marks': total_marks,
+                    'grade': grade,
+                    'remarks': fake.sentence() if random.random() < 0.3 else ''
+                }
+            )
+            if created:
+                print(f'  Created grade for {enrollment.student} in {enrollment.course_offering}: {grade.grade}')
+        except Exception as e:
+            print(f'  Error creating grade for {enrollment.student}: {e}')
 
 if __name__ == '__main__':
     print("Starting fake data generation...")
@@ -989,36 +1252,101 @@ if __name__ == '__main__':
     delete_all_data()
     
     # Create core data first (essential for relationships)
-    fake_users = create_fake_users(num_users=15) # Generate some users
-    fake_faculties = create_fake_faculties(num_faculties=3) # Generate some faculties
-    fake_departments = create_fake_departments(num_departments_per_faculty=3) # Generate some departments
-    fake_programs = create_fake_programs(num_programs_per_department=2) # Generate some programs
-
-    # Create data for admissions (depends on programs and sessions)
-    fake_academic_sessions = create_fake_academic_sessions(num_sessions=4) # Generate some sessions
-    fake_admission_cycles = create_fake_admission_cycles(num_cycles_per_program=1) # Generate some admission cycles
-    fake_applicants = create_fake_applicants(num_applicants_per_program=5) # Generate some applicants
-    create_fake_academic_qualifications(num_qualifications_per_applicant=2) # Generate qualifications for applicants
-    create_fake_extra_curricular_activities(num_activities_per_applicant=1) # Generate activities for applicants
-
-    # Create data for faculty and staff (depends on users and departments/offices)
-    fake_offices = create_fake_offices(num_offices=4) # Generate some offices
-    fake_teachers = create_fake_teachers(num_teachers_per_department=2) # Generate some teachers
-    create_fake_office_staff(num_staff_per_office=3) # Generate some office staff
-
-    # Create courses and related data
+    print("\n1. Creating core data...")
+    fake_users = create_fake_users(num_users=50)  # Increased number of users
+    fake_faculties = create_fake_faculties(num_faculties=3)
+    fake_departments = create_fake_departments(num_departments_per_faculty=3)
+    fake_programs = create_fake_programs(num_programs_per_department=2)
+    
+    # Create academic sessions and semesters
+    print("\n2. Creating academic sessions and semesters...")
+    fake_academic_sessions = create_fake_academic_sessions(num_sessions=4)
+    create_fake_semesters()
+    
+    # Create grading system
+    print("\n3. Creating grading system...")
+    create_fake_grading_system()
+    
+    # Create data for admissions
+    print("\n4. Creating admission data...")
+    fake_admission_cycles = create_fake_admission_cycles(num_cycles_per_program=1)
+    fake_applicants = create_fake_applicants(num_applicants_per_program=10)
+    create_fake_academic_qualifications(num_qualifications_per_applicant=2)
+    create_fake_extra_curricular_activities(num_activities_per_applicant=1)
+    
+    # Create faculty and staff
+    print("\n5. Creating faculty and staff...")
+    fake_offices = create_fake_offices(num_offices=4)
+    fake_teachers = create_fake_teachers(num_teachers_per_department=2)
+    create_fake_office_staff(num_staff_per_office=3)
+    
+    # Create courses and offerings
+    print("\n6. Creating courses and offerings...")
     fake_courses = create_fake_courses(num_courses_per_department=5)
+    
+    # Ensure we have semesters before creating offerings
+    if not Semester.objects.exists():
+        print("No semesters found. Creating default semester...")
+        current_year = timezone.now().year
+        current_session = AcademicSession.objects.filter(is_active=True).first()
+        if not current_session:
+            current_session = AcademicSession.objects.create(
+                name=f'Fall {current_year}',
+                start_year=current_year,
+                end_year=current_year + 4,  # 4-year program
+                is_active=True,
+                description=f'Academic session for {current_year}-{current_year + 4}'
+            )
+            print(f"Created new academic session: {current_session.name}")
+        
+        # Create a default semester for each program
+        for program in Program.objects.all():
+            try:
+                # Get or create the semester
+                semester, created = Semester.objects.get_or_create(
+                    academic_session=current_session,  # Use the session instance directly
+                    semester_number=1,
+                    defaults={
+                        'semester_type': 'fall',
+                        'start_date': datetime(current_year, 9, 1),
+                        'end_date': datetime(current_year, 12, 31),
+                        'registration_start': datetime(current_year, 8, 1),
+                        'registration_end': datetime(current_year, 8, 15),
+                        'classes_start': datetime(current_year, 9, 1),
+                        'mid_term_start': datetime(current_year, 10, 15),
+                        'mid_term_end': datetime(current_year, 10, 30),
+                        'final_term_start': datetime(current_year, 12, 15),
+                        'final_term_end': datetime(current_year, 12, 31),
+                        'is_active': True
+                    }
+                )
+                if created:
+                    print(f"Created default semester for program: {program.name}")
+                else:
+                    print(f"Semester already exists for program: {program.name}")
+            except Exception as e:
+                print(f"Error creating default semester for program {program.name}: {e}")
+                print(f"Current session: {current_session} (type: {type(current_session)})")
+                continue
+    
     fake_course_offerings = create_fake_course_offerings()
-
-    # Create students from accepted applicants (depends on applicants)
-    fake_students = create_fake_students() # Create students from accepted applicants
-    create_fake_student_enrollments() # Create enrollments
-
-    # Create independent data used in core templates (site_elements, announcements)
+    
+    # Create students and enrollments
+    print("\n7. Creating students and enrollments...")
+    fake_students = create_fake_students()
+    if fake_students:
+        print(f"Created {len(fake_students)} students")
+        create_fake_student_enrollments()
+        create_fake_student_grades()
+    else:
+        print("No students were created. Check if there are any accepted applicants.")
+    
+    # Create site elements
+    print("\n8. Creating site elements...")
     create_fake_sliders(num_sliders=3)
     create_fake_alumni(num_alumni=8)
     create_fake_gallery_items(num_items=12)
     create_fake_news(num_news=7)
     create_fake_events(num_events=7)
-
-    print("Fake data generation complete.") 
+    
+    print("\nFake data generation complete.") 

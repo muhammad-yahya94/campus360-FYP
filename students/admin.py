@@ -3,9 +3,9 @@ from django import forms
 from .models import Student, StudentEnrollment
 from admissions.models import Applicant
 from users.models import CustomUser
-from courses.models import CourseOffering
+from courses.models import CourseOffering, Semester
 
-# Custom form for StudentAdmin to hide related data outside dropdowns
+# Custom form for StudentAdmin
 class StudentAdminForm(forms.ModelForm):
     class Meta:
         model = Student
@@ -13,69 +13,70 @@ class StudentAdminForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['applicant'].widget.can_add_related = False
-        self.fields['applicant'].widget.can_change_related = False
-        self.fields['applicant'].widget.can_delete_related = False
-        self.fields['user'].widget.can_add_related = False
-        self.fields['user'].widget.can_change_related = False
-        self.fields['user'].widget.can_delete_related = False
+        for field in ['applicant', 'user', 'program', 'current_semester']:
+            self.fields[field].widget.can_add_related = False
+            self.fields[field].widget.can_change_related = False
+            self.fields[field].widget.can_delete_related = False
+            
+        # Filter semesters based on selected program
+        if 'program' in self.data:
+            try:
+                program_id = int(self.data.get('program'))
+                self.fields['current_semester'].queryset = Semester.objects.filter(program_id=program_id)
+            except (ValueError, TypeError):
+                pass
+        elif self.instance.pk and self.instance.program:
+            self.fields['current_semester'].queryset = Semester.objects.filter(program=self.instance.program)
 
-# Custom form for StudentEnrollmentAdmin to hide related data outside dropdowns
+# Custom form for StudentEnrollmentAdmin
 class StudentEnrollmentAdminForm(forms.ModelForm):
     class Meta:
-        model = Student
+        model = StudentEnrollment
         fields = '__all__'
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['student'].widget.can_add_related = False
-        self.fields['student'].widget.can_change_related = False
-        self.fields['student'].widget.can_delete_related = False
-        self.fields['course_offering'].widget.can_add_related = False
-        self.fields['course_offering'].widget.can_change_related = False
-        self.fields['course_offering'].widget.can_delete_related = False
+        for field in ['student', 'course_offering']:
+            self.fields[field].widget.can_add_related = False
+            self.fields[field].widget.can_change_related = False
+            self.fields[field].widget.can_delete_related = False
 
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
-    form = StudentAdminForm  # Use the custom form
-    list_display = ('applicant', 'user', 'university_roll_no', 'current_status', 'enrollment_date')
-    list_filter = ('current_status', 'enrollment_date')
-    search_fields = ['applicant__full_name', 'user__email', 'university_roll_no', 'college_roll_no'] # Added for autocomplete
-    autocomplete_fields = ['applicant', 'user'] # Added autocomplete for ForeignKeys
-    date_hierarchy = 'enrollment_date'
-    ordering = ('-enrollment_date',)
+    form = StudentAdminForm
+    list_display = ('applicant', 'program', 'current_semester', 'university_roll_no', 'current_status')
+    list_filter = ('current_status', 'program', 'current_semester__learning_level')
+    search_fields = ('applicant__full_name', 'university_roll_no', 'college_roll_no')
+    raw_id_fields = ('applicant', 'user')
+    readonly_fields = ('enrollment_date',)
     
     fieldsets = (
-        ('Personal Information', {
-            'fields': ('applicant', 'user')
+        ('Basic Information', {
+            'fields': ('applicant', 'user', 'university_roll_no', 'college_roll_no')
         }),
         ('Academic Information', {
-            'fields': ('university_roll_no', 'college_roll_no', 'enrollment_date', 'graduation_date')
+            'fields': ('program', 'current_semester', 'enrollment_date', 'graduation_date', 'current_status')
         }),
-        ('Status & Emergency', {
-            'fields': ('current_status', 'emergency_contact', 'emergency_phone'),
+        ('Emergency Contact', {
+            'fields': ('emergency_contact', 'emergency_phone'),
             'classes': ('collapse',)
         }),
     )
 
-    def get_full_name(self, obj):
-        return obj.applicant.full_name
-    get_full_name.short_description = 'Full Name'
-    get_full_name.admin_order_field = 'applicant__full_name'
-
     def get_queryset(self, request):
         return super().get_queryset(request).select_related(
-            'applicant', 'user', 'applicant__department'
+            'applicant', 'user', 'program', 'current_semester'
         )
 
 @admin.register(StudentEnrollment)
 class StudentEnrollmentAdmin(admin.ModelAdmin):
-    form = StudentEnrollmentAdminForm  # Use the custom form
+    form = StudentEnrollmentAdminForm
     list_display = ('student', 'course_offering', 'enrollment_date', 'status')
-    list_filter = ('status', 'course_offering__course')
-    search_fields = ['student__applicant__full_name', 'course_offering__course__name', 'course_offering__course__code'] # Added for autocomplete
-    autocomplete_fields = ['student', 'course_offering'] # Added autocomplete for ForeignKeys
-    date_hierarchy = 'enrollment_date'
+    list_filter = ('status', 'enrollment_date', 'course_offering__semester__program', 'course_offering__semester__learning_level')
+    search_fields = ('student__applicant__full_name', 'course_offering__course__code', 'course_offering__course__name')
+    raw_id_fields = ('student', 'course_offering')
+    readonly_fields = ('enrollment_date',)
+    ordering = ('-enrollment_date',)
     
     fieldsets = (
         ('Enrollment Information', {
@@ -86,24 +87,10 @@ class StudentEnrollmentAdmin(admin.ModelAdmin):
         }),
     )
 
-    def get_student_name(self, obj):
-        return obj.student.full_name
-    get_student_name.short_description = 'Student'
-    get_student_name.admin_order_field = 'student__full_name'
-
-    def get_course_name(self, obj):
-        return obj.course_offering.course.name
-    get_course_name.short_description = 'Course'
-    get_course_name.admin_order_field = 'course_offering__course__name'
-
-    def get_teacher(self, obj):
-        return obj.course_offering.teacher
-    get_teacher.short_description = 'Teacher'
-
     def get_queryset(self, request):
         return super().get_queryset(request).select_related(
-            'student',
-            'course_offering',
+            'student__applicant',
             'course_offering__course',
-            'course_offering__teacher',
+            'course_offering__semester',
+            'course_offering__academic_session'
         )

@@ -2,7 +2,8 @@ from django.contrib import admin
 from django import forms
 from .models import (
     Course,
-    CourseOffering
+    CourseOffering,
+    Semester
 )
 from academics.models import Program, Department
 from faculty_staff.models import Teacher
@@ -16,46 +17,73 @@ class CourseOfferingAdminForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for field in ['course', 'teacher', 'department', 'program']:
+        for field in ['course', 'teacher', 'department', 'program', 'semester']:
             self.fields[field].widget.can_add_related = False
             self.fields[field].widget.can_change_related = False
             self.fields[field].widget.can_delete_related = False
 
 # ===== Admin Classes =====
 
+@admin.register(Semester)
+class SemesterAdmin(admin.ModelAdmin):
+    list_display = ('program', 'number', 'name', 'learning_level', 'is_active')
+    list_filter = ('program', 'learning_level', 'is_active')
+    search_fields = ('name', 'description', 'program__name')
+    ordering = ('program', 'number')
+    raw_id_fields = ('program',)
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('program', 'number', 'name', 'is_active')
+        }),
+        ('Learning Details', {
+            'fields': ('learning_level', 'description')
+        }),
+    )
+
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
     list_display = ('code', 'name', 'credits', 'is_active')
     list_filter = ('is_active',)
-    search_fields = ['code', 'name']
-    autocomplete_fields = ['prerequisites']
-    filter_horizontal = ['prerequisites']
-
+    search_fields = ('code', 'name', 'description')
+    ordering = ('code',)
+    filter_horizontal = ('prerequisites',)
+    
     fieldsets = (
         ('Basic Information', {
-            'fields': ('code', 'name', 'description', 'is_active', 'credits')
+            'fields': ('code', 'name', 'credits', 'is_active')
         }),
-        ('Prerequisites', {
-            'fields': ('prerequisites',),
-            'classes': ('collapse',)
+        ('Course Details', {
+            'fields': ('description', 'prerequisites')
         }),
     )
 
 @admin.register(CourseOffering)
 class CourseOfferingAdmin(admin.ModelAdmin):
     form = CourseOfferingAdminForm
-    list_display = ('course', 'teacher', 'department', 'program', 'offering_type')
-    list_filter = ('offering_type', 'department', 'program', 'teacher__department')
-    search_fields = ['course__name', 'course__code', 'teacher__user__first_name', 'teacher__user__last_name', 'department__name', 'program__name']
-    autocomplete_fields = ['course', 'teacher', 'department', 'program']
-
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related(
-            'course', 'teacher', 'department', 'program'
-        )
-
+    list_display = ('course', 'semester', 'teacher', 'offering_type', 'is_active', 'current_enrollment', 'max_capacity')
+    list_filter = ('is_active', 'semester__program', 'semester__learning_level', 'offering_type', 'department')
+    search_fields = ('course__code', 'course__name', 'teacher__user__username', 'semester__name')
+    ordering = ('semester__program', 'semester__number', 'course__code')
+    raw_id_fields = ('course', 'teacher', 'department', 'program', 'semester', 'academic_session')
+    list_editable = ('is_active', 'max_capacity')
+    
     fieldsets = (
-        ('Course Offering Information', {
-            'fields': ('course', 'teacher', 'department', 'program', 'offering_type')
+        ('Course Information', {
+            'fields': ('course', 'teacher', 'offering_type')
+        }),
+        ('Program & Department', {
+            'fields': ('program', 'department')
+        }),
+        ('Semester & Session', {
+            'fields': ('semester', 'academic_session')
+        }),
+        ('Enrollment Settings', {
+            'fields': ('is_active', 'max_capacity', 'current_enrollment')
         }),
     )
+    
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'course', 'teacher', 'department', 'program', 'semester', 'academic_session'
+        )

@@ -224,14 +224,14 @@ DAISY_SETTINGS = {
 },
 'courses': {
     'icon': 'fa-solid fa-book-open',
-    'name': 'Courses',
+    'name': 'Courses and Semesters',
     'hide': False,
-    'divider_title': "Course Management",
+    'divider_title': "Course and Semester",
     'priority': 4,
 },
 'faculty_staff': {
     'icon': 'fa-solid fa-people-group',
-    'name': 'Faculty & Staff',
+    'name': 'Faculty and Staff',
     'hide': False,
     'divider_title': "People and Offices",
     'priority': 6,

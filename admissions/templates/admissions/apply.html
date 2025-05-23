@@ -1,0 +1,131 @@
+<!-- Extra Curricular Activities -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Extra Curricular Activities</h5>
+    </div>
+    <div class="card-body">
+        <div id="activities-container">
+            <div class="activity-entry mb-3">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="id_activity">Activity</label>
+                            <input type="text" name="activity" class="form-control" placeholder="e.g., Debate Club, Sports Team">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="id_position">Position</label>
+                            <input type="text" name="position" class="form-control" placeholder="e.g., Captain, Secretary">
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="id_achievement">Achievement</label>
+                            <input type="text" name="achievement" class="form-control" placeholder="e.g., Won 1st Prize">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="id_activity_year">Year</label>
+                            <input type="number" name="activity_year" class="form-control" placeholder="e.g., 2023">
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-12">
+                        <div class="form-group">
+                            <label for="id_certificate_file">Certificate/Proof of Participation</label>
+                            <input type="file" name="certificate_file" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+                            <small class="form-text text-muted">Upload certificate or proof of participation (PDF, JPG, PNG, max 5MB)</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button type="button" class="btn btn-secondary mt-3" onclick="addActivity()">
+            <i class="fas fa-plus"></i> Add Another Activity
+        </button>
+    </div>
+</div>
+
+<!-- Add this JavaScript at the bottom of your file -->
+<script>
+function addActivity() {
+    const container = document.getElementById('activities-container');
+    const newEntry = document.createElement('div');
+    newEntry.className = 'activity-entry mb-3';
+    newEntry.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="id_activity">Activity</label>
+                    <input type="text" name="activity" class="form-control" placeholder="e.g., Debate Club, Sports Team">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="id_position">Position</label>
+                    <input type="text" name="position" class="form-control" placeholder="e.g., Captain, Secretary">
+                </div>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="id_achievement">Achievement</label>
+                    <input type="text" name="achievement" class="form-control" placeholder="e.g., Won 1st Prize">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="id_activity_year">Year</label>
+                    <input type="number" name="activity_year" class="form-control" placeholder="e.g., 2023">
+                </div>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-md-12">
+                <div class="form-group">
+                    <label for="id_certificate_file">Certificate/Proof of Participation</label>
+                    <input type="file" name="certificate_file" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+                    <small class="form-text text-muted">Upload certificate or proof of participation (PDF, JPG, PNG, max 5MB)</small>
+                </div>
+            </div>
+        </div>
+        <button type="button" class="btn btn-danger mt-2" onclick="this.parentElement.remove()">
+            <i class="fas fa-trash"></i> Remove Activity
+        </button>
+    `;
+    container.appendChild(newEntry);
+}
+
+// Add file validation
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInputs = document.querySelectorAll('input[type="file"]');
+    fileInputs.forEach(input => {
+        input.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                // Check file type
+                const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+                if (!allowedTypes.includes(file.type)) {
+                    alert('Invalid file type. Please upload PDF, JPG, or PNG files only.');
+                    this.value = '';
+                    return;
+                }
+                
+                // Check file size (5MB)
+                const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+                if (file.size > maxSize) {
+                    alert('File size too large. Maximum size is 5MB.');
+                    this.value = '';
+                    return;
+                }
+            }
+        });
+    });
+});
+</script> 

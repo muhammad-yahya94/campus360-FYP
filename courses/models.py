@@ -8,6 +8,50 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 
+# ===== Semester Model =====
+class Semester(models.Model):
+    program = models.ForeignKey(Program, on_delete=models.CASCADE, related_name='semesters', help_text="Select the program this semester belongs to.")
+    number = models.PositiveIntegerField(help_text="Semester number in the program sequence")
+    name = models.CharField(max_length=100, help_text="Name of the semester (e.g., 'Foundation', 'Advanced')")
+    description = models.TextField(blank=True, help_text="Description of what this semester covers")
+    is_active = models.BooleanField(default=True, help_text="Whether this semester is currently active")
+    
+    LEARNING_LEVEL_CHOICES = [
+        ('foundation', 'Foundation Level'),
+        ('basic', 'Basic Level'),
+        ('intermediate', 'Intermediate Level'),
+        ('advanced', 'Advanced Level'),
+        ('specialized', 'Specialized Level'),
+        ('professional', 'Professional Level'),
+        ('capstone', 'Capstone Level'),
+    ]
+    
+    learning_level = models.CharField(
+        max_length=20,
+        choices=LEARNING_LEVEL_CHOICES,
+        help_text="The learning level of this semester"
+    )
+
+    class Meta:
+        unique_together = ('program', 'number')
+        ordering = ['program', 'number']
+        verbose_name = "Semester"
+        verbose_name_plural = "Semesters"
+
+    def __str__(self):
+        return f"{self.program.name} - Semester {self.number}: {self.name}"
+
+    def save(self, *args, **kwargs):
+        # Ensure semester numbers are sequential
+        if self.number > 1:
+            prev_semester = Semester.objects.filter(
+                program=self.program,
+                number=self.number - 1
+            ).first()
+            if not prev_semester:
+                raise ValidationError(f"Semester {self.number-1} must exist before semester {self.number}")
+        super().save(*args, **kwargs)
+
 # ===== Course =====
 class Course(models.Model):
     code = models.CharField(max_length=10, unique=True, help_text="Enter the unique course code (e.g., CS101).")  # e.g., CS101
@@ -30,31 +74,39 @@ class CourseOffering(models.Model):
     teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='course_offerings', help_text="Select the teacher assigned to teach this course offering.")
     department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name='course_offerings', null=True, blank=True, help_text="Select the department offering this course (optional).")
     program = models.ForeignKey(Program, on_delete=models.CASCADE, related_name='course_offerings', null=True, blank=True, help_text="Select the program this course offering belongs to (optional).")
+    academic_session = models.ForeignKey(AcademicSession, on_delete=models.CASCADE, related_name='course_offerings', help_text="Select the academic session for this offering.")
+    semester = models.ForeignKey(Semester, on_delete=models.CASCADE, related_name='course_offerings', help_text="Select the semester for this offering.")
+    is_active = models.BooleanField(default=True, help_text="Check if this course offering is currently active for enrollment.")
+    max_capacity = models.PositiveIntegerField(default=30, help_text="Maximum number of students that can enroll in this offering.")
+    current_enrollment = models.PositiveIntegerField(default=0, help_text="Current number of enrolled students.")
+    
     OFFERING_TYPES = [
-        ('core', 'Core / Compulsory'),             # Required for all students in a program
-        ('major', 'Major'),                        # Courses for a student's major field
-        ('minor', 'Minor'),                        # Courses for a minor/secondary field
-        ('elective', 'Elective'),                  # Optional courses chosen by the student
-        ('foundation', 'Foundation'),              # Bridging or basic level courses
-        ('gen_ed', 'General Education'),           # Broad courses in humanities, sciences, etc.
-        ('lab', 'Lab / Practical'),                # Practical or laboratory-based courses
-        ('seminar', 'Seminar'),                    # Small-group, discussion or presentation-based
-        ('capstone', 'Capstone / Final Project'),  # Final year project or thesis
-        ('internship', 'Internship / Training'),   # Practical industry training
-        ('service', 'Service Course'),             # Courses offered by one department to others
-        ('remedial', 'Remedial / Non-Credit'),     # For students needing academic support
+        ('core', 'Core / Compulsory'),
+        ('major', 'Major'),
+        ('minor', 'Minor'),
+        ('elective', 'Elective'),
+        ('foundation', 'Foundation'),
+        ('gen_ed', 'General Education'),
+        ('lab', 'Lab / Practical'),
+        ('seminar', 'Seminar'),
+        ('capstone', 'Capstone / Final Project'),
+        ('internship', 'Internship / Training'),
+        ('service', 'Service Course'),
+        ('remedial', 'Remedial / Non-Credit'),
     ]
 
     offering_type = models.CharField(
-    max_length=30,
-    choices=OFFERING_TYPES,
-    default='core',
-    help_text="Specify how this course offering fits into a program (e.g., Major, Elective, Foundation, etc.)."
-)
+        max_length=30,
+        choices=OFFERING_TYPES,
+        default='core',
+        help_text="Specify how this course offering fits into a program."
+    )
 
+    def __str__(self):
+        return f"{self.course.code} - {self.course.name} ({self.semester}, {self.academic_session})"
 
     class Meta:
-        unique_together = ('course', 'teacher', 'program', 'department', 'offering_type')
+        unique_together = ('course', 'teacher', 'program', 'department', 'academic_session', 'semester', 'offering_type')
         verbose_name = "Course Offering"
         verbose_name_plural = "Course Offerings"
 

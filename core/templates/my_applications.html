@@ -142,7 +142,7 @@
     <!-- User Icon and Name -->
     <div class="d-flex align-items-center me-auto px-4">
         <i class="fa fa-user fa-lg me-2 text-primary"></i>
-        <span class="fw-bold">{{ request.user.get_full_name|default:request.user.first_name }} {{ request.user.last_name }}</span>
+        <span class="fw-bold">{{ request.user.get_full_name|default:request.user.first_name }}</span>
     </div>
 
     <!-- Toggle Button for Mobile -->

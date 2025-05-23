@@ -96,7 +96,7 @@
     <!-- User Icon and Name -->
     <div class="d-flex align-items-center me-auto px-4">
         <i class="fa fa-user fa-lg me-2 text-primary"></i>
-        <span class="fw-bold">{{ request.user.get_full_name|default:request.user.first_name }} {{ request.user.last_name }}</span>
+        <span class="fw-bold">{{ request.user.get_full_name|default:request.user.first_name }} </span>
     </div>
 
     <!-- Toggle Button for Mobile -->
@@ -375,6 +375,13 @@
                                                     <label for="academic_major_0" class="form-label text-dark">Major Subject</label>
                                                     <input type="text" class="form-control form-control-lg" id="academic_major_0" name="academic_major[]" required>
                                                 </div>
+                                                <div class="col-md-3">
+                                                    <label for="academic_certificate_0" class="form-label text-dark">Certificate/Transcript</label>
+                                                    <input type="file" class="form-control form-control-lg" id="academic_certificate_0" 
+                                                           name="academic_certificate[]" accept=".pdf,.jpg,.jpeg,.png"
+                                                           onchange="validateFile(this, 0)">
+                                                    <small class="text-muted">Max size: 5MB, Formats: PDF, JPG, PNG</small>
+                                                </div>
                                                 <div class="col-md-2">
                                                     <button type="button" class="btn btn-danger mt-4 remove-academic-row" style="display: none;">Remove</button>
                                                 </div>
@@ -385,39 +392,56 @@
                                 </div>
                             </div>
 
-                            <!-- Extra Curricular Activities Section -->
-                            <div class="card mb-4 border-0">
+                            <!-- Extra Curricular Activities -->
+                            <div class="card mb-4">
                                 <div class="card-header bg-primary text-white">
                                     <h4 class="mb-0 text-white">Extra Curricular Activities</h4>
                                 </div>
                                 <div class="card-body">
-                                    <div id="extraActivitiesContainer">
-                                        <!-- Initial row for extra-curricular activity -->
-                                        <div class="extra-activity-row mb-4" data-index="0">
-                                            <div class="row g-3">
-                                                <div class="col-md-3">
-                                                    <label for="activity_0" class="form-label text-dark">Activity</label>
-                                                    <input type="text" class="form-control form-control-lg" id="activity_0" name="activity[]">
+                                    <div id="activities-container">
+                                        <div class="activity-entry mb-3">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="form-group">
+                                                        <label for="id_activity" class="form-label text-dark">Activity</label>
+                                                        <input type="text" name="activity[]" class="form-control form-control-lg" placeholder="e.g., Debate Club, Sports Team">
+                                                    </div>
                                                 </div>
-                                                <div class="col-md-3">
-                                                    <label for="position_0" class="form-label text-dark">Position/Role</label>
-                                                    <input type="text" class="form-control form-control-lg" id="position_0" name="position[]">
+                                                <div class="col-md-6">
+                                                    <div class="form-group">
+                                                        <label for="id_position" class="form-label text-dark">Position</label>
+                                                        <input type="text" name="position[]" class="form-control form-control-lg" placeholder="e.g., Captain, Secretary">
+                                                    </div>
                                                 </div>
-                                                <div class="col-md-3">
-                                                    <label for="achievement_0" class="form-label text-dark">Achievements</label>
-                                                    <input type="text" class="form-control form-control-lg" id="achievement_0" name="achievement[]">
+                                            </div>
+                                            <div class="row mt-3">
+                                                <div class="col-md-6">
+                                                    <div class="form-group">
+                                                        <label for="id_achievement" class="form-label text-dark">Achievement</label>
+                                                        <input type="text" name="achievement[]" class="form-control form-control-lg" placeholder="e.g., Won 1st Prize">
+                                                    </div>
                                                 </div>
-                                                <div class="col-md-2">
-                                                    <label for="activity_year_0" class="form-label text-dark">Year</label>
-                                                    <input type="number" class="form-control form-control-lg" id="activity_year_0" name="activity_year[]">
+                                                <div class="col-md-6">
+                                                    <div class="form-group">
+                                                        <label for="id_activity_year" class="form-label text-dark">Year</label>
+                                                        <input type="number" name="activity_year[]" class="form-control form-control-lg" placeholder="e.g., 2023">
+                                                    </div>
                                                 </div>
-                                                <div class="col-md-1">
-                                                    <button type="button" class="btn btn-danger mt-4 remove-activity-row" style="display: none;">Remove</button>
+                                            </div>
+                                            <div class="row mt-3">
+                                                <div class="col-md-12">
+                                                    <div class="form-group">
+                                                        <label for="id_certificate_file" class="form-label text-dark">Certificate/Proof of Participation</label>
+                                                        <input type="file" name="certificate_file[]" class="form-control form-control-lg" accept=".pdf,.jpg,.jpeg,.png">
+                                                        <small class="form-text text-muted">Upload certificate or proof of participation (PDF, JPG, PNG, max 5MB)</small>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <button type="button" class="btn btn-primary mt-3" id="addActivityRow">Add Another Activity</button>
+                                    <button type="button" class="btn btn-secondary mt-3" onclick="addActivity()">
+                                        <i class="fas fa-plus"></i> Add Another Activity
+                                    </button>
                                 </div>
                             </div>
 
@@ -671,11 +695,15 @@ $('#addAcademicRow').click(function () {
                 </div>
                 <div class="col-md-2">
                     <label for="academic_total_marks_${academicIndex}" class="form-label text-dark">Total Marks</label>
-                    <input type="number" class="form-control form-control-lg" id="academic_total_marks_${academicIndex}" name="academic_total_marks[]" required>
+                    <input type="number" class="form-control form-control-lg" id="academic_total_marks_${academicIndex}" 
+                           name="academic_total_marks[]" required min="0"
+                           onchange="validateTotalMarks(this)">
                 </div>
                 <div class="col-md-2">
                     <label for="academic_marks_obtained_${academicIndex}" class="form-label text-dark">Marks Obtained</label>
-                    <input type="number" class="form-control form-control-lg" id="academic_marks_obtained_${academicIndex}" name="academic_marks_obtained[]" required>
+                    <input type="number" class="form-control form-control-lg" id="academic_marks_obtained_${academicIndex}" 
+                           name="academic_marks_obtained[]" required min="0"
+                           onchange="validateMarks(this)">
                 </div>
             </div>
             <div class="row g-3 mt-3">
@@ -686,6 +714,13 @@ $('#addAcademicRow').click(function () {
                 <div class="col-md-3">
                     <label for="academic_major_${academicIndex}" class="form-label text-dark">Major Subject</label>
                     <input type="text" class="form-control form-control-lg" id="academic_major_${academicIndex}" name="academic_major[]" required>
+                </div>
+                <div class="col-md-3">
+                    <label for="academic_certificate_${academicIndex}" class="form-label text-dark">Certificate/Transcript</label>
+                    <input type="file" class="form-control form-control-lg" id="academic_certificate_${academicIndex}" 
+                           name="academic_certificate[]" accept=".pdf,.jpg,.jpeg,.png"
+                           onchange="validateFile(this, ${academicIndex})">
+                    <small class="text-muted">Max size: 5MB, Formats: PDF, JPG, PNG</small>
                 </div>
                 <div class="col-md-2">
                     <button type="button" class="btn btn-danger mt-4 remove-academic-row">Remove</button>
@@ -897,6 +932,144 @@ $('input[name="dob"]').on('change', function () {
         $(this).val('');
         alert('Applicant must be at least 16 years old');
     }
+});
+
+// File validation function
+function validateFile(input, index) {
+    const file = input.files[0];
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    const validTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    
+    if (file) {
+        if (file.size > maxSize) {
+            alert('File size must be less than 5MB');
+            input.value = '';
+            return false;
+        }
+        
+        if (!validTypes.includes(file.type)) {
+            alert('Please upload a valid file (PDF, JPG, or PNG)');
+            input.value = '';
+            return false;
+        }
+    }
+    return true;
+}
+
+// Add marks validation function
+function validateMarks(input) {
+    const row = input.closest('.academic-qualification-row');
+    const totalMarks = parseInt(row.querySelector('input[name="academic_total_marks[]"]').value) || 0;
+    const obtainedMarks = parseInt(input.value) || 0;
+    
+    if (obtainedMarks > totalMarks) {
+        alert('Obtained marks cannot be greater than total marks');
+        input.value = '';
+        return false;
+    }
+    return true;
+}
+
+// Function to validate total marks
+function validateTotalMarks(input) {
+    const row = input.closest('.academic-qualification-row');
+    const totalMarks = parseInt(input.value) || 0;
+    const obtainedMarks = parseInt(row.querySelector('input[name="academic_marks_obtained[]"]').value) || 0;
+    
+    if (obtainedMarks > totalMarks) {
+        alert('Total marks cannot be less than obtained marks');
+        input.value = '';
+        return false;
+    }
+    return true;
+}
+
+// Add event listeners for the initial row
+$(document).ready(function() {
+    // Add validation to initial row
+    $('#academic_total_marks_0').on('change', function() {
+        validateTotalMarks(this);
+    });
+    
+    $('#academic_marks_obtained_0').on('change', function() {
+        validateMarks(this);
+    });
+});
+
+function addActivity() {
+    const container = document.getElementById('activities-container');
+    const newEntry = document.createElement('div');
+    newEntry.className = 'activity-entry mb-3';
+    newEntry.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="id_activity" class="form-label text-dark">Activity</label>
+                    <input type="text" name="activity[]" class="form-control form-control-lg" placeholder="e.g., Debate Club, Sports Team">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="id_position" class="form-label text-dark">Position</label>
+                    <input type="text" name="position[]" class="form-control form-control-lg" placeholder="e.g., Captain, Secretary">
+                </div>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="id_achievement" class="form-label text-dark">Achievement</label>
+                    <input type="text" name="achievement[]" class="form-control form-control-lg" placeholder="e.g., Won 1st Prize">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="id_activity_year" class="form-label text-dark">Year</label>
+                    <input type="number" name="activity_year[]" class="form-control form-control-lg" placeholder="e.g., 2023">
+                </div>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-md-12">
+                <div class="form-group">
+                    <label for="id_certificate_file" class="form-label text-dark">Certificate/Proof of Participation</label>
+                    <input type="file" name="certificate_file[]" class="form-control form-control-lg" accept=".pdf,.jpg,.jpeg,.png">
+                    <small class="form-text text-muted">Upload certificate or proof of participation (PDF, JPG, PNG, max 5MB)</small>
+                </div>
+            </div>
+        </div>
+        <button type="button" class="btn btn-danger mt-2" onclick="this.parentElement.remove()">
+            <i class="fas fa-trash"></i> Remove Activity
+        </button>
+    `;
+    container.appendChild(newEntry);
+}
+
+// Add file validation
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInputs = document.querySelectorAll('input[type="file"]');
+    fileInputs.forEach(input => {
+        input.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                // Check file type
+                const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+                if (!allowedTypes.includes(file.type)) {
+                    alert('Invalid file type. Please upload PDF, JPG, or PNG files only.');
+                    this.value = '';
+                    return;
+                }
+                
+                // Check file size (5MB)
+                const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+                if (file.size > maxSize) {
+                    alert('File size too large. Maximum size is 5MB.');
+                    this.value = '';
+                    return;
+                }
+            }
+        });
+    });
 });
 </script>
 

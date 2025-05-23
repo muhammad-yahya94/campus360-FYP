@@ -1,18 +1,49 @@
 from django.db import models
 from users.models import CustomUser
-from academics.models import Program , Department , Faculty
+from academics.models import Program, Department, Faculty
 
 
-# ===== 5. Academic Sessions & Semesters =====
+
+
 class AcademicSession(models.Model):
-    name = models.CharField(max_length=50, help_text="Enter the name of the academic session (e.g., Fall 2024, Spring 2025).")    # Fall 2024
-    start_date = models.DateField(help_text="Select the starting date of this academic session.")
-    end_date = models.DateField(help_text="Select the ending date of this academic session.")
-    is_active = models.BooleanField(default=False, help_text="Check this if this is the current academic session.")
-    
+    """
+    Represents an academic session spanning multiple years (e.g., 2021-2025).
+    Each session contains multiple semesters and is associated with a specific batch of students.
+    """
+    name = models.CharField(
+        max_length=50,
+        help_text="Enter the name of the academic session (e.g., '2021-2025', 'Fall 2021-Spring 2025')"
+    )
+    start_year = models.IntegerField(
+        help_text="Enter the starting year of this academic session (e.g., 2021)"
+    )
+    end_year = models.IntegerField(
+        help_text="Enter the ending year of this academic session (e.g., 2025)"
+    )
+    is_active = models.BooleanField(
+        default=False,
+        help_text="Check this if this is the current academic session. Only one session can be active at a time."
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Optional: Add any additional information about this academic session"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Academic Session"
+        verbose_name_plural = "Academic Sessions"
+        ordering = ['-start_year']
+
     def __str__(self):
         return self.name
 
+    def save(self, *args, **kwargs):
+        if self.is_active:
+            # Deactivate all other sessions
+            AcademicSession.objects.exclude(pk=self.pk).update(is_active=False)
+        super().save(*args, **kwargs)
 
 # ===== 6. Admissions =====
 class AdmissionCycle(models.Model):
@@ -75,12 +106,11 @@ class AcademicQualification(models.Model):
     total_marks = models.PositiveIntegerField(blank=True, null=True, help_text="Enter the total possible marks for the exam.")
     division = models.CharField(max_length=50, blank=True, help_text="Enter the division or grade obtained (e.g., 1st Division, A+).")
     subjects = models.TextField(blank=True, help_text="List the subjects studied in this qualification.")
-    institute = models.CharField(max_length=200, help_text="Enter the name of the school, college, or university attended.")
     board = models.CharField(max_length=200, blank=True, help_text="Enter the name of the examining board or university (optional).")
-    level = models.CharField(max_length=50, default='N/A', help_text="Enter the academic level of this qualification (e.g., Matric, Intermediate, Bachelor). Optional, defaults to N/A.")
+    certificate_file = models.FileField(upload_to='academic_certificates/%Y/%m/', blank=True, null=True, help_text="Upload the certificate or transcript for this qualification.")
 
     def __str__(self):
-        return f"{self.applicant.full_name} - {self.level}"
+        return f"{self.applicant.full_name} - {self.exam_passed}"
 
 class ExtraCurricularActivity(models.Model):
     applicant = models.ForeignKey(Applicant, on_delete=models.CASCADE, related_name='extra_curricular_activities', help_text="Select the applicant for this activity record.")
@@ -88,6 +118,7 @@ class ExtraCurricularActivity(models.Model):
     position = models.CharField(max_length=100, blank=True, help_text="Enter any position held in the activity (e.g., Captain, Secretary).")
     achievement = models.CharField(max_length=200, blank=True, help_text="Describe any achievements in the activity (e.g., Won 1st Prize).")
     activity_year = models.PositiveIntegerField(null=True, blank=True, help_text="Enter the year this activity took place.")
+    certificate_file = models.FileField(upload_to='extra_curricular_certificates/%Y/%m/', blank=True, null=True, help_text="Upload certificate or proof of participation/achievement.")
 
     def __str__(self):
         return f"{self.applicant.full_name} - {self.activity}"

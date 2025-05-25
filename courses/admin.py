@@ -45,7 +45,7 @@ class CourseOfferingAdmin(admin.ModelAdmin):
     form = CourseOfferingAdminForm
     list_display = ('course', 'semester', 'teacher', 'offering_type', 'is_active', 'current_enrollment', 'max_capacity')
     list_filter = ('is_active', 'semester__program',  'offering_type', 'department')
-    search_fields = ('course__code', 'course__name', 'teacher__user__username', 'semester__name')
+    search_fields = ('course__code', 'course__name', 'teacher__user__first_name', 'semester__name')
     ordering = ('semester__program', 'semester__number', 'course__code')
     raw_id_fields = ('course', 'teacher', 'department', 'program', 'semester', 'academic_session')
     list_editable = ('is_active', 'max_capacity')

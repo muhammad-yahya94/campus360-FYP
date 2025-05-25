@@ -18,7 +18,17 @@ class CustomUserAdmin(UserAdmin):
         }),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
     )
+
+    # 🔻 Add this block to fix the 'username' error on add user form
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': ('email', 'password1', 'password2', 'first_name', 'last_name', 'is_staff', 'is_active')}
+        ),
+    )
+
     filter_horizontal = ('groups', 'user_permissions',)
+
 
 
 

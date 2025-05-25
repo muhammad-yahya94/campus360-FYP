@@ -1,0 +1,69 @@
+{% extends 'faculty_staff/base_dashboard.html' %}
+
+{% block title %}Add Course{% endblock %}
+
+{% block content %}
+<style>
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    .error {
+        color: red;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Add New Course</h2>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="post" action="{% url 'faculty_staff:add_course' %}" novalidate>
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-4 form-group">
+                        <label for="code" class="form-label">Course Code</label>
+                        <input type="text" name="code" id="code" class="form-control" value="{{ form.code.value|default:'' }}" required>
+                        {% if form.errors.code %}
+                        <span class="error">{{ form.errors.code.0 }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4 form-group">
+                        <label for="name" class="form-label">Course Name</label>
+                        <input type="text" name="name" id="name" class="form-control" value="{{ form.name.value|default:'' }}" required>
+                        {% if form.errors.name %}
+                        <span class="error">{{ form.errors.name.0 }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4 form-group">
+                        <label for="credits" class="form-label">Credits</label>
+                        <input type="number" name="credits" id="credits" class="form-control" value="{{ form.credits.value|default:3 }}" min="1" required>
+                        {% if form.errors.credits %}
+                        <span class="error">{{ form.errors.credits.0 }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4 form-group">
+                        <label for="is_active" class="form-label">Active</label>
+                        <select name="is_active" id="is_active" class="form-select">
+                            <option value="True" {% if form.is_active.value|default:'True' %}selected{% endif %}>Yes</option>
+                            <option value="False" {% if not form.is_active.value|default:'True' %}selected{% endif %}>No</option>
+                        </select>
+                    </div>
+                    <div class="col-md-8 form-group">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea name="description" id="description" class="form-control">{{ form.description.value|default:'' }}</textarea>
+                    </div>
+                    <div class="col-md-12 text-end">
+                        <button type="submit" class="btn btn-primary">Add Course</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

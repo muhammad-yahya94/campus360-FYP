@@ -1,0 +1,329 @@
+{% extends 'faculty_staff/base_dashboard.html' %}
+
+{% block title %}Course Offerings{% endblock %}
+
+{% block content %}
+<style>
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+    .table th {
+        background-color: #e9ecef;
+        color: #343a40;
+    }
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    .filter-form, .assignment-form {
+        margin-bottom: 20px;
+    }
+    .select2-container {
+        width: 100% !important;
+    }
+    .error {
+        color: red;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Course Offerings</h2>
+    </div>
+
+    <!-- Assignment Form -->
+    <div class="card assignment-form">
+        <div class="card-body">
+            <form id="course-offering-form" method="post" action="{% url 'faculty_staff:save_course_offering' %}">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label for="course_id" class="form-label">Course</label>
+                        <select name="course_id" id="course_id" class="form-select select2" required>
+                            <option value="">Search for a course...</option>
+                        </select>
+                        <span id="course-error" class="error"></span>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="teacher_id" class="form-label">Teacher</label>
+                        <select name="teacher_id" id="teacher_id" class="form-select select2" required>
+                            <option value="">Search for a teacher...</option>
+                        </select>
+                        <span id="teacher-error" class="error"></span>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="program_id" class="form-label">Program</label>
+                        <select name="program_id" id="program_id" class="form-select select2" required>
+                            <option value="">Search for a program...</option>
+                        </select>
+                        <span id="program-error" class="error"></span>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="semester_id" class="form-label">Semester</label>
+                        <select name="semester_id" id="semester_id" class="form-select select2" required>
+                            <option value="">Search for a semester...</option>
+                        </select>
+                        <span id="semester-error" class="error"></span>
+                    </div>
+                    <div class="col-md-1 align-self-end">
+                        <button type="submit" class="btn btn-primary w-100">Assign</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Existing Course Offerings Table -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Course Code</th>
+                            <th>Course Name</th>
+                            <th>Program</th>
+                            <th>Department</th>
+                            <th>Teacher</th>
+                            <th>Session</th>
+                            <th>Semester</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for offering in course_offerings %}
+                        <tr>
+                            <td>{{ offering.course.code }}</td>
+                            <td>{{ offering.course.name }}</td>
+                            <td>{{ offering.program.name }}</td>
+                            <td>{{ offering.department.name }}</td>
+                            <td>
+                                {% if offering.teacher %}
+                                {{ offering.teacher.user.get_full_name }} ({{ offering.teacher.department.name }})
+                                {% else %}
+                                Not Assigned
+                                {% endif %}
+                            </td>
+                            <td>{{ offering.academic_session.name }}</td>
+                            <td>{{ offering.semester.name }}</td>
+                            <td>
+                                <button class="btn btn-danger btn-sm delete-offering" data-offering-id="{{ offering.id }}">Delete</button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center">No course offerings found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<!-- Include Select2 CSS and JS -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+
+<script>
+$(document).ready(function() {
+    // Initialize Select2 with AJAX for dynamic search
+    $('#course_id').select2({
+        ajax: {
+            url: "{% url 'faculty_staff:search_courses' %}",
+            dataType: 'json',
+            delay: 250,
+            data: function(params) {
+                return {
+                    q: params.term, // Search query
+                    page: params.page || 1
+                };
+            },
+            processResults: function(data, params) {
+                params.page = params.page || 1;
+                return {
+                    results: data.results,
+                    pagination: {
+                        more: data.more
+                    }
+                };
+            },
+            cache: true
+        },
+        placeholder: "Search for a course...",
+        minimumInputLength: 1,
+        allowClear: true
+    });
+
+    $('#teacher_id').select2({
+        ajax: {
+            url: "{% url 'faculty_staff:search_teachers' %}",
+            dataType: 'json',
+            delay: 250,
+            data: function(params) {
+                return {
+                    q: params.term,
+                    page: params.page || 1
+                };
+            },
+            processResults: function(data, params) {
+                params.page = params.page || 1;
+                return {
+                    results: data.results,
+                    pagination: {
+                        more: data.more
+                    }
+                };
+            },
+            cache: true
+        },
+        placeholder: "Search for a teacher...",
+        minimumInputLength: 1,
+        allowClear: true
+    });
+
+    $('#program_id').select2({
+        ajax: {
+            url: "{% url 'faculty_staff:search_programs' %}",
+            dataType: 'json',
+            delay: 250,
+            data: function(params) {
+                return {
+                    q: params.term,
+                    page: params.page || 1
+                };
+            },
+            processResults: function(data, params) {
+                params.page = params.page || 1;
+                return {
+                    results: data.results,
+                    pagination: {
+                        more: data.more
+                    }
+                };
+            },
+            cache: true
+        },
+        placeholder: "Search for a program...",
+        minimumInputLength: 1,
+        allowClear: true
+    });
+
+    $('#semester_id').select2({
+        ajax: {
+            url: "{% url 'faculty_staff:search_semesters' %}",
+            dataType: 'json',
+            delay: 250,
+            data: function(params) {
+                return {
+                    q: params.term,
+                    page: params.page || 1
+                };
+            },
+            processResults: function(data, params) {
+                params.page = params.page || 1;
+                return {
+                    results: data.results,
+                    pagination: {
+                        more: data.more
+                    }
+                };
+            },
+            cache: true
+        },
+        placeholder: "Search for a semester...",
+        minimumInputLength: 1,
+        allowClear: true
+    });
+
+    // Handle form submission with AJAX
+    $('#course-offering-form').on('submit', function(e) {
+        e.preventDefault();
+        let formData = $(this).serialize();
+        let error = false;
+
+        // Validate selections
+        if (!$('#course_id').val()) {
+            $('#course-error').text('Please select a course.');
+            error = true;
+        } else {
+            $('#course-error').text('');
+        }
+        if (!$('#teacher_id').val()) {
+            $('#teacher-error').text('Please select a teacher.');
+            error = true;
+        } else {
+            $('#teacher-error').text('');
+        }
+        if (!$('#program_id').val()) {
+            $('#program-error').text('Please select a program.');
+            error = true;
+        } else {
+            $('#program-error').text('');
+        }
+        if (!$('#semester_id').val()) {
+            $('#semester-error').text('Please select a semester.');
+            error = true;
+        } else {
+            $('#semester-error').text('');
+        }
+
+        if (!error) {
+            $.ajax({
+                url: $(this).attr('action'),
+                type: 'POST',
+                data: formData,
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.message);
+                        $('#course-offering-form')[0].reset();
+                        $('#course_id').val(null).trigger('change');
+                        $('#teacher_id').val(null).trigger('change');
+                        $('#program_id').val(null).trigger('change');
+                        $('#semester_id').val(null).trigger('change');
+                        location.reload(); // Reload to update the table
+                    } else {
+                        alert('Error: ' + response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    alert('An error occurred: ' + error);
+                }
+            });
+        }
+    });
+
+    // Handle delete action with AJAX
+    $('.delete-offering').on('click', function() {
+        let offeringId = $(this).data('offering-id');
+        if (confirm('Are you sure you want to delete this course offering?')) {
+            $.ajax({
+                url: "{% url 'faculty_staff:delete_course_offering' %}",
+                type: 'POST',
+                data: {
+                    offering_id: offeringId,
+                    csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.message);
+                        location.reload();
+                    } else {
+                        alert('Error: ' + response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    alert('An error occurred: ' + error);
+                }
+            });
+        }
+    });
+});
+</script>
+{% endblock %}
+
+{% endblock %}

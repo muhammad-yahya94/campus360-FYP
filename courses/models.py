@@ -61,7 +61,6 @@ class CourseOffering(models.Model):
         return f"{self.course.code} - {self.course.name} ({self.semester}, {self.academic_session})"
 
     class Meta:
-        unique_together = ('course', 'teacher', 'program', 'department', 'academic_session', 'semester', 'offering_type')
         verbose_name = "Course Offering"
         verbose_name_plural = "Course Offerings"
 

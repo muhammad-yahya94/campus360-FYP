@@ -145,7 +145,13 @@
                                 {% endfor %}
                             </ul>
                         </div>
-                        
+                        <a class="nav-link {% if request.resolver_match.url_name == 'add_course' %}active{% endif %}" href="{% url 'faculty_staff:add_course' %}">
+                            <i class="fas fa-plus me-2"></i> Add Course
+                        </a>
+                        <!-- Course Offerings Link -->
+                        <a class="nav-link {% if request.resolver_match.url_name == 'course_offerings' %}active{% endif %}" href="{% url 'faculty_staff:course_offerings' %}">
+                            <i class="fas fa-user-plus me-2"></i> Assign Course
+                        </a>
                         <a class="nav-link" href="{% url 'faculty_staff:login' %}">
                             <i class="fas fa-sign-out-alt me-2"></i> Logout
                         </a>

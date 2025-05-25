@@ -3,17 +3,16 @@ from users.models import CustomUser
 from academics.models import Program, Department, Faculty
 from admissions.models import Applicant, AcademicSession
 from django.utils.text import slugify
-
-# Teacher Designation Choices
-DESIGNATION_CHOICES = [
-    ('head_of_department', 'Head of Department'),
-    ('professor', 'Professor'),
-]
-
-
+from django.conf import settings # Import settings for User model
 
 # ===== Teacher =====
 class Teacher(models.Model):
+    # Designation Choices
+    DESIGNATION_CHOICES = [
+        ('head_of_department', 'Head of Department'),
+        ('professor', 'Professor'),
+    ]
+
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='teacher_profile', help_text="Select the user account associated with this teacher.")
     department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name='teachers', help_text="Select the department this teacher belongs to.")
     designation = models.CharField(max_length=100, choices=DESIGNATION_CHOICES, help_text="Select the official designation or role of the teacher within the department.")
@@ -65,7 +64,7 @@ class OfficeStaff(models.Model):
     position = models.CharField(max_length=100, help_text="Enter the position or role of the staff member within the office.")
     contact_no = models.CharField(max_length=15, blank=True, null=True, help_text="Enter the contact phone number for the office staff member (optional).")
 
-    def __str__(self):  
+    def __str__(self):
         return f"{(self.user.get_full_name() or self.user.first_name)} ({self.position})"
 
 

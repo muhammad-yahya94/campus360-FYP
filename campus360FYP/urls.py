@@ -25,6 +25,7 @@ urlpatterns = [
     path('',include('core.urls')),
     path('ckeditor5/', include('django_ckeditor_5.urls')),
     # path('user/' , include('users.urls')),
-    # path('admin-portal/' , include('admin_portal.urls'))
+    path('faculty/' , include('faculty_staff.urls')),
     path('accounts/', include('django.contrib.auth.urls')),
+    path('learning-cycle/', include('learning_cycle.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -68,67 +68,6 @@ class Student(models.Model):
                 
         super().save(*args, **kwargs)
         
-    def get_available_courses(self):
-        """Get courses available for enrollment in current semester"""
-        return CourseOffering.objects.filter(
-            semester=self.current_semester,
-            is_active=True,
-            current_enrollment__lt=models.F('max_capacity')
-        ).exclude(
-            enrollments__student=self
-        )
-        
-    def get_enrolled_courses(self):
-        """Get currently enrolled courses"""
-        return self.enrollments.filter(
-            status='enrolled',
-            course_offering__semester=self.current_semester
-        )
-        
-    def get_completed_courses(self):
-        """Get completed courses"""
-        return self.enrollments.filter(status='completed')
-        
-    def can_enroll_in_course(self, course_offering):
-        """Check if student can enroll in a course"""
-        if course_offering.semester != self.current_semester:
-            return False
-        if course_offering.current_enrollment >= course_offering.max_capacity:
-            return False
-        if self.enrollments.filter(course_offering=course_offering).exists():
-            return False
-        return True
-        
-    def can_advance_semester(self):
-        """Check if student can advance to next semester"""
-        # Get all required courses for current semester
-        required_courses = self.current_semester.course_offerings.filter(
-            offering_type__in=['core', 'major']
-        )
-        
-        # Check if all required courses are completed
-        completed_courses = self.enrollments.filter(
-            course_offering__in=required_courses,
-            status='completed'
-        )
-        
-        return completed_courses.count() == required_courses.count()
-        
-    def advance_semester(self):
-        """Advance student to next semester"""
-        if not self.can_advance_semester():
-            raise ValidationError("Cannot advance semester: Not all required courses are completed")
-            
-        next_semester = Semester.objects.filter(
-            program=self.program,
-            number=self.current_semester.number + 1
-        ).first()
-        
-        if not next_semester:
-            raise ValidationError("No next semester available")
-            
-        self.current_semester = next_semester
-        self.save()
 
 # ===== Student Enrollment =====
 class StudentEnrollment(models.Model):

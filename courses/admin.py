@@ -3,7 +3,6 @@ from django import forms
 from .models import (
     Course,
     CourseOffering,
-    Semester
 )
 from academics.models import Program, Department
 from faculty_staff.models import Teacher
@@ -23,23 +22,6 @@ class CourseOfferingAdminForm(forms.ModelForm):
             self.fields[field].widget.can_delete_related = False
 
 # ===== Admin Classes =====
-
-@admin.register(Semester)
-class SemesterAdmin(admin.ModelAdmin):
-    list_display = ('program', 'number', 'name', 'learning_level', 'is_active')
-    list_filter = ('program', 'learning_level', 'is_active')
-    search_fields = ('name', 'description', 'program__name')
-    ordering = ('program', 'number')
-    raw_id_fields = ('program',)
-    
-    fieldsets = (
-        ('Basic Information', {
-            'fields': ('program', 'number', 'name', 'is_active')
-        }),
-        ('Learning Details', {
-            'fields': ('learning_level', 'description')
-        }),
-    )
 
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
@@ -62,7 +44,7 @@ class CourseAdmin(admin.ModelAdmin):
 class CourseOfferingAdmin(admin.ModelAdmin):
     form = CourseOfferingAdminForm
     list_display = ('course', 'semester', 'teacher', 'offering_type', 'is_active', 'current_enrollment', 'max_capacity')
-    list_filter = ('is_active', 'semester__program', 'semester__learning_level', 'offering_type', 'department')
+    list_filter = ('is_active', 'semester__program',  'offering_type', 'department')
     search_fields = ('course__code', 'course__name', 'teacher__user__username', 'semester__name')
     ordering = ('semester__program', 'semester__number', 'course__code')
     raw_id_fields = ('course', 'teacher', 'department', 'program', 'semester', 'academic_session')

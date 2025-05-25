@@ -45,7 +45,7 @@ class StudentEnrollmentAdminForm(forms.ModelForm):
 class StudentAdmin(admin.ModelAdmin):
     form = StudentAdminForm
     list_display = ('applicant', 'program', 'current_semester', 'university_roll_no', 'current_status')
-    list_filter = ('current_status', 'program', 'current_semester__learning_level')
+    list_filter = ('current_status', 'program', 'current_semester')
     search_fields = ('applicant__full_name', 'university_roll_no', 'college_roll_no')
     raw_id_fields = ('applicant', 'user')
     readonly_fields = ('enrollment_date',)
@@ -72,7 +72,7 @@ class StudentAdmin(admin.ModelAdmin):
 class StudentEnrollmentAdmin(admin.ModelAdmin):
     form = StudentEnrollmentAdminForm
     list_display = ('student', 'course_offering', 'enrollment_date', 'status')
-    list_filter = ('status', 'enrollment_date', 'course_offering__semester__program', 'course_offering__semester__learning_level')
+    list_filter = ('status', 'enrollment_date', 'course_offering__semester__program')
     search_fields = ('student__applicant__full_name', 'course_offering__course__code', 'course_offering__course__name')
     raw_id_fields = ('student', 'course_offering')
     readonly_fields = ('enrollment_date',)

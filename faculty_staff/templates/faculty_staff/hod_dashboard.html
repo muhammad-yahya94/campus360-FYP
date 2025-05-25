@@ -1,0 +1,124 @@
+{% extends 'faculty_staff/base_dashboard.html' %}
+
+{% block title %}HOD Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">Welcome, {{ request.user.get_full_name }}</h2>
+    
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Staff</h5>
+                    <h2 class="card-text">{{ total_staff }}</h2>
+                    <i class="fas fa-users position-absolute top-50 end-0 me-3 opacity-50 fa-2x"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Active Staff</h5>
+                    <h2 class="card-text">{{ active_staff }}</h2>
+                    <i class="fas fa-user-check position-absolute top-50 end-0 me-3 opacity-50 fa-2x"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Active Students</h5>
+                    <h2 class="card-text">{{ active_students }}</h2>
+                    <i class="fas fa-graduation-cap position-absolute top-50 end-0 me-3 opacity-50 fa-2x"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Current Sessions</h5>
+                    <h2 class="card-text">{{ current_sessions }}</h2>
+                    <i class="fas fa-calendar-alt position-absolute top-50 end-0 me-3 opacity-50 fa-2x"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-secondary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Programs</h5>
+                    <h2 class="card-text">{{ department_programs }}</h2>
+                    <i class="fas fa-book position-absolute top-50 end-0 me-3 opacity-50 fa-2x"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-dark text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Working Semesters</h5>
+                    <h2 class="card-text">{{ working_semesters }}</h2>
+                    <i class="fas fa-chalkboard position-absolute top-50 end-0 me-3 opacity-50 fa-2x"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Department Info and Quick Actions -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Department Information</h5>
+                </div>
+                <div class="card-body">
+                    <h6>Department: {{ department.name }}</h6>
+                    <p class="text-muted">Manage your department's staff and resources</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'faculty_staff:staff_management' %}" class="btn btn-primary">
+                            <i class="fas fa-users me-2"></i> Manage Staff
+                        </a>
+                        <a href="{% url 'faculty_staff:add_staff' %}" class="btn btn-success">
+                            <i class="fas fa-user-plus me-2"></i> Add New Staff
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activities -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Recent Activities</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_activities %}
+                        <ul class="list-group list-group-flush">
+                            {% for activity in recent_activities %}
+                                <li class="list-group-item">{{ activity }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">No recent activities to display.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

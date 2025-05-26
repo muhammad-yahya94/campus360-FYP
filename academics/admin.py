@@ -6,13 +6,12 @@ from .models import (
 )
 from django.utils import timezone
 
-
 # ===== Faculty Admin =====
 @admin.register(Faculty)
 class FacultyAdmin(admin.ModelAdmin):
     list_display = ('name', 'slug')
     prepopulated_fields = {'slug': ('name',)}
-    search_fields = ['name', 'description', 'slug']
+    search_fields = ['name', 'description', 'slug']  # 'description' exists in Faculty model
     model_icon = 'fas fa-users'  # Icon for Faculty
 
 # ===== Department Admin =====
@@ -21,7 +20,7 @@ class DepartmentAdmin(admin.ModelAdmin):
     list_display = ('name', 'faculty', 'code')
     prepopulated_fields = {'slug': ('name',)}
     list_filter = ('faculty',)
-    search_fields = ['name', 'code', 'slug', 'introduction', 'details', 'faculty__name']
+    search_fields = ['name', 'code', 'slug', 'introduction', 'details', 'faculty__name']  # 'introduction' and 'details' exist
     autocomplete_fields = ['faculty']
     model_icon = 'fas fa-building'  # Icon for Department
 
@@ -31,7 +30,7 @@ class ProgramAdmin(admin.ModelAdmin):
     list_display = ('name', 'department', 'degree_type', 'duration_years', 'total_semesters', 'start_year', 'end_year', 'is_active')
     list_filter = ('department__faculty', 'department', 'degree_type', 'is_active', 'start_year', 'end_year')
     search_fields = [
-        'name', 'degree_type', 'description',
+        'name', 'degree_type',  # Removed 'description'
         'department__name', 'department__code',
         'department__faculty__name'
     ]
@@ -44,9 +43,7 @@ class ProgramAdmin(admin.ModelAdmin):
         ('Program Status', {
             'fields': ('start_year', 'end_year', 'is_active')
         }),
-        ('Additional Information', {
-            'fields': ('description',)
-        }),
+        # Removed 'Additional Information' section since 'description' doesn't exist
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),
             'classes': ('collapse',)
@@ -58,7 +55,6 @@ class ProgramAdmin(admin.ModelAdmin):
             return self.readonly_fields + ('start_year', 'end_year')
         return self.readonly_fields
 
-
 @admin.register(Semester)
 class SemesterAdmin(admin.ModelAdmin):
     list_display = ('program', 'number', 'name', 'is_active')
@@ -67,11 +63,11 @@ class SemesterAdmin(admin.ModelAdmin):
         'program__name',
         'number',
         'name',
+        'description',  # 'description' exists in Semester model
         'program__start_year',
         'program__end_year'
     ]
     autocomplete_fields = ['program']
-
     fieldsets = (
         ('Basic Information', {
             'fields': ('program', 'number', 'name', 'is_active')
@@ -79,6 +75,8 @@ class SemesterAdmin(admin.ModelAdmin):
         ('Dates', {
             'fields': ('start_time', 'end_time')
         }),
+        ('Description', {  # Added to include the 'description' field
+            'fields': ('description',),
+            'classes': ('collapse',)
+        }),
     )
-
-

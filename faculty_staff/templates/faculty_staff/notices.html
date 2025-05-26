@@ -1,0 +1,176 @@
+{% extends 'faculty_staff/base_dashboard.html' %}
+
+{% block title %}Notices{% endblock %}
+
+{% block content %}
+<style>
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+    .table th {
+        background-color: #e9ecef;
+        color: #343a40;
+    }
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    .select2-container {
+        width: 100% !important;
+    }
+    .error {
+        color: red;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Notices</h2>
+    </div>
+
+    <!-- Post Notice Form -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Post New Notice</h5>
+            <form id="post-notice-form" method="post" action="{% url 'faculty_staff:post_notice' %}">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-12">
+                        <label for="title" class="form-label">Title</label>
+                        <input type="text" name="title" id="title" class="form-control" required>
+                        <span id="title-error" class="error"></span>
+                    </div>
+                    <div class="col-md-12">
+                        <label for="content" class="form-label">Content</label>
+                        <textarea name="content" id="content" class="form-control" rows="4" required></textarea>
+                        <span id="content-error" class="error"></span>
+                    </div>
+                    <div class="col-md-2 align-self-end">
+                        <button type="submit" class="btn btn-primary w-100">Post</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Existing Notices Table -->
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Existing Notices</h5>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Course Offering</th>
+                            <th>Created By</th>
+                            <th>Created At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for notice in notices %}
+                        <tr>
+                            <td>{{ notice.title }}</td>
+                            <td>{{ notice.course_offering }}</td>
+                            <td>{{ notice.created_by.user.get_full_name }}</td>
+                            <td>{{ notice.created_at|date:'Y-m-d H:i' }}</td>
+                            <td>
+                                <button class="btn btn-danger btn-sm delete-notice" data-notice-id="{{ notice.id }}">Delete</button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">No notices found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+$(document).ready(function() {
+
+    // Handle post notice form submission with AJAX
+    $('#post-notice-form').on('submit', function(e) {
+        e.preventDefault();
+        let formData = $(this).serialize();
+        let error = false;
+
+        if (!$('#course_offering_id').val()) {
+            $('#course-offering-error').text('Please select a course offering.');
+            error = true;
+        } else {
+            $('#course-offering-error').text('');
+        }
+        if (!$('#title').val()) {
+            $('#title-error').text('Please enter a title.');
+            error = true;
+        } else {
+            $('#title-error').text('');
+        }
+        if (!$('#content').val()) {
+            $('#content-error').text('Please enter content.');
+            error = true;
+        } else {
+            $('#content-error').text('');
+        }
+
+        if (!error) {
+            $.ajax({
+                url: $(this).attr('action'),
+                type: 'POST',
+                data: formData,
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.message);
+                        $('#post-notice-form')[0].reset();
+                        $('#course_offering_id').val(null).trigger('change');
+                        location.reload();
+                    } else {
+                        alert('Error: ' + response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    alert('An error occurred: ' + error);
+                }
+            });
+        }
+    });
+
+    // Handle delete action with AJAX
+    $('.delete-notice').on('click', function() {
+        let noticeId = $(this).data('notice-id');
+        if (confirm('Are you sure you want to delete this notice?')) {
+            $.ajax({
+                url: "{% url 'faculty_staff:delete_notice' %}",
+                type: 'POST',
+                data: {
+                    notice_id: noticeId,
+                    csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.message);
+                        location.reload();
+                    } else {
+                        alert('Error: ' + response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    alert('An error occurred: ' + error);
+                }
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

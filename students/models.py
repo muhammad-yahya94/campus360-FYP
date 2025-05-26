@@ -1,9 +1,10 @@
 from django.db import models
 from users.models import CustomUser
-from academics.models import Program, Department, Faculty
+from academics.models import Program, Department, Faculty , Semester
 from admissions.models import Applicant, AcademicSession
 from faculty_staff.models import Teacher
-from courses.models import Course, CourseOffering, Semester
+
+
 
 # ===== Student Model =====
 class Student(models.Model):
@@ -26,7 +27,6 @@ class Student(models.Model):
     college_roll_no = models.IntegerField(blank=True,null=True, help_text="Enter the student's college roll number (if applicable).")
     enrollment_date = models.DateField(help_text="Select the official date when the student was enrolled.")
     graduation_date = models.DateField(null=True, blank=True, help_text="Select the date when the student graduated (optional).")
-    
     program = models.ForeignKey(Program, on_delete=models.CASCADE, related_name='students', help_text="The program the student is enrolled in")
     current_semester = models.ForeignKey(Semester, on_delete=models.PROTECT, related_name='current_students', help_text="Current semester of the student")
     
@@ -69,11 +69,51 @@ class Student(models.Model):
         super().save(*args, **kwargs)
         
 
-# ===== Student Enrollment =====
-class StudentEnrollment(models.Model):
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='enrollments', help_text="Select the student for this enrollment.")
-    course_offering = models.ForeignKey(CourseOffering, on_delete=models.CASCADE, related_name='enrollments', help_text="Select the specific course offering the student is enrolling in.")
+class StudentSemesterEnrollment(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='semester_enrollments', help_text="Select the student for this semester enrollment.")
+    semester = models.ForeignKey('academics.Semester', on_delete=models.CASCADE, related_name='semester_enrollments', help_text="Select the semester the student is enrolling in.")
     enrollment_date = models.DateTimeField(auto_now_add=True, help_text="The date and time this enrollment was recorded.")
+    status = models.CharField(max_length=20, choices=[
+        ('enrolled', 'Enrolled'),
+        ('completed', 'Completed'),
+        ('dropped', 'Dropped'),
+    ], default='enrolled', help_text="Select the status of this semester enrollment.")
+
+    class Meta:
+        verbose_name = "Student Semester Enrollment"
+        verbose_name_plural = "Student Semester Enrollments"
+        unique_together = ('student', 'semester')  # Ensure one enrollment per student per semester
+
+    def __str__(self):
+        return f"{self.student.applicant.full_name} - {self.semester}"
+
+    def save(self, *args, **kwargs):
+        # Update the student's current_semester
+        if self.status == 'enrolled':
+            self.student.current_semester = self.semester
+            self.student.save()
+        elif self.status in ['completed', 'dropped']:
+            # Find the most recent active semester enrollment
+            latest_enrollment = StudentSemesterEnrollment.objects.filter(
+                student=self.student,
+                status='enrolled'
+            ).exclude(id=self.id).order_by('-enrollment_date').first()
+            if latest_enrollment:
+                self.student.current_semester = latest_enrollment.semester
+            else:
+                # Fall back to the first semester of the program
+                first_semester = Semester.objects.filter(
+                    program=self.student.program,
+                    number=1
+                ).first()
+                self.student.current_semester = first_semester
+            self.student.save()
+        super().save(*args, **kwargs)
+
+class CourseEnrollment(models.Model):
+    student_semester_enrollment = models.ForeignKey(StudentSemesterEnrollment, on_delete=models.CASCADE, related_name='course_enrollments')
+    course_offering = models.ForeignKey('courses.CourseOffering', on_delete=models.CASCADE, related_name='enrollments')
+    enrollment_date = models.DateTimeField(auto_now_add=True, help_text="The date and time this course enrollment was recorded.")
     status = models.CharField(max_length=20, choices=[
         ('enrolled', 'Enrolled'),
         ('completed', 'Completed'),
@@ -81,17 +121,9 @@ class StudentEnrollment(models.Model):
     ], default='enrolled', help_text="Select the status of this course enrollment.")
 
     class Meta:
-        unique_together = ('student', 'course_offering')
-        verbose_name = "Student Enrollment"
-        verbose_name_plural = "Student Enrollments"
+        verbose_name = "Course Enrollment"
+        verbose_name_plural = "Course Enrollments"
+        unique_together = ('student_semester_enrollment', 'course_offering')  # Prevent duplicate enrollments in the same course
 
     def __str__(self):
-        return f"{self.student.applicant.full_name} - {self.course_offering}"
-
-    def save(self, *args, **kwargs):
-        # Update the current enrollment count in the course offering
-        if self.status == 'enrolled':
-            self.course_offering.current_enrollment += 1
-            self.course_offering.save()
-        super().save(*args, **kwargs)
-
+        return f"{self.student_semester_enrollment.student.applicant.full_name} - {self.course_offering}"

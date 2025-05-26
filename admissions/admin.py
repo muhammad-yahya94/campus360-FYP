@@ -39,13 +39,32 @@ class ExtraCurricularActivityInline(admin.TabularInline):
     fields = ('activity', 'position', 'achievement', 'activity_year')
     readonly_fields = ('activity', 'position', 'achievement', 'activity_year')
 
+from django.contrib import admin
+from django import forms
+from django.contrib.admin.views.autocomplete import AutocompleteJsonView
+from django.urls import path
+from django.db.models import Q
+from .models import Applicant
+from users.models import CustomUser
+from academics.models import Faculty, Department, Program
+# from .models import AcademicQualificationInline, ExtraCurricularActivityInline
+from django.utils.html import format_html
+
+# Custom Autocomplete View for CustomUser
+class CustomUserAutocompleteView(AutocompleteJsonView):
+    def get_queryset(self):
+        qs = CustomUser.objects.all()
+        if self.q:
+            qs = qs.filter(Q(email__icontains=self.q) | Q(first_name__icontains=self.q) | Q(last_name__icontains=self.q))
+        return qs
+
 @admin.register(Applicant)
 class ApplicantAdmin(admin.ModelAdmin):
-    list_display = ('full_name', 'program', 'status', 'applied_at')
+    list_display = ('full_name', 'program', 'status', 'applied_at', 'user_email', 'view_photo')
     list_filter = ('status', 'program__department__faculty', 'program__department', 'program', 'applied_at')
     search_fields = ['full_name', 'cnic', 'program__name']
-    autocomplete_fields = ['user', 'faculty', 'department', 'program']
-    raw_id_fields = ['user']
+    autocomplete_fields = ['user', 'faculty', 'department', 'program']  # Keep user here
+    # Remove user from raw_id_fields to avoid conflict
     readonly_fields = ('applied_at', 'created_at')
     fieldsets = (
         ('Application Information', {
@@ -72,16 +91,27 @@ class ApplicantAdmin(admin.ModelAdmin):
         })
     )
     inlines = [AcademicQualificationInline, ExtraCurricularActivityInline]
-    
+
     def user_email(self, obj):
-        return obj.user.email
+        return obj.user.email if obj.user else '-'
     user_email.short_description = 'Email'
-    
+
     def view_photo(self, obj):
         if obj.applicant_photo:
             return format_html('<img src="{}" width="50" height="50" />', obj.applicant_photo.url)
         return "-"
     view_photo.short_description = 'Photo'
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('user', 'faculty', 'department', 'program')
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('user-autocomplete/', self.admin_site.admin_view(CustomUserAutocompleteView.as_view()), name='user_autocomplete'),
+            # Add other autocomplete views if needed for faculty, department, program
+        ]
+        return custom_urls + urls
 
 @admin.register(AcademicQualification)
 class AcademicQualificationAdmin(admin.ModelAdmin):

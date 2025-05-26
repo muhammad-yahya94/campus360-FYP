@@ -225,7 +225,7 @@ DAISY_SETTINGS = {
 },
 'courses': {
     'icon': 'fa-solid fa-book-open',
-    'name': 'Courses and Semesters',
+    'name': 'Courses',
     'hide': False,
     'divider_title': "Course and Semester",
     'priority': 4,

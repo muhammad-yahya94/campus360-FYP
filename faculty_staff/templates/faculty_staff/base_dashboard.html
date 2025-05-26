@@ -120,23 +120,27 @@
             <!-- Sidebar -->
             <div class="col-md-3 col-lg-2 px-0 sidebar">
                 <div class="p-3">
-                    <h4 class="text-center mb-4">Faculty Dashboard</h4>
+                    <h4 class="text-center mb-4">Faculty Dashboard  {{request.user.get_full_name}} </h4>
                     <nav class="nav flex-column">
+                        <!-- Dashboard Link -->
                         <a class="nav-link {% if request.resolver_match.url_name == 'hod_dashboard' %}active{% endif %}" href="{% url 'faculty_staff:hod_dashboard' %}">
                             <i class="fas fa-tachometer-alt me-2"></i> Dashboard
                         </a>
+                        
+                        <!-- Staff Management Link -->
                         <a class="nav-link {% if request.resolver_match.url_name == 'staff_management' %}active{% endif %}" href="{% url 'faculty_staff:staff_management' %}">
                             <i class="fas fa-users me-2"></i> Staff Management
                         </a>
+                        
                         <!-- Session Students Dropdown -->
                         <div class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'session_students' %}active{% endif %}" href="#" id="sessionStudentsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <a class="nav-link dropdown-toggle {% if 'session_students' in request.resolver_match.url_name %}active{% endif %}" href="#" id="sessionStudentsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fas fa-graduation-cap me-2"></i> Session Students
                             </a>
                             <ul class="dropdown-menu" aria-labelledby="sessionStudentsDropdown">
                                 {% for session in academic_sessions %}
                                 <li>
-                                    <a class="dropdown-item" href="{% url 'faculty_staff:session_students' session.id %}">
+                                    <a class="dropdown-item {% if request.resolver_match.url_name == 'session_students' and request.resolver_match.kwargs.session_id == session.id %}active{% endif %}" href="{% url 'faculty_staff:session_students' session.id %}">
                                         {{ session.name }}
                                     </a>
                                 </li>
@@ -145,14 +149,48 @@
                                 {% endfor %}
                             </ul>
                         </div>
-                        <a class="nav-link {% if request.resolver_match.url_name == 'add_course' %}active{% endif %}" href="{% url 'faculty_staff:add_course' %}">
-                            <i class="fas fa-plus me-2"></i> Add Course
+                        
+                        <!-- Courses Dropdown -->
+                        <div class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle {% if request.resolver_match.url_name in 'add_course,course_offerings' %}active{% endif %}" href="#" id="coursesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-book me-2"></i> Courses
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="coursesDropdown">
+                                <li>
+                                    <a class="dropdown-item {% if request.resolver_match.url_name == 'add_course' %}active{% endif %}" href="{% url 'faculty_staff:add_course' %}">
+                                        <i class="fas fa-plus me-2"></i> Add Course
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item {% if request.resolver_match.url_name == 'course_offerings' %}active{% endif %}" href="{% url 'faculty_staff:course_offerings' %}">
+                                        <i class="fas fa-user-plus me-2"></i> Assign Course
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <!-- Study Materials Link -->
+                        <a class="nav-link {% if request.resolver_match.url_name == 'study_materials' %}active{% endif %}" href="{% url 'faculty_staff:study_materials' %}">
+                            <i class="fas fa-book me-2"></i> Study Materials
                         </a>
-                        <!-- Course Offerings Link -->
-                        <a class="nav-link {% if request.resolver_match.url_name == 'course_offerings' %}active{% endif %}" href="{% url 'faculty_staff:course_offerings' %}">
-                            <i class="fas fa-user-plus me-2"></i> Assign Course
+                        
+                        <!-- Assignments Link -->
+                        <a class="nav-link {% if request.resolver_match.url_name in 'assignments,create_assignment,assignment_submissions' %}active{% endif %}" href="{% url 'faculty_staff:assignments' %}">
+                            <i class="fas fa-tasks me-2"></i> Assignments
                         </a>
-                        <a class="nav-link" href="{% url 'faculty_staff:login' %}">
+                        
+                        <!-- Notices Link -->
+                        <a class="nav-link {% if request.resolver_match.url_name == 'notices' %}active{% endif %}" href="{% url 'faculty_staff:notices' %}">
+                            <i class="fas fa-bullhorn me-2"></i> Notices
+                        </a>
+                        
+                        <!-- Exam Results Link -->
+                        <a class="nav-link {% if request.resolver_match.url_name in 'exam_results,record_exam_results' %}active{% endif %}" href="{% url 'faculty_staff:exam_results' %}">
+                            <i class="fas fa-clipboard-check me-2"></i> Exam Results
+                        </a>
+                        
+                        <!-- Logout Link -->
+                        <a class="nav-link" href="{% url 'faculty_staff:logout' %}">
                             <i class="fas fa-sign-out-alt me-2"></i> Logout
                         </a>
                     </nav>

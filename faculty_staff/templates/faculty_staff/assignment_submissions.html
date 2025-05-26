@@ -1,0 +1,110 @@
+{% extends 'faculty_staff/base_dashboard.html' %}
+
+{% block title %}Assignment Submissions{% endblock %}
+
+{% block content %}
+<style>
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+    .table th {
+        background-color: #e9ecef;
+        color: #343a40;
+    }
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    .error {
+        color: red;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Submissions for {{ assignment.title }}</h2>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Submitted At</th>
+                            <th>Marks Obtained</th>
+                            <th>Feedback</th>
+                            <th>Graded By</th>
+                            <th>Graded At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for submission in submissions %}
+                        <tr>
+                            <td>{{ submission.student }}</td>
+                            <td>{{ submission.submitted_at|date:'Y-m-d H:i' }}</td>
+                            <td>{{ submission.marks_obtained|default:"Not graded" }}</td>
+                            <td>{{ submission.feedback|default:"Not provided" }}</td>
+                            <td>{{ submission.graded_by.user.get_full_name|default:"Not graded" }}</td>
+                            <td>{{ submission.graded_at|date:'Y-m-d H:i'|default:"Not graded" }}</td>
+                            <td>
+                                <a href="{{ submission.file.url }}" class="btn btn-info btn-sm" target="_blank">View</a>
+                                {% if not submission.marks_obtained %}
+                                <button class="btn btn-warning btn-sm grade-submission" data-submission-id="{{ submission.id }}">Grade</button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center">No submissions found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    // Handle grade submission with AJAX
+    $('.grade-submission').on('click', function() {
+        let submissionId = $(this).data('submission-id');
+        let marks = prompt("Enter marks obtained (0-100):");
+        let feedback = prompt("Enter feedback (optional):");
+
+        if (marks !== null && !isNaN(marks) && marks >= 0 && marks <= 100) {
+            $.ajax({
+                url: "{% url 'faculty_staff:grade_submission' %}",
+                type: 'POST',
+                data: {
+                    submission_id: submissionId,
+                    marks_obtained: marks,
+                    feedback: feedback,
+                    csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.message);
+                        location.reload();
+                    } else {
+                        alert('Error: ' + response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    alert('An error occurred: ' + error);
+                }
+            });
+        } else {
+            alert('Please enter a valid mark between 0 and 100.');
+        }
+    });
+});
+</script>
+{% endblock %}

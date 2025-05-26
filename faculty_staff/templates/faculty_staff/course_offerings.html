@@ -28,7 +28,7 @@
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Course Offerings</h2>
+        <h2>Course Offerings for {{ department.name }}</h2>
     </div>
 
     <!-- Assignment Form -->
@@ -37,35 +37,50 @@
             <form id="course-offering-form" method="post" action="{% url 'faculty_staff:save_course_offering' %}">
                 {% csrf_token %}
                 <div class="row g-3">
-                    <div class="col-md-3">
+                    <div class="col-md-6">
                         <label for="course_id" class="form-label">Course</label>
                         <select name="course_id" id="course_id" class="form-select select2" required>
                             <option value="">Search for a course...</option>
                         </select>
                         <span id="course-error" class="error"></span>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-6">
+                        <label for="offering_type" class="form-label">Offering Type</label>
+                        <select name="offering_type" id="offering_type" class="form-select select2" required>
+                            <option value="">Select offering type...</option>
+                        </select>
+                        <span id="offering-type-error" class="error"></span>
+                    </div>
+                    <div class="col-md-6">
                         <label for="teacher_id" class="form-label">Teacher</label>
                         <select name="teacher_id" id="teacher_id" class="form-select select2" required>
                             <option value="">Search for a teacher...</option>
                         </select>
                         <span id="teacher-error" class="error"></span>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-6">
+                        <label for="academic_session_id" class="form-label">Academic Session</label>
+                        <select name="academic_session_id" id="academic_session_id" class="form-select select2" required>
+                            <option value="">Select an academic session...</option>
+                        </select>
+                        <span id="academic-session-error" class="error"></span>
+                    </div>
+                    <div class="col-md-6">
                         <label for="program_id" class="form-label">Program</label>
                         <select name="program_id" id="program_id" class="form-select select2" required>
-                            <option value="">Search for a program...</option>
+                            <option value="">Select an academic session first...</option>
                         </select>
                         <span id="program-error" class="error"></span>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-6">
                         <label for="semester_id" class="form-label">Semester</label>
                         <select name="semester_id" id="semester_id" class="form-select select2" required>
                             <option value="">Search for a semester...</option>
                         </select>
                         <span id="semester-error" class="error"></span>
                     </div>
-                    <div class="col-md-1 align-self-end">
+
+                    <div class="col-md-12 align-self-end">
                         <button type="submit" class="btn btn-primary w-100">Assign</button>
                     </div>
                 </div>
@@ -85,8 +100,10 @@
                             <th>Program</th>
                             <th>Department</th>
                             <th>Teacher</th>
-                            <th>Session</th>
+                            <th>Academic Session</th>   
                             <th>Semester</th>
+                            <th>Offering Type</th>
+                            <th>Active</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -95,24 +112,32 @@
                         <tr>
                             <td>{{ offering.course.code }}</td>
                             <td>{{ offering.course.name }}</td>
-                            <td>{{ offering.program.name }}</td>
-                            <td>{{ offering.department.name }}</td>
+                            <td>{{ offering.program.name|default:"N/A" }}</td>
+                            <td>{{ offering.department.name|default:"N/A" }}</td>
                             <td>
                                 {% if offering.teacher %}
-                                {{ offering.teacher.user.get_full_name }} ({{ offering.teacher.department.name }})
+                                {{ offering.teacher.user.get_full_name }} ({{ offering.teacher.department.name|default:"N/A" }})
                                 {% else %}
                                 Not Assigned
                                 {% endif %}
                             </td>
                             <td>{{ offering.academic_session.name }}</td>
                             <td>{{ offering.semester.name }}</td>
+                            <td>{{ offering.get_offering_type_display }}</td>
+                            <td>
+                                {% if offering.is_active %}
+                                <span class="badge bg-success">Active</span>
+                                {% else %}
+                                <span class="badge bg-danger">Inactive</span>
+                                {% endif %}
+                            </td>
                             <td>
                                 <button class="btn btn-danger btn-sm delete-offering" data-offering-id="{{ offering.id }}">Delete</button>
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="8" class="text-center">No course offerings found.</td>
+                            <td colspan="12" class="text-center">No course offerings found.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -128,10 +153,8 @@
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
-
 <script>
 $(document).ready(function() {
-    // Initialize Select2 with AJAX for dynamic search
     $('#course_id').select2({
         ajax: {
             url: "{% url 'faculty_staff:search_courses' %}",
@@ -139,7 +162,7 @@ $(document).ready(function() {
             delay: 250,
             data: function(params) {
                 return {
-                    q: params.term, // Search query
+                    q: params.term,
                     page: params.page || 1
                 };
             },
@@ -186,9 +209,9 @@ $(document).ready(function() {
         allowClear: true
     });
 
-    $('#program_id').select2({
+    $('#academic_session_id').select2({
         ajax: {
-            url: "{% url 'faculty_staff:search_programs' %}",
+            url: "{% url 'faculty_staff:get_academic_sessions' %}",
             dataType: 'json',
             delay: 250,
             data: function(params) {
@@ -202,15 +225,83 @@ $(document).ready(function() {
                 return {
                     results: data.results,
                     pagination: {
-                        more: data.more
+                        more: data.pagination ? data.pagination.more : false
                     }
                 };
             },
             cache: true
         },
-        placeholder: "Search for a program...",
+        placeholder: "Select an academic session...",
+        minimumInputLength: 0,
+        allowClear: true
+    });
+
+    $('#program_id').select2({
+        ajax: {
+            url: "{% url 'faculty_staff:search_programs' %}",
+            dataType: 'json',
+            delay: 250,
+            data: function(params) {
+                return {
+                    q: params.term,
+                    academic_session_id: $('#academic_session_id').val(),
+                    page: params.page || 1
+                };
+            },
+            processResults: function(data, params) {
+                params.page = params.page || 1;
+                return {
+                    results: data.results,
+                    pagination: {
+                        more: data.pagination.more
+                    }
+                };
+            },
+            cache: true
+        },
+        placeholder: "Select an academic session first...",
         minimumInputLength: 1,
         allowClear: true
+    });
+
+    $('#academic_session_id').on('change', function() {
+        $('#program_id').val(null).trigger('change');
+        if ($(this).val()) {
+            $('#program_id').prop('disabled', false);
+            $('#program_id').select2('destroy').select2({
+                ajax: {
+                    url: "{% url 'faculty_staff:search_programs' %}",
+                    dataType: 'json',
+                    delay: 250,
+                    data: function(params) {
+                        return {
+                            q: params.term,
+                            academic_session_id: $('#academic_session_id').val(),
+                            page: params.page || 1
+                        };
+                    },
+                    processResults: function(data, params) {
+                        params.page = params.page || 1;
+                        return {
+                            results: data.results,
+                            pagination: {
+                                more: data.pagination.more
+                            }
+                        };
+                    },
+                    cache: true
+                },
+                placeholder: "Search for a program...",
+                minimumInputLength: 1,
+                allowClear: true
+            });
+        } else {
+            $('#program_id').prop('disabled', true);
+            $('#program_id').select2('destroy').select2({
+                placeholder: "Select an academic session first...",
+                disabled: true
+            });
+        }
     });
 
     $('#semester_id').select2({
@@ -221,7 +312,8 @@ $(document).ready(function() {
             data: function(params) {
                 return {
                     q: params.term,
-                    page: params.page || 1
+                    page: params.page || 1,
+                    program_id: $('#program_id').val()  // ⬅️ Send the selected program ID
                 };
             },
             processResults: function(data, params) {
@@ -239,14 +331,102 @@ $(document).ready(function() {
         minimumInputLength: 1,
         allowClear: true
     });
+    
 
-    // Handle form submission with AJAX
+    $('#offering_type').select2({
+        ajax: {
+            url: "{% url 'faculty_staff:get_offering_type_choices' %}",
+            dataType: 'json',
+            delay: 250,
+            data: function(params) {
+                return {
+                    q: params.term,
+                    page: params.page || 1
+                };
+            },
+            processResults: function(data, params) {
+                params.page = params.page || 1;
+                return {
+                    results: data.results
+                };
+            },
+            cache: true
+        },
+        placeholder: "Select offering type...",
+        minimumResultsForSearch: Infinity,
+        allowClear: true
+    });
     $('#course-offering-form').on('submit', function(e) {
+        e.preventDefault();
+        
+        // Disable submit button to prevent double submissions
+        const submitBtn = $(this).find('button[type="submit"]');
+        submitBtn.prop('disabled', true);
+        submitBtn.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...');
+        
+        // Clear previous errors
+        $('.error').text('');
+        
+        // Validate required fields
+        let isValid = true;
+        $('.select2[required]').each(function() {
+            if (!$(this).val()) {
+                const fieldName = $(this).attr('name');
+                $(`#${fieldName}-error`).text('This field is required.');
+                isValid = false;
+            }
+        });
+        
+        if (!isValid) {
+            submitBtn.prop('disabled', false);
+            submitBtn.text('Assign');
+            return;
+        }
+        
+        // Submit via AJAX
+        $.ajax({
+            url: $(this).attr('action'),
+            type: 'POST',
+            data: $(this).serialize(),
+            success: function(response) {
+                if (response.success) {
+                    // Show success message
+                    const successAlert = `
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            ${response.message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    `;
+                    $('.assignment-form').prepend(successAlert);
+                    
+                    // Reset form
+                    $('#course-offering-form')[0].reset();
+                    $('.select2').val(null).trigger('change');
+                    
+                    // Reload the page after 1.5 seconds
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    // Show error message
+               //     alert('Error: ' + response.message);
+                }
+            },
+            error: function(xhr, status, error) {
+     //           alert('An error occurred: ' + error);
+            },
+            complete: function() {
+                submitBtn.prop('disabled', false);
+                submitBtn.text('Assign');
+            }
+        });
+    });
+
+ /*   $('#course-offering-form').on('submit', function(e) {
         e.preventDefault();
         let formData = $(this).serialize();
         let error = false;
 
-        // Validate selections
         if (!$('#course_id').val()) {
             $('#course-error').text('Please select a course.');
             error = true;
@@ -258,6 +438,12 @@ $(document).ready(function() {
             error = true;
         } else {
             $('#teacher-error').text('');
+        }
+        if (!$('#academic_session_id').val()) {
+            $('#academic-session-error').text('Please select an academic session.');
+            error = true;
+        } else {
+            $('#academic-session-error').text('');
         }
         if (!$('#program_id').val()) {
             $('#program-error').text('Please select a program.');
@@ -271,6 +457,12 @@ $(document).ready(function() {
         } else {
             $('#semester-error').text('');
         }
+        if (!$('#offering_type').val()) {
+            $('#offering-type-error').text('Please select an offering type.');
+            error = true;
+        } else {
+            $('#offering-type-error').text('');
+        }
 
         if (!error) {
             $.ajax({
@@ -279,15 +471,17 @@ $(document).ready(function() {
                 data: formData,
                 success: function(response) {
                     if (response.success) {
-                        alert(response.message);
+                   //     alert(response.message);
                         $('#course-offering-form')[0].reset();
                         $('#course_id').val(null).trigger('change');
                         $('#teacher_id').val(null).trigger('change');
+                        $('#academic_session_id').val(null).trigger('change');
                         $('#program_id').val(null).trigger('change');
                         $('#semester_id').val(null).trigger('change');
-                        location.reload(); // Reload to update the table
+                        $('#offering_type').val(null).trigger('change');
+                        location.reload();
                     } else {
-                        alert('Error: ' + response.message);
+                 //       alert('Error: ' + response.message);
                     }
                 },
                 error: function(xhr, status, error) {
@@ -295,9 +489,8 @@ $(document).ready(function() {
                 }
             });
         }
-    });
+    }); */
 
-    // Handle delete action with AJAX
     $('.delete-offering').on('click', function() {
         let offeringId = $(this).data('offering-id');
         if (confirm('Are you sure you want to delete this course offering?')) {
@@ -310,14 +503,14 @@ $(document).ready(function() {
                 },
                 success: function(response) {
                     if (response.success) {
-                        alert(response.message);
+                   //     alert(response.message);
                         location.reload();
                     } else {
-                        alert('Error: ' + response.message);
+                     //   alert('Error: ' + response.message);
                     }
                 },
                 error: function(xhr, status, error) {
-                    alert('An error occurred: ' + error);
+            //        alert('An error occurred: ' + error);
                 }
             });
         }

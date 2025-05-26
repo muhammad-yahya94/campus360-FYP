@@ -1,0 +1,209 @@
+{% extends 'faculty_staff/base_dashboard.html' %}
+
+{% block title %}Study Materials{% endblock %}
+
+{% block content %}
+<style>
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+    .table th {
+        background-color: #e9ecef;
+        color: #343a40;
+    }
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    .select2-container {
+        width: 100% !important;
+    }
+    .error {
+        color: red;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Study Materials</h2>
+    </div>
+
+    <!-- Upload Form -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Upload New Study Material</h5>
+            <form id="upload-study-material-form" method="post" enctype="multipart/form-data" action="{% url 'faculty_staff:upload_study_material' %}">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label for="course_offering_id" class="form-label">Course Offering</label>
+                        <select name="course_offering_id" id="course_offering_id" class="form-select select2" required>
+                            <option value="">Search for a course offering...</option>
+                        </select>
+                        <span id="course-offering-error" class="error"></span>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="title" class="form-label">Title</label>
+                        <input type="text" name="title" id="title" class="form-control" required>
+                        <span id="title-error" class="error"></span>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="file" class="form-label">File</label>
+                        <input type="file" name="file" id="file" class="form-control" accept=".pdf,.ppt,.pptx,.doc,.docx" required>
+                        <span id="file-error" class="error"></span>
+                    </div>
+                    <div class="col-md-12">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea name="description" id="description" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="col-md-2 align-self-end">
+                        <button type="submit" class="btn btn-primary w-100">Upload</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Existing Study Materials Table -->
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Existing Study Materials</h5>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Course Offering</th>
+                            <th>Uploaded By</th>
+                            <th>Uploaded At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for material in study_materials %}
+                        <tr>
+                            <td>{{ material.title }}</td>
+                            <td>{{ material.course_offering }}</td>
+                            <td>{{ material.uploaded_by.user.get_full_name }}</td>
+                            <td>{{ material.uploaded_at|date:'Y-m-d H:i' }}</td>
+                            <td>
+                                <a href="{{ material.file.url }}" class="btn btn-info btn-sm" target="_blank">View</a>
+                                <button class="btn btn-danger btn-sm delete-material" data-material-id="{{ material.id }}">Delete</button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">No study materials found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    // Initialize Select2 for course offering
+    $('#course_offering_id').select2({
+        ajax: {
+            url: "{% url 'faculty_staff:search_course_offerings' %}",
+            dataType: 'json',
+            delay: 250,
+            data: function(params) {
+                return { q: params.term, page: params.page || 1 };
+            },
+            processResults: function(data, params) {
+                params.page = params.page || 1;
+                return { results: data.results, pagination: { more: data.more } };
+            },
+            cache: true
+        },
+        placeholder: "Search for a course offering...",
+        minimumInputLength: 1,
+        allowClear: true
+    });
+
+    // Handle upload form submission with AJAX
+    $('#upload-study-material-form').on('submit', function(e) {
+        e.preventDefault();
+        let formData = new FormData(this);
+        let error = false;
+
+        if (!$('#course_offering_id').val()) {
+            $('#course-offering-error').text('Please select a course offering.');
+            error = true;
+        } else {
+            $('#course-offering-error').text('');
+        }
+        if (!$('#title').val()) {
+            $('#title-error').text('Please enter a title.');
+            error = true;
+        } else {
+            $('#title-error').text('');
+        }
+        if (!$('#file')[0].files.length) {
+            $('#file-error').text('Please upload a file.');
+            error = true;
+        } else {
+            $('#file-error').text('');
+        }
+
+        if (!error) {
+            $.ajax({
+                url: $(this).attr('action'),
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.message);
+                        $('#upload-study-material-form')[0].reset();
+                        $('#course_offering_id').val(null).trigger('change');
+                        location.reload();
+                    } else {
+                        alert('Error: ' + response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    alert('An error occurred: ' + error);
+                }
+            });
+        }
+    });
+
+    // Handle delete action with AJAX
+    $('.delete-material').on('click', function() {
+        let materialId = $(this).data('material-id');
+        if (confirm('Are you sure you want to delete this study material?')) {
+            $.ajax({
+                url: "{% url 'faculty_staff:delete_study_material' %}",
+                type: 'POST',
+                data: {
+                    material_id: materialId,
+                    csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.message);
+                        location.reload();
+                    } else {
+                        alert('Error: ' + response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    alert('An error occurred: ' + error);
+                }
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

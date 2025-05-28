@@ -6,7 +6,7 @@ from .models import (
 )
 from django.utils import timezone
 
-# ===== Faculty Admin =====
+# ===== Faculty Admin =====    
 @admin.register(Faculty)
 class FacultyAdmin(admin.ModelAdmin):
     list_display = ('name', 'slug')

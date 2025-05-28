@@ -1,22 +1,30 @@
+# Standard library imports
+import os
+
+# Django imports
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Sum, Q
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth import get_user_model
-from academics.models import Department, Program , Semester
-from admissions.models import AcademicSession
-from courses.models import Course , CourseOffering , ExamResult, StudyMaterial , Assignment , AssignmentSubmission , Notice
-from .models import Teacher
-from admissions.models import AdmissionCycle , Applicant
-from students.models import Student , StudentSemesterEnrollment , CourseEnrollment
 from django.http import JsonResponse
 from django import forms
 from django.core.exceptions import ObjectDoesNotExist
-from django.utils import timezone  
+from django.utils import timezone
 from django.db import transaction
+
+# Local app imports
+from academics.models import Department, Program, Semester
+from admissions.models import AcademicSession, AdmissionCycle, Applicant
+from courses.models import Course, CourseOffering, ExamResult, StudyMaterial, Assignment, AssignmentSubmission, Notice
+from faculty_staff.models import Teacher
+from students.models import Student, StudentSemesterEnrollment, CourseEnrollment
+
+# Custom user model
 CustomUser = get_user_model()
+
 
 def login_view(request):
     if request.user.is_authenticated:
@@ -25,27 +33,27 @@ def login_view(request):
     if request.method == 'POST':
         email = request.POST.get('email')
         password = request.POST.get('password')
-        
         user = authenticate(request, username=email, password=password)
-        
+
         if user is not None:
             if hasattr(user, 'teacher_profile'):
                 login(request, user)
                 messages.success(request, 'Login successful!')
                 return redirect('faculty_staff:hod_dashboard')
             else:
-                messages.error(request, 'You do not have faculty staff access.')
+                messages.error(request, 'You do not have faculty staff access.')   
         else:
             messages.error(request, 'Invalid email or password.')
-    
+
     return render(request, 'faculty_staff/login.html')
+
 
 @login_required
 def hod_dashboard(request):
-    if not request.user.is_staff:
-        messages.error(request, 'You do not have permission to access this page.')
-        return redirect('home')
-    
+    # if not request.user.is_staff:
+    #     messages.error(request, 'You do not have permission to access this page.')
+    #     return redirect('home')
+
     try:
         teacher_profile = request.user.teacher_profile
         if teacher_profile.designation != 'head_of_department':
@@ -60,20 +68,12 @@ def hod_dashboard(request):
     # Fetch counts for the dashboard cards
     total_staff = Teacher.objects.filter(department=hod_department).count()
     active_staff = Teacher.objects.filter(department=hod_department, is_active=True).count()
-    
-    # Number of active students in the HOD's department
     active_students = Student.objects.filter(
         program__department=hod_department,
         current_status='active'
     ).count()
-    
-    # Number of active academic sessions
     current_sessions = AcademicSession.objects.filter(is_active=True).count()
-    
-    # Number of programs in the HOD's department
     department_programs = Program.objects.filter(department=hod_department).count()
-    
-    # Number of active semesters in the HOD's department programs
     working_semesters = Semester.objects.filter(
         program__department=hod_department,
         is_active=True
@@ -85,20 +85,21 @@ def hod_dashboard(request):
     context = {
         'total_staff': total_staff,
         'active_staff': active_staff,
-        'active_students': active_students,  # Replacing pending_tasks
-        'current_sessions': current_sessions,  # Replacing total_departments
-        'department_programs': department_programs,  # New card
-        'working_semesters': working_semesters,  # New card
+        'active_students': active_students,
+        'current_sessions': current_sessions,
+        'department_programs': department_programs,
+        'working_semesters': working_semesters,
         'department': hod_department,
-        'academic_sessions': academic_sessions,  # For sidebar dropdown
+        'academic_sessions': academic_sessions,
     }
     return render(request, 'faculty_staff/hod_dashboard.html', context)
 
+
 @login_required
 def staff_management(request):
-    if not request.user.is_staff or request.user.teacher_profile.designation != 'head_of_department':
-        messages.error(request, 'You do not have permission to access this page.')
-        return redirect('home')
+    # if not request.user.is_staff or request.user.teacher_profile.designation != 'head_of_department':
+    #     messages.error(request, 'You do not have permission to access this page.')
+    #     return redirect('home')
 
     hod_department = request.user.teacher_profile.department
     staff_list = Teacher.objects.filter(department=hod_department)
@@ -121,27 +122,26 @@ def staff_management(request):
     page_number = request.GET.get('page')
     staff_members = paginator.get_page(page_number)
 
-    # Fetch academic sessions for the sidebar
     academic_sessions = AcademicSession.objects.all().order_by('-start_year')
 
     context = {
         'staff_members': staff_members,
         'department': hod_department,
         'designation_choices': Teacher.DESIGNATION_CHOICES,
-        'academic_sessions': academic_sessions,  # For sidebar dropdown
+        'academic_sessions': academic_sessions,
     }
     return render(request, 'faculty_staff/staff_management.html', context)
 
+
 @login_required
 def add_staff(request):
-    if not request.user.is_staff or request.user.teacher_profile.designation != 'head_of_department':
-        messages.error(request, 'You do not have permission to perform this action.')
-        return redirect('home')
+    # if not request.user.is_staff or request.user.teacher_profile.designation != 'head_of_department':
+    #     messages.error(request, 'You do not have permission to perform this action.')
+    #     return redirect('home')
 
     hod_department = request.user.teacher_profile.department
 
     if request.method == 'POST':
-        # Extract form data
         first_name = request.POST.get('first_name')
         last_name = request.POST.get('last_name')
         email = request.POST.get('email')
@@ -155,7 +155,6 @@ def add_staff(request):
         personal_website = request.POST.get('personal_website', '')
         experience = request.POST.get('experience', '')
 
-        # Validate required fields
         if not all([first_name, last_name, email, designation]):
             messages.error(request, 'Please fill in all required fields (First Name, Last Name, Email, Designation).')
             return render(request, 'faculty_staff/staff_management.html', {
@@ -171,7 +170,6 @@ def add_staff(request):
                 'academic_sessions': AcademicSession.objects.all().order_by('-start_year'),
             })
 
-        # Validate email uniqueness
         if CustomUser.objects.filter(email=email).exists():
             messages.error(request, 'A user with this email already exists.')
             return render(request, 'faculty_staff/staff_management.html', {
@@ -182,7 +180,6 @@ def add_staff(request):
                 'academic_sessions': AcademicSession.objects.all().order_by('-start_year'),
             })
 
-        # Validate designation
         if designation not in dict(Teacher.DESIGNATION_CHOICES).keys():
             messages.error(request, 'Invalid designation selected.')
             return render(request, 'faculty_staff/staff_management.html', {
@@ -194,18 +191,15 @@ def add_staff(request):
             })
 
         try:
-            # Create CustomUser
             user = CustomUser.objects.create(
                 email=email,
                 first_name=first_name,
                 last_name=last_name,
                 is_staff=True
             )
-            # Set a default password (consider sending a reset link in production)
             user.set_password('defaultpassword123')
             user.save()
 
-            # Create Teacher
             teacher = Teacher.objects.create(
                 user=user,
                 department=hod_department,
@@ -241,17 +235,17 @@ def add_staff(request):
         'academic_sessions': academic_sessions,
     })
 
+
 @login_required
 def edit_staff(request, staff_id):
-    if not request.user.is_staff or request.user.teacher_profile.designation != 'head_of_department':
-        messages.error(request, 'You do not have permission to perform this action.')
-        return redirect('home')
+    # if not request.user.is_staff or request.user.teacher_profile.designation != 'head_of_department':
+    #     messages.error(request, 'You do not have permission to perform this action.')
+    #     return redirect('home')
 
     hod_department = request.user.teacher_profile.department
     teacher = get_object_or_404(Teacher, id=staff_id, department=hod_department)
 
     if request.method == 'POST':
-        # Extract form data
         first_name = request.POST.get('first_name')
         last_name = request.POST.get('last_name')
         email = request.POST.get('email')
@@ -265,7 +259,6 @@ def edit_staff(request, staff_id):
         personal_website = request.POST.get('personal_website', '')
         experience = request.POST.get('experience', '')
 
-        # Validate required fields
         if not all([first_name, last_name, email, designation]):
             messages.error(request, 'Please fill in all required fields (First Name, Last Name, Email, Designation).')
             return render(request, 'faculty_staff/staff_management.html', {
@@ -281,7 +274,6 @@ def edit_staff(request, staff_id):
                 'academic_sessions': AcademicSession.objects.all().order_by('-start_year'),
             })
 
-        # Validate email uniqueness (exclude current user)
         if CustomUser.objects.filter(email=email).exclude(id=teacher.user.id).exists():
             messages.error(request, 'A user with this email already exists.')
             return render(request, 'faculty_staff/staff_management.html', {
@@ -292,7 +284,6 @@ def edit_staff(request, staff_id):
                 'academic_sessions': AcademicSession.objects.all().order_by('-start_year'),
             })
 
-        # Validate designation
         if designation not in dict(Teacher.DESIGNATION_CHOICES).keys():
             messages.error(request, 'Invalid designation selected.')
             return render(request, 'faculty_staff/staff_management.html', {
@@ -304,13 +295,11 @@ def edit_staff(request, staff_id):
             })
 
         try:
-            # Update CustomUser
             teacher.user.first_name = first_name
             teacher.user.last_name = last_name
             teacher.user.email = email
             teacher.user.save()
 
-            # Update Teacher
             teacher.designation = designation
             teacher.contact_no = contact_no
             teacher.qualification = qualification
@@ -343,11 +332,12 @@ def edit_staff(request, staff_id):
         'academic_sessions': academic_sessions,
     })
 
+
 @login_required
 def delete_staff(request, staff_id):
-    if not request.user.is_staff or request.user.teacher_profile.designation != 'head_of_department':
-        messages.error(request, 'You do not have permission to perform this action.')
-        return redirect('home')
+    # if not request.user.is_staff or request.user.teacher_profile.designation != 'head_of_department':
+    #     messages.error(request, 'You do not have permission to perform this action.')
+    #     return redirect('home')
 
     hod_department = request.user.teacher_profile.department
     teacher = get_object_or_404(Teacher, id=staff_id, department=hod_department)
@@ -366,46 +356,35 @@ def delete_staff(request, staff_id):
         'academic_sessions': academic_sessions,
     })
 
+
 @login_required
 def session_students(request, session_id):
-    if not request.user.is_staff or request.user.teacher_profile.designation != 'head_of_department':
-        messages.error(request, 'You do not have permission to access this page.')
-        return redirect('home')
+    # if not request.user.is_staff or request.user.teacher_profile.designation != 'head_of_department':
+    #     messages.error(request, 'You do not have permission to access this page.')
+    #     return redirect('home')
 
-    # Get the HOD's department
     hod_department = request.user.teacher_profile.department
-
-    # Fetch the academic session
     session = get_object_or_404(AcademicSession, id=session_id)
-
-    # Fetch the programs under the HOD's department
     programs = Program.objects.filter(department=hod_department)
-
-    # Fetch applicants linked to these programs
     applicants = Applicant.objects.filter(program__in=programs)
-
-    # Initialize base queryset
     students = Student.objects.filter(
         applicant__in=applicants,
         program__in=programs,
-        enrollment_date__year=session.start_year  # Exact match for the session's start year
+        enrollment_date__year=session.start_year
     ).select_related('applicant', 'program', 'current_semester')
 
-    # Handle search parameter
     search_query = request.GET.get('q', '').strip()
     if search_query:
         students = students.filter(
-            Q(university_roll_no__icontains=search_query) | 
+            Q(university_roll_no__icontains=search_query) |
             Q(applicant__full_name__icontains=search_query) |
-            Q(college_roll_no__icontains=search_query)        
+            Q(college_roll_no__icontains=search_query)
         )
 
-    # Pagination
-    paginator = Paginator(students, 10)  # 10 students per page
+    paginator = Paginator(students, 10)
     page_number = request.GET.get('page')
     page_students = paginator.get_page(page_number)
 
-    # Fetch academic sessions for the sidebar
     academic_sessions = AcademicSession.objects.all().order_by('-start_year')
 
     context = {
@@ -417,13 +396,7 @@ def session_students(request, session_id):
     return render(request, 'faculty_staff/session_students.html', context)
 
 
-
-
-from django.shortcuts import get_object_or_404, render, redirect
-from django.contrib import messages
-from django.urls import reverse
-
-
+# Course Form Definition
 class CourseForm(forms.Form):
     code = forms.CharField(max_length=10, required=True, help_text="Enter the unique course code (e.g., CS101).")
     name = forms.CharField(max_length=200, required=True, help_text="Enter the full name of the course.")
@@ -431,11 +404,12 @@ class CourseForm(forms.Form):
     is_active = forms.BooleanField(required=False, initial=True, help_text="Check this if the course is active.")
     description = forms.CharField(widget=forms.Textarea, required=False, help_text="Provide a description.")
 
+
 @login_required
 def add_course(request):
-    if not request.user.is_staff or request.user.teacher_profile.designation != 'head_of_department':
-        messages.error(request, 'You do not have permission to access this page.')
-        return redirect('home')
+    # if not request.user.is_staff or request.user.teacher_profile.designation != 'head_of_department':
+    #     messages.error(request, 'You do not have permission to access this page.')
+    #     return redirect('home')
 
     hod_department = request.user.teacher_profile.department
     form = CourseForm(request.POST or None)
@@ -463,13 +437,11 @@ def add_course(request):
     return render(request, 'faculty_staff/add_course.html', context)
 
 
-
-
 @login_required
 def course_offerings(request):
-    if not request.user.is_staff or request.user.teacher_profile.designation != 'head_of_department':
-        messages.error(request, 'You do not have permission to access this page.')
-        return redirect('home')
+    # if not request.user.is_staff or request.user.teacher_profile.designation != 'head_of_department':
+    #     messages.error(request, 'You do not have permission to access this page.')
+    #     return redirect('home')
 
     hod_department = request.user.teacher_profile.department
     if not hod_department:
@@ -477,12 +449,9 @@ def course_offerings(request):
         return redirect('home')
 
     academic_sessions = AcademicSession.objects.all().order_by('-start_year')
-    programs = Program.objects.filter(department=hod_department)  # Filter programs by HOD's department
+    programs = Program.objects.filter(department=hod_department)
     teachers = Teacher.objects.filter(is_active=True, department=hod_department)
     semesters = Semester.objects.filter(program__in=programs).distinct()
-    # Filter teachers by HOD's department
-
-    # Fetch existing course offerings for display, filtered by HOD's department
     course_offerings = CourseOffering.objects.filter(
         department=hod_department
     ).select_related('course', 'teacher', 'program', 'department', 'academic_session', 'semester')
@@ -498,18 +467,20 @@ def course_offerings(request):
     }
     return render(request, 'faculty_staff/course_offerings.html', context)
 
+
 @login_required
 def search_courses(request):
     if request.method == "GET":
         search_query = request.GET.get('q', '')
         courses = Course.objects.filter(
             Q(code__icontains=search_query) | Q(name__icontains=search_query)
-        ).values('id', 'code', 'name')[:10]  # Limit to 10 results for performance
+        ).values('id', 'code', 'name')[:10]
         return JsonResponse({
             'results': [{'id': course['id'], 'text': f"{course['code']}: {course['name']}"} for course in courses],
             'more': False
         })
     return JsonResponse({'results': [], 'more': False})
+
 
 @login_required
 def search_teachers(request):
@@ -529,6 +500,7 @@ def get_academic_sessions(request):
     sessions = AcademicSession.objects.all()
     results = [{'id': session.id, 'text': session.name} for session in sessions]
     return JsonResponse({'results': results})
+
 
 @login_required
 def search_programs(request):
@@ -551,7 +523,6 @@ def search_programs(request):
                 ).distinct()
                 if filtered_programs.exists():
                     programs = filtered_programs
-                # Else, keep all programs (optional fallback)
             except AcademicSession.DoesNotExist:
                 return JsonResponse({
                     'results': [],
@@ -578,11 +549,12 @@ def search_programs(request):
         })
     return JsonResponse({'results': [], 'pagination': {'more': False}})
 
+
 @login_required
 def search_semesters(request):
     if request.method == "GET":
         search_query = request.GET.get('q', '')
-        program_id = request.GET.get('program_id')  # Get program ID from the query string
+        program_id = request.GET.get('program_id')
 
         filters = Q(name__icontains=search_query) | Q(program__name__icontains=search_query)
 
@@ -602,7 +574,6 @@ def search_semesters(request):
             ],
             'more': False
         })
-
     return JsonResponse({'results': [], 'more': False})
 
 
@@ -611,125 +582,10 @@ def get_offering_type_choices(request):
     return JsonResponse({'results': choices})
 
 
-
-
-
-# @login_required
-# @transaction.atomic
-# def save_course_offering(request):
-#     if request.method == "POST" and request.user.teacher_profile.designation == 'head_of_department':
-#         # Get all form data
-#         course_id = request.POST.get('course_id')
-#         teacher_id = request.POST.get('teacher_id')
-#         program_id = request.POST.get('program_id')
-#         semester_id = request.POST.get('semester_id')
-#         academic_session_id = request.POST.get('academic_session_id')
-#         offering_type = request.POST.get('offering_type')
-
-#         # Validate all required fields
-#         required_fields = {
-#             'course_id': 'Course',
-#             'teacher_id': 'Teacher',
-#             'program_id': 'Program',
-#             'semester_id': 'Semester',
-#             'academic_session_id': 'Academic Session',
-#             'offering_type': 'Offering Type'
-#         }
-        
-#         missing_fields = [field_name for field_name, field_label in required_fields.items() if not request.POST.get(field_name)]
-#         if missing_fields:
-#             return JsonResponse({
-#                 'success': False,
-#                 'message': f'Missing required fields: {", ".join([required_fields[field] for field in missing_fields])}'
-#             })
-
-#         # Validate offering type
-#         valid_offering_types = [choice[0] for choice in CourseOffering.OFFERING_TYPES]
-#         if offering_type not in valid_offering_types:
-#             return JsonResponse({
-#                 'success': False,
-#                 'message': 'Invalid offering type selected.'
-#             })
-
-#         # Get all related objects
-#         try:
-#             course = Course.objects.get(id=course_id)
-#             teacher = Teacher.objects.get(id=teacher_id, is_active=True)
-#             program = Program.objects.get(id=program_id)
-#             semester = Semester.objects.get(id=semester_id)
-#             academic_session = AcademicSession.objects.get(id=academic_session_id)
-#         except (Course.DoesNotExist, Teacher.DoesNotExist, 
-#                 Program.DoesNotExist, Semester.DoesNotExist, 
-#                 AcademicSession.DoesNotExist) as e:
-#             return JsonResponse({
-#                 'success': False,
-#                 'message': 'One or more selected items no longer exist.'
-#             })
-
-#         # Check for existing offering with the exact same combination
-#         existing_offerings = CourseOffering.objects.filter(
-#             course=course,
-#             program=program,
-#             academic_session=academic_session,
-#             semester=semester,
-#             offering_type=offering_type
-#         )
-        
-#         if existing_offerings.exists():
-#             return JsonResponse({
-#                 'success': False,
-#                 'message': 'This exact course offering already exists.'
-#             })
-
-#         # Calculate capacity and enrollment
-#         active_students = Student.objects.filter(
-#             program=program,
-#             current_semester=semester,
-#             current_status='active'
-#         )
-
-#         print("Creating CourseOffering with:")
-#         print({
-#             "course": course,
-#             "teacher": teacher,
-#             "department": program.department,
-#             "program": program,
-#             "academic_session": academic_session,
-#             "semester": semester,
-#             "is_active": True,
-#             "offering_type": offering_type,
-#         })
-
-#         # Create the offering
-#         offering = CourseOffering.objects.create(
-#             course=course,
-#             teacher=teacher,
-#             department=program.department,
-#             program=program,
-#             academic_session=academic_session,
-#             semester=semester,
-#             is_active=True,
-#             offering_type=offering_type
-#         )
-        
-#         return JsonResponse({
-#             'success': True,
-#             'message': f'Successfully created course offering for {course.code}',
-#             'offering_id': offering.id
-#         })
-    
-#     return JsonResponse({
-#         'success': False,
-#         'message': 'Invalid request method or insufficient permissions.'
-#     })
-
-
-
 @login_required
 @transaction.atomic
 def save_course_offering(request):
     if request.method == "POST" and request.user.teacher_profile.designation == 'head_of_department':
-        # Get all form data
         course_id = request.POST.get('course_id')
         teacher_id = request.POST.get('teacher_id')
         program_id = request.POST.get('program_id')
@@ -737,7 +593,6 @@ def save_course_offering(request):
         academic_session_id = request.POST.get('academic_session_id')
         offering_type = request.POST.get('offering_type')
 
-        # Validate all required fields
         required_fields = {
             'course_id': 'Course',
             'teacher_id': 'Teacher',
@@ -746,7 +601,6 @@ def save_course_offering(request):
             'academic_session_id': 'Academic Session',
             'offering_type': 'Offering Type'
         }
-        
         missing_fields = [field_name for field_name, field_label in required_fields.items() if not request.POST.get(field_name)]
         if missing_fields:
             return JsonResponse({
@@ -754,7 +608,6 @@ def save_course_offering(request):
                 'message': f'Missing required fields: {", ".join([required_fields[field] for field in missing_fields])}'
             })
 
-        # Validate offering type
         valid_offering_types = [choice[0] for choice in CourseOffering.OFFERING_TYPES]
         if offering_type not in valid_offering_types:
             return JsonResponse({
@@ -762,22 +615,18 @@ def save_course_offering(request):
                 'message': 'Invalid offering type selected.'
             })
 
-        # Get all related objects
         try:
             course = Course.objects.get(id=course_id)
             teacher = Teacher.objects.get(id=teacher_id, is_active=True)
             program = Program.objects.get(id=program_id)
             semester = Semester.objects.get(id=semester_id)
             academic_session = AcademicSession.objects.get(id=academic_session_id)
-        except (Course.DoesNotExist, Teacher.DoesNotExist, 
-                Program.DoesNotExist, Semester.DoesNotExist, 
-                AcademicSession.DoesNotExist) as e:
+        except (Course.DoesNotExist, Teacher.DoesNotExist, Program.DoesNotExist, Semester.DoesNotExist, AcademicSession.DoesNotExist) as e:
             return JsonResponse({
                 'success': False,
                 'message': 'One or more selected items no longer exist.'
             })
 
-        # Check for existing offering with the exact same combination
         existing_offerings = CourseOffering.objects.filter(
             course=course,
             program=program,
@@ -785,27 +634,23 @@ def save_course_offering(request):
             semester=semester,
             offering_type=offering_type
         )
-        
         if existing_offerings.exists():
             return JsonResponse({
                 'success': False,
                 'message': 'This exact course offering already exists.'
             })
 
-        # Identify active students in the program and semester
         active_students = Student.objects.filter(
             program=program,
             current_semester=semester,
             current_status='active'
         )
-
         if not active_students.exists():
             return JsonResponse({
                 'success': False,
                 'message': 'No active students found for this program and semester.'
             })
 
-        # Create the offering
         offering = CourseOffering.objects.create(
             course=course,
             teacher=teacher,
@@ -815,36 +660,28 @@ def save_course_offering(request):
             semester=semester,
             is_active=True,
             offering_type=offering_type,
-            # max_capacity=active_students.count(),  # Set max capacity based on active students
-            current_enrollment=0  # Initialize to 0, will update below
+            current_enrollment=0
         )
 
-        # Add students to the course offering via CourseEnrollment
         enrolled_count = 0
         for student in active_students:
-            # Ensure the student has a semester enrollment for this semester
             semester_enrollment, created = StudentSemesterEnrollment.objects.get_or_create(
                 student=student,
                 semester=semester,
                 defaults={'status': 'enrolled'}
             )
-
-            # Create a new CourseEnrollment for this offering
             course_enrollment, created = CourseEnrollment.objects.get_or_create(
                 student_semester_enrollment=semester_enrollment,
                 course_offering=offering,
                 defaults={'status': 'enrolled'}
             )
-
             if created:
                 enrolled_count += 1
-            # If already exists, ensure the status is 'enrolled'
             elif course_enrollment.status != 'enrolled':
                 course_enrollment.status = 'enrolled'
                 course_enrollment.save()
                 enrolled_count += 1
 
-        # Update the current_enrollment of the CourseOffering
         offering.current_enrollment = enrolled_count
         offering.save()
 
@@ -853,15 +690,11 @@ def save_course_offering(request):
             'message': f'Successfully created course offering for {course.code} with {enrolled_count} students enrolled.',
             'offering_id': offering.id
         })
-    
+
     return JsonResponse({
         'success': False,
         'message': 'Invalid request method or insufficient permissions.'
     })
-
-
-
-
 
 
 @login_required
@@ -878,9 +711,12 @@ def delete_course_offering(request):
 @login_required
 def study_materials(request):
     if request.user.teacher_profile.designation == 'head_of_department':
-        study_materials = StudyMaterial.objects.filter(course_offering__teacher=request.user.teacher_profile).order_by('-uploaded_at')
+        study_materials = StudyMaterial.objects.filter(
+            course_offering__teacher=request.user.teacher_profile
+        ).order_by('-uploaded_at')
         return render(request, 'faculty_staff/study_materials.html', {'study_materials': study_materials})
     return JsonResponse({'success': False, 'message': 'Unauthorized access.'})
+
 
 @login_required
 def upload_study_material(request):
@@ -893,7 +729,11 @@ def upload_study_material(request):
         if not all([course_offering_id, title, file]):
             return JsonResponse({'success': False, 'message': 'All required fields must be filled.'})
 
-        course_offering = get_object_or_404(CourseOffering, id=course_offering_id, teacher=request.user.teacher_profile)
+        course_offering = get_object_or_404(
+            CourseOffering,
+            id=course_offering_id,
+            teacher=request.user.teacher_profile
+        )
         StudyMaterial.objects.create(
             course_offering=course_offering,
             title=title,
@@ -904,33 +744,23 @@ def upload_study_material(request):
         return JsonResponse({'success': True, 'message': 'Study material uploaded successfully.'})
     return JsonResponse({'success': False, 'message': 'Invalid request.'})
 
+
 @login_required
 def delete_study_material(request):
     if request.method == "POST" and request.user.teacher_profile.designation == 'head_of_department':
         material_id = request.POST.get('material_id')
         if material_id:
-            material = get_object_or_404(StudyMaterial, id=material_id, course_offering__teacher=request.user.teacher_profile)
-            if material.file:
-                if os.path.isfile(material.file.path):
-                    os.remove(material.file.path)
+            material = get_object_or_404(
+                StudyMaterial,
+                id=material_id,
+                course_offering__teacher=request.user.teacher_profile
+            )
+            if material.file and os.path.isfile(material.file.path):
+                os.remove(material.file.path)
             material.delete()
             return JsonResponse({'success': True, 'message': 'Study material deleted successfully.'})
         return JsonResponse({'success': False, 'message': 'Material ID is required.'})
     return JsonResponse({'success': False, 'message': 'Invalid request.'})
-
-# @login_required
-# def search_course_offerings(request):
-#     if request.method == "GET":
-#         search_query = request.GET.get('q', '')
-#         offerings = CourseOffering.objects.filter(
-#             Q(course__code__icontains=search_query) | Q(course__name__icontains=search_query),
-#             teacher=request.user.teacher_profile
-#         ).values('id', 'course__code', 'course__name', 'semester__name', 'academic_session__name')[:10]
-#         return JsonResponse({
-#             'results': [{'id': offering['id'], 'text': f"{offering['course__code']} - {offering['course__name']} ({offering['semester__name']}, {offering['academic_session__name']})"} for offering in offerings],
-#             'more': False
-#         })
-#     return JsonResponse({'results': [], 'more': False})
 
 
 @login_required
@@ -940,7 +770,9 @@ def search_course_offerings(request):
         page = int(request.GET.get('page', 1))
         per_page = 10
 
-        course_offerings = CourseOffering.objects.all().select_related('course', 'semester', 'academic_session')
+        course_offerings = CourseOffering.objects.filter(
+            teacher__user_id=request.user.id
+        ).select_related('course', 'semester', 'academic_session')
 
         if search_query:
             course_offerings = course_offerings.filter(
@@ -965,14 +797,15 @@ def search_course_offerings(request):
     return JsonResponse({'results': [], 'pagination': {'more': False}})
 
 
-
-
 @login_required
 def assignments(request):
     if request.user.teacher_profile.designation == 'head_of_department':
-        assignments = Assignment.objects.filter(course_offering__teacher=request.user.teacher_profile).order_by('-created_at')
+        assignments = Assignment.objects.filter(
+            course_offering__teacher=request.user.teacher_profile
+        ).order_by('-created_at')
         return render(request, 'faculty_staff/assignments.html', {'assignments': assignments})
     return JsonResponse({'success': False, 'message': 'Unauthorized access.'})
+
 
 @login_required
 def create_assignment(request):
@@ -987,7 +820,11 @@ def create_assignment(request):
         if not all([course_offering_id, title, due_date, total_marks]):
             return JsonResponse({'success': False, 'message': 'All required fields must be filled.'})
 
-        course_offering = get_object_or_404(CourseOffering, id=course_offering_id, teacher=request.user.teacher_profile)
+        course_offering = get_object_or_404(
+            CourseOffering,
+            id=course_offering_id,
+            teacher=request.user.teacher_profile
+        )
         Assignment.objects.create(
             course_offering=course_offering,
             title=title,
@@ -1000,27 +837,37 @@ def create_assignment(request):
         return JsonResponse({'success': True, 'message': 'Assignment created successfully.'})
     return JsonResponse({'success': False, 'message': 'Invalid request.'})
 
+
 @login_required
 def delete_assignment(request):
     if request.method == "POST" and request.user.teacher_profile.designation == 'head_of_department':
         assignment_id = request.POST.get('assignment_id')
         if assignment_id:
-            assignment = get_object_or_404(Assignment, id=assignment_id, course_offering__teacher=request.user.teacher_profile)
-            if assignment.file:
-                if os.path.isfile(assignment.file.path):
-                    os.remove(assignment.file.path)
+            assignment = get_object_or_404(
+                Assignment,
+                id=assignment_id,
+                course_offering__teacher=request.user.teacher_profile
+            )
+            if assignment.file and os.path.isfile(assignment.file.path):
+                os.remove(assignment.file.path)
             assignment.delete()
             return JsonResponse({'success': True, 'message': 'Assignment deleted successfully.'})
         return JsonResponse({'success': False, 'message': 'Assignment ID is required.'})
     return JsonResponse({'success': False, 'message': 'Invalid request.'})
 
+
 @login_required
 def assignment_submissions(request, assignment_id):
     if request.user.teacher_profile.designation == 'head_of_department':
-        assignment = get_object_or_404(Assignment, id=assignment_id, course_offering__teacher=request.user.teacher_profile)
+        assignment = get_object_or_404(
+            Assignment,
+            id=assignment_id,
+            course_offering__teacher=request.user.teacher_profile
+        )
         submissions = AssignmentSubmission.objects.filter(assignment=assignment).order_by('-submitted_at')
         return render(request, 'faculty_staff/assignment_submissions.html', {'assignment': assignment, 'submissions': submissions})
     return JsonResponse({'success': False, 'message': 'Unauthorized access.'})
+
 
 @login_required
 def grade_submission(request):
@@ -1032,7 +879,11 @@ def grade_submission(request):
         if not submission_id or marks_obtained is None:
             return JsonResponse({'success': False, 'message': 'Submission ID and marks are required.'})
 
-        submission = get_object_or_404(AssignmentSubmission, id=submission_id, assignment__course_offering__teacher=request.user.teacher_profile)
+        submission = get_object_or_404(
+            AssignmentSubmission,
+            id=submission_id,
+            assignment__course_offering__teacher=request.user.teacher_profile
+        )
         submission.marks_obtained = int(marks_obtained)
         submission.feedback = feedback
         submission.graded_by = request.user.teacher_profile
@@ -1041,8 +892,10 @@ def grade_submission(request):
         return JsonResponse({'success': True, 'message': 'Submission graded successfully.'})
     return JsonResponse({'success': False, 'message': 'Invalid request.'})
 
+
 def notices(request):
     return render(request, 'faculty_staff/notices.html')
+
 
 @login_required
 def post_notice(request):
@@ -1054,7 +907,11 @@ def post_notice(request):
         if not all([course_offering_id, title, content]):
             return JsonResponse({'success': False, 'message': 'All required fields must be filled.'})
 
-        course_offering = get_object_or_404(CourseOffering, id=course_offering_id, teacher=request.user.teacher_profile)
+        course_offering = get_object_or_404(
+            CourseOffering,
+            id=course_offering_id,
+            teacher=request.user.teacher_profile
+        )
         Notice.objects.create(
             course_offering=course_offering,
             title=title,
@@ -1064,16 +921,22 @@ def post_notice(request):
         return JsonResponse({'success': True, 'message': 'Notice posted successfully.'})
     return JsonResponse({'success': False, 'message': 'Invalid request.'})
 
+
 @login_required
 def delete_notice(request):
     if request.method == "POST" and request.user.teacher_profile.designation == 'head_of_department':
         notice_id = request.POST.get('notice_id')
         if notice_id:
-            notice = get_object_or_404(Notice, id=notice_id, course_offering__teacher=request.user.teacher_profile)
+            notice = get_object_or_404(
+                Notice,
+                id=notice_id,
+                course_offering__teacher=request.user.teacher_profile
+            )
             notice.delete()
             return JsonResponse({'success': True, 'message': 'Notice deleted successfully.'})
         return JsonResponse({'success': False, 'message': 'Notice ID is required.'})
     return JsonResponse({'success': False, 'message': 'Invalid request.'})
+
 
 @login_required
 def search_students(request):
@@ -1089,27 +952,22 @@ def search_students(request):
     return JsonResponse({'results': [], 'more': False})
 
 
-
-
-
 @login_required
 def exam_results(request):
-    if not request.user.is_staff or request.user.teacher_profile.designation != 'head_of_department':
-        return render(request, 'faculty_staff/unauthorized.html', {'message': 'You do not have permission to access this page.'})
+    # if not request.user.is_staff or request.user.teacher_profile.designation != 'head_of_department':
+    #     return render(request, 'faculty_staff/unauthorized.html', {'message': 'You do not have permission to access this page.'})
 
-    # Aggregate exam results by student and course offering
     exam_results = ExamResult.objects.values('student', 'course_offering').annotate(
         mid_marks=Sum('marks_obtained', filter=Q(exam_type='midterm')),
         sessional_marks=Sum('marks_obtained', filter=Q(exam_type='sessional')),
         practical_marks=Sum('marks_obtained', filter=Q(exam_type='practical')),
         project_marks=Sum('marks_obtained', filter=Q(exam_type='project')),
-    ).order_by('student', 'course_offering')  # Order for better readability
+    ).order_by('student', 'course_offering')
 
-    # Convert to a list of dictionaries with additional data
     aggregated_results = []
     for result in exam_results:
         try:
-            student = Student.objects.get(applicant_id=result['student'])  # Use applicant_id since Student uses applicant as PK
+            student = Student.objects.get(applicant_id=result['student'])
             course_offering = CourseOffering.objects.get(id=result['course_offering'])
             aggregated_results.append({
                 'student': student,
@@ -1123,9 +981,8 @@ def exam_results(request):
                 'id': ExamResult.objects.filter(student=student, course_offering=course_offering).first().id if ExamResult.objects.filter(student=student, course_offering=course_offering).exists() else None,
             })
         except (Student.DoesNotExist, CourseOffering.DoesNotExist):
-            continue  # Skip if student or course offering doesn't exist
+            continue
 
-    # Load students for the form (optional, can be moved to load_students_for_course)
     students = []
     if request.GET.get('course_offering_id'):
         course_offering = get_object_or_404(CourseOffering, id=request.GET.get('course_offering_id'))
@@ -1139,11 +996,10 @@ def exam_results(request):
     return render(request, 'faculty_staff/exam_results.html', context)
 
 
-
 @login_required
 def record_exam_results(request):
-    if not request.user.is_staff or request.user.teacher_profile.designation != 'head_of_department':
-        return JsonResponse({'success': False, 'message': 'You do not have permission to access this page.'})
+    # if not request.user.is_staff or request.user.teacher_profile.designation != 'head_of_department':
+    #     return JsonResponse({'success': False, 'message': 'You do not have permission to access this page.'})
 
     if request.method == "POST":
         course_offering_id = request.POST.get('course_offering_id')
@@ -1155,7 +1011,7 @@ def record_exam_results(request):
 
         for enrollment in enrollments:
             student = enrollment.student
-            student_id = student.applicant.id  # Use applicant.id as the primary key
+            student_id = student.applicant.id
             mid = request.POST.get(f'mid_{student_id}')
             sessional = request.POST.get(f'sessional_{student_id}')
             project = request.POST.get(f'project_{student_id}')
@@ -1185,13 +1041,13 @@ def record_exam_results(request):
         return JsonResponse({'success': True, 'message': 'Exam results recorded successfully.'})
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
+
 @login_required
 def load_students_for_course(request):
     if request.method == "GET":
         course_offering_id = request.GET.get('course_offering_id')
         if course_offering_id:
             course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
-            # Query CourseEnrollment to find enrollments for this CourseOffering
             course_enrollments = CourseEnrollment.objects.filter(
                 course_offering=course_offering,
                 status='enrolled'
@@ -1213,27 +1069,23 @@ def load_students_for_course(request):
             })
         return JsonResponse({'success': False, 'message': 'Course offering ID is required.'})
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
-    
+
+
 @login_required
 def delete_exam_result(request):
     if request.method == "POST" and request.user.teacher_profile.designation == 'head_of_department':
         result_id = request.POST.get('result_id')
         if result_id:
-            result = get_object_or_404(ExamResult, id=result_id, course_offering__teacher=request.user.teacher_profile)
+            result = get_object_or_404(
+                ExamResult,
+                id=result_id,
+                course_offering__teacher=request.user.teacher_profile
+            )
             result.delete()
             return JsonResponse({'success': True, 'message': 'Exam result deleted successfully.'})
         return JsonResponse({'success': False, 'message': 'Result ID is required.'})
     return JsonResponse({'success': False, 'message': 'Invalid request.'})
 
-
-
-
-
-
-
-
-
-from django.contrib.auth import logout
 
 @login_required
 def logout_view(request):

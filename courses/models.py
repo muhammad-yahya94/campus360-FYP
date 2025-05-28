@@ -58,7 +58,7 @@ class CourseOffering(models.Model):
     )
 
     def __str__(self):
-        return f"{self.course.code} ({self.semester.number}, {self.academic_session.start_year})"
+        return f"{self.course.code}  {self.course.name} - {self.semester.name} ({self.academic_session.name})"
 
 
     class Meta:

@@ -38,7 +38,7 @@
             <form id="record-exam-results-form" method="post" action="{% url 'faculty_staff:record_exam_results' %}">
                 {% csrf_token %}
                 <div class="row g-3 mb-3">
-                    <div class="col-md-4">
+                    <div class="col-md-12">
                         <label for="course_offering_id" class="form-label">Course Offering</label>
                         <select name="course_offering_id" id="course_offering_id" class="form-select select2" required>
                             <option value="">Search for a course offering...</option>

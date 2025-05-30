@@ -87,7 +87,7 @@
                             <td>{{ material.uploaded_by.user.get_full_name }}</td>
                             <td>{{ material.uploaded_at|date:'Y-m-d H:i' }}</td>
                             <td>
-                                <a href="{{ material.file.url }}" class="btn btn-info btn-sm" target="_blank">View</a>
+                                {% comment %} <a href="{{ material.file.url }}" class="btn btn-info btn-sm" target="_blank">View</a> {% endcomment %}
                                 <button class="btn btn-danger btn-sm delete-material" data-material-id="{{ material.id }}">Delete</button>
                             </td>
                         </tr>

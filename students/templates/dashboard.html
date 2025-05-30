@@ -1,0 +1,69 @@
+{% extends 'base_student.html' %}
+
+{% block title %}Student Dashboard{% endblock %}
+
+{% block content %}
+<style>
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+    .table th {
+        background-color: #e9ecef;
+        color: #343a40;
+    }
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+</style>
+
+<div class="container-fluid">
+    <h2>Welcome, {{ student.applicant.full_name }}</h2>
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card p-3">
+                <h5 class="card-title">Profile</h5>
+                <p><strong>Program:</strong> {{ student.program.name }}</p>
+                <p><strong>Department:</strong> {{ student.program.department.name }}</p>
+                <p><strong>Semester:</strong> {{ student.current_semester.name|default:"N/A" }}</p>
+                <p><strong>Roll No:</strong> {{ student.university_roll_no|default:"N/A" }}</p>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card p-3">
+                <h5 class="card-title">Current Session: {{ current_session.name|default:"N/A" }}</h5>
+                <p><strong>Enrolled Courses:</strong> {{ enrollments.count }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Enrolled Courses</h5>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Course</th>
+                            <th>Semester</th>
+                            <th>Instructor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for enrollment in enrollments %}
+                        <tr>
+                            <td>{{ enrollment.course_offering.course.name }}</td>
+                            <td>{{ enrollment.course_offering.semester.name }}</td>
+                            <td>{{ enrollment.course_offering.teacher.user.get_full_name }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center">No courses enrolled for this session.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

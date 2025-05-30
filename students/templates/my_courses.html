@@ -1,0 +1,55 @@
+{% extends 'base_student.html' %}
+
+{% block title %}My Courses{% endblock %}
+
+{% block content %}
+<style>
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+    .table th {
+        background-color: #e9ecef;
+        color: #343a40;
+    }
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+</style>
+
+<div class="container-fluid">
+    <h2>My Courses - {{ current_session.name|default:"Current Session" }}</h2>
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Course Code</th>
+                            <th>Course Name</th>
+                            <th>Semester</th>
+                            <th>Instructor</th>
+                            <th>Credits</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for enrollment in enrollments %}
+                        <tr>
+                            <td>{{ enrollment.course_offering.course.code }}</td>
+                            <td>{{ enrollment.course_offering.course.name }}</td>
+                            <td>{{ enrollment.course_offering.semester.name }}</td>
+                            <td>{{ enrollment.course_offering.teacher.user.get_full_name }}</td>
+                            <td>{{ enrollment.course_offering.course.credits }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">No courses enrolled for this session.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

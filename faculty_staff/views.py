@@ -12,6 +12,7 @@ from django.contrib.auth import get_user_model
 from django.http import JsonResponse
 from django import forms
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.db import transaction
 
@@ -582,17 +583,28 @@ def get_offering_type_choices(request):
     return JsonResponse({'results': choices})
 
 
+
+
 @login_required
 @transaction.atomic
 def save_course_offering(request):
-    if request.method == "POST" and request.user.teacher_profile.designation == 'head_of_department':
+    # Log the incoming request details
+    print(f'Request method: {request.method}, User: {request.user}')
+    
+    if request.method == "POST" and hasattr(request.user, 'teacher_profile') and request.user.teacher_profile.designation == 'head_of_department':
         course_id = request.POST.get('course_id')
         teacher_id = request.POST.get('teacher_id')
         program_id = request.POST.get('program_id')
         semester_id = request.POST.get('semester_id')
         academic_session_id = request.POST.get('academic_session_id')
         offering_type = request.POST.get('offering_type')
+        
+        # Log the input data
+        print(f'course_id: {course_id}, teacher_id: {teacher_id}, program_id: {program_id}, '
+                     f'semester_id: {semester_id}, academic_session_id: {academic_session_id}, '
+                     f'offering_type: {offering_type}')
 
+        # Check for missing fields
         required_fields = {
             'course_id': 'Course',
             'teacher_id': 'Teacher',
@@ -603,30 +615,37 @@ def save_course_offering(request):
         }
         missing_fields = [field_name for field_name, field_label in required_fields.items() if not request.POST.get(field_name)]
         if missing_fields:
+            print(f'Missing fields: {", ".join([required_fields[field] for field in missing_fields])}')
             return JsonResponse({
                 'success': False,
                 'message': f'Missing required fields: {", ".join([required_fields[field] for field in missing_fields])}'
             })
 
+        # Validate offering type
         valid_offering_types = [choice[0] for choice in CourseOffering.OFFERING_TYPES]
         if offering_type not in valid_offering_types:
+            print(f'Invalid offering type: {offering_type}')
             return JsonResponse({
                 'success': False,
                 'message': 'Invalid offering type selected.'
             })
 
+        # Retrieve objects
         try:
             course = Course.objects.get(id=course_id)
             teacher = Teacher.objects.get(id=teacher_id, is_active=True)
             program = Program.objects.get(id=program_id)
             semester = Semester.objects.get(id=semester_id)
             academic_session = AcademicSession.objects.get(id=academic_session_id)
-        except (Course.DoesNotExist, Teacher.DoesNotExist, Program.DoesNotExist, Semester.DoesNotExist, AcademicSession.DoesNotExist) as e:
+        except (Course.DoesNotExist, Teacher.DoesNotExist, Program.DoesNotExist, 
+                Semester.DoesNotExist, AcademicSession.DoesNotExist) as e:
+            print(f'Object retrieval failed: {str(e)}')
             return JsonResponse({
                 'success': False,
                 'message': 'One or more selected items no longer exist.'
             })
 
+        # Check for existing offerings
         existing_offerings = CourseOffering.objects.filter(
             course=course,
             program=program,
@@ -635,67 +654,79 @@ def save_course_offering(request):
             offering_type=offering_type
         )
         if existing_offerings.exists():
+            print('Course offering already exists')
             return JsonResponse({
                 'success': False,
                 'message': 'This exact course offering already exists.'
             })
 
+        # Check for active students
         active_students = Student.objects.filter(
             program=program,
             current_semester=semester,
             current_status='active'
         )
         if not active_students.exists():
+            print('No active students found')
             return JsonResponse({
                 'success': False,
                 'message': 'No active students found for this program and semester.'
             })
 
-        offering = CourseOffering.objects.create(
-            course=course,
-            teacher=teacher,
-            department=program.department,
-            program=program,
-            academic_session=academic_session,
-            semester=semester,
-            is_active=True,
-            offering_type=offering_type,
-            current_enrollment=0
-        )
-
-        enrolled_count = 0
-        for student in active_students:
-            semester_enrollment, created = StudentSemesterEnrollment.objects.get_or_create(
-                student=student,
+        # Create course offering and enroll students
+        try:
+            offering = CourseOffering.objects.create(
+                course=course,
+                teacher=teacher,
+                department=program.department,
+                program=program,
+                academic_session=academic_session,
                 semester=semester,
-                defaults={'status': 'enrolled'}
+                is_active=True,
+                offering_type=offering_type,
+                current_enrollment=0
             )
-            course_enrollment, created = CourseEnrollment.objects.get_or_create(
-                student_semester_enrollment=semester_enrollment,
-                course_offering=offering,
-                defaults={'status': 'enrolled'}
-            )
-            if created:
-                enrolled_count += 1
-            elif course_enrollment.status != 'enrolled':
-                course_enrollment.status = 'enrolled'
-                course_enrollment.save()
-                enrolled_count += 1
 
-        offering.current_enrollment = enrolled_count
-        offering.save()
+            enrolled_count = 0
+            for student in active_students:
+                semester_enrollment, created = StudentSemesterEnrollment.objects.get_or_create(
+                    student=student,
+                    semester=semester,
+                    defaults={'status': 'enrolled'}
+                )
+                course_enrollment, created = CourseEnrollment.objects.get_or_create(
+                    student_semester_enrollment=semester_enrollment,
+                    course_offering=offering,
+                    defaults={'status': 'enrolled'}
+                )
+                if created:
+                    enrolled_count += 1
+                elif course_enrollment.status != 'enrolled':
+                    course_enrollment.status = 'enrolled'
+                    course_enrollment.save()
+                    enrolled_count += 1
 
-        return JsonResponse({
-            'success': True,
-            'message': f'Successfully created course offering for {course.code} with {enrolled_count} students enrolled.',
-            'offering_id': offering.id
-        })
+            offering.current_enrollment = enrolled_count
+            offering.save()
+            print(f'Course offering created: {course.code}, Enrolled: {enrolled_count}')
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Successfully created course offering for {course.code} with {enrolled_count} students enrolled.',
+                'offering_id': offering.id
+            })
+        except Exception as e:
+            print(f'Error saving course offering: {str(e)}')
+            return JsonResponse({
+                'success': False,
+                'message': f'Error saving course offering: {str(e)}'
+            })
 
+    print('Failed: Invalid method or permissions')
     return JsonResponse({
         'success': False,
         'message': 'Invalid request method or insufficient permissions.'
     })
-
 
 @login_required
 def delete_course_offering(request):
@@ -1087,8 +1118,401 @@ def delete_exam_result(request):
     return JsonResponse({'success': False, 'message': 'Invalid request.'})
 
 
+
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from courses.models import CourseOffering
+
+@login_required
+def teacher_course_list(request):
+    # if not request.user.is_staff or not hasattr(request.user, 'teacher_profile'):
+    #     return render(request, 'faculty_staff/unauthorized.html', {'message': 'You do not have permission to access this page.'})
+
+    # Fetch all course offerings assigned to the logged-in teacher
+    course_offerings = CourseOffering.objects.filter(
+        teacher__user_id=request.user.id
+    ).select_related('course', 'semester', 'academic_session')
+
+    context = {
+        'course_offerings': course_offerings,
+    }
+    return render(request, 'faculty_staff/teacher_course_list.html', context)
+
 @login_required
 def logout_view(request):
     logout(request)
     messages.success(request, 'You have been logged out successfully.')
     return redirect('faculty_staff:login')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@login_required
+def semester_management(request):
+    """
+    View to display, search, and manage semesters for the Head of Department's department.
+    """
+    if not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
+        print(f'Unauthorized access attempt by user: {request.user}')
+        return render(request, 'faculty_staff/semester_management.html', {
+            'error': 'You do not have permission to manage semesters.',
+            'programs': [],
+            'semesters': [],
+        })
+    
+    hod_department = request.user.teacher_profile.department
+    print(f'Semester management page loaded for user: {request.user}, department: {hod_department}')
+    
+    # Get search and filter parameters
+    search_query = request.GET.get('q', '')
+    program_id = request.GET.get('program_id', '')
+    
+    # Filter semesters by department
+    semesters = Semester.objects.filter(program__department=hod_department).order_by('program', 'number')
+    if search_query:
+        semesters = semesters.filter(
+            Q(name__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(program__name__icontains=search_query)
+        )
+    if program_id:
+        semesters = semesters.filter(program__id=program_id, program__department=hod_department)
+    
+    # Pagination
+    paginator = Paginator(semesters, 10)  # 10 semesters per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'programs': Program.objects.filter(department=hod_department),
+        'semesters': page_obj,
+        'search_query': search_query,
+        'selected_program': program_id,
+    }
+    return render(request, 'faculty_staff/semester_management.html', context)
+
+@login_required
+def add_semester(request):
+    """
+    AJAX view to add a new semester for the Head of Department's department.
+    """
+    if request.method != "POST" or not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
+        print(f'Unauthorized or invalid request to add semester by user: {request.user}')
+        return JsonResponse({'success': False, 'message': 'Invalid request or insufficient permissions.'})
+    
+    hod_department = request.user.teacher_profile.department
+    program_id = request.POST.get('program_id')
+    number = request.POST.get('number')
+    name = request.POST.get('name')
+    description = request.POST.get('description', '')
+    start_time = request.POST.get('start_time')
+    end_time = request.POST.get('end_time')
+    is_active = request.POST.get('is_active', 'false') == 'true'
+    
+    print(f'Add semester attempt: program_id={program_id}, number={number}, name={name}, user={request.user}, department={hod_department}')
+    
+    # Validate required fields
+    required_fields = {'program_id': 'Program', 'number': 'Semester Number', 'name': 'Name'}
+    missing_fields = [field_label for field_name, field_label in required_fields.items() if not request.POST.get(field_name)]
+    if missing_fields:
+        print(f'Missing fields: {", ".join(missing_fields)}')
+        return JsonResponse({'success': False, 'message': f'Missing required fields: {", ".join(missing_fields)}'})
+    
+    try:
+        program = Program.objects.get(id=program_id, department=hod_department)
+        number = int(number)
+        if number < 1:
+            raise ValueError("Semester number must be a positive integer.")
+        
+        # Create semester
+        semester = Semester(
+            program=program,
+            number=number,
+            name=name,
+            description=description,
+            start_time=start_time or None,
+            end_time=end_time or None,
+            is_active=is_active
+        )
+        semester.save()  # Validation in model will check sequential numbers
+        print(f'Semester created: {semester} by user: {request.user}')
+        return JsonResponse({
+            'success': True,
+            'message': f'Semester {semester.name} added successfully!',
+            'semester_id': semester.id
+        })
+    except Program.DoesNotExist:
+        print(f'Program not found or not in department: program_id={program_id}, department={hod_department}')
+        return JsonResponse({'success': False, 'message': 'Selected program is invalid or not in your department.'})
+    except ValueError as e:
+        print(f'Invalid data: {str(e)}')
+        return JsonResponse({'success': False, 'message': f'Invalid data: {str(e)}'})
+    except ValidationError as e:
+        print(f'Validation error: {str(e)}')
+        return JsonResponse({'success': False, 'message': f'Validation error: {str(e)}'})
+    except Exception as e:
+        print(f'Error adding semester: {str(e)}')
+        return JsonResponse({'success': False, 'message': f'Error adding semester: {str(e)}'})
+
+@login_required
+def edit_semester(request):
+    """
+    AJAX view to edit an existing semester in the Head of Department's department.
+    """
+    if request.method != "POST" or not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
+        print(f'Unauthorized or invalid request to edit semester by user: {request.user}')
+        return JsonResponse({'success': False, 'message': 'Invalid request or insufficient permissions.'})
+    
+    hod_department = request.user.teacher_profile.department
+    semester_id = request.POST.get('semester_id')
+    program_id = request.POST.get('program_id')
+    number = request.POST.get('number')
+    name = request.POST.get('name')
+    description = request.POST.get('description', '')
+    start_time = request.POST.get('start_time')
+    end_time = request.POST.get('end_time')
+    is_active = request.POST.get('is_active', 'false') == 'true'
+    
+    print(f'Edit semester attempt: semester_id={semester_id}, program_id={program_id}, number={number}, name={name}, user={request.user}, department={hod_department}')
+    
+    # Validate required fields
+    required_fields = {'semester_id': 'Semester', 'program_id': 'Program', 'number': 'Semester Number', 'name': 'Name'}
+    missing_fields = [field_label for field_name, field_label in required_fields.items() if not request.POST.get(field_name)]
+    if missing_fields:
+        print(f'Missing fields: {", ".join(missing_fields)}')
+        return JsonResponse({'success': False, 'message': f'Missing required fields: {", ".join(missing_fields)}'})
+    
+    try:
+        semester = get_object_or_404(Semester, id=semester_id, program__department=hod_department)
+        program = Program.objects.get(id=program_id, department=hod_department)
+        number = int(number)
+        if number < 1:
+            raise ValueError("Semester number must be a positive integer.")
+        
+        # Update fields
+        semester.program = program
+        semester.number = number
+        semester.name = name
+        semester.description = description
+        semester.start_time = start_time or None
+        semester.end_time = end_time or None
+        semester.is_active = is_active
+        semester.save()  # Validation in model will check sequential numbers
+        print(f'Semester updated: {semester} by user: {request.user}')
+        return JsonResponse({
+            'success': True,
+            'message': f'Semester {semester.name} updated successfully!',
+            'semester_id': semester.id
+        })
+    except Semester.DoesNotExist:
+        print(f'Semester not found or not in department: semester_id={semester_id}, department={hod_department}')
+        return JsonResponse({'success': False, 'message': 'Semester is invalid or not in your department.'})
+    except Program.DoesNotExist:
+        print(f'Program not found or not in department: program_id={program_id}, department={hod_department}')
+        return JsonResponse({'success': False, 'message': 'Selected program is invalid or not in your department.'})
+    except ValueError as e:
+        print(f'Invalid data: {str(e)}')
+        return JsonResponse({'success': False, 'message': f'Invalid data: {str(e)}'})
+    except ValidationError as e:
+        print(f'Validation error: {str(e)}')
+        return JsonResponse({'success': False, 'message': f'Validation error: {str(e)}'})
+    except Exception as e:
+        print(f'Error editing semester: {str(e)}')
+        return JsonResponse({'success': False, 'message': f'Error editing semester: {str(e)}'})
+
+@login_required
+def delete_semester(request):
+    """
+    AJAX view to delete a semester in the Head of Department's department.
+    """
+    if request.method != "POST" or not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
+        print(f'Unauthorized or invalid request to delete semester by user: {request.user}')
+        return JsonResponse({'success': False, 'message': 'Invalid request or insufficient permissions.'})
+    
+    hod_department = request.user.teacher_profile.department
+    semester_id = request.POST.get('semester_id')
+    print(f'Delete semester attempt: semester_id={semester_id}, user={request.user}, department={hod_department}')
+    
+    if not semester_id:
+        print('Missing semester_id for deletion')
+        return JsonResponse({'success': False, 'message': 'Missing semester ID.'})
+    
+    try:
+        semester = get_object_or_404(Semester, id=semester_id, program__department=hod_department)
+        semester_name = semester.name
+        semester.delete()
+        print(f'Semester deleted: {semester_name} by user: {request.user}')
+        return JsonResponse({
+            'success': True,
+            'message': f'Semester {semester_name} deleted successfully!'
+        })
+    except Semester.DoesNotExist:
+        print(f'Semester not found or not in department: semester_id={semester_id}, department={hod_department}')
+        return JsonResponse({'success': False, 'message': 'Semester is invalid or not in your department.'})
+    except Exception as e:
+        print(f'Error deleting semester: {str(e)}')
+        return JsonResponse({'success': False, 'message': f'Error deleting semester: {str(e)}'})
+
+@login_required
+def add_semester(request):
+    """
+    AJAX view to add a new semester.
+    """
+    if request.method != "POST" or not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
+        print(f'Unauthorized or invalid request to add semester by user: {request.user}')
+        return JsonResponse({'success': False, 'message': 'Invalid request or insufficient permissions.'})
+    
+    program_id = request.POST.get('program_id')
+    number = request.POST.get('number')
+    name = request.POST.get('name')
+    description = request.POST.get('description', '')
+    start_time = request.POST.get('start_time')
+    end_time = request.POST.get('end_time')
+    is_active = request.POST.get('is_active', 'false') == 'true'
+    
+    print(f'Add semester attempt: program_id={program_id}, number={number}, name={name}, user={request.user}')
+    
+    # Validate required fields
+    required_fields = {'program_id': 'Program', 'number': 'Semester Number', 'name': 'Name'}
+    missing_fields = [field_label for field_name, field_label in required_fields.items() if not request.POST.get(field_name)]
+    if missing_fields:
+        print(f'Missing fields: {", ".join(missing_fields)}')
+        return JsonResponse({'success': False, 'message': f'Missing required fields: {", ".join(missing_fields)}'})
+    
+    try:
+        program = Program.objects.get(id=program_id)
+        number = int(number)
+        if number < 1:
+            raise ValueError("Semester number must be a positive integer.")
+        
+        # Create semester
+        semester = Semester(
+            program=program,
+            number=number,
+            name=name,
+            description=description,
+            start_time=start_time or None,
+            end_time=end_time or None,
+            is_active=is_active
+        )
+        semester.save()  # Validation in model will check sequential numbers
+        print(f'Semester created: {semester} by user: {request.user}')
+        return JsonResponse({
+            'success': True,
+            'message': f'Semester {semester.name} added successfully!',
+            'semester_id': semester.id
+        })
+    except Program.DoesNotExist:
+        print(f'Program not found: program_id={program_id}')
+        return JsonResponse({'success': False, 'message': 'Selected program no longer exists.'})
+    except ValueError as e:
+        print(f'Invalid data: {str(e)}')
+        return JsonResponse({'success': False, 'message': f'Invalid data: {str(e)}'})
+    except ValidationError as e:
+        print(f'Validation error: {str(e)}')
+        return JsonResponse({'success': False, 'message': f'Validation error: {str(e)}'})
+    except Exception as e:
+        print(f'Error adding semester: {str(e)}')
+        return JsonResponse({'success': False, 'message': f'Error adding semester: {str(e)}'})
+
+@login_required
+def edit_semester(request):
+    """
+    AJAX view to edit an existing semester.
+    """
+    if request.method != "POST" or not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
+        print(f'Unauthorized or invalid request to edit semester by user: {request.user}')
+        return JsonResponse({'success': False, 'message': 'Invalid request or insufficient permissions.'})
+    
+    semester_id = request.POST.get('semester_id')
+    program_id = request.POST.get('program_id')
+    number = request.POST.get('number')
+    name = request.POST.get('name')
+    description = request.POST.get('description', '')
+    start_time = request.POST.get('start_time')
+    end_time = request.POST.get('end_time')
+    is_active = request.POST.get('is_active', 'false') == 'true'
+    
+    print(f'Edit semester attempt: semester_id={semester_id}, program_id={program_id}, number={number}, name={name}, user={request.user}')
+    
+    # Validate required fields
+    required_fields = {'semester_id': 'Semester', 'program_id': 'Program', 'number': 'Semester Number', 'name': 'Name'}
+    missing_fields = [field_label for field_name, field_label in required_fields.items() if not request.POST.get(field_name)]
+    if missing_fields:
+        print(f'Missing fields: {", ".join(missing_fields)}')
+        return JsonResponse({'success': False, 'message': f'Missing required fields: {", ".join(missing_fields)}'})
+    
+    try:
+        semester = get_object_or_404(Semester, id=semester_id)
+        program = Program.objects.get(id=program_id)
+        number = int(number)
+        if number < 1:
+            raise ValueError("Semester number must be a positive integer.")
+        
+        # Update fields
+        semester.program = program
+        semester.number = number
+        semester.name = name
+        semester.description = description
+        semester.start_time = start_time or None
+        semester.end_time = end_time or None
+        semester.is_active = is_active
+        semester.save()  # Validation in model will check sequential numbers
+        print(f'Semester updated: {semester} by user: {request.user}')
+        return JsonResponse({
+            'success': True,
+            'message': f'Semester {semester.name} updated successfully!',
+            'semester_id': semester.id
+        })
+    except Program.DoesNotExist:
+        print(f'Program not found: program_id={program_id}')
+        return JsonResponse({'success': False, 'message': 'Selected program no longer exists.'})
+    except ValueError as e:
+        print(f'Invalid data: {str(e)}')
+        return JsonResponse({'success': False, 'message': f'Invalid data: {str(e)}'})
+    except ValidationError as e:
+        print(f'Validation error: {str(e)}')
+        return JsonResponse({'success': False, 'message': f'Validation error: {str(e)}'})
+    except Exception as e:
+        print(f'Error editing semester: {str(e)}')
+        return JsonResponse({'success': False, 'message': f'Error editing semester: {str(e)}'})
+
+@login_required
+def delete_semester(request):
+    """
+    AJAX view to delete a semester.
+    """
+    if request.method != "POST" or not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
+        print(f'Unauthorized or invalid request to delete semester by user: {request.user}')
+        return JsonResponse({'success': False, 'message': 'Invalid request or insufficient permissions.'})
+    
+    semester_id = request.POST.get('semester_id')
+    print(f'Delete semester attempt: semester_id={semester_id}, user={request.user}')
+    
+    if not semester_id:
+        print('Missing semester_id for deletion')
+        return JsonResponse({'success': False, 'message': 'Missing semester ID.'})
+    
+    try:
+        semester = get_object_or_404(Semester, id=semester_id)
+        semester_name = semester.name
+        semester.delete()
+        print(f'Semester deleted: {semester_name} by user: {request.user}')    
+        return JsonResponse({
+            'success': True,
+            'message': f'Semester {semester_name} deleted successfully!'
+        })
+    except Exception as e:
+        print(f'Error deleting semester: {str(e)}')
+        return JsonResponse({'success': False, 'message': f'Error deleting semester: {str(e)}'})

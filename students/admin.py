@@ -110,13 +110,12 @@ class CourseOfferingAutocompleteView(AutocompleteJsonView):
             qs = qs.filter(Q(course__code__icontains=self.q) | Q(course__name__icontains=self.q) | Q(semester__name__icontains=self.q))
         return qs.distinct()[:20]
 
-# ===== Admin Classes =====
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
     form = StudentAdminForm
     list_display = ('applicant', 'program', 'current_semester', 'university_roll_no', 'current_status', 'enrollment_date')
-    list_filter = ('current_status', 'program', 'current_semester')
-    search_fields = ('applicant__full_name', 'university_roll_no', 'college_roll_no', 'user__email')
+    list_filter = ('current_status', 'program', 'current_semester')  
+    search_fields = ('applicant__full_name', 'university_roll_no', 'college_roll_no', 'user__email', 'program__name', 'program__degree_type', 'program__department__name')
     autocomplete_fields = ('applicant', 'user', 'program', 'current_semester')
     readonly_fields = ('enrollment_date', 'graduation_date')
     

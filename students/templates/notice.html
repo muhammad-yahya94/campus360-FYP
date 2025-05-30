@@ -1,0 +1,53 @@
+{% extends 'base_student.html' %}
+
+{% block title %}Notices{% endblock %}
+
+{% block content %}
+<style>
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+    .table th {
+        background-color: #e9ecef;
+        color: #343a40;
+    }
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+</style>
+
+<div class="container-fluid">
+    <h2>Notices</h2>
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Course</th>
+                            <th>Title</th>
+                            <th>Content</th>
+                            <th>Posted At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for notice in notices %}
+                        <tr>
+                            <td>{{ notice.course_offering.course.name }}</td>
+                            <td>{{ notice.title }}</td>
+                            <td>{{ notice.content|truncatewords:20 }}</td>
+                            <td>{{ notice.created_at|date:"Y-m-d" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center">No notices available.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -3,7 +3,7 @@ from users.models import CustomUser
 from academics.models import Program, Department, Faculty, Semester
 from admissions.models import Applicant, AcademicSession
 from faculty_staff.models import Teacher
-from students.models import Student
+# from students.models import Student
 import os
 from django.utils import timezone
 
@@ -115,7 +115,7 @@ class Assignment(models.Model):
 # ===== Assignment Submission =====
 class AssignmentSubmission(models.Model):
     assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name='submissions', help_text="The assignment this submission is for.")
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='submissions', help_text="The student who submitted this assignment.")
+    student = models.ForeignKey('students.Student', on_delete=models.CASCADE, related_name='submissions', help_text="The student who submitted this assignment.")
     file = models.FileField(upload_to='submissions/', help_text="The file submitted by the student.")
     submitted_at = models.DateTimeField(auto_now_add=True, help_text="The date and time when the submission was made.")
     marks_obtained = models.PositiveIntegerField(null=True, blank=True, help_text="Marks obtained by the student for this submission.")
@@ -157,7 +157,7 @@ class ExamResult(models.Model):
     ]
 
     course_offering = models.ForeignKey(CourseOffering, on_delete=models.CASCADE, related_name='exam_results', help_text="The course offering this exam result is for.")
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='exam_results', help_text="The student this result pertains to.")
+    student = models.ForeignKey('students.Student', on_delete=models.CASCADE, related_name='exam_results', help_text="The student this result pertains to.")
     exam_type = models.CharField(max_length=20, choices=EXAM_TYPES, help_text="The type of exam (e.g., Midterm, Final).")
     total_marks = models.PositiveIntegerField(default=100, help_text="Total marks for this exam.")
     marks_obtained = models.PositiveIntegerField(help_text="Marks obtained by the student in this exam.")

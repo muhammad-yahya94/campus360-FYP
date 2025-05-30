@@ -1,0 +1,57 @@
+{% extends 'base_student.html' %}
+
+{% block title %}Exam Results{% endblock %}
+
+{% block content %}
+<style>
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+    .table th {
+        background-color: #e9ecef;
+        color: #343a40;
+    }
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+</style>
+
+<div class="container-fluid">
+    <h2>Exam Results</h2>
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Course</th>
+                            <th>Session</th>
+                            <th>Exam Type</th>
+                            <th>Marks Obtained</th>
+                            <th>Total Marks</th>
+                            <th>Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for result in results %}
+                        <tr>
+                            <td>{{ result.course_offering.course.name }}</td>
+                            <td>{{ result.course_offering.academic_session.name }}</td>
+                            <td>{{ result.exam_type|title }}</td>
+                            <td>{{ result.marks_obtained }}</td>
+                            <td>{{ result.total_marks }}</td>
+                            <td>{{ result.remarks|default:"N/A" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center">No exam results available.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

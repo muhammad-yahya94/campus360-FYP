@@ -46,4 +46,23 @@ urlpatterns = [
     path('load-students-for-course/', views.load_students_for_course, name='load_students_for_course'),
     path('delete-exam-result/', views.delete_exam_result, name='delete_exam_result'),
     path('search-students/', views.search_students, name='search_students'),
+    
+    
+    path('teacher-course-list/', views.teacher_course_list, name='teacher_course_list'),
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    path('semester-management/', views.semester_management, name='semester_management'),
+    path('semester/add/', views.add_semester, name='add_semester'),
+    path('semester/edit/', views.edit_semester, name='edit_semester'),
+    path('semester/delete/', views.delete_semester, name='delete_semester'),
 ]

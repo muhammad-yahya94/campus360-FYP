@@ -1,0 +1,63 @@
+{% extends 'base_student.html' %}
+
+{% block title %}Assignments{% endblock %}
+
+{% block content %}
+<style>
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+    .table th {
+        background-color: #e9ecef;
+        color: #343a40;
+    }
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+</style>
+
+<div class="container-fluid">
+    <h2>Assignments - {{ current_session.name|default:"Current Session" }}</h2>
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Course</th>
+                            <th>Title</th>
+                            <th>Due Date</th>
+                            <th>Marks</th>
+                            <th>Status</th>
+                            <th>Feedback</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for submission in submissions %}
+                        <tr>
+                            <td>{{ submission.assignment.course_offering.course.name }}</td>
+                            <td>{{ submission.assignment.title }}</td>
+                            <td>{{ submission.assignment.due_date|date:"Y-m-d" }}</td>
+                            <td>{{ submission.marks_obtained|default:"N/A" }} / {{ submission.assignment.total_marks }}</td>
+                            <td>
+                                {% if submission.submitted_at %}
+                                    <span class="badge bg-success">Submitted</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Pending</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ submission.feedback|default:"N/A" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center">No assignments found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

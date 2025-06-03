@@ -88,7 +88,7 @@ def login_view(request):
         user = authenticate(request, email=email, password=password)
         if user is not None:
             # Check if user is active (email verified) before logging in
-            if user.is_active:
+            if user.is_active:   
                 login(request, user)
                 if not remember_me:
                     request.session.set_expiry(0)
@@ -128,10 +128,16 @@ def department_detail(request, slug):
     programs = department.programs.all()
     context = {
         'department': department,
-        'teachers': teachers,
+        'teachers': teachers,  
         'programs': programs,
     }
     return render(request, 'department_detail.html', context)
+
+
+def teacher_detail(request, teacher_id):
+    teacher = get_object_or_404(Teacher, id=teacher_id)
+    return render(request, 'teacher_detail.html', {'teacher': teacher})
+
 
 
 def about(request):
@@ -294,6 +300,7 @@ def submit_application(request):
             monthly_income=request.POST.get('monthly_income'),
             relationship=request.POST.get('relationship'),
             permanent_address=request.POST.get('permanent_address'),
+            shift=request.POST.get('shift'),
             declaration=request.POST.get('declaration') == 'on'
         )
 

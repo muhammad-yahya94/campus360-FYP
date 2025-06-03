@@ -13,7 +13,7 @@ urlpatterns = [
     path('news/<slug:slug>/', views.read_more_news, name='news_detail'),
     
     path('departments/<slug:slug>/', views.department_detail, name='department_detail'),
-    
+    path('teacher/<int:teacher_id>/', views.teacher_detail, name='teacher_detail'),
     # Team and testimonial pages
     path('team/', views.team, name='team'),
     path('testimonial/', views.testimonial, name='testimonial'),

@@ -1,0 +1,77 @@
+{% extends "core_base.html" %}
+{% load static %}
+{% block core_content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-lg rounded-4 border-0" style="background: linear-gradient(135deg, #f7f9fc 0%, #e0e7ff 100%);">
+                <div class="card-body text-center p-5">
+                    {% if teacher.user.profile_picture %}
+                        <img class="rounded-circle mb-4 border border-4 border-primary" src="{{ teacher.user.profile_picture.url }}" width="180" height="180" alt="{{ teacher.user.full_name }}" style="box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                    {% else %}
+                        <img class="rounded-circle mb-4 border border-4 border-primary" src="{% static 'img/default-photo.png' %}" width="180" height="180" alt="{{ teacher.user.full_name }}" style="box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                    {% endif %}
+
+                    <h2 class="card-title text-primary fw-bold">{{ teacher.user.full_name|default:teacher.user.first_name }}</h2>
+                    <h6 class="text-muted mb-4">{{ teacher.get_designation_display }}</h6>
+
+                    <div class="text-start px-4">
+                        <ul class="list-group list-group-flush">
+                            {% if teacher.qualification %}
+                                <li class="list-group-item bg-light rounded-3 mb-2 shadow-sm">
+                                    <strong class="text-primary">Qualification:</strong> {{ teacher.qualification }}
+                                </li>
+                            {% endif %}
+                            {% if teacher.contact_no %}
+                                <li class="list-group-item bg-light rounded-3 mb-2 shadow-sm">
+                                    <strong class="text-primary">Contact:</strong> {{ teacher.contact_no }}
+                                </li>
+                            {% endif %}
+                            {% if teacher.hire_date %}
+                                <li class="list-group-item bg-light rounded-3 mb-2 shadow-sm">
+                                    <strong class="text-primary">Hire Date:</strong> {{ teacher.hire_date|date:"F j, Y" }}
+                                </li>
+                            {% endif %}
+                            {% if teacher.experience %}
+                                <li class="list-group-item bg-light rounded-3 mb-2 shadow-sm">
+                                    <strong class="text-primary">Experience:</strong> {{ teacher.experience }}
+                                </li>
+                            {% endif %}
+                            {% if teacher.description %}
+                                <li class="list-group-item bg-light rounded-3 mb-2 shadow-sm">
+                                    <strong class="text-primary">About:</strong> {{ teacher.description }}
+                                </li>
+                            {% endif %}
+                        </ul>
+
+                        {% if teacher.linkedin_url or teacher.twitter_url or teacher.personal_website %}
+                            <div class="mt-5">
+                                <h6 class="text-primary fw-bold mb-3">Social Profiles:</h6>
+                                <div class="d-flex justify-content-center gap-3 mt-2">
+                                    {% if teacher.linkedin_url %}
+                                        <a href="{{ teacher.linkedin_url }}" target="_blank" class="btn btn-outline-primary btn-sm rounded-pill" title="LinkedIn">
+                                            <i class="fab fa-linkedin"></i> LinkedIn
+                                        </a>
+                                    {% endif %}
+                                    {% if teacher.twitter_url %}
+                                        <a href="{{ teacher.twitter_url }}" target="_blank" class="btn btn-outline-info btn-sm rounded-pill" title="Twitter">
+                                            <i class="fab fa-twitter"></i> Twitter
+                                        </a>
+                                    {% endif %}
+                                    {% if teacher.personal_website %}
+                                        <a href="{{ teacher.personal_website }}" target="_blank" class="btn btn-outline-dark btn-sm rounded-pill" title="Website">
+                                            <i class="fas fa-globe"></i> Website
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <a href="javascript:history.back();" class="btn btn-primary mt-4 rounded-pill px-4">Back</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

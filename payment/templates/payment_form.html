@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pay Admission Fee</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <!-- Basic Bootstrap CSS for styling -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>Pay Admission Challan Fee</h2>
+        <form id="paymentForm" action="{% url 'create_checkout_session' %}" method="post">
+            {% csrf_token %}
+            <div class="card">
+                <div class="card-body">
+                    <div class="form-check">
+                        <input
+                            type="radio"
+                            id="admission_fee"
+                            name="price_id"
+                            value="price_1RVc5ADCFgsH63aP42aRlRPY"
+                            class="form-check-input"
+                            required
+                        />
+                        <label for="admission_fee" class="form-check-label">
+                            <h5>Admission Challan Fee</h5>
+                            <p>500 PKr</p>
+                        </label>
+                    </div>
+                    <button type="submit" id="submitBtn" class="btn btn-primary mt-3">
+                        Pay Now
+                    </button>
+                    <noscript>
+                        <p style="color: red;">JavaScript is required to process payments. Please enable JavaScript in your browser.</p>
+                    </noscript>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // Get Stripe publishable key
+        fetch("{% url 'stripe-config' %}")
+            .then((result) => {
+                if (!result.ok) throw new Error("Failed to fetch Stripe config");
+                return result.json();
+            })
+            .then((data) => {
+                const stripe = Stripe(data.publicKey);
+
+                // Handle form submission
+                document.querySelector("#paymentForm").addEventListener("submit", function (event) {
+                    event.preventDefault();
+                    console.log("Form submission triggered"); // Debug log
+
+                    const form = event.target;
+                    const formData = new FormData(form);
+                    const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]")?.value;
+
+                    if (!csrfToken) {
+                        console.error("CSRF token not found");
+                        alert("CSRF token missing. Please refresh the page and try again.");
+                        return;
+                    }
+
+                    fetch("{% url 'create_checkout_session' %}", {
+                        method: "POST",
+                        body: formData,
+                        headers: {
+                            "X-CSRFToken": csrfToken,
+                        },
+                    })
+                        .then((result) => {
+                            if (!result.ok) {
+                                throw new Error(`HTTP error! Status: ${result.status}`);
+                            }
+                            return result.json();
+                        })
+                        .then((data) => {
+                            if (data.sessionId) {
+                                stripe.redirectToCheckout({ sessionId: data.sessionId })
+                                    .then((result) => {
+                                        if (result.error) {
+                                            console.error("Redirect to checkout failed:", result.error.message);
+                                            alert("Failed to redirect to checkout: " + result.error.message);
+                                        }
+                                    });
+                            } else {
+                                console.error("Error from server:", data.error);
+                                alert("Error: " + data.error);
+                            }
+                        })
+                        .catch((error) => {
+                            console.error("Fetch error:", error);
+                            alert("An error occurred while processing the payment. Please try again.");
+                        });
+                });
+            })
+            .catch((error) => {
+                console.error("Error fetching Stripe config:", error);
+                alert("Failed to load Stripe configuration. Please refresh the page.");
+            });
+    </script>
+</body>
+</html>

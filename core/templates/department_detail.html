@@ -128,6 +128,7 @@
                                 {% if teacher.contact_no %}
                                     <p class="text-muted">Contact: {{ teacher.contact_no }}</p>
                                 {% endif %}
+                                <a href="{% url 'teacher_detail' teacher.id %}" class="btn btn-primary btn-sm mt-2">More Details</a>
                             </div>
                         </div>
                     </div>

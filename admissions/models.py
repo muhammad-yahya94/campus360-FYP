@@ -58,6 +58,7 @@ class AdmissionCycle(models.Model):
 
 
 
+# In your models.py file
 class Applicant(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='applications', help_text="Select the user account associated with this applicant.")
     faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE, help_text="Select the faculty the applicant is applying to.")
@@ -89,6 +90,12 @@ class Applicant(models.Model):
         ('guardian', 'Guardian')
     ], help_text="Select the relationship of the listed person to the applicant.")
     permanent_address = models.TextField(help_text="Enter the applicant's permanent home address.")
+
+    # New Shift Field
+    shift = models.CharField(max_length=10, choices=[
+        ('morning', 'Morning'),
+        ('evening', 'Evening'),
+    ], help_text="Select the preferred shift for the program.")
 
     # Declaration
     declaration = models.BooleanField(default=False, help_text="Check this box to confirm that the applicant agrees to the terms and conditions.")

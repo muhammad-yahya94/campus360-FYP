@@ -89,6 +89,10 @@
     .photo-preview-container.has-image::before {
         content: "";
     }
+    .form-select{
+        outline:none;
+    }
+    
 </style>
 
 <!-- Navbar Start -->
@@ -275,8 +279,16 @@
                                                    name="contact_no" required>
                                         </div>
                                     </div>
-                                    <div class="row">
-                                        <div class="col-md-12">
+                                    <div class="row mb-4 g-3">
+                                        <div class="col-md-4">
+                                            <label for="shift" class="form-label text-dark">Preferred Shift</label>
+                                            <select class="form-select form-select-lg" id="shift" name="shift" required>
+                                                <option value="">Select Shift</option>
+                                                <option value="morning">Morning</option>
+                                                <option value="evening">Evening</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-8">
                                             <label for="identificationMark" class="form-label text-dark">Identification Mark</label>
                                             <textarea class="form-control form-control-lg" id="identificationMark"
                                                       name="identification_mark" rows="2"></textarea>
@@ -829,6 +841,7 @@ $("#admissionForm").validate({
             required: true
         },
         declaration: "required",
+        shift: "required",
         "academic_degree[]": {
             required: true
         },
@@ -867,6 +880,9 @@ $("#admissionForm").validate({
         },
         contact_no: {
             pattern: "Contact number must be 11-15 digits"
+        },
+        shift: {
+            required: "Please select a preferred shift"
         }
     },
     submitHandler: function (form, event) {

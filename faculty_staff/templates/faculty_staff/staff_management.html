@@ -3,88 +3,72 @@
 {% block title %}Staff Management{% endblock %}
 
 {% block content %}
-<style>
-    .modal-content {
-        border-radius: 10px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    }
-    .modal-header {
-        background-color: #f8f9fa;
-        border-bottom: 1px solid #dee2e6;
-        border-top-left-radius: 10px;
-        border-top-right-radius: 10px;
-    }
-    .form-label {
-        font-weight: 500;
-        color: #343a40;
-    }
-    .form-control, .form-select {
-        border-radius: 5px;
-        border: 1px solid #ced4da;
-        transition: border-color 0.3s;
-    }
-    .form-control:focus, .form-select:focus {
-        border-color: #007bff;
-        box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
-    }
-    .btn-primary {
-        background-color: #007bff;
-        border-color: #007bff;
-        transition: background-color 0.3s;
-    }
-    .btn-primary:hover {
-        background-color: #0056b3;
-        border-color: #0056b3;
-    }
-    .table th {
-        background-color: #e9ecef;
-        color: #343a40;
-    }
-    .table-hover tbody tr:hover {
-        background-color: #f8f9fa;
-    }
-    .text-danger {
-        font-size: 0.875rem;
-    }
-</style>
-
-<div class="container-fluid">
-    <!-- Messages (Single Display Point) -->
-
-
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Staff Management</h2>
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStaffModal">
-            <i class="fas fa-user-plus me-2"></i>Add New Staff
-        </button>
+<div class="max-w-7xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-xl">
+        <div class="hero-content text-center py-8">
+            <div>
+                <h1 class="text-4xl font-bold mb-2">Staff Management</h1>
+                <p class="text-lg opacity-90">Manage your department's staff members</p>
+            </div>
+        </div>
     </div>
 
     <!-- Search and Filter -->
-    <div class="card mb-4" style="border-radius: 10px;">
-        <div class="card-body">
-            <form method="get" class="row g-3">
-                <div class="col-md-4">
-                    <input type="text" class="form-control" name="search" placeholder="Search by name or email" value="{{ request.GET.search }}">
-                </div>
-                <div class="col-md-4">
-                    <select class="form-select" name="status">
-                        <option value="">All Status</option>
-                        <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
-                        <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <button type="submit" class="btn btn-primary w-100">Filter</button>
-                </div>
-            </form>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title text-2xl mb-4">
+                    <i class="fas fa-search"></i>
+                    Search & Filter
+                </h2>
+                <form method="get" class="space-y-4">
+                    <div class="form-control">
+                        <div class="input-group">
+                            <input type="text" name="search" placeholder="Search by name or email..." class="input input-bordered" value="{{ request.GET.search }}">
+                            <button class="btn btn-square">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-control">
+                        <select name="status" class="select select-bordered">
+                            <option value="">All Status</option>
+                            <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
+                            <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-full">
+                        <i class="fas fa-filter"></i>
+                        Filter
+                    </button>
+                </form>
+            </div>
+        </div>
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title text-2xl mb-4">
+                    <i class="fas fa-user-plus"></i>
+                    Quick Actions
+                </h2>
+                <button type="button" class="btn btn-primary w-full justify-start" data-bs-toggle="modal" data-bs-target="#addStaffModal">
+                    <i class="fas fa-user-plus"></i>
+                    Add New Staff
+                    <div class="badge badge-neutral ml-auto">New</div>
+                </button>
+            </div>
         </div>
     </div>
 
     <!-- Staff Table -->
-    <div class="card" style="border-radius: 10px;">
+    <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
+            <h2 class="card-title text-2xl mb-4">
+                <i class="fas fa-users"></i>
+                Staff Members
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="table table-zebra">
                     <thead>
                         <tr>
                             <th>ID</th>
@@ -105,12 +89,12 @@
                             <td>{{ staff.get_designation_display }}</td>
                             <td>{{ staff.user.email }}</td>
                             <td>
-                                <span class="badge {% if staff.is_active %}bg-success{% else %}bg-danger{% endif %}">
+                                <span class="badge {% if staff.is_active %}badge-success{% else %}badge-error{% endif %}">
                                     {{ staff.is_active|yesno:"Active,Inactive" }}
                                 </span>
                             </td>
                             <td>
-                                <div class="btn-group">
+                                <div class="flex gap-2">
                                     <button type="button" class="btn btn-sm btn-outline-primary" 
                                             data-bs-toggle="modal" 
                                             data-bs-target="#editStaffModal{{ staff.id }}">
@@ -131,7 +115,13 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="7" class="text-center">No staff members found</td>
+                            <td colspan="7" class="text-center p-8">
+                                <div class="text-center">
+                                    <i class="fas fa-users text-6xl text-base-content/20 mb-4"></i>
+                                    <h3 class="text-xl font-semibold text-base-content/70 mb-2">No Staff Members Found</h3>
+                                    <p class="text-base-content/50">Use the search filters above to find staff members.</p>
+                                </div>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -140,27 +130,19 @@
 
             <!-- Pagination -->
             {% if staff_members.has_other_pages %}
-            <nav aria-label="Page navigation" class="mt-4">
-                <ul class="pagination justify-content-center">
-                    {% if staff_members.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ staff_members.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">Previous</a>
-                    </li>
-                    {% endif %}
+            <div class="join mt-4">
+                {% if staff_members.has_previous %}
+                <a href="?page={{ staff_members.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="btn join-item">Previous</a>
+                {% endif %}
 
-                    {% for num in staff_members.paginator.page_range %}
-                    <li class="page-item {% if staff_members.number == num %}active{% endif %}">
-                        <a class="page-link" href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">{{ num }}</a>
-                    </li>
-                    {% endfor %}
+                {% for num in staff_members.paginator.page_range %}
+                <a href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="btn join-item {% if staff_members.number == num %}btn-active{% endif %}">{{ num }}</a>
+                {% endfor %}
 
-                    {% if staff_members.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ staff_members.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">Next</a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </nav>
+                {% if staff_members.has_next %}
+                <a href="?page={{ staff_members.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="btn join-item">Next</a>
+                {% endif %}
+            </div>
             {% endif %}
         </div>
     </div>

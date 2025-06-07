@@ -3,106 +3,136 @@
 {% block title %}Study Materials{% endblock %}
 
 {% block content %}
-<style>
-    .card {
-        border-radius: 10px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    }
-    .table th {
-        background-color: #e9ecef;
-        color: #343a40;
-    }
-    .table-hover tbody tr:hover {
-        background-color: #f8f9fa;
-    }
-    .select2-container {
-        width: 100% !important;
-    }
-    .error {
-        color: red;
-    }
-</style>
-
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Study Materials</h2>
-    </div>
-
-    <!-- Upload Form -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <h5 class="card-title">Upload New Study Material</h5>
-            <form id="upload-study-material-form" method="post" enctype="multipart/form-data" action="{% url 'faculty_staff:upload_study_material' %}">
-                {% csrf_token %}
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label for="course_offering_id" class="form-label">Course Offering</label>
-                        <select name="course_offering_id" id="course_offering_id" class="form-select select2" required>
-                            <option value="">Search for a course offering...</option>
-                        </select>
-                        <span id="course-offering-error" class="error"></span>
-                    </div>
-                    <div class="col-md-4">
-                        <label for="title" class="form-label">Title</label>
-                        <input type="text" name="title" id="title" class="form-control" required>
-                        <span id="title-error" class="error"></span>
-                    </div>
-                    <div class="col-md-4">
-                        <label for="file" class="form-label">File</label>
-                        <input type="file" name="file" id="file" class="form-control" accept=".pdf,.ppt,.pptx,.doc,.docx" required>
-                        <span id="file-error" class="error"></span>
-                    </div>
-                    <div class="col-md-12">
-                        <label for="description" class="form-label">Description</label>
-                        <textarea name="description" id="description" class="form-control" rows="3"></textarea>
-                    </div>
-                    <div class="col-md-2 align-self-end">
-                        <button type="submit" class="btn btn-primary w-100">Upload</button>
-                    </div>
+<div class="drawer-content flex flex-col min-h-screen">
+    <div class="container mx-auto px-4 py-6">
+        <!-- Header -->
+        <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-xl mb-6">
+            <div class="hero-content text-center py-8">
+                <div>
+                    <h1 class="text-4xl font-bold mb-2">Study Materials</h1>
+                    <p class="text-lg opacity-90">Manage and share study materials for your courses</p>
                 </div>
-            </form>
+            </div>
         </div>
-    </div>
 
-    <!-- Existing Study Materials Table -->
-    <div class="card">
-        <div class="card-body">
-            <h5 class="card-title">Existing Study Materials</h5>
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Title</th>
-                            <th>Course Offering</th>
-                            <th>Uploaded By</th>
-                            <th>Uploaded At</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for material in study_materials %}
-                        <tr>
-                            <td>{{ material.title }}</td>
-                            <td>{{ material.course_offering }}</td>
-                            <td>{{ material.uploaded_by.user.get_full_name }}</td>
-                            <td>{{ material.uploaded_at|date:'Y-m-d H:i' }}</td>
-                            <td>
-                                {% comment %} <a href="{{ material.file.url }}" class="btn btn-info btn-sm" target="_blank">View</a> {% endcomment %}
-                                <button class="btn btn-danger btn-sm delete-material" data-material-id="{{ material.id }}">Delete</button>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="5" class="text-center">No study materials found.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <!-- Upload Form -->
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title text-2xl mb-4">
+                    <i class="fas fa-upload"></i>
+                    Upload New Study Material
+                </h2>
+                <form id="upload-study-material-form" method="post" enctype="multipart/form-data" action="{% url 'faculty_staff:upload_study_material' %}" class="space-y-4">
+                    {% csrf_token %}
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text">Course Offering</span>
+                            </label>
+                            <select name="course_offering_id" id="course_offering_id" class="select select-bordered select2" required>
+                                <option value="">Search for a course offering...</option>
+                            </select>
+                            <span id="course-offering-error" class="text-error"></span>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text">Title</span>
+                            </label>
+                            <input type="text" name="title" id="title" class="input input-bordered" required>
+                            <span id="title-error" class="text-error"></span>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text">File</span>
+                            </label>
+                            <input type="file" name="file" id="file" class="file-input file-input-bordered file-input-primary w-full max-w-xs" accept=".pdf,.ppt,.pptx,.doc,.docx" required>
+                            <span id="file-error" class="text-error"></span>
+                        </div>
+                        <div class="form-control col-span-3">
+                            <label class="label">
+                                <span class="label-text">Description</span>
+                            </label>
+                            <textarea name="description" id="description" class="textarea textarea-bordered" rows="3"></textarea>
+                        </div>
+                        <div class="form-control col-span-3">
+                            <button type="submit" class="btn btn-primary w-full">
+                                <i class="fas fa-upload"></i>
+                                Upload
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Existing Study Materials Table -->
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title text-2xl mb-4">
+                    <i class="fas fa-table"></i>
+                    Existing Study Materials
+                </h2>
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Course Offering</th>
+                                <th>Uploaded By</th>
+                                <th>Uploaded At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for material in study_materials %}
+                            <tr>
+                                <td>
+                                    <div class="flex items-center space-x-3">
+                                        <div class="avatar">
+                                            <div class="mask mask-squircle w-12 h-12">
+                                                <img src="https://via.placeholder.com/48" alt="Material Icon" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div class="font-bold">{{ material.title }}</div>
+                                            <div class="text-sm opacity-50">{{ material.file.name }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>{{ material.course_offering }}</td>
+                                <td>{{ material.uploaded_by.user.get_full_name }}</td>
+                                <td>{{ material.uploaded_at|date:'Y-m-d H:i' }}</td>
+                                <td>
+                                    <div class="flex gap-2">
+                                        <a href="{{ material.file.url }}" class="btn btn-sm btn-info" target="_blank">
+                                            <i class="fas fa-eye"></i>
+                                            View
+                                        </a>
+                                        <button class="btn btn-sm btn-error delete-material" data-material-id="{{ material.id }}">
+                                            <i class="fas fa-trash"></i>
+                                            Delete
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center p-8">
+                                    <div class="text-center">
+                                        <i class="fas fa-file text-6xl text-base-content/20 mb-4"></i>
+                                        <h3 class="text-xl font-semibold text-base-content/70 mb-2">No Study Materials Found</h3>
+                                        <p class="text-base-content/50">Use the form above to upload new study materials for your courses.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 </div>
-
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
@@ -135,48 +165,84 @@ $(document).ready(function() {
         e.preventDefault();
         let formData = new FormData(this);
         let error = false;
+        let isSubmitting = false;
 
+        if (isSubmitting) return;
+        isSubmitting = true;
+
+        const submitBtn = $(this).find('button[type="submit"]');
+        submitBtn.prop('disabled', true);
+        submitBtn.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Uploading...');
+
+        // Clear previous errors
+        $('.text-error').text('');
+
+        // Validate required fields
         if (!$('#course_offering_id').val()) {
             $('#course-offering-error').text('Please select a course offering.');
             error = true;
-        } else {
-            $('#course-offering-error').text('');
         }
         if (!$('#title').val()) {
             $('#title-error').text('Please enter a title.');
             error = true;
-        } else {
-            $('#title-error').text('');
         }
         if (!$('#file')[0].files.length) {
             $('#file-error').text('Please upload a file.');
             error = true;
-        } else {
-            $('#file-error').text('');
         }
 
-        if (!error) {
-            $.ajax({
-                url: $(this).attr('action'),
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(response) {
-                    if (response.success) {
-                        alert(response.message);
-                        $('#upload-study-material-form')[0].reset();
-                        $('#course_offering_id').val(null).trigger('change');
-                        location.reload();
-                    } else {
-                        alert('Error: ' + response.message);
-                    }
-                },
-                error: function(xhr, status, error) {
-                    alert('An error occurred: ' + error);
-                }
-            });
+        if (error) {
+            submitBtn.prop('disabled', false);
+            submitBtn.html('<i class="fas fa-upload"></i> Upload');
+            isSubmitting = false;
+            return;
         }
+
+        $.ajax({
+            url: $(this).attr('action'),
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                if (response.success) {
+                    const successAlert = `
+                        <div class="alert alert-success alert-dismissible fade show">
+                            ${response.message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    `;
+                    $('.card-body').prepend(successAlert);
+                    $('#upload-study-material-form')[0].reset();
+                    $('#course_offering_id').val(null).trigger('change');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    const errorAlert = `
+                        <div class="alert alert-danger alert-dismissible fade show">
+                            Error: ${response.message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    `;
+                    $('.card-body').prepend(errorAlert);
+                }
+            },
+            error: function(xhr, status, error) {
+                const errorAlert = `
+                    <div class="alert alert-danger alert-dismissible fade show">
+                        An error occurred: ${error}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                `;
+                $('.card-body').prepend(errorAlert);
+            },
+            complete: function() {
+                submitBtn.prop('disabled', false);
+                submitBtn.html('<i class="fas fa-upload"></i> Upload');
+                isSubmitting = false;
+            }
+        });
     });
 
     // Handle delete action with AJAX
@@ -192,14 +258,34 @@ $(document).ready(function() {
                 },
                 success: function(response) {
                     if (response.success) {
-                        alert(response.message);
-                        location.reload();
+                        const successAlert = `
+                            <div class="alert alert-success alert-dismissible fade show">
+                                ${response.message}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        `;
+                        $('.card-body').prepend(successAlert);
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1500);
                     } else {
-                        alert('Error: ' + response.message);
+                        const errorAlert = `
+                            <div class="alert alert-danger alert-dismissible fade show">
+                                Error: ${response.message}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        `;
+                        $('.card-body').prepend(errorAlert);
                     }
                 },
                 error: function(xhr, status, error) {
-                    alert('An error occurred: ' + error);
+                    const errorAlert = `
+                        <div class="alert alert-danger alert-dismissible fade show">
+                            An error occurred: ${error}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    `;
+                    $('.card-body').prepend(errorAlert);
                 }
             });
         }

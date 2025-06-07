@@ -3,139 +3,145 @@
 {% block title %}Semester Management{% endblock %}
 
 {% block content %}
-<style>
-    .card {
-        border-radius: 10px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    }
-    .table th {
-        background-color: #e9ecef;
-        color: #343a40;
-    }
-    .table-hover tbody tr:hover {
-        background-color: #f8f9fa;
-    }
-    .filter-form, .semester-form {
-        margin-bottom: 20px;
-    }
-    .select2-container {
-        width: 100% !important;
-    }
-    .error {
-        color: red;
-        font-size: 0.875rem;
-    }
-    .modal-content {
-        border-radius: 10px;
-    }
-    .modal-header {
-        background-color: #e9ecef;
-    }
-</style>
-
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Semester Management for {{ request.user.teacher_profile.department.name }}</h2>
-    </div>
+<div class="drawer-content flex flex-col min-h-screen">
+    <div class="container mx-auto px-4 py-6">
+        <!-- Header -->
+        <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-xl mb-6">
+            <div class="hero-content text-center py-8">
+                <div>
+                    <h1 class="text-4xl font-bold mb-2">Semester Management</h1>
+                    <p class="text-lg opacity-90">Manage semesters for {{ request.user.teacher_profile.department.name }}</p>
+                </div>
+            </div>
+        </div>
 
     <!-- Error Message -->
     {% if error %}
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <div class="alert alert-error">
         {{ error }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
     {% endif %}
 
     <!-- Add Semester Form -->
-    <div class="card semester-form">
+    <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
-            <h5 class="card-title">Add New Semester</h5>
-            <form id="add-semester-form" method="post" action="{% url 'faculty_staff:add_semester' %}">
+            <h2 class="card-title text-2xl mb-4">
+                <i class="fas fa-plus"></i>
+                Add New Semester
+            </h2>
+            <form id="add-semester-form" method="post" action="{% url 'faculty_staff:add_semester' %}" class="space-y-4">
                 {% csrf_token %}
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label for="add_program_id" class="form-label">Program</label>
-                        <select name="program_id" id="add_program_id" class="form-select select2" required>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Program</span>
+                        </label>
+                        <select name="program_id" id="add_program_id" class="select select-bordered select2 w-full max-w-xs" required>
                             <option value="">Select a program...</option>
                             {% for program in programs %}
                             <option value="{{ program.id }}">{{ program.name }}</option>
                             {% endfor %}
                         </select>
-                        <span id="add-program-error" class="error"></span>
+                        <span id="add-program-error" class="text-error"></span>
                     </div>
-                    <div class="col-md-6">
-                        <label for="add_number" class="form-label">Semester Number</label>
-                        <input type="number" name="number" id="add_number" class="form-control" required min="1">
-                        <span id="add-number-error" class="error"></span>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Semester Number</span>
+                        </label>
+                        <input type="number" name="number" id="add_number" class="input input-bordered" required min="1">
+                        <span id="add-number-error" class="text-error"></span>
                     </div>
-                    <div class="col-md-6">
-                        <label for="add_name" class="form-label">Name</label>
-                        <input type="text" name="name" id="add_name" class="form-control" required>
-                        <span id="add-name-error" class="error"></span>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Name</span>
+                        </label>
+                        <input type="text" name="name" id="add_name" class="input input-bordered" required>
+                        <span id="add-name-error" class="text-error"></span>
                     </div>
-                    <div class="col-md-6">
-                        <label for="add_description" class="form-label">Description</label>
-                        <textarea name="description" id="add_description" class="form-control"></textarea>
-                        <span id="add-description-error" class="error"></span>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Description</span>
+                        </label>
+                        <textarea name="description" id="add_description" class="textarea textarea-bordered"></textarea>
+                        <span id="add-description-error" class="text-error"></span>
                     </div>
-                    <div class="col-md-6">
-                        <label for="add_start_time" class="form-label">Start Date</label>
-                        <input type="date" name="start_time" id="add_start_time" class="form-control">
-                        <span id="add-start-time-error" class="error"></span>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Start Date</span>
+                        </label>
+                        <input type="date" name="start_time" id="add_start_time" class="input input-bordered">
+                        <span id="add-start-time-error" class="text-error"></span>
                     </div>
-                    <div class="col-md-6">
-                        <label for="add_end_time" class="form-label">End Date</label>
-                        <input type="date" name="end_time" id="add_end_time" class="form-control">
-                        <span id="add-end-time-error" class="error"></span>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">End Date</span>
+                        </label>
+                        <input type="date" name="end_time" id="add_end_time" class="input input-bordered">
+                        <span id="add-end-time-error" class="text-error"></span>
                     </div>
-                    <div class="col-md-6">
-                        <label for="add_is_active" class="form-label">Active</label>
-                        <select name="is_active" id="add_is_active" class="form-select">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Active</span>
+                        </label>
+                        <select name="is_active" id="add_is_active" class="select select-bordered">
                             <option value="true">Yes</option>
                             <option value="false" selected>No</option>
                         </select>
-                        <span id="add-is-active-error" class="error"></span>
-                    </div>
-                    <div class="col-md-12 align-self-end">
-                        <button type="submit" class="btn btn-primary w-100">Add Semester</button>
+                        <span id="add-is-active-error" class="text-error"></span>
                     </div>
                 </div>
+                <button type="submit" class="btn btn-primary w-full">
+                    <i class="fas fa-plus"></i>
+                    Add Semester
+                </button>
             </form>
         </div>
     </div>
 
     <!-- Search and Filter Form -->
-    <div class="card filter-form">
+    <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
-            <h5 class="card-title">Search Semesters</h5>
-            <form id="search-form" method="get" action="{% url 'faculty_staff:semester_management' %}">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label for="q" class="form-label">Search</label>
-                        <input type="text" name="q" id="q" class="form-control" value="{{ search_query }}" placeholder="Search by name, description, or program...">
+            <h2 class="card-title text-2xl mb-4">
+                <i class="fas fa-search"></i>
+                Search Semesters
+            </h2>
+            <form id="search-form" method="get" action="{% url 'faculty_staff:semester_management' %}" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Search</span>
+                        </label>
+                        <input type="text" name="q" id="q" class="input input-bordered" value="{{ search_query }}" placeholder="Search by name, description, or program...">
                     </div>
-                    <div class="col-md-6">
-                        <label for="program_id_filter" class="form-label">Filter by Program</label>
-                        <select name="program_id" id="program_id_filter" class="form-select select2">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Filter by Program</span>
+                        </label>
+                        <select name="program_id" id="program_id_filter" class="select select-bordered select2">
                             <option value="">All Programs in {{ request.user.teacher_profile.department.name }}</option>
                             {% for program in programs %}
                             <option value="{{ program.id }}" {% if selected_program == program.id|stringformat:'s' %}selected{% endif %}>{{ program.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-md-12 align-self-end">
-                        <button type="submit" class="btn btn-primary w-100">Search</button>
-                    </div>
                 </div>
+                <button type="submit" class="btn btn-primary w-full">
+                    <i class="fas fa-filter"></i>
+                    Search
+                </button>
             </form>
         </div>
     </div>
 
     <!-- Semesters Table -->
-    <div class="card">
+    <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
+            <h2 class="card-title text-2xl mb-4">
+                <i class="fas fa-table"></i>
+                Semesters
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="table table-zebra">
                     <thead>
                         <tr>
                             <th>Program</th>
@@ -158,59 +164,60 @@
                             <td>{{ semester.start_time|date:"Y-m-d"|default:"N/A" }}</td>
                             <td>{{ semester.end_time|date:"Y-m-d"|default:"N/A" }}</td>
                             <td>
-                                {% if semester.is_active %}
-                                <span class="badge bg-success">Active</span>
-                                {% else %}
-                                <span class="badge bg-danger">Inactive</span>
-                                {% endif %}
+                                <span class="badge {% if semester.is_active %}badge-success{% else %}badge-error{% endif %}">
+                                    {{ semester.is_active|yesno:"Active,Inactive" }}
+                                </span>
                             </td>
                             <td>
-                                <button class="btn btn-warning btn-sm edit-semester" 
-                                        data-semester-id="{{ semester.id }}"
-                                        data-program-id="{{ semester.program.id }}"
-                                        data-number="{{ semester.number }}"
-                                        data-name="{{ semester.name }}"
-                                        data-description="{{ semester.description|default:'' }}"
-                                        data-start-time="{{ semester.start_time|date:'Y-m-d'|default:'' }}"
-                                        data-end-time="{{ semester.end_time|date:'Y-m-d'|default:'' }}"
-                                        data-is-active="{{ semester.is_active|yesno:'true,false' }}">Edit</button>
-                                <button class="btn btn-danger btn-sm delete-semester" data-semester-id="{{ semester.id }}">Delete</button>
+                                <div class="flex gap-2">
+                                    <button class="btn btn-sm btn-warning edit-semester" 
+                                            data-semester-id="{{ semester.id }}"
+                                            data-program-id="{{ semester.program.id }}"
+                                            data-number="{{ semester.number }}"
+                                            data-name="{{ semester.name }}"
+                                            data-description="{{ semester.description|default:'' }}"
+                                            data-start-time="{{ semester.start_time|date:'Y-m-d'|default:'' }}"
+                                            data-end-time="{{ semester.end_time|date:'Y-m-d'|default:'' }}"
+                                            data-is-active="{{ semester.is_active|yesno:'true,false' }}">
+                                        <i class="fas fa-edit"></i>
+                                        Edit
+                                    </button>
+                                    <button class="btn btn-sm btn-error delete-semester" data-semester-id="{{ semester.id }}">
+                                        <i class="fas fa-trash"></i>
+                                        Delete
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="8" class="text-center">No semesters found for your department.</td>
+                            <td colspan="8" class="text-center p-8">
+                                <div class="text-center">
+                                    <i class="fas fa-calendar text-6xl text-base-content/20 mb-4"></i>
+                                    <h3 class="text-xl font-semibold text-base-content/70 mb-2">No Semesters Found</h3>
+                                    <p class="text-base-content/50">Use the form above to add new semesters.</p>
+                                </div>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
             <!-- Pagination -->
-            <nav aria-label="Page navigation">
-                <ul class="pagination justify-content-center">
-                    {% if semesters.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ semesters.previous_page_number }}&q={{ search_query }}&program_id={{ selected_program }}" aria-label="Previous">
-                            <span aria-hidden="true">«</span>
-                        </a>
-                    </li>
-                    {% endif %}
-                    {% for num in semesters.paginator.page_range %}
-                    <li class="page-item {% if semesters.number == num %}active{% endif %}">
-                        <a class="page-link" href="?page={{ num }}&q={{ search_query }}&program_id={{ selected_program }}">{{ num }}</a>
-                    </li>
-                    {% endfor %}
-                    {% if semesters.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ semesters.next_page_number }}&q={{ search_query }}&program_id={{ selected_program }}" aria-label="Next">
-                            <span aria-hidden="true">»</span>
-                        </a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </nav>
+            <div class="join mt-4">
+                {% if semesters.has_previous %}
+                <a href="?page={{ semesters.previous_page_number }}&q={{ search_query }}&program_id={{ selected_program }}" class="btn join-item">Previous</a>
+                {% endif %}
+                {% for num in semesters.paginator.page_range %}
+                <a href="?page={{ num }}&q={{ search_query }}&program_id={{ selected_program }}" class="btn join-item {% if semesters.number == num %}btn-active{% endif %}">{{ num }}</a>
+                {% endfor %}
+                {% if semesters.has_next %}
+                <a href="?page={{ semesters.next_page_number }}&q={{ search_query }}&program_id={{ selected_program }}" class="btn join-item">Next</a>
+                {% endif %}
+            </div>
         </div>
     </div>
+</div>
 
     <!-- Edit Semester Modal -->
     <div class="modal fade" id="editSemesterModal" tabindex="-1" aria-labelledby="editSemesterModalLabel" aria-hidden="true">

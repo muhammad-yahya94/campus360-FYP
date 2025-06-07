@@ -3,119 +3,111 @@
 {% block title %}Session Students - {{ session.name }}{% endblock %}
 
 {% block content %}
-<style>
-    .card {
-        border-radius: 10px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    }
-    .table th {
-        background-color: #e9ecef;
-        color: #343a40;
-    }
-    .table-hover tbody tr:hover {
-        background-color: #f8f9fa;
-    }
-    .badge {
-        font-size: 0.9rem;
-    }
-    .search-form {
-        margin-bottom: 20px;
-    }
-    .search-form input {
-        border-radius: 5px;
-    }
-    .search-form button {
-        border-radius: 5px;
-    }
-</style>
-
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Students in Session: {{ session.name }}</h2>
-    </div>
-
-    <!-- Search Form -->
-    <div class="card search-form">
-        <div class="card-body">
-                        <form method="get" action="">
-                            <div class="row g-3">
-                                <div class="col-md-8">
-                                    <input type="text" name="q" class="form-control" placeholder="Search by Roll No or Name" value="{{ request.GET.q|default:'' }}">
-                                </div>
-                                <div class="col-md-4">
-                                    <button type="submit" class="btn btn-primary">Search</button>
-                                    <a href="{% url 'faculty_staff:session_students' session.id %}" class="btn btn-secondary">Clear</a>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-        </div>
-    </div>
-
-    <!-- Students Table -->
-    <div class="card">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>University Roll No</th>
-                            <th>College Roll No</th>
-                            <th>Program</th>
-                            <th>Current Semester</th>
-                            <th>Status</th>
-                            <th>Enrollment Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for student in students %}
-                        <tr>
-                            <td>{{ student.applicant.full_name }}</td>
-                            <td>{{ student.university_roll_no|default:"N/A" }}</td>
-                            <td>{{ student.college_roll_no|default:"N/A" }}</td>
-                            <td>{{ student.program.name }}</td>
-                            <td>{{ student.current_semester.number }}</td>
-                            <td>
-                                <span class="badge {% if student.current_status == 'active' %}bg-success{% elif student.current_status == 'graduated' %}bg-info{% else %}bg-danger{% endif %}">
-                                    {{ student.current_status|title }}
-                                </span>
-                            </td>
-                            <td>{{ student.enrollment_date|date:"Y-m-d" }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="6" class="text-center">No students found for this session.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+<div class="drawer-content flex flex-col min-h-screen">
+    <div class="container mx-auto px-4 py-6">
+        <!-- Header -->
+        <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-xl mb-6">
+            <div class="hero-content text-center py-8">
+                <div>
+                    <h1 class="text-4xl font-bold mb-2">Students in Session: {{ session.name }}</h1>
+                    <p class="text-lg opacity-90">Manage students enrolled in this session</p>
+                </div>
             </div>
+        </div>
 
-            <!-- Pagination -->
-            {% if students.has_other_pages %}
-            <nav aria-label="Page navigation" class="mt-4">
-                <ul class="pagination justify-content-center">
+        <!-- Search Form -->
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title text-2xl mb-4">
+                    <i class="fas fa-search"></i>
+                    Search Students
+                </h2>
+                <form method="get" action="" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text">Search by Roll No or Name</span>
+                            </label>
+                            <input type="text" name="q" class="input input-bordered" placeholder="Search by Roll No or Name" value="{{ request.GET.q|default:'' }}">
+                        </div>
+                        <div class="form-control">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i>
+                                Search
+                            </button>
+                            <a href="{% url 'faculty_staff:session_students' session.id %}" class="btn btn-ghost">
+                                <i class="fas fa-times"></i>
+                                Clear
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Students Table -->
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title text-2xl mb-4">
+                    <i class="fas fa-users"></i>
+                    Students
+                </h2>
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>University Roll No</th>
+                                <th>College Roll No</th>
+                                <th>Program</th>
+                                <th>Current Semester</th>
+                                <th>Status</th>
+                                <th>Enrollment Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in students %}
+                            <tr>
+                                <td>{{ student.applicant.full_name }}</td>
+                                <td>{{ student.university_roll_no|default:"N/A" }}</td>
+                                <td>{{ student.college_roll_no|default:"N/A" }}</td>
+                                <td>{{ student.program.name }}</td>
+                                <td>{{ student.current_semester.number }}</td>
+                                <td>
+                                    <span class="badge {% if student.current_status == 'active' %}badge-success{% elif student.current_status == 'graduated' %}badge-info{% else %}badge-error{% endif %}">
+                                        {{ student.current_status|title }}
+                                    </span>
+                                </td>
+                                <td>{{ student.enrollment_date|date:"Y-m-d" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center p-8">
+                                    <div class="text-center">
+                                        <i class="fas fa-users text-6xl text-base-content/20 mb-4"></i>
+                                        <h3 class="text-xl font-semibold text-base-content/70 mb-2">No Students Found</h3>
+                                        <p class="text-base-content/50">Use the search form above to find students or check if the session has any enrolled students.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="join mt-4">
                     {% if students.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ students.previous_page_number }}{% if request.GET.roll_no %}&roll_no={{ request.GET.roll_no }}{% endif %}{% if request.GET.name %}&name={{ request.GET.name }}{% endif %}">Previous</a>
-                    </li>
+                    <a href="?page={{ students.previous_page_number }}&q={{ request.GET.q|default:'' }}" class="btn join-item">Previous</a>
                     {% endif %}
-
                     {% for num in students.paginator.page_range %}
-                    <li class="page-item {% if students.number == num %}active{% endif %}">
-                        <a class="page-link" href="?page={{ num }}{% if request.GET.roll_no %}&roll_no={{ request.GET.roll_no }}{% endif %}{% if request.GET.name %}&name={{ request.GET.name }}{% endif %}">{{ num }}</a>
-                    </li>
+                    <a href="?page={{ num }}&q={{ request.GET.q|default:'' }}" class="btn join-item {% if students.number == num %}btn-active{% endif %}">{{ num }}</a>
                     {% endfor %}
-
                     {% if students.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ students.next_page_number }}{% if request.GET.roll_no %}&roll_no={{ request.GET.roll_no }}{% endif %}{% if request.GET.name %}&name={{ request.GET.name }}{% endif %}">Next</a>
-                    </li>
+                    <a href="?page={{ students.next_page_number }}&q={{ request.GET.q|default:'' }}" class="btn join-item">Next</a>
                     {% endif %}
-                </ul>
-            </nav>
-            {% endif %}
+                </div>
+            </div>
         </div>
     </div>
 </div>

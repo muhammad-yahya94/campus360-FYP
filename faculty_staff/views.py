@@ -96,6 +96,14 @@ def hod_dashboard(request):
     return render(request, 'faculty_staff/hod_dashboard.html', context)
 
 
+
+
+
+
+
+
+
+
 @login_required
 def staff_management(request):
     # if not request.user.is_staff or request.user.teacher_profile.designation != 'head_of_department':

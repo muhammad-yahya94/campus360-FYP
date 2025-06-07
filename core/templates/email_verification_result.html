@@ -1,0 +1,136 @@
+{% extends "core_base.html" %}
+{% block core_content %}
+
+
+<style>
+    :root {
+        --primary: #D27328;
+        --light: #fff5ee;
+        --dark: #181d38;
+    }
+
+    body {
+        {% comment %} font-family: 'Nunito', sans-serif; {% endcomment %}
+        background-color: #ffffff;
+        color: var(--dark);
+        line-height: 1.6;
+    }
+
+    /*** Section Title ***/
+    .section-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary);
+        position: relative;
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+
+    .section-title::after {
+        content: "";
+        position: absolute;
+        width: 50px;
+        height: 3px;
+        background: var(--primary);
+        bottom: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    /*** Verification Card ***/
+    .verification-card {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 2rem;
+        background: #ffffff;
+        border: 1px solid #f0e0d4;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        text-align: center;
+    }
+
+    .verification-card i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+
+    .verification-card .success-icon {
+        color: #28a745; /* Green for success */
+    }
+
+    .verification-card .error-icon {
+        color: #dc3545; /* Red for error */
+    }
+
+    .verification-card p {
+        font-size: 1.1rem;
+        color: #555;
+        margin-bottom: 1.5rem;
+    }
+
+
+
+    /*** Responsive Adjustments ***/
+    @media (max-width: 767.98px) {
+        .verification-card {
+            padding: 1.5rem;
+            margin: 0 1rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+        }
+
+        .verification-card i {
+            font-size: 2.5rem;
+        }
+
+        .verification-card p {
+            font-size: 1rem;
+        }
+
+        .btn-primary, .btn-secondary {
+            width: 100%;
+            margin-bottom: 0.5rem;
+            margin-right: 0;
+        }
+    }
+
+    @media (max-width: 575.98px) {
+        .section-title {
+            font-size: 1.2rem;
+        }
+
+        .verification-card {
+            padding: 1rem;
+        }
+
+        .verification-card i {
+            font-size: 2rem;
+        }
+
+        .verification-card p {
+            font-size: 0.9rem;
+        }
+    }
+</style>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-12">
+            {% comment %} <h2 class="section-title">Email Verification</h2> {% endcomment %}
+            <div class="verification-card">
+                {% if verification_success %}
+                    <i class="fas fa-check-circle success-icon"></i>
+                    <p>Your email has been successfully verified, {{ request.user.get_full_name|default:request.user.first_name }}! You can now submit applications.</p>
+                    <a href="{% url 'apply' %}" class="btn btn-primary">Submit Application</a>
+                {% else %}
+                    <i class="fas fa-times-circle error-icon"></i>
+                    <p>The verification link is invalid or has expired. Please try registering again or contact support if you need assistance.</p>
+                    <a href="{% url 'admission' %}" class="btn btn-secondary">Back to Admission</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock core_content %}

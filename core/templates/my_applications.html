@@ -134,36 +134,33 @@
             }
         }
     </style>
-</head>
-<body>
-    {% load static %}
-<!-- Navbar Start -->
-<nav class="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0">
-    <!-- User Icon and Name -->
-    <div class="d-flex align-items-center me-auto px-4">
-        <i class="fa fa-user fa-lg me-2 text-primary"></i>
-        <span class="fw-bold">{{ request.user.get_full_name|default:request.user.first_name }}</span>
-    </div>
 
-    <!-- Toggle Button for Mobile -->
-    <button class="navbar-toggler me-4" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-    </button>
-
-    <!-- Navbar Links -->
-    <div class="collapse navbar-collapse" id="navbarCollapse">
-        <div class="navbar-nav ms-auto">
-            <a href="{% url 'my_applications' %}" class="nav-item nav-link {% if request.path == '/apply/my-applications/' %}active{% endif %}">My Applications</a>
-            <a href="{% url 'apply' %}" class="nav-item nav-link {% if request.path == '/apply/' %}active{% endif %}">Application Form</a>
-            <a href="{% url 'home' %}" class="btn btn-primary py-4 px-lg-5 d-none d-lg-block">
-                Go Back<i class="fa fa-arrow-right ms-3"></i>
-            </a>
-            <!-- Mobile version of Go Back button -->
-            <a href="{% url 'home' %}" class="nav-item nav-link d-lg-none">Go Back</a>
+    <!-- Navbar Start -->
+    <nav class="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0">
+        <!-- User Icon and Name -->
+        <div class="d-flex align-items-center me-auto px-4">
+            <i class="fa fa-user fa-lg me-2 text-primary"></i>
+            <span class="fw-bold">{{ request.user.get_full_name|default:request.user.first_name }}</span>
         </div>
-    </div>
-</nav>
 
+        <!-- Toggle Button for Mobile -->
+        <button class="navbar-toggler me-4" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <!-- Navbar Links -->
+        <div class="collapse navbar-collapse" id="navbarCollapse">
+            <div class="navbar-nav ms-auto">
+                <a href="{% url 'my_applications' %}" class="nav-item nav-link {% if request.path == '/apply/my-applications/' %}active{% endif %}">My Applications</a>
+                <a href="{% url 'apply' %}" class="nav-item nav-link {% if request.path == '/apply/' %}active{% endif %}">Application Form</a>
+                <a href="{% url 'home' %}" class="btn btn-primary py-4 px-lg-5 d-none d-lg-block">
+                    Go Back<i class="fa fa-arrow-right ms-3"></i>
+                </a>
+                <!-- Mobile version of Go Back button -->
+                <a href="{% url 'home' %}" class="nav-item nav-link d-lg-none">Go Back</a>
+            </div>
+        </div>
+    </nav>
 
     <div class="container py-5">
         <div class="row justify-content-center">
@@ -178,18 +175,30 @@
                                     <th>Faculty</th>
                                     <th>Department</th>
                                     <th>Program</th>
-                                    <th>Status</th>
+                                    <th>Shift</th>
+                                    <th>Admission Status</th>
                                     <th>Submitted On</th>
+                                    <th>Admission Challan Status</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for application in applications %}
+                                {% for app_data in applications %}
                                     <tr class="application-item">
-                                        <td>{{ application.faculty.name }}</td>
-                                        <td>{{ application.department.name }}</td>
-                                        <td>{{ application.program.name }}</td>
-                                        <td>{{ application.status|title }}</td>
-                                        <td>{{ application.created_at|date:"F d, Y" }}</td>
+                                        <td>{{ app_data.application.faculty.name }}</td>
+                                        <td>{{ app_data.application.department.name }}</td>
+                                        <td>{{ app_data.application.program.name }}</td>
+                                        <td>{{ app_data.application.shift }}</td>
+                                        <td>{{ app_data.application.status|title }}</td>
+                                        <td>{{ app_data.application.created_at|date:"F d, Y" }}</td>
+                                        <td>
+                                            {% if app_data.payment_status.is_paid %}
+                                                <span class="text-success">Admission Challan Status: Paid</span>
+                                            {% else %}
+                                                <span class="text-danger">Admission Challan Status: Not Paid</span>
+                                                <br>
+                                                <a href="{% url 'payment_form' %}" class="btn btn-primary btn-sm mt-2">Pay Now</a>
+                                            {% endif %}
+                                        </td>
                                     </tr>
                                 {% endfor %}
                             </tbody>

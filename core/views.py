@@ -8,6 +8,7 @@ from announcements.models import Event, News
 from academics.models import Faculty, Department, Program
 from admissions.models import AdmissionCycle, Applicant, AcademicQualification, ExtraCurricularActivity
 from users.models import CustomUser
+from payment.models import Payment 
 import json
 import logging
 from datetime import datetime  
@@ -319,7 +320,7 @@ def submit_application(request):
         academic_majors = request.POST.getlist('academic_major[]')
         academic_certificates = request.FILES.getlist('academic_certificate[]')
 
-        for i in range(len(academic_degrees)):
+        for i in range(len(academic_degrees)):   
             if academic_degrees[i]:  # Only create if degree is not empty
                 qualification = AcademicQualification.objects.create(
                     applicant=applicant,
@@ -365,22 +366,67 @@ def submit_application(request):
         return redirect('apply')
 
 
+@login_required
 def application_success(request):
-    return render(request, 'apply_successfull.html')
+    logger.info(f"Application success page accessed for user {request.user.id}")
+    show_payment_link = False
+    applicant = None
+    payment = None
+    if request.user.is_authenticated:
+        try:
+            # Get the most recent Applicant for the user
+            applicants = Applicant.objects.filter(user=request.user).order_by('-applied_at')
+            if not applicants.exists():
+                logger.warning(f"No Applicant record found for user {request.user.id}")
+                show_payment_link = True
+            else:
+                applicant = applicants.first()
+                # Check for payment status using the user, not the applicant
+                payment = Payment.objects.filter(user=request.user).order_by('-created_at').first()
+                if payment and payment.status != 'paid':
+                    show_payment_link = True
+                elif not payment:
+                    # If no payment record exists, assume payment is needed
+                    show_payment_link = True
+        except Exception as e:
+            logger.error(f"Error retrieving Applicant or Payment: {str(e)}", exc_info=True)
+            show_payment_link = True  # Fallback to show payment link on error
+    context = {
+        'show_payment_link': show_payment_link,
+        'applicant': applicant,
+        'payment': payment
+    }
+    return render(request, 'apply_successfull.html', context)
 
+
+
+
+
+@login_required
 def my_applications(request):
-    if not request.user.is_authenticated:
-        return render('admission')
-    if not request.user.is_authenticated:
-        return render('admission')
-
+    logger.info(f"My applications page accessed for user {request.user.id}")
+    
     # Retrieve all applications for the authenticated user
     applications = Applicant.objects.filter(user=request.user).select_related('faculty', 'department', 'program')
     
+    # Prepare a list of applications with their payment status
+    application_data = []
+    for application in applications:
+        payment = Payment.objects.filter(user=application).order_by('-created_at').first()
+        payment_status = {
+            'is_paid': payment.status == 'paid' if payment else False,
+            'status_text': 'Paid' if payment and payment.status == 'paid' else 'Not Paid',
+            'payment': payment
+        }
+        application_data.append({
+            'application': application,
+            'payment_status': payment_status
+        })
+    
     context = {
-        'applications': applications
+        'applications': application_data
     }
-    return render(request, 'my_applications.html', context)    
+    return render(request, 'my_applications.html', context)   
     
 
 def admission(request):
@@ -412,7 +458,6 @@ def faculty_detail_view(request, slug):
     }
     return render(request, 'faculty_detail.html', context)
 
-# Email Verification View
 def verify_email_view(request, uidb64, token):
     try:
         uid = force_str(urlsafe_base64_decode(uidb64))
@@ -421,15 +466,15 @@ def verify_email_view(request, uidb64, token):
         user = None
 
     if user is not None and default_token_generator.check_token(user, token):
-        user.is_active = True # Activate user after successful verification
+        user.is_active = True  # Activate user after successful verification
         user.save()
         # Log the user in automatically after verification
         login(request, user)
         messages.success(request, 'Your email has been successfully verified! You can now submit applications.')
-        return redirect('apply') # Redirect to apply page after verification
+        return render(request, 'email_verification_result.html', {'verification_success': True})
     else:
         messages.error(request, 'The verification link is invalid or has expired.')
-        return redirect('admission') # Redirect to admission page with error message
+        return render(request, 'email_verification_result.html', {'verification_success': False})
 
 # Add the email verification success view
 def email_verification_success(request):

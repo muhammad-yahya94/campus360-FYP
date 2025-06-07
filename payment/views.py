@@ -3,9 +3,12 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
-from .models import Payment, Applicant
+from .models import Payment
+from admissions.models import Applicant
 import stripe
 import logging
+from django.db.models import Q
+
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -14,7 +17,16 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 
 def payment_form(request):
     logger.info("Rendering payment form")
-    return render(request, "payment_form.html")
+    if request.user.is_authenticated:
+        # Get Applicants where Payment is either not created or status is not 'paid'
+        applicants = Applicant.objects.filter(
+            user=request.user
+        ).filter(
+            Q(payment__isnull=True) | ~Q(payment__status='paid')
+        ).distinct()
+    else:
+        applicants = []
+    return render(request, "payment_form.html", {'applicants': applicants})
 
 @csrf_exempt
 def stripe_config(request):
@@ -31,11 +43,16 @@ def create_checkout_session(request):
         try:
             logger.info("Received POST request to create checkout session")
             price_id = request.POST.get("price_id")
+            applicant_id = request.POST.get("applicant_id")
+
             if not price_id:
                 logger.error("Price ID is required")
                 return JsonResponse({"error": "Price ID is required"}, status=400)
+            if not applicant_id:
+                logger.error("Applicant ID is required")
+                return JsonResponse({"error": "Applicant ID is required"}, status=400)
 
-            logger.info(f"Price ID received: {price_id}")
+            logger.info(f"Price ID received: {price_id}, Applicant ID: {applicant_id}")
             # Verify price_id exists
             price = stripe.Price.retrieve(price_id)
             logger.info(f"Price retrieved: {price.unit_amount} {price.currency}")
@@ -57,12 +74,10 @@ def create_checkout_session(request):
             )
             logger.info(f"Checkout session created: {checkout_session['id']}")
 
-            # Create or get Applicant instance for the current user
+            # Get the specific Applicant for the payment
             if request.user.is_authenticated:
-                logger.info(f"Checking Applicant for user {request.user.id}")
-                applicant, created = Applicant.objects.get_or_create(user=request.user)
-                if created:
-                    logger.info(f"Created new Applicant for user {request.user.id}")
+                logger.info(f"Checking Applicant {applicant_id} for user {request.user.id}")
+                applicant = Applicant.objects.get(id=applicant_id, user=request.user)
                 logger.info(f"Creating Payment record for Applicant {applicant.id}")
                 Payment.objects.create(
                     user=applicant,
@@ -84,6 +99,9 @@ def create_checkout_session(request):
         except stripe.error.StripeError as e:
             logger.error(f"Stripe error: {str(e)}", exc_info=True)
             return JsonResponse({"error": f"Stripe error: {str(e)}"}, status=500)
+        except Applicant.DoesNotExist:
+            logger.error(f"Applicant with ID {applicant_id} not found for user {request.user.id}")
+            return JsonResponse({"error": "Invalid applicant selection"}, status=400)
         except Exception as e:
             logger.error(f"Unexpected error in create_checkout_session: {str(e)}", exc_info=True)
             return JsonResponse({"error": "An unexpected error occurred"}, status=500)

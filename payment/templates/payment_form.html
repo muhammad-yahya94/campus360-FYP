@@ -5,39 +5,231 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pay Admission Fee</title>
     <script src="https://js.stripe.com/v3/"></script>
-    <!-- Basic Bootstrap CSS for styling -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #D27328;
+            --light: #fff5ee;
+            --dark: #181d38;
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #ffffff;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+
+        .section-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+            position: relative;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .section-title::after {
+            content: "";
+            position: absolute;
+            width: 50px;
+            height: 3px;
+            background: var(--primary);
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .payment-card {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: #ffffff;
+            border: 1px solid #f0e0d4;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        .payment-details i {
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        .payment-details h5 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .payment-details p {
+            font-size: 1.25rem;
+            color: #555;
+            margin-bottom: 0;
+        }
+
+        .highlight-amount {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .application-select {
+            margin-bottom: 1.5rem;
+        }
+
+        .no-unpaid-message {
+            background-color: #e6f4ea;
+            padding: 1rem;
+            border-radius: 8px;
+            color: #2e7d32;
+            font-size: 1.1rem;
+        }
+
+        .no-unpaid-message i {
+            margin-right: 0.5rem;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            border: none;
+            padding: 0.75rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 5px;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background-color: #b85f1f;
+            color: #ffffff;
+            box-shadow: 0 4px 10px rgba(210, 115, 40, 0.3);
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            border: none;
+            padding: 0.75rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 5px;
+            width: 100%;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+            color: #ffffff;
+            box-shadow: 0 4px 10px rgba(108, 117, 125, 0.3);
+        }
+
+        .noscript-warning {
+            font-size: 0.9rem;
+            color: #dc3545;
+            margin-top: 1rem;
+        }
+
+        @media (max-width: 767.98px) {
+            .payment-card {
+                padding: 1.5rem;
+                margin: 0 1rem;
+            }
+
+            .section-title {
+                font-size: 1.5rem;
+            }
+
+            .payment-details i {
+                font-size: 2rem;
+            }
+
+            .payment-details h5 {
+                font-size: 1.25rem;
+            }
+
+            .payment-details p {
+                font-size: 1.1rem;
+            }
+
+            .highlight-amount {
+                font-size: 1.25rem;
+            }
+        }
+
+        @media (max-width: 575.98px) {
+            .section-title {
+                font-size: 1.2rem;
+            }
+
+            .payment-card {
+                padding: 1rem;
+            }
+
+            .payment-details i {
+                font-size: 1.5rem;
+            }
+
+            .payment-details h5 {
+                font-size: 1.1rem;
+            }
+
+            .payment-details p {
+                font-size: 1rem;
+            }
+
+            .btn-primary, .btn-secondary {
+                padding: 0.5rem;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div class="container mt-5">
-        <h2>Pay Admission Challan Fee</h2>
-        <form id="paymentForm" action="{% url 'create_checkout_session' %}" method="post">
-            {% csrf_token %}
-            <div class="card">
-                <div class="card-body">
-                    <div class="form-check">
-                        <input
-                            type="radio"
-                            id="admission_fee"
-                            name="price_id"
-                            value="price_1RVc5ADCFgsH63aP42aRlRPY"
-                            class="form-check-input"
-                            required
-                        />
-                        <label for="admission_fee" class="form-check-label">
-                            <h5>Admission Challan Fee</h5>
-                            <p>500 PKr</p>
-                        </label>
-                    </div>
-                    <button type="submit" id="submitBtn" class="btn btn-primary mt-3">
-                        Pay Now
-                    </button>
-                    <noscript>
-                        <p style="color: red;">JavaScript is required to process payments. Please enable JavaScript in your browser.</p>
-                    </noscript>
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-12">
+                <h2 class="section-title">Pay Admission Fee</h2>
+                <div class="payment-card">
+                    {% if applicants %}
+                        <form id="paymentForm" action="{% url 'create_checkout_session' %}" method="post">
+                            {% csrf_token %}
+                            <div class="payment-details">
+                                <i class="fas fa-graduation-cap"></i>
+                                <h5>Secure Your Admission</h5>
+                                <p>Complete your application by paying the <span class="highlight-amount">500 PKR</span> admission challan fee.</p>
+                            </div>
+                            <div class="application-select">
+                                <label for="applicant_id" class="form-label">Select Application to Pay For:</label>
+                                <select name="applicant_id" id="applicant_id" class="form-select" required>
+                                    <option value="">-- Select an Application --</option>
+                                    {% for app in applicants %}
+                                        <option value="{{ app.id }}">{{ app.program.name }} {{ app.shift }} (Applied: {{ app.applied_at|date:"d M Y" }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <input type="hidden" name="price_id" value="price_1RVc5ADCFgsH63aP42aRlRPY" />
+                            <button type="submit" id="submitBtn" class="btn btn-primary">
+                                Pay Now
+                            </button>
+                            <noscript>
+                                <p class="noscript-warning">JavaScript is required to process payments. Please enable JavaScript in your browser.</p>
+                            </noscript>
+                        </form>
+                    {% else %}
+                        <div class="no-unpaid-message">
+                            <i class="fas fa-check-circle"></i>
+                            No unpaid applications found. All your application fees have been paid, or you have no applications yet.
+                        </div>
+                        <a href="{% url 'apply' %}" class="btn btn-secondary">Apply for a Program</a>
+                    {% endif %}
                 </div>
             </div>
-        </form>
+        </div>
     </div>
 
     <script>
@@ -51,52 +243,55 @@
                 const stripe = Stripe(data.publicKey);
 
                 // Handle form submission
-                document.querySelector("#paymentForm").addEventListener("submit", function (event) {
-                    event.preventDefault();
-                    console.log("Form submission triggered"); // Debug log
+                const paymentForm = document.querySelector("#paymentForm");
+                if (paymentForm) {
+                    paymentForm.addEventListener("submit", function (event) {
+                        event.preventDefault();
+                        console.log("Form submission triggered");
 
-                    const form = event.target;
-                    const formData = new FormData(form);
-                    const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]")?.value;
+                        const form = event.target;
+                        const formData = new FormData(form);
+                        const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]")?.value;
 
-                    if (!csrfToken) {
-                        console.error("CSRF token not found");
-                        alert("CSRF token missing. Please refresh the page and try again.");
-                        return;
-                    }
+                        if (!csrfToken) {
+                            console.error("CSRF token not found");
+                            alert("CSRF token missing. Please refresh the page and try again.");
+                            return;
+                        }
 
-                    fetch("{% url 'create_checkout_session' %}", {
-                        method: "POST",
-                        body: formData,
-                        headers: {
-                            "X-CSRFToken": csrfToken,
-                        },
-                    })
-                        .then((result) => {
-                            if (!result.ok) {
-                                throw new Error(`HTTP error! Status: ${result.status}`);
-                            }
-                            return result.json();
+                        fetch("{% url 'create_checkout_session' %}", {
+                            method: "POST",
+                            body: formData,
+                            headers: {
+                                "X-CSRFToken": csrfToken,
+                            },
                         })
-                        .then((data) => {
-                            if (data.sessionId) {
-                                stripe.redirectToCheckout({ sessionId: data.sessionId })
-                                    .then((result) => {
-                                        if (result.error) {
-                                            console.error("Redirect to checkout failed:", result.error.message);
-                                            alert("Failed to redirect to checkout: " + result.error.message);
-                                        }
-                                    });
-                            } else {
-                                console.error("Error from server:", data.error);
-                                alert("Error: " + data.error);
-                            }
-                        })
-                        .catch((error) => {
-                            console.error("Fetch error:", error);
-                            alert("An error occurred while processing the payment. Please try again.");
-                        });
-                });
+                            .then((result) => {
+                                if (!result.ok) {
+                                    throw new Error(`HTTP error! Status: ${result.status}`);
+                                }
+                                return result.json();
+                            })
+                            .then((data) => {
+                                if (data.sessionId) {
+                                    stripe.redirectToCheckout({ sessionId: data.sessionId })
+                                        .then((result) => {
+                                            if (result.error) {
+                                                console.error("Redirect to checkout failed:", result.error.message);
+                                                alert("Failed to redirect to checkout: " + result.error.message);
+                                            }
+                                        });
+                                } else {
+                                    console.error("Error from server:", data.error);
+                                    alert("Error: " + data.error);
+                                }
+                            })
+                            .catch((error) => {
+                                console.error("Fetch error:", error);
+                                alert("An error occurred while processing the payment. Please try again.");
+                            });
+                    });
+                }
             })
             .catch((error) => {
                 console.error("Error fetching Stripe config:", error);

@@ -3,96 +3,99 @@
 {% block title %}Course Offerings{% endblock %}
 
 {% block content %}
-<style>
-    .card {
-        border-radius: 10px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    }
-    .table th {
-        background-color: #e9ecef;
-        color: #343a40;
-    }
-    .table-hover tbody tr:hover {
-        background-color: #f8f9fa;
-    }
-    .filter-form, .assignment-form {
-        margin-bottom: 20px;
-    }
-    .select2-container {
-        width: 100% !important;
-    }
-    .error {
-        color: red;
-    }
-</style>
-
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Course Offerings for {{ department.name }}</h2>
+<div class="max-w-7xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-xl">
+        <div class="hero-content text-center py-8">
+            <div>
+                <h1 class="text-4xl font-bold mb-2">Course Offerings</h1>
+                <p class="text-lg opacity-90">Manage course offerings for {{ department.name }}</p>
+            </div>
+        </div>
     </div>
 
-    <!-- Assignment Form -->
-    <div class="card assignment-form">
+    <!-- Course Offering Form -->
+    <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
-            <form id="course-offering-form" method="post" action="{% url 'faculty_staff:save_course_offering' %}">
+            <h2 class="card-title text-2xl mb-4">
+                <i class="fas fa-book"></i>
+                Assign Course
+            </h2>
+            <form id="course-offering-form" method="post" action="{% url 'faculty_staff:save_course_offering' %}" class="space-y-4">
                 {% csrf_token %}
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label for="course_id" class="form-label">Course</label>
-                        <select name="course_id" id="course_id" class="form-select select2" required>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Course</span>
+                        </label>
+                        <select name="course_id" id="course_id" class="select select-bordered select2" required>
                             <option value="">Search for a course...</option>
                         </select>
-                        <span id="course-error" class="error"></span>
+                        <span id="course-error" class="text-error"></span>
                     </div>
-                    <div class="col-md-6">
-                        <label for="offering_type" class="form-label">Offering Type</label>
-                        <select name="offering_type" id="offering_type" class="form-select select2" required>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Offering Type</span>
+                        </label>
+                        <select name="offering_type" id="offering_type" class="select select-bordered select2" required>
                             <option value="">Select offering type...</option>
                         </select>
-                        <span id="offering-type-error" class="error"></span>
+                        <span id="offering-type-error" class="text-error"></span>
                     </div>
-                    <div class="col-md-6">
-                        <label for="teacher_id" class="form-label">Teacher</label>
-                        <select name="teacher_id" id="teacher_id" class="form-select select2" required>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Teacher</span>
+                        </label>
+                        <select name="teacher_id" id="teacher_id" class="select select-bordered select2" required>
                             <option value="">Search for a teacher...</option>
                         </select>
-                        <span id="teacher-error" class="error"></span>
+                        <span id="teacher-error" class="text-error"></span>
                     </div>
-                    <div class="col-md-6">
-                        <label for="academic_session_id" class="form-label">Academic Session</label>
-                        <select name="academic_session_id" id="academic_session_id" class="form-select select2" required>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Academic Session</span>
+                        </label>
+                        <select name="academic_session_id" id="academic_session_id" class="select select-bordered select2" required>
                             <option value="">Select an academic session...</option>
                         </select>
-                        <span id="academic-session-error" class="error"></span>
+                        <span id="academic-session-error" class="text-error"></span>
                     </div>
-                    <div class="col-md-6">
-                        <label for="program_id" class="form-label">Program</label>
-                        <select name="program_id" id="program_id" class="form-select select2" required>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Program</span>
+                        </label>
+                        <select name="program_id" id="program_id" class="select select-bordered select2" required>
                             <option value="">Select an academic session first...</option>
                         </select>
-                        <span id="program-error" class="error"></span>
+                        <span id="program-error" class="text-error"></span>
                     </div>
-                    <div class="col-md-6">
-                        <label for="semester_id" class="form-label">Semester</label>
-                        <select name="semester_id" id="semester_id" class="form-select select2" required>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Semester</span>
+                        </label>
+                        <select name="semester_id" id="semester_id" class="select select-bordered select2" required>
                             <option value="">Search for a semester...</option>
                         </select>
-                        <span id="semester-error" class="error"></span>
-                    </div>
-
-                    <div class="col-md-12 align-self-end">
-                        <button type="submit" class="btn btn-primary w-100">Assign</button>
+                        <span id="semester-error" class="text-error"></span>
                     </div>
                 </div>
+                <button type="submit" class="btn btn-primary w-full">
+                    <i class="fas fa-check"></i>
+                    Assign Course
+                </button>
             </form>
         </div>
     </div>
 
-    <!-- Existing Course Offerings Table -->
-    <div class="card">
+    <!-- Course Offerings Table -->
+    <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
+            <h2 class="card-title text-2xl mb-4">
+                <i class="fas fa-table"></i>
+                Assigned Courses
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="table table-zebra">
                     <thead>
                         <tr>
                             <th>Course Code</th>
@@ -118,26 +121,33 @@
                                 {% if offering.teacher %}
                                 {{ offering.teacher.user.get_full_name }} ({{ offering.teacher.department.name|default:"N/A" }})
                                 {% else %}
-                                Not Assigned
+                                <span class="text-warning">Not Assigned</span>
                                 {% endif %}
                             </td>
                             <td>{{ offering.academic_session.name }}</td>
                             <td>{{ offering.semester.name }}</td>
                             <td>{{ offering.get_offering_type_display }}</td>
                             <td>
-                                {% if offering.is_active %}
-                                <span class="badge bg-success">Active</span>
-                                {% else %}
-                                <span class="badge bg-danger">Inactive</span>
-                                {% endif %}
+                                <span class="badge {% if offering.is_active %}badge-success{% else %}badge-error{% endif %}">
+                                    {{ offering.is_active|yesno:"Active,Inactive" }}
+                                </span>
                             </td>
                             <td>
-                                <button class="btn btn-danger btn-sm delete-offering" data-offering-id="{{ offering.id }}">Delete</button>
+                                <button class="btn btn-sm btn-error delete-offering" data-offering-id="{{ offering.id }}">
+                                    <i class="fas fa-trash"></i>
+                                    Delete
+                                </button>
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="12" class="text-center">No course offerings found.</td>
+                            <td colspan="12" class="text-center p-8">
+                                <div class="text-center">
+                                    <i class="fas fa-book text-6xl text-base-content/20 mb-4"></i>
+                                    <h3 class="text-xl font-semibold text-base-content/70 mb-2">No Course Offerings Found</h3>
+                                    <p class="text-base-content/50">Use the form above to assign courses.</p>
+                                </div>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -146,6 +156,7 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
 {% block extra_js %}
 <!-- Include Select2 CSS and JS -->
@@ -493,6 +504,4 @@ $(document).ready(function() {
     });
 });
 </script>
-{% endblock %}
-
 {% endblock %}

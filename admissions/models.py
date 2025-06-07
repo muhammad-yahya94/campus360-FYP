@@ -58,7 +58,6 @@ class AdmissionCycle(models.Model):
 
 
 
-# In your models.py file
 class Applicant(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='applications', help_text="Select the user account associated with this applicant.")
     faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE, help_text="Select the faculty the applicant is applying to.")

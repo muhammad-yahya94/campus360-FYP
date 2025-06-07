@@ -3,82 +3,89 @@
 {% block title %}Assignments{% endblock %}
 
 {% block content %}
-<style>
-    .card {
-        border-radius: 10px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    }
-    .table th {
-        background-color: #e9ecef;
-        color: #343a40;
-    }
-    .table-hover tbody tr:hover {
-        background-color: #f8f9fa;
-    }
-    .select2-container {
-        width: 100% !important;
-    }
-    .error {
-        color: red;
-    }
-</style>
-
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Assignments</h2>
+<div class="max-w-7xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-xl">
+        <div class="hero-content text-center py-8">
+            <div>
+                <h1 class="text-4xl font-bold mb-2">Assignments</h1>
+                <p class="text-lg opacity-90">Manage and track assignments</p>
+            </div>
+        </div>
     </div>
 
     <!-- Create Assignment Form -->
-    <div class="card mb-4">
+    <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
-            <h5 class="card-title">Create New Assignment</h5>
-            <form id="create-assignment-form" method="post" enctype="multipart/form-data" action="{% url 'faculty_staff:create_assignment' %}">
+            <h2 class="card-title text-2xl mb-4">
+                <i class="fas fa-plus"></i>
+                Create New Assignment
+            </h2>
+            <form id="create-assignment-form" method="post" enctype="multipart/form-data" action="{% url 'faculty_staff:create_assignment' %}" class="space-y-4">
                 {% csrf_token %}
-                <div class="row g-3">
-                    <div class="col-md-3">
-                        <label for="course_offering_id" class="form-label">Course Offering</label>
-                        <select name="course_offering_id" id="course_offering_id" class="form-select select2" required>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Course Offering</span>
+                        </label>
+                        <select name="course_offering_id" id="course_offering_id" class="select select-bordered select2" required>
                             <option value="">Search for a course offering...</option>
                         </select>
-                        <span id="course-offering-error" class="error"></span>
+                        <span id="course-offering-error" class="text-error"></span>
                     </div>
-                    <div class="col-md-3">
-                        <label for="title" class="form-label">Title</label>
-                        <input type="text" name="title" id="title" class="form-control" required>
-                        <span id="title-error" class="error"></span>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Title</span>
+                        </label>
+                        <input type="text" name="title" id="title" class="input input-bordered" required>
+                        <span id="title-error" class="text-error"></span>
                     </div>
-                    <div class="col-md-3">
-                        <label for="due_date" class="form-label">Due Date</label>
-                        <input type="datetime-local" name="due_date" id="due_date" class="form-control" required>
-                        <span id="due-date-error" class="error"></span>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="total_marks" class="form-label">Total Marks</label>
-                        <input type="number" name="total_marks" id="total_marks" class="form-control" min="1" value="100" required>
-                        <span id="total-marks-error" class="error"></span>
-                    </div>
-                    <div class="col-md-12">
-                        <label for="description" class="form-label">Description</label>
-                        <textarea name="description" id="description" class="form-control" rows="3"></textarea>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="file" class="form-label">File (Optional)</label>
-                        <input type="file" name="file" id="file" class="form-control" accept=".pdf,.doc,.docx">
-                    </div>
-                    <div class="col-md-2 align-self-end">
-                        <button type="submit" class="btn btn-primary w-100">Create</button>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Due Date</span>
+                        </label>
+                        <input type="datetime-local" name="due_date" id="due_date" class="input input-bordered" required>
+                        <span id="due-date-error" class="text-error"></span>
                     </div>
                 </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Total Marks</span>
+                        </label>
+                        <input type="number" name="total_marks" id="total_marks" class="input input-bordered" min="1" value="100" required>
+                        <span id="total-marks-error" class="text-error"></span>
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">File (Optional)</span>
+                        </label>
+                        <input type="file" name="file" id="file" class="file-input file-input-bordered" accept=".pdf,.doc,.docx">
+                    </div>
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Description</span>
+                    </label>
+                    <textarea name="description" id="description" class="textarea textarea-bordered" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary w-full">
+                    <i class="fas fa-plus"></i>
+                    Create Assignment
+                </button>
             </form>
         </div>
     </div>
 
-    <!-- Existing Assignments Table -->
-    <div class="card">
+    <!-- Existing Assignments -->
+    <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
-            <h5 class="card-title">Existing Assignments</h5>
-            <div class="table-responsive">
-                <table class="table table-hover">
+            <h2 class="card-title text-2xl mb-4">
+                <i class="fas fa-list"></i>
+                Existing Assignments
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="table table-zebra">
                     <thead>
                         <tr>
                             <th>Title</th>
@@ -98,13 +105,27 @@
                             <td>{{ assignment.total_marks }}</td>
                             <td>{{ assignment.created_at|date:'Y-m-d H:i' }}</td>
                             <td>
-                                <a href="{% url 'faculty_staff:assignment_submissions' assignment.id %}" class="btn btn-info btn-sm">View Submissions</a>
-                                <button class="btn btn-danger btn-sm delete-assignment" data-assignment-id="{{ assignment.id }}">Delete</button>
+                                <div class="flex gap-2">
+                                    <a href="{% url 'faculty_staff:assignment_submissions' assignment.id %}" class="btn btn-sm btn-info">
+                                        <i class="fas fa-eye"></i>
+                                        View Submissions
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-error delete-assignment" data-assignment-id="{{ assignment.id }}">
+                                        <i class="fas fa-trash"></i>
+                                        Delete
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="6" class="text-center">No assignments found.</td>
+                            <td colspan="6" class="text-center p-8">
+                                <div class="text-center">
+                                    <i class="fas fa-tasks text-6xl text-base-content/20 mb-4"></i>
+                                    <h3 class="text-xl font-semibold text-base-content/70 mb-2">No Assignments Found</h3>
+                                    <p class="text-base-content/50">Use the form above to create new assignments.</p>
+                                </div>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>

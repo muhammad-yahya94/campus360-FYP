@@ -18,7 +18,7 @@ from django.db import transaction
 
 # Local app imports
 from academics.models import Department, Program, Semester
-from admissions.models import AcademicSession, AdmissionCycle, Applicant
+from admissions.models import AcademicSession, AdmissionCycle, Applicant, AcademicQualification
 from courses.models import Course, CourseOffering, ExamResult, StudyMaterial, Assignment, AssignmentSubmission, Notice
 from faculty_staff.models import Teacher
 from students.models import Student, StudentSemesterEnrollment, CourseEnrollment
@@ -96,14 +96,6 @@ def hod_dashboard(request):
     return render(request, 'faculty_staff/hod_dashboard.html', context)
 
 
-
-
-
-
-
-
-
-
 @login_required
 def staff_management(request):
     # if not request.user.is_staff or request.user.teacher_profile.designation != 'head_of_department':
@@ -154,7 +146,7 @@ def add_staff(request):
         first_name = request.POST.get('first_name')
         last_name = request.POST.get('last_name')
         email = request.POST.get('email')
-        designation = request.POST.get('designation')
+        designation = request.POST.get('designation')   
         contact_no = request.POST.get('contact_no', '')
         qualification = request.POST.get('qualification', '')
         hire_date = request.POST.get('hire_date', None)
@@ -1148,8 +1140,7 @@ def teacher_course_list(request):
 
 @login_required
 def logout_view(request):
-    logout(request)
-    messages.success(request, 'You have been logged out successfully.')
+    logout(request)   
     return redirect('faculty_staff:login')
 
 

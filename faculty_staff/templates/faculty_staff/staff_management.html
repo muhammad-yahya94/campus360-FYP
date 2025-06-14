@@ -51,11 +51,12 @@
                     <i class="fas fa-user-plus"></i>
                     Quick Actions
                 </h2>
-                <button type="button" class="btn btn-primary w-full justify-start" data-bs-toggle="modal" data-bs-target="#addStaffModal">
+                <!-- Trigger DaisyUI modal -->
+                <label for="addStaffModal" class="btn btn-primary w-full justify-start">
                     <i class="fas fa-user-plus"></i>
                     Add New Staff
                     <div class="badge badge-neutral ml-auto">New</div>
-                </button>
+                </label>
             </div>
         </div>
     </div>
@@ -95,21 +96,16 @@
                             </td>
                             <td>
                                 <div class="flex gap-2">
-                                    <button type="button" class="btn btn-sm btn-outline-primary" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#editStaffModal{{ staff.id }}">
+                                    <!-- Trigger DaisyUI edit modal -->
+                                    <label for="editStaffModal{{ staff.id }}" class="btn btn-sm btn-outline-primary">
                                         <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-outline-info" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#viewStaffModal{{ staff.id }}">
+                                    </label>
+                                    <label for="viewStaffModal{{ staff.id }}" class="btn btn-sm btn-outline-info">
                                         <i class="fas fa-eye"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#deleteStaffModal{{ staff.id }}">
+                                    </label>
+                                    <label for="deleteStaffModal{{ staff.id }}" class="btn btn-sm btn-outline-danger">
                                         <i class="fas fa-trash"></i>
-                                    </button>
+                                    </label>
                                 </div>
                             </td>
                         </tr>
@@ -134,11 +130,9 @@
                 {% if staff_members.has_previous %}
                 <a href="?page={{ staff_members.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="btn join-item">Previous</a>
                 {% endif %}
-
                 {% for num in staff_members.paginator.page_range %}
                 <a href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="btn join-item {% if staff_members.number == num %}btn-active{% endif %}">{{ num }}</a>
                 {% endfor %}
-
                 {% if staff_members.has_next %}
                 <a href="?page={{ staff_members.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="btn join-item">Next</a>
                 {% endif %}
@@ -148,242 +142,285 @@
     </div>
 </div>
 
-<!-- Add Staff Modal -->
-<div class="modal fade" id="addStaffModal" tabindex="-1" aria-labelledby="addStaffModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="addStaffModalLabel">Add New Staff Member</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<!-- Add Staff Modal (DaisyUI) -->
+<input type="checkbox" id="addStaffModal" class="modal-toggle" />
+<div class="modal" role="dialog">
+    <div class="modal-box w-11/12 max-w-3xl">
+        <h3 class="text-2xl font-bold mb-4">Add New Staff Member</h3>
+        <form method="post" action="{% url 'faculty_staff:add_staff' %}">
+            {% csrf_token %}
+            <div class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">First Name</span>
+                        </label>
+                        <input type="text" name="first_name" class="input input-bordered" required>
+                        {% if form_errors.first_name %}
+                        <span class="text-error text-sm">First name is required.</span>
+                        {% endif %}
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Last Name</span>
+                        </label>
+                        <input type="text" name="last_name" class="input input-bordered" required>
+                        {% if form_errors.last_name %}
+                        <span class="text-error text-sm">Last name is required.</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Email</span>
+                    </label>
+                    <input type="email" name="email" class="input input-bordered" required>
+                    {% if form_errors.email %}
+                    <span class="text-error text-sm">
+                        {% if form_errors.email == 'exists' %}Email is already taken.{% else %}Email is required.{% endif %}
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Designation</span>
+                    </label>
+                    <select name="designation" class="select select-bordered" required>
+                        {% for value, label in designation_choices %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if form_errors.designation %}
+                    <span class="text-error text-sm">Invalid designation selected.</span>
+                    {% endif %}
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Contact No</span>
+                    </label>
+                    <input type="text" name="contact_no" class="input input-bordered">
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Qualification</span>
+                    </label>
+                    <textarea name="qualification" class="textarea textarea-bordered" rows="3"></textarea>
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Hire Date</span>
+                    </label>
+                    <input type="date" name="hire_date" class="input input-bordered">
+                </div>
+                <div class="form-control">
+                    <label class="cursor-pointer label">
+                        <span class="label-text">Is Active</span>
+                        <input type="checkbox" name="is_active" class="checkbox checkbox-primary" checked>
+                    </label>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">LinkedIn URL</span>
+                        </label>
+                        <input type="url" name="linkedin_url" class="input input-bordered">
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Twitter URL</span>
+                        </label>
+                        <input type="url" name="twitter_url" class="input input-bordered">
+                    </div>
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Personal Website</span>
+                    </label>
+                    <input type="url" name="personal_website" class="input input-bordered">
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Experience</span>
+                    </label>
+                    <textarea name="experience" class="textarea textarea-bordered" rows="4"></textarea>
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Department</span>
+                    </label>
+                    <input type="text" class="input input-bordered" value="{{ department.name }}" readonly>
+                </div>
             </div>
-            <form method="post" action="{% url 'faculty_staff:add_staff' %}">
+            <div class="modal-action">
+                <label for="addStaffModal" class="btn btn-secondary">Close</label>
+                <button type="submit" class="btn btn-primary">Add Staff</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Staff Modal (DaisyUI) -->
+{% for staff in staff_members %}
+<input type="checkbox" id="editStaffModal{{ staff.id }}" class="modal-toggle" />
+<div class="modal" role="dialog">
+    <div class="modal-box w-11/12 max-w-3xl">
+        <h3 class="text-2xl font-bold mb-4">Edit Staff Member</h3>
+        <form method="post" action="{% url 'faculty_staff:edit_staff' staff.id %}">
+            {% csrf_token %}
+            <div class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">First Name</span>
+                        </label>
+                        <input type="text" name="first_name" class="input input-bordered" value="{{ staff.user.first_name }}" required>
+                        {% if form_errors.first_name %}
+                        <span class="text-error text-sm">First name is required.</span>
+                        {% endif %}
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Last Name</span>
+                        </label>
+                        <input type="text" name="last_name" class="input input-bordered" value="{{ staff.user.last_name }}" required>
+                        {% if form_errors.last_name %}
+                        <span class="text-error text-sm">Last name is required.</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Email</span>
+                    </label>
+                    <input type="email" name="email" class="input input-bordered" value="{{ staff.user.email }}" required>
+                    {% if form_errors.email %}
+                    <span class="text-error text-sm">
+                        {% if form_errors.email == 'exists' %}Email is already taken.{% else %}Email is required.{% endif %}
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Designation</span>
+                    </label>
+                    <select name="designation" class="select select-bordered" required>
+                        {% for value, label in designation_choices %}
+                        <option value="{{ value }}" {% if staff.designation == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if form_errors.designation %}
+                    <span class="text-error text-sm">Invalid designation selected.</span>
+                    {% endif %}
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Contact No</span>
+                    </label>
+                    <input type="text" name="contact_no" class="input input-bordered" value="{{ staff.contact_no|default_if_none:'' }}">
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Qualification</span>
+                    </label>
+                    <textarea name="qualification" class="textarea textarea-bordered" rows="3">{{ staff.qualification|default_if_none:'' }}</textarea>
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Hire Date</span>
+                    </label>
+                    <input type="date" name="hire_date" class="input input-bordered" value="{{ staff.hire_date|date:'Y-m-d'|default_if_none:'' }}">
+                </div>
+                <div class="form-control">
+                    <label class="cursor-pointer label">
+                        <span class="label-text">Is Active</span>
+                        <input type="checkbox" name="is_active" class="checkbox checkbox-primary" {% if staff.is_active %}checked{% endif %}>
+                    </label>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">LinkedIn URL</span>
+                        </label>
+                        <input type="url" name="linkedin_url" class="input input-bordered" value="{{ staff.linkedin_url|default_if_none:'' }}">
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Twitter URL</span>
+                        </label>
+                        <input type="url" name="twitter_url" class="input input-bordered" value="{{ staff.twitter_url|default_if_none:'' }}">
+                    </div>
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Personal Website</span>
+                    </label>
+                    <input type="url" name="personal_website" class="input input-bordered" value="{{ staff.personal_website|default_if_none:'' }}">
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Experience</span>
+                    </label>
+                    <textarea name="experience" class="textarea textarea-bordered" rows="4">{{ staff.experience|default_if_none:'' }}</textarea>
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Department</span>
+                    </label>
+                    <input type="text" class="input input-bordered" value="{{ staff.department.name }}" readonly>
+                </div>
+            </div>
+            <div class="modal-action">
+                <label for="editStaffModal{{ staff.id }}" class="btn btn-secondary">Close</label>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+
+<!-- View Staff Modal (DaisyUI) -->
+{% for staff in staff_members %}
+<input type="checkbox" id="viewStaffModal{{ staff.id }}" class="modal-toggle" />
+<div class="modal" role="dialog">
+    <div class="modal-box w-11/12 max-w-3xl">
+        <h3 class="text-2xl font-bold mb-4">View Staff Member</h3>
+        <div class="space-y-2">
+            <p><strong>Name:</strong> {{ staff.user.get_full_name }}</p>
+            <p><strong>Email:</strong> {{ staff.user.email }}</p>
+            <p><strong>Department:</strong> {{ staff.department.name }}</p>
+            <p><strong>Designation:</strong> {{ staff.get_designation_display }}</p>
+            <p><strong>Contact No:</strong> {{ staff.contact_no|default:"N/A" }}</p>
+            <p><strong>Qualification:</strong> {{ staff.qualification|default:"N/A" }}</p>
+            <p><strong>Hire Date:</strong> {{ staff.hire_date|default:"N/A" }}</p>
+            <p><strong>Status:</strong> {{ staff.is_active|yesno:"Active,Inactive" }}</p>
+            <p><strong>LinkedIn:</strong> {% if staff.linkedin_url %}<a href="{{ staff.linkedin_url }}" target="_blank" class="link link-primary">Link</a>{% else %}N/A{% endif %}</p>
+            <p><strong>Twitter:</strong> {% if staff.twitter_url %}<a href="{{ staff.twitter_url }}" target="_blank" class="link link-primary">Link</a>{% else %}N/A{% endif %}</p>
+            <p><strong>Personal Website:</strong> {% if staff.personal_website %}<a href="{{ staff.personal_website }}" target="_blank" class="link link-primary">Link</a>{% else %}N/A{% endif %}</p>
+            <p><strong>Experience:</strong> {{ staff.experience|default:"N/A" }}</p>
+        </div>
+        <div class="modal-action">
+            <label for="viewStaffModal{{ staff.id }}" class="btn btn-secondary">Close</label>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Delete Staff Modal (DaisyUI) -->
+{% for staff in staff_members %}
+<input type="checkbox" id="deleteStaffModal{{ staff.id }}" class="modal-toggle" />
+<div class="modal" role="dialog">
+    <div class="modal-box">
+        <h3 class="text-2xl font-bold mb-4">Delete Staff Member</h3>
+        <p>Are you sure you want to delete <strong>{{ staff.user.get_full_name }}</strong>?</p>
+        <p>This action cannot be undone.</p>
+        <div class="modal-action">
+            <label for="deleteStaffModal{{ staff.id }}" class="btn btn-secondary">Cancel</label>
+            <form method="post" action="{% url 'faculty_staff:delete_staff' staff.id %}">
                 {% csrf_token %}
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">First Name</label>
-                            <input type="text" name="first_name" class="form-control" required>
-                            {% if form_errors.first_name %}<span class="text-danger">First name is required.</span>{% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Last Name</label>
-                            <input type="text" name="last_name" class="form-control" required>
-                            {% if form_errors.last_name %}<span class="text-danger">Last name is required.</span>{% endif %}
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Email</label>
-                        <input type="email" name="email" class="form-control" required>
-                        {% if form_errors.email %}<span class="text-danger">{% if form_errors.email == 'exists' %}Email is already taken.{% else %}Email is required.{% endif %}</span>{% endif %}
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Designation</label>
-                        <select name="designation" class="form-select" required>
-                            {% for value, label in designation_choices %}
-                            <option value="{{ value }}">{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                        {% if form_errors.designation %}<span class="text-danger">Invalid designation selected.</span>{% endif %}
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Contact No</label>
-                        <input type="text" name="contact_no" class="form-control">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Qualification</label>
-                        <textarea name="qualification" class="form-control" rows="3"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Hire Date</label>
-                        <input type="date" name="hire_date" class="form-control">
-                    </div>
-                    <div class="mb-3 form-check">
-                        <input type="checkbox" name="is_active" class="form-check-input" id="isActive" checked>
-                        <label class="form-check-label" for="isActive">Is Active</label>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">LinkedIn URL</label>
-                            <input type="url" name="linkedin_url" class="form-control">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Twitter URL</label>
-                            <input type="url" name="twitter_url" class="form-control">
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Personal Website</label>
-                        <input type="url" name="personal_website" class="form-control">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Experience</label>
-                        <textarea name="experience" class="form-control" rows="4"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Department</label>
-                        <input type="text" class="form-control" value="{{ department.name }}" readonly>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Add Staff</button>
-                </div>
+                <button type="submit" class="btn btn-error">Delete</button>
             </form>
         </div>
     </div>
 </div>
-
-<!-- Edit Staff Modal -->
-{% for staff in staff_members %}
-<div class="modal fade" id="editStaffModal{{ staff.id }}" tabindex="-1" aria-labelledby="editStaffModalLabel{{ staff.id }}" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editStaffModalLabel{{ staff.id }}">Edit Staff Member</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form method="post" action="{% url 'faculty_staff:edit_staff' staff.id %}">
-                {% csrf_token %}
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">First Name</label>
-                            <input type="text" name="first_name" class="form-control" value="{{ staff.user.first_name }}" required>
-                            {% if form_errors.first_name %}<span class="text-danger">First name is required.</span>{% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Last Name</label>
-                            <input type="text" name="last_name" class="form-control" value="{{ staff.user.last_name }}" required>
-                            {% if form_errors.last_name %}<span class="text-danger">Last name is required.</span>{% endif %}
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Email</label>
-                        <input type="email" name="email" class="form-control" value="{{ staff.user.email }}" required>
-                        {% if form_errors.email %}<span class="text-danger">{% if form_errors.email == 'exists' %}Email is already taken.{% else %}Email is required.{% endif %}</span>{% endif %}
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Designation</label>
-                        <select name="designation" class="form-select" required>
-                            {% for value, label in designation_choices %}
-                            <option value="{{ value }}" {% if staff.designation == value %}selected{% endif %}>{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                        {% if form_errors.designation %}<span class="text-danger">Invalid designation selected.</span>{% endif %}
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Contact No</label>
-                        <input type="text" name="contact_no" class="form-control" value="{{ staff.contact_no|default_if_none:'' }}">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Qualification</label>
-                        <textarea name="qualification" class="form-control" rows="3">{{ staff.qualification|default_if_none:'' }}</textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Hire Date</label>
-                        <input type="date" name="hire_date" class="form-control" value="{{ staff.hire_date|date:'Y-m-d'|default_if_none:'' }}">
-                    </div>
-                    <div class="mb-3 form-check">
-                        <input type="checkbox" name="is_active" class="form-check-input" id="isActive{{ staff.id }}" {% if staff.is_active %}checked{% endif %}>
-                        <label class="form-check-label" for="isActive{{ staff.id }}">Is Active</label>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">LinkedIn URL</label>
-                            <input type="url" name="linkedin_url" class="form-control" value="{{ staff.linkedin_url|default_if_none:'' }}">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Twitter URL</label>
-                            <input type="url" name="twitter_url" class="form-control" value="{{ staff.twitter_url|default_if_none:'' }}">
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Personal Website</label>
-                        <input type="url" name="personal_website" class="form-control" value="{{ staff.personal_website|default_if_none:'' }}">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Experience</label>
-                        <textarea name="experience" class="form-control" rows="4">{{ staff.experience|default_if_none:'' }}</textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Department</label>
-                        <input type="text" class="form-control" value="{{ staff.department.name }}" readonly>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 {% endfor %}
-
-<!-- View Staff Modal -->
-{% for staff in staff_members %}
-<div class="modal fade" id="viewStaffModal{{ staff.id }}" tabindex="-1" aria-labelledby="viewStaffModalLabel{{ staff.id }}" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="viewStaffModalLabel{{ staff.id }}">View Staff Member</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p><strong>Name:</strong> {{ staff.user.get_full_name }}</p>
-                <p><strong>Email:</strong> {{ staff.user.email }}</p>
-                <p><strong>Department:</strong> {{ staff.department.name }}</p>
-                <p><strong>Designation:</strong> {{ staff.get_designation_display }}</p>
-                <p><strong>Contact No:</strong> {{ staff.contact_no|default:"N/A" }}</p>
-                <p><strong>Qualification:</strong> {{ staff.qualification|default:"N/A" }}</p>
-                <p><strong>Hire Date:</strong> {{ staff.hire_date|default:"N/A" }}</p>
-                <p><strong>Status:</strong> {{ staff.is_active|yesno:"Active,Inactive" }}</p>
-                <p><strong>LinkedIn:</strong> {% if staff.linkedin_url %}<a href="{{ staff.linkedin_url }}" target="_blank">Link</a>{% else %}N/A{% endif %}</p>
-                <p><strong>Twitter:</strong> {% if staff.twitter_url %}<a href="{{ staff.twitter_url }}" target="_blank">Link</a>{% else %}N/A{% endif %}</p>
-                <p><strong>Personal Website:</strong> {% if staff.personal_website %}<a href="{{ staff.personal_website }}" target="_blank">Link</a>{% else %}N/A{% endif %}</p>
-                <p><strong>Experience:</strong> {{ staff.experience|default:"N/A" }}</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-{% endfor %}
-
-<!-- Delete Staff Modal -->
-{% for staff in staff_members %}
-<div class="modal fade" id="deleteStaffModal{{ staff.id }}" tabindex="-1" aria-labelledby="deleteStaffModalLabel{{ staff.id }}" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteStaffModalLabel{{ staff.id }}">Delete Staff Member</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete <strong>{{ staff.user.get_full_name }}</strong>?</p>
-                <p>This action cannot be undone.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form method="post" action="{% url 'faculty_staff:delete_staff' staff.id %}">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-danger">Delete</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-{% endfor %}
-
-{% block extra_js %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
-    });
-</script>
-{% endblock %}
 {% endblock %}

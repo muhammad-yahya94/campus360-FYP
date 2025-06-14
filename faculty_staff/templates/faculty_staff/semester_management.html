@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="drawer-content flex flex-col min-h-screen">
-    <div class="container mx-auto px-4 py-6">
+    <div class="container mx-auto px-4 py-6 semester-form">
         <!-- Header -->
         <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-xl mb-6">
             <div class="hero-content text-center py-8">
@@ -15,283 +15,342 @@
             </div>
         </div>
 
-    <!-- Error Message -->
-    {% if error %}
-    <div class="alert alert-error">
-        {{ error }}
-    </div>
-    {% endif %}
+        <!-- Error Message -->
+        {% if error %}
+        <div class="alert alert-error">
+            {{ error }}
+            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
+        </div>
+        {% endif %}
 
-    <!-- Add Semester Form -->
-    <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-            <h2 class="card-title text-2xl mb-4">
-                <i class="fas fa-plus"></i>
-                Add New Semester
-            </h2>
-            <form id="add-semester-form" method="post" action="{% url 'faculty_staff:add_semester' %}" class="space-y-4">
+        <!-- Add Semester Form -->
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title text-2xl mb-4">
+                    <i class="fas fa-plus"></i>
+                    Add New Semester
+                </h2>
+                <form id="add-semester-form" method="post" action="{% url 'faculty_staff:add_semester' %}" class="space-y-4">
+                    {% csrf_token %}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text">Program</span>
+                            </label>
+                            <select name="program_id" id="add_program_id" class="select select-bordered select2 w-full max-w-xs" required>
+                                <option value="">Select a program...</option>
+                                {% for program in programs %}
+                                <option value="{{ program.id }}">{{ program.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <span id="add-program-error" class="text-error"></span>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text">Semester Number</span>
+                            </label>
+                            <input type="number" name="number" id="add_number" class="input input-bordered" required min="1">
+                            <span id="add-number-error" class="text-error"></span>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text">Name</span>
+                            </label>
+                            <input type="text" name="name" id="add_name" class="input input-bordered" required>
+                            <span id="add-name-error" class="text-error"></span>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text">Description</span>
+                            </label>
+                            <textarea name="description" id="add_description" class="textarea textarea-bordered"></textarea>
+                            <span id="add-description-error" class="text-error"></span>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text">Start Date</span>
+                            </label>
+                            <input type="date" name="start_time" id="add_start_time" class="input input-bordered">
+                            <span id="add-start-time-error" class="text-error"></span>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text">End Date</span>
+                            </label>
+                            <input type="date" name="end_time" id="add_end_time" class="input input-bordered">
+                            <span id="add-end-time-error" class="text-error"></span>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text">Active</span>
+                            </label>
+                            <select name="is_active" id="add_is_active" class="select select-bordered">
+                                <option value="true">Yes</option>
+                                <option value="false" selected>No</option>
+                            </select>
+                            <span id="add-is-active-error" class="text-error"></span>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-full">
+                        <i class="fas fa-plus"></i>
+                        Add Semester
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Search and Filter Form -->
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title text-2xl mb-4">
+                    <i class="fas fa-search"></i>
+                    Search Semesters
+                </h2>
+                <form id="search-form" method="get" action="{% url 'faculty_staff:semester_management' %}" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text">Search</span>
+                            </label>
+                            <input type="text" name="q" id="q" class="input input-bordered" value="{{ search_query }}" placeholder="Search by name, description, or program...">
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text">Filter by Program</span>
+                            </label>
+                            <select name="program_id" id="program_id_filter" class="select select-bordered select2">
+                                <option value="">All Programs in {{ request.user.teacher_profile.department.name }}</option>
+                                {% for program in programs %}
+                                <option value="{{ program.id }}" {% if selected_program == program.id|stringformat:'s' %}selected{% endif %}>{{ program.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-full">
+                        <i class="fas fa-filter"></i>
+                        Search
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Semesters Table -->
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title text-2xl mb-4">
+                    <i class="fas fa-table"></i>
+                    Semesters
+                </h2>
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra">
+                        <thead>
+                            <tr>
+                                <th>Program</th>
+                                <th>Semester Number</th>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Active</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for semester in semesters %}
+                            <tr>
+                                <td>{{ semester.program.name }}</td>
+                                <td>{{ semester.number }}</td>
+                                <td>{{ semester.name }}</td>
+                                <td>{{ semester.description|default:"N/A" }}</td>
+                                <td>{{ semester.start_time|date:"Y-m-d"|default:"N/A" }}</td>
+                                <td>{{ semester.end_time|date:"Y-m-d"|default:"N/A" }}</td>
+                                <td>
+                                    <span class="badge {% if semester.is_active %}badge-success{% else %}badge-error{% endif %}">
+                                        {{ semester.is_active|yesno:"Active,Inactive" }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="flex gap-2">
+                                        <button class="btn btn-sm btn-warning edit-semester" 
+                                                data-semester-id="{{ semester.id }}"
+                                                data-program-id="{{ semester.program.id }}"
+                                                data-number="{{ semester.number }}"
+                                                data-name="{{ semester.name }}"
+                                                data-description="{{ semester.description|default:'' }}"
+                                                data-start-time="{{ semester.start_time|date:'Y-m-d'|default:'' }}"
+                                                data-end-time="{{ semester.end_time|date:'Y-m-d'|default:'' }}"
+                                                data-is-active="{{ semester.is_active|yesno:'true,false' }}">
+                                            <i class="fas fa-edit"></i>
+                                            Edit
+                                        </button>
+                                        <button class="btn btn-sm btn-error delete-semester" data-semester-id="{{ semester.id }}">
+                                            <i class="fas fa-trash"></i>
+                                            Delete
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center p-8">
+                                    <div class="text-center">
+                                        <i class="fas fa-calendar text-6xl text-base-content/20 mb-4"></i>
+                                        <h3 class="text-xl font-semibold text-base-content/70 mb-2">No Semesters Found</h3>
+                                        <p class="text-base-content/50">Use the form above to add new semesters.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Pagination -->
+                <div class="join mt-4">
+                    {% if semesters.has_previous %}
+                    <a href="?page={{ semesters.previous_page_number }}&q={{ search_query }}&program_id={{ selected_program }}" class="btn join-item">Previous</a>
+                    {% endif %}
+                    {% for num in semesters.paginator.page_range %}
+                    <a href="?page={{ num }}&q={{ search_query }}&program_id={{ selected_program }}" class="btn join-item {% if semesters.number == num %}btn-active{% endif %}">{{ num }}</a>
+                    {% endfor %}
+                    {% if semesters.has_next %}
+                    <a href="?page={{ semesters.next_page_number }}&q={{ search_query }}&program_id={{ selected_program }}" class="btn join-item">Next</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Semester Modal (DaisyUI) -->
+    <dialog id="editSemesterModal" class="modal">
+        <div class="modal-box w-11/12 max-w-5xl">
+            <h3 class="font-bold text-2xl mb-4">Edit Semester</h3>
+            <form id="edit-semester-form" method="post" action="{% url 'faculty_staff:edit_semester' %}" class="space-y-4">
                 {% csrf_token %}
+                <input type="hidden" name="semester_id" id="edit_semester_id">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="form-control">
                         <label class="label">
                             <span class="label-text">Program</span>
                         </label>
-                        <select name="program_id" id="add_program_id" class="select select-bordered select2 w-full max-w-xs" required>
+                        <select name="program_id" id="edit_program_id" class="select select-bordered select2 w-full" required>
                             <option value="">Select a program...</option>
                             {% for program in programs %}
                             <option value="{{ program.id }}">{{ program.name }}</option>
                             {% endfor %}
                         </select>
-                        <span id="add-program-error" class="text-error"></span>
+                        <span id="edit-program-error" class="text-error"></span>
                     </div>
                     <div class="form-control">
                         <label class="label">
                             <span class="label-text">Semester Number</span>
                         </label>
-                        <input type="number" name="number" id="add_number" class="input input-bordered" required min="1">
-                        <span id="add-number-error" class="text-error"></span>
+                        <input type="number" name="number" id="edit_number" class="input input-bordered" required min="1">
+                        <span id="edit-number-error" class="text-error"></span>
                     </div>
                     <div class="form-control">
                         <label class="label">
                             <span class="label-text">Name</span>
                         </label>
-                        <input type="text" name="name" id="add_name" class="input input-bordered" required>
-                        <span id="add-name-error" class="text-error"></span>
+                        <input type="text" name="name" id="edit_name" class="input input-bordered" required>
+                        <span id="edit-name-error" class="text-error"></span>
                     </div>
                     <div class="form-control">
                         <label class="label">
                             <span class="label-text">Description</span>
                         </label>
-                        <textarea name="description" id="add_description" class="textarea textarea-bordered"></textarea>
-                        <span id="add-description-error" class="text-error"></span>
+                        <textarea name="description" id="edit_description" class="textarea textarea-bordered"></textarea>
+                        <span id="edit-description-error" class="text-error"></span>
                     </div>
                     <div class="form-control">
                         <label class="label">
                             <span class="label-text">Start Date</span>
                         </label>
-                        <input type="date" name="start_time" id="add_start_time" class="input input-bordered">
-                        <span id="add-start-time-error" class="text-error"></span>
+                        <input type="date" name="start_time" id="edit_start_time" class="input input-bordered">
+                        <span id="edit-start-time-error" class="text-error"></span>
                     </div>
                     <div class="form-control">
                         <label class="label">
                             <span class="label-text">End Date</span>
                         </label>
-                        <input type="date" name="end_time" id="add_end_time" class="input input-bordered">
-                        <span id="add-end-time-error" class="text-error"></span>
+                        <input type="date" name="end_time" id="edit_end_time" class="input input-bordered">
+                        <span id="edit-end-time-error" class="text-error"></span>
                     </div>
                     <div class="form-control">
                         <label class="label">
                             <span class="label-text">Active</span>
                         </label>
-                        <select name="is_active" id="add_is_active" class="select select-bordered">
+                        <select name="is_active" id="edit_is_active" class="select select-bordered">
                             <option value="true">Yes</option>
-                            <option value="false" selected>No</option>
+                            <option value="false">No</option>
                         </select>
-                        <span id="add-is-active-error" class="text-error"></span>
+                        <span id="edit-is-active-error" class="text-error"></span>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-primary w-full">
-                    <i class="fas fa-plus"></i>
-                    Add Semester
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Search and Filter Form -->
-    <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-            <h2 class="card-title text-2xl mb-4">
-                <i class="fas fa-search"></i>
-                Search Semesters
-            </h2>
-            <form id="search-form" method="get" action="{% url 'faculty_staff:semester_management' %}" class="space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Search</span>
-                        </label>
-                        <input type="text" name="q" id="q" class="input input-bordered" value="{{ search_query }}" placeholder="Search by name, description, or program...">
-                    </div>
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Filter by Program</span>
-                        </label>
-                        <select name="program_id" id="program_id_filter" class="select select-bordered select2">
-                            <option value="">All Programs in {{ request.user.teacher_profile.department.name }}</option>
-                            {% for program in programs %}
-                            <option value="{{ program.id }}" {% if selected_program == program.id|stringformat:'s' %}selected{% endif %}>{{ program.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
-                <button type="submit" class="btn btn-primary w-full">
-                    <i class="fas fa-filter"></i>
-                    Search
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Semesters Table -->
-    <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-            <h2 class="card-title text-2xl mb-4">
-                <i class="fas fa-table"></i>
-                Semesters
-            </h2>
-            <div class="overflow-x-auto">
-                <table class="table table-zebra">
-                    <thead>
-                        <tr>
-                            <th>Program</th>
-                            <th>Semester Number</th>
-                            <th>Name</th>
-                            <th>Description</th>
-                            <th>Start Date</th>
-                            <th>End Date</th>
-                            <th>Active</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for semester in semesters %}
-                        <tr>
-                            <td>{{ semester.program.name }}</td>
-                            <td>{{ semester.number }}</td>
-                            <td>{{ semester.name }}</td>
-                            <td>{{ semester.description|default:"N/A" }}</td>
-                            <td>{{ semester.start_time|date:"Y-m-d"|default:"N/A" }}</td>
-                            <td>{{ semester.end_time|date:"Y-m-d"|default:"N/A" }}</td>
-                            <td>
-                                <span class="badge {% if semester.is_active %}badge-success{% else %}badge-error{% endif %}">
-                                    {{ semester.is_active|yesno:"Active,Inactive" }}
-                                </span>
-                            </td>
-                            <td>
-                                <div class="flex gap-2">
-                                    <button class="btn btn-sm btn-warning edit-semester" 
-                                            data-semester-id="{{ semester.id }}"
-                                            data-program-id="{{ semester.program.id }}"
-                                            data-number="{{ semester.number }}"
-                                            data-name="{{ semester.name }}"
-                                            data-description="{{ semester.description|default:'' }}"
-                                            data-start-time="{{ semester.start_time|date:'Y-m-d'|default:'' }}"
-                                            data-end-time="{{ semester.end_time|date:'Y-m-d'|default:'' }}"
-                                            data-is-active="{{ semester.is_active|yesno:'true,false' }}">
-                                        <i class="fas fa-edit"></i>
-                                        Edit
-                                    </button>
-                                    <button class="btn btn-sm btn-error delete-semester" data-semester-id="{{ semester.id }}">
-                                        <i class="fas fa-trash"></i>
-                                        Delete
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="8" class="text-center p-8">
-                                <div class="text-center">
-                                    <i class="fas fa-calendar text-6xl text-base-content/20 mb-4"></i>
-                                    <h3 class="text-xl font-semibold text-base-content/70 mb-2">No Semesters Found</h3>
-                                    <p class="text-base-content/50">Use the form above to add new semesters.</p>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            <!-- Pagination -->
-            <div class="join mt-4">
-                {% if semesters.has_previous %}
-                <a href="?page={{ semesters.previous_page_number }}&q={{ search_query }}&program_id={{ selected_program }}" class="btn join-item">Previous</a>
-                {% endif %}
-                {% for num in semesters.paginator.page_range %}
-                <a href="?page={{ num }}&q={{ search_query }}&program_id={{ selected_program }}" class="btn join-item {% if semesters.number == num %}btn-active{% endif %}">{{ num }}</a>
-                {% endfor %}
-                {% if semesters.has_next %}
-                <a href="?page={{ semesters.next_page_number }}&q={{ search_query }}&program_id={{ selected_program }}" class="btn join-item">Next</a>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-
-    <!-- Edit Semester Modal -->
-    <div class="modal fade" id="editSemesterModal" tabindex="-1" aria-labelledby="editSemesterModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="editSemesterModalLabel">Edit Semester</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="edit-semester-form" method="post" action="{% url 'faculty_staff:edit_semester' %}">
-                        {% csrf_token %}
-                        <input type="hidden" name="semester_id" id="edit_semester_id">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label for="edit_program_id" class="form-label">Program</label>
-                                <select name="program_id" id="edit_program_id" class="form-select select2" required>
-                                    <option value="">Select a program...</option>
-                                    {% for program in programs %}
-                                    <option value="{{ program.id }}">{{ program.name }}</option>
-                                    {% endfor %}
-                                </select>
-                                <span id="edit-program-error" class="error"></span>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="edit_number" class="form-label">Semester Number</label>
-                                <input type="number" name="number" id="edit_number" class="form-control" required min="1">
-                                <span id="edit-number-error" class="error"></span>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="edit_name" class="form-label">Name</label>
-                                <input type="text" name="name" id="edit_name" class="form-control" required>
-                                <span id="edit-name-error" class="error"></span>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="edit_description" class="form-label">Description</label>
-                                <textarea name="description" id="edit_description" class="form-control"></textarea>
-                                <span id="edit-description-error" class="error"></span>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="edit_start_time" class="form-label">Start Date</label>
-                                <input type="date" name="start_time" id="edit_start_time" class="form-control">
-                                <span id="edit-start-time-error" class="error"></span>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="edit_end_time" class="form-label">End Date</label>
-                                <input type="date" name="end_time" id="edit_end_time" class="form-control">
-                                <span id="edit-end-time-error" class="error"></span>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="edit_is_active" class="form-label">Active</label>
-                                <select name="is_active" id="edit_is_active" class="form-select">
-                                    <option value="true">Yes</option>
-                                    <option value="false">No</option>
-                                </select>
-                                <span id="edit-is-active-error" class="error"></span>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <div class="modal-action">
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('editSemesterModal').close()">Close</button>
                     <button type="submit" class="btn btn-primary" id="edit-semester-submit">Update Semester</button>
                 </div>
-            </div>
+            </form>
         </div>
-    </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
 </div>
-
 
 <!-- Include Select2 CSS and JS -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+{% comment %} <!-- Custom Select2 Styling to Match DaisyUI -->
+<style>
+.select2-container .select2-selection--single {
+    height: 2.5rem !important;
+    border: 1px solid hsl(var(--bc) / 0.2) !important;
+    border-radius: var(--rounded-btn, 0.5rem) !important;
+    background-color: hsl(var(--b1)) !important;
+    padding: 0.5rem !important;
+    font-size: 0.875rem !important;
+    line-height: 1.25rem !important;
+}
+.select2-container .select2-selection--single .select2-selection__rendered {
+    padding-left: 0 !important;
+    color: hsl(var(--nc) / 0.8) !important; /* Changed to neutral color to remove black */
+}
+.select2-container .select2-selection--single .select2-selection__arrow {
+    height: 2.5rem !important;
+    right: 0.5rem !important;
+}
+.select2-container .select2-selection--single .select2-selection__arrow b {
+    border-color: hsl(var(--bc) / 0.5) transparent transparent transparent !important;
+}
+.select2-container--open .select2-selection--single .select2-selection__arrow b {
+    border-color: transparent transparent hsl(var(--bc) / 0.5) transparent !important;
+}
+.select2-dropdown {
+    background-color: hsl(var(--b1)) !important;
+    border: 1px solid hsl(var(--bc) / 0.2) !important;
+    border-radius: var(--rounded-box, 1rem) !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+}
+.select2-results__option {
+    padding: 0.5rem 1rem !important;
+    color: hsl(var(--nc) / 0.8) !important; /* Changed to neutral color to remove black */
+}
+.select2-results__option--highlighted {
+    background-color: hsl(var(--p) / 0.1) !important;
+    color: hsl(var(--pc)) !important;
+}
+.select2-container--default .select2-selection--single .select2-selection__placeholder {
+    color: hsl(var(--bc) / 0.5) !important;
+}
+.select2-container--default .select2-selection--single:focus {
+    outline: none !important;
+    border-color: hsl(var(--p)) !important;
+    box-shadow: 0 0 0 3px hsl(var(--p) / 0.2) !important;
+}
+</style> {% endcomment %}
 
 <script>
 $(document).ready(function() {
@@ -311,9 +370,9 @@ $(document).ready(function() {
 
         const submitBtn = $(this).find('button[type="submit"]');
         submitBtn.prop('disabled', true);
-        submitBtn.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...');
+        submitBtn.html('<span class="loading loading-spinner loading-sm"></span> Processing...');
         
-        $('.error').text('');
+        $('.text-error').text('');
         
         let isValid = true;
         $(this).find('[required]').each(function() {
@@ -326,7 +385,7 @@ $(document).ready(function() {
         
         if (!isValid) {
             submitBtn.prop('disabled', false);
-            submitBtn.text('Add Semester');
+            submitBtn.html('<i class="fas fa-plus"></i> Add Semester');
             isSubmitting = false;
             return;
         }
@@ -338,9 +397,9 @@ $(document).ready(function() {
             success: function(response) {
                 if (response.success) {
                     const successAlert = `
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <div class="alert alert-success">
                             ${response.message}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
                         </div>
                     `;
                     $('.semester-form').prepend(successAlert);
@@ -351,9 +410,9 @@ $(document).ready(function() {
                     }, 1500);
                 } else {
                     const errorAlert = `
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <div class="alert alert-error">
                             Error: ${response.message}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
                         </div>
                     `;
                     $('.semester-form').prepend(errorAlert);
@@ -361,16 +420,16 @@ $(document).ready(function() {
             },
             error: function(xhr, status, error) {
                 const errorAlert = `
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <div class="alert alert-error">
                         An error occurred: ${error}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
                     </div>
                 `;
                 $('.semester-form').prepend(errorAlert);
             },
             complete: function() {
                 submitBtn.prop('disabled', false);
-                submitBtn.text('Add Semester');
+                submitBtn.html('<i class="fas fa-plus"></i> Add Semester');
                 isSubmitting = false;
             }
         });
@@ -398,23 +457,23 @@ $(document).ready(function() {
         $('#edit_start_time').val(startTime);
         $('#edit_end_time').val(endTime);
         $('#edit_is_active').val(isActive);
-        $('.error').text('');
+        $('.text-error').text('');
 
-        // Show modal
-        $('#editSemesterModal').modal('show');
+        // Show DaisyUI modal
+        document.getElementById('editSemesterModal').showModal();
     });
 
     // Edit Semester Form Submission
-    $('#edit-semester-submit').on('click', function(e) {
+    $('#edit-semester-form').on('submit', function(e) {
         e.preventDefault();
         if (isSubmitting) return;
         isSubmitting = true;
 
-        const submitBtn = $(this);
+        const submitBtn = $('#edit-semester-submit');
         submitBtn.prop('disabled', true);
-        submitBtn.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...');
+        submitBtn.html('<span class="loading loading-spinner loading-sm"></span> Processing...');
 
-        $('.error').text('');
+        $('.text-error').text('');
 
         let isValid = true;
         $('#edit-semester-form').find('[required]').each(function() {
@@ -438,11 +497,11 @@ $(document).ready(function() {
             data: $('#edit-semester-form').serialize(),
             success: function(response) {
                 if (response.success) {
-                    $('#editSemesterModal').modal('hide');
+                    document.getElementById('editSemesterModal').close();
                     const successAlert = `
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <div class="alert alert-success">
                             ${response.message}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
                         </div>
                     `;
                     $('.semester-form').prepend(successAlert);
@@ -451,22 +510,22 @@ $(document).ready(function() {
                     }, 1500);
                 } else {
                     const errorAlert = `
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <div class="alert alert-error">
                             Error: ${response.message}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
                         </div>
                     `;
-                    $('#editSemesterModal .modal-body').prepend(errorAlert);
+                    $('#editSemesterModal .modal-box').prepend(errorAlert);
                 }
             },
             error: function(xhr, status, error) {
                 const errorAlert = `
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <div class="alert alert-error">
                         An error occurred: ${error}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
                     </div>
                 `;
-                $('#editSemesterModal .modal-body').prepend(errorAlert);
+                $('#editSemesterModal .modal-box').prepend(errorAlert);
             },
             complete: function() {
                 submitBtn.prop('disabled', false);
@@ -477,11 +536,11 @@ $(document).ready(function() {
     });
 
     // Reset modal form when closed
-    $('#editSemesterModal').on('hidden.bs.modal', function() {
+    $('#editSemesterModal').on('close', function() {
         $('#edit-semester-form')[0].reset();
         $('#edit_program_id').val(null).trigger('change');
-        $('.error').text('');
-        $('#editSemesterModal .modal-body .alert').remove();
+        $('.text-error').text('');
+        $('#editSemesterModal .modal-box .alert').remove();
     });
 
     // Delete Semester Button
@@ -498,9 +557,9 @@ $(document).ready(function() {
                 success: function(response) {
                     if (response.success) {
                         const successAlert = `
-                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <div class="alert alert-success">
                                 ${response.message}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
                             </div>
                         `;
                         $('.semester-form').prepend(successAlert);
@@ -509,9 +568,9 @@ $(document).ready(function() {
                         }, 1500);
                     } else {
                         const errorAlert = `
-                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <div class="alert alert-error">
                                 Error: ${response.message}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
                             </div>
                         `;
                         $('.semester-form').prepend(errorAlert);
@@ -519,9 +578,9 @@ $(document).ready(function() {
                 },
                 error: function(xhr, status, error) {
                     const errorAlert = `
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <div class="alert alert-error">
                             An error occurred: ${error}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
                         </div>
                     `;
                     $('.semester-form').prepend(errorAlert);

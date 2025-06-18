@@ -28,8 +28,8 @@ CustomUser = get_user_model()
 
 
 def login_view(request):
-    if request.user.is_authenticated:
-        return redirect('faculty_staff:hod_dashboard')
+    # if request.user.is_authenticated:
+    #     return redirect('faculty_staff:hod_dashboard')
 
     if request.method == 'POST':
         email = request.POST.get('email')
@@ -488,10 +488,16 @@ def search_teachers(request):
     if request.method == "GET":
         search_query = request.GET.get('q', '')
         teachers = Teacher.objects.filter(
-            Q(user__first_name__icontains=search_query) | Q(user__last_name__icontains=search_query)
+            Q(user__first_name__icontains=search_query) | Q(user__last_name__icontains=search_query),
+            is_active=True 
         ).values('id', 'user__first_name', 'user__last_name', 'department__name')[:10]
         return JsonResponse({
-            'results': [{'id': teacher['id'], 'text': f"{teacher['user__first_name']} {teacher['user__last_name']} ({teacher['department__name']})"} for teacher in teachers],
+            'results': [
+                {
+                    'id': teacher['id'],
+                    'text': f"{teacher['user__first_name']} {teacher['user__last_name']} ({teacher['department__name']})"
+                } for teacher in teachers
+            ],
             'more': False
         })
     return JsonResponse({'results': [], 'more': False})
@@ -588,7 +594,6 @@ def get_offering_type_choices(request):
 @login_required
 @transaction.atomic
 def save_course_offering(request):
-    # Log the incoming request details
     print(f'Request method: {request.method}, User: {request.user}')
     
     if request.method == "POST" and hasattr(request.user, 'teacher_profile') and request.user.teacher_profile.designation == 'head_of_department':
@@ -598,11 +603,11 @@ def save_course_offering(request):
         semester_id = request.POST.get('semester_id')
         academic_session_id = request.POST.get('academic_session_id')
         offering_type = request.POST.get('offering_type')
+        shift = request.POST.get('shift')
         
-        # Log the input data
         print(f'course_id: {course_id}, teacher_id: {teacher_id}, program_id: {program_id}, '
-                     f'semester_id: {semester_id}, academic_session_id: {academic_session_id}, '
-                     f'offering_type: {offering_type}')
+              f'semester_id: {semester_id}, academic_session_id: {academic_session_id}, '
+              f'offering_type: {offering_type}, shift: {shift}')
 
         # Check for missing fields
         required_fields = {
@@ -611,7 +616,8 @@ def save_course_offering(request):
             'program_id': 'Program',
             'semester_id': 'Semester',
             'academic_session_id': 'Academic Session',
-            'offering_type': 'Offering Type'
+            'offering_type': 'Offering Type',
+            'shift': 'Shift'
         }
         missing_fields = [field_name for field_name, field_label in required_fields.items() if not request.POST.get(field_name)]
         if missing_fields:
@@ -628,6 +634,15 @@ def save_course_offering(request):
             return JsonResponse({
                 'success': False,
                 'message': 'Invalid offering type selected.'
+            })
+
+        # Validate shift
+        valid_shifts = ['morning', 'evening', 'both']
+        if shift not in valid_shifts:
+            print(f'Invalid shift: {shift}')
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid shift selected.'
             })
 
         # Retrieve objects
@@ -651,7 +666,8 @@ def save_course_offering(request):
             program=program,
             academic_session=academic_session,
             semester=semester,
-            offering_type=offering_type
+            offering_type=offering_type,
+            shift=shift
         )
         if existing_offerings.exists():
             print('Course offering already exists')
@@ -660,7 +676,7 @@ def save_course_offering(request):
                 'message': 'This exact course offering already exists.'
             })
 
-        # Check for active students
+        # Get active students with compatible shift
         active_students = Student.objects.filter(
             program=program,
             current_semester=semester,
@@ -673,7 +689,23 @@ def save_course_offering(request):
                 'message': 'No active students found for this program and semester.'
             })
 
-        # Create course offering and enroll students
+        # Filter students by shift compatibility
+        compatible_students = []
+        for student in active_students:
+            applicant_shift = student.applicant.shift
+            if shift == 'both' or applicant_shift == shift:
+                compatible_students.append(student)
+            else:
+                print(f'Skipping student {student.applicant.full_name}: Applicant shift {applicant_shift}, Course shift {shift}')
+
+        if not compatible_students:
+            print('No students with compatible shifts')
+            return JsonResponse({
+                'success': False,
+                'message': 'No students have a compatible shift preference for this course offering.'
+            })
+
+        # Create course offering and enroll compatible students
         try:
             offering = CourseOffering.objects.create(
                 course=course,
@@ -684,11 +716,13 @@ def save_course_offering(request):
                 semester=semester,
                 is_active=True,
                 offering_type=offering_type,
-                current_enrollment=0
+                shift=shift,
+                current_enrollment=0   
             )
 
             enrolled_count = 0
-            for student in active_students:
+            enrolled_student_names = []
+            for student in compatible_students:
                 semester_enrollment, created = StudentSemesterEnrollment.objects.get_or_create(
                     student=student,
                     semester=semester,
@@ -701,18 +735,20 @@ def save_course_offering(request):
                 )
                 if created:
                     enrolled_count += 1
+                    enrolled_student_names.append(student.applicant.full_name)
                 elif course_enrollment.status != 'enrolled':
                     course_enrollment.status = 'enrolled'
                     course_enrollment.save()
                     enrolled_count += 1
+                    enrolled_student_names.append(student.applicant.full_name)
 
             offering.current_enrollment = enrolled_count
             offering.save()
-            print(f'Course offering created: {course.code}, Enrolled: {enrolled_count}')
+            print(f'Course offering created: {course.code}, Shift: {shift}, Enrolled: {enrolled_count}, Students: {", ".join(enrolled_student_names)}')
             
             return JsonResponse({
                 'success': True,
-                'message': f'Successfully created course offering for {course.code} with {enrolled_count} students enrolled.',
+                'message': f'Successfully created course offering for {course.code} ({shift.capitalize()} shift) with {enrolled_count} students enrolled.',
                 'offering_id': offering.id
             })
         except Exception as e:

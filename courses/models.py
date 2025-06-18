@@ -34,7 +34,16 @@ class CourseOffering(models.Model):
     semester = models.ForeignKey(Semester, on_delete=models.CASCADE, related_name='course_offerings', help_text="Select the semester for this offering.")
     is_active = models.BooleanField(default=True, help_text="Check if this course offering is currently active for enrollment.")
     current_enrollment = models.IntegerField()
-    
+    shift = models.CharField(
+        max_length=10,
+        choices=[
+            ('morning', 'Morning'),
+            ('evening', 'Evening'),
+            ('both', 'Both')
+        ],
+        default='morning',
+        help_text="Select the shift for this course offering."
+    )
     OFFERING_TYPES = [
         ('core', 'Core / Compulsory'),
         ('major', 'Major'),

@@ -64,7 +64,9 @@ INSTALLED_APPS = [
     'students',
     'django_extensions',
     'learning_cycle',
-    'payment'
+    'payment',
+    'background_task', #ya wesy pakadge k liy add kia gaya hai
+    'bgtask'
 ]
 
 MIDDLEWARE = [

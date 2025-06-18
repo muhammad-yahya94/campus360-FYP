@@ -15,7 +15,7 @@
     </div>
 
     <!-- Course Offering Form -->
-    <div class="card bg-base-100 shadow-xl">
+    <div class="card bg-base-100 shadow-xl assignment-form">
         <div class="card-body">
             <h2 class="card-title text-2xl mb-4">
                 <i class="fas fa-book"></i>
@@ -78,6 +78,18 @@
                         </select>
                         <span id="semester-error" class="text-error"></span>
                     </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Shift</span>
+                        </label>
+                        <select name="shift" id="shift" class="select select-bordered" required>
+                            <option value="">Select a shift...</option>
+                            <option value="morning">Morning</option>
+                            <option value="evening">Evening</option>
+                            <option value="both">Both</option>
+                        </select>
+                        <span id="shift-error" class="text-error"></span>
+                    </div>
                 </div>
                 <button type="submit" class="btn btn-primary w-full">
                     <i class="fas fa-check"></i>
@@ -106,6 +118,7 @@
                             <th>Academic Session</th>   
                             <th>Semester</th>
                             <th>Offering Type</th>
+                            <th>Shift</th>
                             <th>Active</th>
                             <th>Actions</th>
                         </tr>
@@ -127,6 +140,7 @@
                             <td>{{ offering.academic_session.name }}</td>
                             <td>{{ offering.semester.name }}</td>
                             <td>{{ offering.get_offering_type_display }}</td>
+                            <td>{{ offering.shift }}</td>
                             <td>
                                 <span class="badge {% if offering.is_active %}badge-success{% else %}badge-error{% endif %}">
                                     {{ offering.is_active|yesno:"Active,Inactive" }}
@@ -141,7 +155,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="12" class="text-center p-8">
+                            <td colspan="11" class="text-center p-8">
                                 <div class="text-center">
                                     <i class="fas fa-book text-6xl text-base-content/20 mb-4"></i>
                                     <h3 class="text-xl font-semibold text-base-content/70 mb-2">No Course Offerings Found</h3>
@@ -388,11 +402,11 @@ $(document).ready(function() {
         submitBtn.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...');
         
         // Clear previous errors
-        $('.error').text('');
+        $('.text-error').text('');
         
         // Validate required fields
         let isValid = true;
-        $('.select2[required]').each(function() {
+        $('select[required]').each(function() {
             if (!$(this).val()) {
                 const fieldName = $(this).attr('name');
                 $(`#${fieldName}-error`).text('This field is required.');
@@ -402,7 +416,7 @@ $(document).ready(function() {
         
         if (!isValid) {
             submitBtn.prop('disabled', false);
-            submitBtn.text('Assign');
+            submitBtn.text('Assign Course');
             isSubmitting = false;
             return;
         }
@@ -425,6 +439,7 @@ $(document).ready(function() {
                     // Reset form
                     $('#course-offering-form')[0].reset();
                     $('.select2').val(null).trigger('change');
+                    $('#shift').val(''); // Reset static shift dropdown
                     
                     // Reload the page after 1.5 seconds
                     setTimeout(() => {
@@ -451,7 +466,7 @@ $(document).ready(function() {
             },
             complete: function() {
                 submitBtn.prop('disabled', false);
-                submitBtn.text('Assign');
+                submitBtn.text('Assign Course');
                 isSubmitting = false;
             }
         });

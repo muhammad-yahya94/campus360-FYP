@@ -5,12 +5,10 @@ import sys
 from datetime import timedelta
 from faker import Faker
 
-# Set up Django environment
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'campus360FYP.settings')
 
 try:
     django.setup()
-    # Import Django modules after setup
     from django.utils import timezone
     from django.core.files.base import ContentFile
     from academics.models import Faculty, Department, Program, Semester
@@ -27,6 +25,80 @@ except Exception as e:
 
 fake = Faker()
 
+# Muslim names and university data (unchanged from your provided script)
+muslim_first_names_male = [
+    'Ahmed', 'Ali', 'Hassan', 'Hussain', 'Omar', 'Ibrahim', 'Yousuf', 'Abdullah', 'Hamza', 'Bilal',
+    'Khalid', 'Saad', 'Zain', 'Arham', 'Rayyan', 'Taha', 'Adeel', 'Faisal', 'Imran', 'Noman'
+]
+muslim_first_names_female = [
+    'Aisha', 'Fatima', 'Maryam', 'Zainab', 'Khadija', 'Amna', 'Hafsa', 'Sana', 'Noor', 'Sara',
+    'Ayesha', 'Hina', 'Mahnoor', 'Iqra', 'Rabia', 'Bushra', 'Sumaira', 'Zara', 'Lubna', 'Eman'
+]
+muslim_last_names = [
+    'Khan', 'Ahmed', 'Malik', 'Siddiqui', 'Hussain', 'Shah', 'Raza', 'Iqbal', 'Anwar', 'Chaudhry',
+    'Mahmood', 'Abbasi', 'Qureshi', 'Farooqi', 'Sheikh', 'Javed', 'Aslam', 'Baig', 'Nawaz', 'Zafar'
+]
+university_faculties = [
+    'Faculty of Engineering and Technology', 'Faculty of Sciences', 'Faculty of Arts and Humanities',
+    'Faculty of Business Administration', 'Faculty of Social Sciences', 'Faculty of Islamic Studies'
+]
+university_departments = {
+    'Faculty of Engineering and Technology': [
+        'Computer Science', 'Electrical Engineering', 'Mechanical Engineering', 'Civil Engineering'
+    ],
+    'Faculty of Sciences': [
+        'Mathematics', 'Physics', 'Chemistry', 'Biology'
+    ],
+    'Faculty of Arts and Humanities': [
+        'English', 'Urdu', 'History', 'Fine Arts'
+    ],
+    'Faculty of Business Administration': [
+        'Management Sciences', 'Accounting and Finance', 'Marketing'
+    ],
+    'Faculty of Social Sciences': [
+        'Sociology', 'Psychology', 'Economics', 'Political Science'
+    ],
+    'Faculty of Islamic Studies': [
+        'Islamic Studies', 'Arabic'
+    ]
+}
+university_programs = {
+    'Computer Science': ['BS Computer Science', 'MS Computer Science', 'PhD Computer Science'],
+    'Electrical Engineering': ['BS Electrical Engineering', 'MS Electrical Engineering'],
+    'Mechanical Engineering': ['BS Mechanical Engineering'],
+    'Civil Engineering': ['BS Civil Engineering'],
+    'Mathematics': ['BS Mathematics', 'MPhil Mathematics'],
+    'Physics': ['BS Physics', 'MPhil Physics'],
+    'Chemistry': ['BS Chemistry'],
+    'Biology': ['BS Biology'],
+    'English': ['BS English', 'MA English'],
+    'Urdu': ['BS Urdu'],
+    'History': ['BS History'],
+    'Fine Arts': ['BS Fine Arts'],
+    'Management Sciences': ['BBA', 'MBA'],
+    'Accounting and Finance': ['BS Accounting and Finance'],
+    'Marketing': ['BS Marketing'],
+    'Sociology': ['BS Sociology'],
+    'Psychology': ['BS Psychology'],
+    'Economics': ['BS Economics'],
+    'Political Science': ['BS Political Science'],
+    'Islamic Studies': ['BS Islamic Studies', 'MA Islamic Studies'],
+    'Arabic': ['BS Arabic']
+}
+course_codes = [
+    'CS101', 'CS201', 'CS301', 'EE101', 'EE202', 'ME101', 'CE101', 'MATH101', 'MATH201', 'PHY101',
+    'CHEM101', 'BIO101', 'ENG101', 'URD101', 'HIST101', 'ART101', 'MGT101', 'ACC101', 'MKT101',
+    'SOC101', 'PSY101', 'ECO101', 'POL101', 'ISL101', 'ARB101'
+]
+course_names = [
+    'Introduction to Programming', 'Data Structures', 'Database Systems', 'Circuit Analysis',
+    'Electronics', 'Thermodynamics', 'Structural Engineering', 'Calculus I', 'Linear Algebra',
+    'Mechanics', 'Organic Chemistry', 'Cell Biology', 'English Composition', 'Urdu Literature',
+    'Pakistan History', 'Painting Techniques', 'Principles of Management', 'Financial Accounting',
+    'Marketing Principles', 'Introduction to Sociology', 'General Psychology', 'Microeconomics',
+    'International Relations', 'Islamic Jurisprudence', 'Arabic Grammar'
+]
+
 def create_fake_image():
     from PIL import Image
     import io
@@ -39,12 +111,14 @@ def create_fake_users(count=1000):
     users = []
     existing_emails = set(CustomUser.objects.values_list('email', flat=True))
     for _ in range(count):
-        email = fake.email()
+        gender = random.choice(['male', 'female'])
+        first_names = muslim_first_names_male if gender == 'male' else muslim_first_names_female
+        first_name = random.choice(first_names)
+        last_name = random.choice(muslim_last_names)
+        email = f"{first_name.lower()}.{last_name.lower()}{random.randint(100,999)}@example.com"
         while email in existing_emails:
-            email = fake.email()
+            email = f"{first_name.lower()}.{last_name.lower()}{random.randint(100,999)}@example.com"
         existing_emails.add(email)
-        first_name = fake.first_name()
-        last_name = fake.last_name()
         try:
             user = CustomUser.objects.create_user(
                 email=email,
@@ -61,8 +135,8 @@ def create_fake_users(count=1000):
 
 def create_fake_faculties(count=3):
     faculties = []
-    for _ in range(count):
-        name = fake.company() + " Faculty"
+    selected_faculties = random.sample(university_faculties, min(count, len(university_faculties)))
+    for name in selected_faculties:
         try:
             faculty = Faculty.objects.create(
                 name=name,
@@ -77,8 +151,10 @@ def create_fake_faculties(count=3):
 def create_fake_departments(faculties, count_per_faculty=2):
     departments = []
     for faculty in faculties:
-        for _ in range(count_per_faculty):
-            name = fake.company() + " Department"
+        faculty_name = faculty.name
+        available_depts = university_departments.get(faculty_name, [])
+        selected_depts = random.sample(available_depts, min(count_per_faculty, len(available_depts)))
+        for name in selected_depts:
             try:
                 department = Department.objects.create(
                     faculty=faculty,
@@ -96,23 +172,27 @@ def create_fake_departments(faculties, count_per_faculty=2):
 
 def create_fake_programs(departments, count_per_department=2):
     programs = []
-    degree_types = ['BS', 'MS', 'PhD', 'MPhil']
+    degree_types = ['BS', 'MS', 'PhD', 'MPhil', 'BBA', 'MBA', 'MA']
     for department in departments:
-        for _ in range(count_per_department):
+        dept_name = department.name
+        available_programs = university_programs.get(dept_name, [])
+        selected_programs = random.sample(available_programs, min(count_per_department, len(available_programs)))
+        for name in selected_programs:
             try:
+                degree_type = name.split()[0] if name.split()[0] in degree_types else random.choice(degree_types)
                 program = Program.objects.create(
                     department=department,
-                    name=fake.catch_phrase() + " Program",
-                    degree_type=random.choice(degree_types),
+                    name=name,
+                    degree_type=degree_type,
                     duration_years=random.randint(2, 5),
                     total_semesters=random.randint(4, 10),
                     start_year=random.randint(2000, 2020),
                     end_year=None if random.choice([True, False]) else random.randint(2020, 2025),
-                    is_active=random.choice([True, False])
+                    is_active=True
                 )
                 programs.append(program)
             except Exception as e:
-                print(f"Error creating program: {e}")
+                print(f"Error creating program {name}: {e}")
     return programs
 
 def create_fake_semesters(programs, semesters_per_program=8):
@@ -127,7 +207,7 @@ def create_fake_semesters(programs, semesters_per_program=8):
                     description=fake.text(max_nb_chars=200),
                     start_time=fake.date_this_year(),
                     end_time=fake.date_this_year() + timedelta(days=120),
-                    is_active=random.choice([True, False])
+                    is_active=(i == 1 or i == semesters_per_program)
                 )
                 semesters.append(semester)
             except Exception as e:
@@ -136,19 +216,21 @@ def create_fake_semesters(programs, semesters_per_program=8):
 
 def create_fake_academic_sessions(count=5):
     sessions = []
-    for i in range(count):
-        start_year = 2020 + i
+    session_names = ['Fall 2021', 'Spring 2022', 'Fall 2022', 'Spring 2023', 'Fall 2023', 'Spring 2024', 'Fall 2024', 'Spring 2025']
+    selected_sessions = random.sample(session_names, min(count, len(session_names)))
+    for name in selected_sessions:
+        start_year = int(name.split()[-1])
         try:
             session = AcademicSession.objects.create(
-                name=f"{start_year}-{start_year+4}",
+                name=name,
                 start_year=start_year,
-                end_year=start_year + 4,
-                is_active=(i == count - 1),
+                end_year=start_year + 1,
+                is_active=(name == selected_sessions[-1]),
                 description=fake.text(max_nb_chars=300)
             )
             sessions.append(session)
         except Exception as e:
-            print(f"Error creating academic session {start_year}: {e}")
+            print(f"Error creating academic session {name}: {e}")
     return sessions
 
 def create_fake_admission_cycles(programs, sessions, count_per_program=2):
@@ -162,7 +244,7 @@ def create_fake_admission_cycles(programs, sessions, count_per_program=2):
                     session=session,
                     application_start=fake.date_this_year(),
                     application_end=fake.date_this_year() + timedelta(days=30),
-                    is_open=random.choice([True, False])
+                    is_open=(session.is_active and random.choice([True, False]))
                 )
                 admission_cycles.append(admission_cycle)
             except Exception as e:
@@ -172,70 +254,77 @@ def create_fake_admission_cycles(programs, sessions, count_per_program=2):
 def create_fake_applicants(users, faculties, departments, programs, count=600):
     applicants = []
     available_users = users.copy()
+    shifts = ['morning', 'evening']
     for _ in range(count):
         if not available_users:
             print("Warning: Not enough unique users for applicants")
             break
         user = random.choice(available_users)
+        gender = random.choice(['male', 'female'])
+        first_names = muslim_first_names_male if gender == 'male' else muslim_first_names_female
+        full_name = f"{random.choice(first_names)} {random.choice(muslim_last_names)}"
         try:
             applicant = Applicant.objects.create(
                 user=user,
                 faculty=random.choice(faculties),
                 department=random.choice(departments),
                 program=random.choice(programs),
-                status=random.choice(['pending', 'accepted', 'rejected']),
+                status='accepted',
                 applicant_photo=create_fake_image() if random.choice([True, False]) else None,
-                full_name=fake.name(),
-                religion=fake.word(),
+                full_name=full_name,
+                religion='Islam',
                 caste=fake.word() if random.choice([True, False]) else '',
-                cnic=fake.ssn(),
-                dob=fake.date_of_birth(minimum_age=18, maximum_age=30),
-                contact_no=fake.phone_number()[:15],
+                cnic=f"3520{random.randint(1000000,9999999)}-{random.randint(1000000,9999999)}",
+                contact_no=f"+92{3000000000 + random.randint(0, 99999999):010d}",  # Fixed length
                 identification_mark=fake.text(max_nb_chars=100) if random.choice([True, False]) else '',
-                father_name=fake.name_male(),
+                father_name=f"{random.choice(muslim_first_names_male)} {random.choice(muslim_last_names)}",
                 father_occupation=fake.job(),
-                father_cnic=fake.ssn() if random.choice([True, False]) else '',
+                father_cnic=f"3520{random.randint(1000000,9999999)}-{random.randint(1000000,9999999)}" if random.choice([True, False]) else '',
                 monthly_income=random.randint(50000, 200000) if random.choice([True, False]) else None,
-                relationship=random.choice(['father', 'guardian']),
-                permanent_address=fake.address(),
-                shift=random.choice(['morning', 'evening']),
+                relationship='father',
+                permanent_address=fake.address().replace('\n', ', '),
+                shift=random.choice(shifts),
                 declaration=True
             )
             applicants.append(applicant)
             available_users.remove(user)
         except Exception as e:
-            print(f"Error creating applicant for user {user.email}: {e}")
+            print(f"Error creating applicant {full_name}: {e}")
     return applicants
 
 def create_fake_academic_qualifications(applicants, count_per_applicant=2):
     qualifications = []
+    exams = ['Matriculation', 'Intermediate', 'Bachelor’s', 'Entry Test']
+    boards = ['Lahore Board', 'FBISE', 'Punjab University', 'NTS']
     for applicant in applicants:
         for _ in range(count_per_applicant):
+            exam = random.choice(exams)
             try:
                 qualification = AcademicQualification.objects.create(
                     applicant=applicant,
-                    exam_passed=fake.word().capitalize() + " Exam",
+                    exam_passed=exam,
                     passing_year=random.randint(2015, 2023),
-                    marks_obtained=random.randint(500, 1000),
-                    total_marks=1000,
-                    division=random.choice(['1st', '2nd', '3rd']),
+                    marks_obtained=random.randint(600, 1100),
+                    total_marks=1100 if exam != 'Entry Test' else 100,
+                    division=random.choice(['1st', '2nd']) if exam != 'Entry Test' else None,
                     subjects=fake.text(max_nb_chars=100),
-                    board=fake.company(),
+                    board=random.choice(boards),
                     certificate_file=create_fake_image() if random.choice([True, False]) else None
                 )
                 qualifications.append(qualification)
             except Exception as e:
-                print(f"Error creating academic qualification for applicant {applicant.full_name}: {e}")
+                print(f"Error creating academic qualification for {applicant.full_name}: {e}")
     return qualifications
 
 def create_fake_extra_curricular_activities(applicants, count_per_applicant=1):
     activities = []
+    activity_types = ['Debate Competition', 'Sports Tournament', 'Qirat Competition', 'Volunteer Work', 'Art Exhibition']
     for applicant in applicants:
         for _ in range(count_per_applicant):
             try:
                 activity = ExtraCurricularActivity.objects.create(
                     applicant=applicant,
-                    activity=fake.catch_phrase(),
+                    activity=random.choice(activity_types),
                     position=fake.job() if random.choice([True, False]) else '',
                     achievement=fake.text(max_nb_chars=100) if random.choice([True, False]) else '',
                     activity_year=random.randint(2015, 2023),
@@ -243,50 +332,56 @@ def create_fake_extra_curricular_activities(applicants, count_per_applicant=1):
                 )
                 activities.append(activity)
             except Exception as e:
-                print(f"Error creating extra-curricular activity for applicant {applicant.full_name}: {e}")
+                print(f"Error creating extra-curricular activity for {applicant.full_name}: {e}")
     return activities
 
 def create_fake_teachers(users, departments, count=20):
     teachers = []
     available_users = users.copy()
     count = min(count, len(available_users))
+    shifts = ['morning', 'evening', 'both']
+    designations = ['Professor', 'Associate Professor', 'Assistant Professor', 'Head of Department']
+    qualifications = ['PhD in Computer Science', 'MPhil in Mathematics', 'PhD in Physics', 'MA in English', 'MBA']
     for _ in range(count):
         if not available_users:
-            print("Warning: Not enough unique users available for teachers")
+            print("Warning: Not enough unique users for teachers")
             break
         user = random.choice(available_users)
+        gender = random.choice(['male', 'female'])
+        first_names = muslim_first_names_male if gender == 'male' else muslim_first_names_female
         try:
             teacher = Teacher.objects.create(
                 user=user,
                 department=random.choice(departments),
-                designation=random.choice(['head_of_department', 'professor']),
-                contact_no=fake.phone_number()[:15],
-                qualification=fake.catch_phrase() + " Degree",
+                designation=random.choice(designations),
+                contact_no=f"+92{3000000000 + random.randint(0, 99999999):010d}",  # Fixed length
+                qualification=random.choice(qualifications),
                 hire_date=fake.date_this_decade(),
-                is_active=random.choice([True, False]),
+                is_active=True,
                 linkedin_url=fake.url() if random.choice([True, False]) else '',
                 twitter_url=fake.url() if random.choice([True, False]) else '',
                 personal_website=fake.url() if random.choice([True, False]) else '',
-                experience=fake.text(max_nb_chars=300)
+                experience=fake.text(max_nb_chars=300),
+                shift_preference=random.choice(shifts)
             )
             teachers.append(teacher)
             available_users.remove(user)
         except Exception as e:
-            print(f"Error creating teacher for user {user.email}: {e}")
+            print(f"Error creating teacher {user.first_name} {user.last_name}: {e}")
     return teachers
 
 def create_fake_offices(count=3):
     offices = []
-    for _ in range(count):
-        name = fake.company() + " Office"
+    office_names = ['Registrar Office', 'Examination Office', 'Admission Office']
+    for name in office_names[:count]:
         try:
             office = Office.objects.create(
                 name=name,
                 description=fake.text(max_nb_chars=300),
                 image=create_fake_image() if random.choice([True, False]) else None,
-                location=fake.address(),
+                location=fake.address().replace('\n', ', '),
                 contact_email=fake.email(),
-                contact_phone=fake.phone_number()[:20],
+                contact_phone=f"+92{3000000000 + random.randint(0, 99999999):010d}",
                 slug=fake.slug(name)
             )
             offices.append(office)
@@ -298,6 +393,7 @@ def create_fake_office_staff(users, offices, count=10):
     staff = []
     available_users = users.copy()
     count = min(count, len(available_users))
+    positions = ['Clerk', 'Assistant Registrar', 'Admission Officer']
     for _ in range(count):
         if not available_users:
             print("Warning: Not enough unique users for office staff")
@@ -307,29 +403,30 @@ def create_fake_office_staff(users, offices, count=10):
             office_staff = OfficeStaff.objects.create(
                 user=user,
                 office=random.choice(offices),
-                position=fake.job(),
-                contact_no=fake.phone_number()[:15] if random.choice([True, False]) else ''
+                position=random.choice(positions),
+                contact_no=f"+92{3000000000 + random.randint(0, 99999999):010d}" if random.choice([True, False]) else ''
             )
             staff.append(office_staff)
             available_users.remove(user)
         except Exception as e:
-            print(f"Error creating office staff for user {user.email}: {e}")
+            print(f"Error creating office staff {user.first_name} {user.last_name}: {e}")
     return staff
 
 def create_fake_courses(count=20):
     courses = []
-    for _ in range(count):
+    selected_courses = random.sample(list(zip(course_codes, course_names)), min(count, len(course_codes)))
+    for code, name in selected_courses:
         try:
             course = Course.objects.create(
-                code=fake.lexify(text="???###").upper(),
-                name=fake.catch_phrase() + " Course",
-                credits=random.randint(1, 4),
+                code=code,
+                name=name,
+                credits=random.randint(2, 4),
                 is_active=True,
                 description=fake.text(max_nb_chars=300)
             )
             courses.append(course)
         except Exception as e:
-            print(f"Error creating course: {e}")
+            print(f"Error creating course {code}: {e}")
     for course in courses:
         prereqs = random.sample(courses, random.randint(0, min(2, len(courses) - 1)))
         course.prerequisites.set([c for c in prereqs if c != course])
@@ -337,20 +434,29 @@ def create_fake_courses(count=20):
 
 def create_fake_course_offerings(courses, teachers, departments, programs, sessions, semesters, count_per_course=3):
     offerings = []
-    offering_types = [choice[0] for choice in CourseOffering.OFFERING_TYPES]
+    if not teachers:
+        print("Error: No teachers available for course offerings")
+        return []
+    offering_types = ['regular', 'elective', 'special', 'core']
+    shifts = ['morning', 'evening', 'both']
     for course in courses:
         for _ in range(count_per_course):
+            teacher = random.choice(teachers)
+            shift = random.choice(shifts)
+            if shift != 'both' and teacher.shift_preference != 'both' and teacher.shift_preference != shift:
+                shift = teacher.shift_preference
             try:
                 offering = CourseOffering.objects.create(
                     course=course,
-                    teacher=random.choice(teachers),
+                    teacher=teacher,
                     department=random.choice(departments),
                     program=random.choice(programs),
                     academic_session=random.choice(sessions),
                     semester=random.choice(semesters),
                     is_active=True,
                     current_enrollment=random.randint(10, 50),
-                    offering_type=random.choice(offering_types)
+                    offering_type=random.choice(offering_types),
+                    shift=shift
                 )
                 offerings.append(offering)
             except Exception as e:
@@ -359,12 +465,13 @@ def create_fake_course_offerings(courses, teachers, departments, programs, sessi
 
 def create_fake_study_materials(course_offerings, teachers, count_per_offering=3):
     materials = []
+    titles = ['Lecture Notes', 'Tutorial Sheet', 'Reference Book Chapter', 'Lab Manual']
     for offering in course_offerings:
         for _ in range(count_per_offering):
             try:
                 material = StudyMaterial.objects.create(
                     course_offering=offering,
-                    title=fake.catch_phrase(),
+                    title=random.choice(titles),
                     description=fake.text(max_nb_chars=200),
                     file=create_fake_image(),
                     uploaded_by=random.choice(teachers),
@@ -377,12 +484,13 @@ def create_fake_study_materials(course_offerings, teachers, count_per_offering=3
 
 def create_fake_assignments(course_offerings, teachers, count_per_offering=3):
     assignments = []
+    titles = ['Assignment 1', 'Project Proposal', 'Lab Report', 'Case Study']
     for offering in course_offerings:
         for _ in range(count_per_offering):
             try:
                 assignment = Assignment.objects.create(
                     course_offering=offering,
-                    title=fake.catch_phrase(),
+                    title=random.choice(titles),
                     description=fake.text(max_nb_chars=300),
                     file=create_fake_image() if random.choice([True, False]) else None,
                     created_by=random.choice(teachers),
@@ -403,7 +511,7 @@ def create_fake_payments(applicants, count=100):
                 user=random.choice(applicants),
                 stripe_session_id=str(uuid.uuid4()),
                 stripe_payment_intent=str(uuid.uuid4()) if random.choice([True, False]) else None,
-                amount=random.uniform(100.00, 1000.00),
+                amount=random.uniform(5000, 50000),
                 status=random.choice(['pending', 'paid', 'failed'])
             )
             payments.append(payment)
@@ -415,7 +523,6 @@ def create_fake_students(applicants, programs, semesters, students_per_shift=50)
     students = []
     shifts = ['morning', 'evening']
     available_applicants = applicants.copy()
-    
     for program in programs:
         for shift in shifts:
             print(f"Creating {students_per_shift} students for {program.name} ({shift} shift)")
@@ -426,6 +533,9 @@ def create_fake_students(applicants, programs, semesters, students_per_shift=50)
                 new_users = create_fake_users(needed)
                 new_applicants = []
                 for user in new_users:
+                    gender = random.choice(['male', 'female'])
+                    first_names = muslim_first_names_male if gender == 'male' else muslim_first_names_female
+                    full_name = f"{random.choice(first_names)} {random.choice(muslim_last_names)}"
                     try:
                         applicant = Applicant.objects.create(
                             user=user,
@@ -434,19 +544,18 @@ def create_fake_students(applicants, programs, semesters, students_per_shift=50)
                             program=program,
                             status='accepted',
                             applicant_photo=create_fake_image() if random.choice([True, False]) else None,
-                            full_name=fake.name(),
-                            religion=fake.word(),
+                            full_name=full_name,
+                            religion='Islam',
                             caste=fake.word() if random.choice([True, False]) else '',
-                            cnic=fake.ssn(),
-                            dob=fake.date_of_birth(minimum_age=18, maximum_age=30),
-                            contact_no=fake.phone_number()[:15],
+                            cnic=f"3520{random.randint(1000000,9999999)}-{random.randint(1000000,9999999)}",
+                            contact_no=f"+92{3000000000 + random.randint(0, 99999999):010d}",
                             identification_mark=fake.text(max_nb_chars=100) if random.choice([True, False]) else '',
-                            father_name=fake.name_male(),
+                            father_name=f"{random.choice(muslim_first_names_male)} {random.choice(muslim_last_names)}",
                             father_occupation=fake.job(),
-                            father_cnic=fake.ssn() if random.choice([True, False]) else '',
+                            father_cnic=f"3520{random.randint(1000000,9999999)}-{random.randint(1000000,9999999)}" if random.choice([True, False]) else '',
                             monthly_income=random.randint(50000, 200000) if random.choice([True, False]) else None,
-                            relationship=random.choice(['father', 'guardian']),
-                            permanent_address=fake.address(),
+                            relationship='father',
+                            permanent_address=fake.address().replace('\n', ', '),
                             shift=shift,
                             declaration=True
                         )
@@ -455,7 +564,6 @@ def create_fake_students(applicants, programs, semesters, students_per_shift=50)
                         print(f"Error creating additional applicant for {program.name} ({shift}): {e}")
                 available_applicants.extend(new_applicants)
                 program_shift_applicants.extend(new_applicants)
-            
             selected_applicants = random.sample(program_shift_applicants, min(students_per_shift, len(program_shift_applicants)))
             for applicant in selected_applicants:
                 if not hasattr(applicant, 'student_profile'):
@@ -467,20 +575,20 @@ def create_fake_students(applicants, programs, semesters, students_per_shift=50)
                         student = Student.objects.create(
                             applicant=applicant,
                             user=applicant.user,
-                            university_roll_no=random.randint(100000, 999999),
-                            college_roll_no=random.randint(1000, 9999) if random.choice([True, False]) else None,
+                            university_roll_no=f"2023-{random.randint(1000,9999)}",
+                            college_roll_no=f"{random.randint(100,999)}" if random.choice([True, False]) else None,
                             enrollment_date=fake.date_this_decade(),
                             graduation_date=None,
                             program=program,
                             current_semester=random.choice(program_semesters),
                             current_status='active',
-                            emergency_contact=fake.name(),
-                            emergency_phone=fake.phone_number()[:15]
+                            emergency_contact=f"{random.choice(muslim_first_names_male)} {random.choice(muslim_last_names)}",
+                            emergency_phone=f"+92{3000000000 + random.randint(0, 99999999):010d}"
                         )
                         students.append(student)
                         available_applicants.remove(applicant)
                     except Exception as e:
-                        print(f"Error creating student for applicant {applicant.full_name}: {e}")
+                        print(f"Error creating student for {applicant.full_name}: {e}")
     return students
 
 def create_fake_student_semester_enrollments(students, semesters, count_per_student=2):
@@ -499,13 +607,17 @@ def create_fake_student_semester_enrollments(students, semesters, count_per_stud
                     enrollments.append(enrollment)
                     available_semesters.remove(semester)
                 except Exception as e:
-                    print(f"Error creating semester enrollment for student {student.applicant.full_name}: {e}")
+                    print(f"Error creating semester enrollment for {student.applicant.full_name}: {e}")
     return enrollments
 
 def create_fake_course_enrollments(semester_enrollments, course_offerings, count_per_enrollment=3):
     enrollments = []
     for se in semester_enrollments:
-        available_offerings = [co for co in course_offerings if co.semester == se.semester]
+        available_offerings = [
+            co for co in course_offerings
+            if co.semester == se.semester and
+            (co.shift == 'both' or co.shift == se.student.applicant.shift)
+        ]
         for _ in range(min(count_per_enrollment, len(available_offerings))):
             course_offering = random.choice(available_offerings)
             if not CourseEnrollment.objects.filter(student_semester_enrollment=se, course_offering=course_offering).exists():
@@ -518,13 +630,21 @@ def create_fake_course_enrollments(semester_enrollments, course_offerings, count
                     enrollments.append(enrollment)
                     available_offerings.remove(course_offering)
                 except Exception as e:
-                    print(f"Error creating course enrollment for student {se.student.applicant.full_name}: {e}")
+                    print(f"Error creating course enrollment for {se.student.applicant.full_name}: {e}")
     return enrollments
 
 def create_fake_assignment_submissions(assignments, students, teachers, count_per_assignment=10):
     submissions = []
     for assignment in assignments:
-        available_students = random.sample(students, min(count_per_assignment, len(students)))
+        course_offering = assignment.course_offering
+        enrolled_students = [
+            s for s in students
+            if CourseEnrollment.objects.filter(
+                student_semester_enrollment__student=s,
+                course_offering=course_offering
+            ).exists()
+        ]
+        available_students = random.sample(enrolled_students, min(count_per_assignment, len(enrolled_students)))
         for student in available_students:
             if not AssignmentSubmission.objects.filter(assignment=assignment, student=student).exists():
                 try:
@@ -539,14 +659,21 @@ def create_fake_assignment_submissions(assignments, students, teachers, count_pe
                     )
                     submissions.append(submission)
                 except Exception as e:
-                    print(f"Error creating assignment submission for student {student.applicant.full_name}: {e}")
+                    print(f"Error creating assignment submission for {student.applicant.full_name}: {e}")
     return submissions
 
 def create_fake_exam_results(course_offerings, students, teachers, count_per_offering=10):
     results = []
-    exam_types = [choice[0] for choice in ExamResult.EXAM_TYPES]
+    exam_types = ['midterm', 'final', 'quiz']
     for offering in course_offerings:
-        available_students = random.sample(students, min(count_per_offering, len(students)))
+        enrolled_students = [
+            s for s in students
+            if CourseEnrollment.objects.filter(
+                student_semester_enrollment__student=s,
+                course_offering=offering
+            ).exists()
+        ]
+        available_students = random.sample(enrolled_students, min(count_per_offering, len(enrolled_students)))
         for student in available_students:
             exam_type = random.choice(exam_types)
             if not ExamResult.objects.filter(course_offering=offering, student=student, exam_type=exam_type).exists():
@@ -562,7 +689,7 @@ def create_fake_exam_results(course_offerings, students, teachers, count_per_off
                     )
                     results.append(result)
                 except Exception as e:
-                    print(f"Error creating exam result for student {student.applicant.full_name}: {e}")
+                    print(f"Error creating exam result for {student.applicant.full_name}: {e}")
     return results
 
 def clear_existing_data():

@@ -1,133 +1,213 @@
 {% extends 'faculty_staff/base_dashboard.html' %}
 
+{% comment %} {% load custom_filters %} {% endcomment %}
+
 {% block title %}Study Materials{% endblock %}
 
 {% block content %}
-<div class="drawer-content flex flex-col min-h-screen">
-    <div class="container mx-auto px-4 py-6">
-        <!-- Header -->
-        <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-xl mb-6">
-            <div class="hero-content text-center py-8">
-                <div>
-                    <h1 class="text-4xl font-bold mb-2">Study Materials</h1>
-                    <p class="text-lg opacity-90">Manage and share study materials for your courses</p>
+<style>
+    .select2-container {
+        width: 100% !important;
+    }
+    .material-details {
+        display: none;
+    }
+    .material-links a {
+        display: block;
+        margin-bottom: 0.5rem;
+        @apply text-primary hover:underline;
+    }
+    .material-image {
+        max-width: 100%;
+        height: auto;
+        border-radius: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .material-block {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        position: relative;
+        transition: all 0.3s ease;
+    }
+    .material-block.entering {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    .material-block.exiting {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    .remove-block {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        z-index: 10;
+    }
+    .modal {
+        transition: opacity 0.3s ease, transform 0.3s ease;
+        transform: translateY(-50px);
+        opacity: 0;
+        visibility: hidden;
+    }
+    .modal.modal-open {
+        transform: translateY(0);
+        opacity: 1;
+        visibility: visible;
+    }
+    .modal-dialog {
+        @apply max-w-lg w-[95%] sm:w-full mx-auto my-4;
+    }
+    .modal-content {
+        transition: all 0.3s ease;
+        max-height: 90vh;
+        @apply flex flex-col;
+    }
+    .modal-body {
+        overflow-y: auto;
+        max-height: calc(90vh - 120px); /* Adjust for header and footer */
+        @apply flex-grow;
+    }
+    .modal-footer {
+        @apply sticky bottom-0 bg-white pt-4 border-t border-gray-200;
+    }
+    .input-error {
+        @apply border-error ring-error;
+    }
+    .error-text {
+        @apply text-error text-sm mt-1;
+    }
+</style>
+
+<div class="container mx-auto px-4 py-6">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-3xl font-bold text-gray-800">Study Materials</h2>
+    </div>
+
+    <!-- Course Selection and Material Form -->
+    <div class="card bg-white shadow-lg rounded-lg mb-6">
+        <div class="card-body p-6">
+            <h5 class="card-title text-xl font-semibold mb-4">Manage Study Materials ({{ today_date|date:"F d, Y" }})</h5>
+            <form id="course-selection-form">
+                <div class="mb-4">
+                    <label for="course_offering_id" class="label text-sm font-medium text-gray-700">Course Offering</label>
+                    {% if course_offering_id %}
+                        <p id="course-offering-text" class="text-gray-600"></p>
+                        <input type="hidden" name="course_offering_id" id="course_offering_id" value="{{ course_offering_id }}">
+                    {% else %}
+                        <select name="course_offering_id" id="course_offering_id" class="select select-bordered w-full focus:ring-2 focus:ring-primary" required aria-describedby="course-offering-error">
+                            <option value="">Search for a course offering...</option>
+                        </select>
+                    {% endif %}
+                    <span id="course-offering-error" class="error-text"></span>
                 </div>
+            </form>
+
+            <!-- Add Material Button -->
+            <div class="flex justify-end mb-4" id="add-material-button" style="display: none;">
+                <button type="button" class="btn btn-primary hover:scale-105 transition-transform" id="open-material-modal" data-action="create">Add Material</button>
+            </div>
+
+            <!-- Materials List -->
+            <div id="materials-list">
+                {% for material in materials %}
+                <div class="material-item border-b border-gray-200 py-4" data-material-id="{{ material.id }}">
+                    <div class="material-header flex justify-between items-center cursor-pointer">
+                        <h6 class="text-lg font-medium text-gray-800 mb-0">{{ material.title }} (Topic: {{ material.topic }})</h6>
+                        <div class="space-x-2">
+                            <button class="btn btn-warning btn-sm hover:scale-105 transition-transform edit-material">Edit</button>
+                            <button class="btn btn-error btn-sm hover:scale-105 transition-transform delete-material">Delete</button>
+                        </div>
+                    </div>
+                    <div class="material-details mt-2 p-4 bg-gray-50 rounded-lg">
+                        <p><strong class="font-semibold">Description:</strong> {{ material.description }}</p>
+                        {% if material.useful_links %}
+                        <p><strong class="font-semibold">Useful Links:</strong></p>
+                        <div class="material-links">
+                            {% for link in material.useful_links %}
+                            <a href="{{ link }}" target="_blank">{{ link }}</a>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        {% if material.video_link %}
+                        <p><strong class="font-semibold">Video:</strong> <a href="{{ material.video_link }}" target="_blank" class="text-primary hover:underline">{{ material.video_link }}</a></p>
+                        {% endif %}
+                        {% if material.image %}
+                        <p><strong class="font-semibold">Image:</strong></p>
+                        <img src="{{ material.image.url }}" alt="{{ material.title }}" class="material-image">
+                        {% endif %}
+                        <p><strong class="font-semibold">Posted by:</strong> {{ material.teacher.user.get_full_name|default:"Unknown" }} on {{ material.created_at|date:"M d, Y H:i" }}</p>
+                    </div>
+                </div>
+                {% empty %}
+                <p id="no-materials" class="text-center text-gray-500">No materials found for the selected course.</p>
+                {% endfor %}
             </div>
         </div>
+    </div>
+</div>
 
-        <!-- Upload Form -->
-        <div class="card bg-base-100 shadow-xl">
-            <div class="card-body">
-                <h2 class="card-title text-2xl mb-4">
-                    <i class="fas fa-upload"></i>
-                    Upload New Study Material
-                </h2>
-                <form id="upload-study-material-form" method="post" enctype="multipart/form-data" action="{% url 'faculty_staff:upload_study_material' %}" class="space-y-4">
+<!-- Material Modal -->
+<div class="modal" id="materialModal" tabindex="-1" aria-labelledby="materialModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-white rounded-lg shadow-xl">
+            <div class="modal-header flex justify-between items-center p-4 border-b border-gray-200">
+                <h5 class="modal-title text-xl font-semibold text-gray-800" id="materialModalLabel">Add Study Materials</h5>
+                <button type="button" class="btn-close hover:text-error transition-colors" id="modal-close" aria-label="Close modal">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="modal-body p-4 sm:p-6">
+                <form id="material-form" enctype="multipart/form-data">
                     {% csrf_token %}
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="form-control">
-                            <label class="label">
-                                <span class="label-text">Course Offering</span>
-                            </label>
-                            <select name="course_offering_id" id="course_offering_id" class="select select-bordered select2" required>
-                                <option value="">Search for a course offering...</option>
-                            </select>
-                            <span id="course-offering-error" class="text-error"></span>
-                        </div>
-                        <div class="form-control">
-                            <label class="label">
-                                <span class="label-text">Title</span>
-                            </label>
-                            <input type="text" name="title" id="title" class="input input-bordered" required>
-                            <span id="title-error" class="text-error"></span>
-                        </div>
-                        <div class="form-control">
-                            <label class="label">
-                                <span class="label-text">File</span>
-                            </label>
-                            <input type="file" name="file" id="file" class="file-input file-input-bordered file-input-primary w-full max-w-xs" accept=".pdf,.ppt,.pptx,.doc,.docx" required>
-                            <span id="file-error" class="text-error"></span>
-                        </div>
-                        <div class="form-control col-span-3">
-                            <label class="label">
-                                <span class="label-text">Description</span>
-                            </label>
-                            <textarea name="description" id="description" class="textarea textarea-bordered" rows="3"></textarea>
-                        </div>
-                        <div class="form-control col-span-3">
-                            <button type="submit" class="btn btn-primary w-full">
-                                <i class="fas fa-upload"></i>
-                                Upload
-                            </button>
+                    <input type="hidden" id="course-offering-id" name="course_offering_id">
+                    <div class="form-control mb-6">
+                        <label for="topic" class="label text-sm font-medium text-gray-700">Topic <span class="text-error">*</span></label>
+                        <input type="text" class="input input-bordered w-full focus:ring-2 focus:ring-primary" id="topic" name="topic" placeholder="Enter topic (e.g., Introduction to Python)" required aria-describedby="topic-error">
+                        <span id="topic-error" class="error-text"></span>
+                    </div>
+                    <div id="material-blocks">
+                        <div class="material-block bg-gray-50" data-index="0">
+                            <button type="button" class="btn btn-error btn-sm remove-block hidden hover:scale-105 transition-transform" aria-label="Remove material block">Remove</button>
+                            <div class="form-control mb-4">
+                                <label class="label text-sm font-medium text-gray-700">Title <span class="text-error">*</span></label>
+                                <input type="text" class="input input-bordered w-full focus:ring-2 focus:ring-primary" name="materials[0][title]" placeholder="Enter material title" required aria-describedby="title-0-error">
+                                <span id="title-0-error" class="error-text"></span>
+                            </div>
+                            <div class="form-control mb-4">
+                                <label class="label text-sm font-medium text-gray-700">Description <span class="text-error">*</span></label>
+                                <textarea class="textarea textarea-bordered w-full focus:ring-2 focus:ring-primary" name="materials[0][description]" rows="4" placeholder="Describe the material content" required aria-describedby="description-0-error"></textarea>
+                                <span id="description-0-error" class="error-text"></span>
+                            </div>
+                            <div class="form-control mb-4">
+                                <label class="label text-sm font-medium text-gray-700">Useful Links (one per line)</label>
+                                <textarea class="textarea textarea-bordered w-full focus:ring-2 focus:ring-primary" name="materials[0][useful_links]" rows="3" placeholder="e.g., https://example.com"></textarea>
+                            </div>
+                            <div class="form-control mb-4">
+                                <label class="label text-sm font-medium text-gray-700">Video Link</label>
+                                <input type="url" class="input input-bordered w-full focus:ring-2 focus:ring-primary" name="materials[0][video_link]" placeholder="e.g., https://youtube.com/watch?v=xyz">
+                            </div>
+                            <div class="form-control mb-4">
+                                <label class="label text-sm font-medium text-gray-700">Image</label>
+                                <input type="file" class="file-input file-input-bordered w-full" name="materials[0][image]" accept="image/*" aria-describedby="image-0-error">
+                                {% comment %} <label class="label">
+                                    <span class="label-text-alt text-gray-500">Optional. Max 5MB, PNG/JPEG.</span>
+                                </label> {% endcomment %}
+                                <span id="image-0-error" class="error-text"></span>
+                            </div>
+                            <input type="hidden" name="materials[0][id]" class="material-id">
                         </div>
                     </div>
                 </form>
             </div>
-        </div>
-
-        <!-- Existing Study Materials Table -->
-        <div class="card bg-base-100 shadow-xl">
-            <div class="card-body">
-                <h2 class="card-title text-2xl mb-4">
-                    <i class="fas fa-table"></i>
-                    Existing Study Materials
-                </h2>
-                <div class="overflow-x-auto">
-                    <table class="table table-zebra">
-                        <thead>
-                            <tr>
-                                <th>Title</th>
-                                <th>Course Offering</th>
-                                <th>Uploaded By</th>
-                                <th>Uploaded At</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for material in study_materials %}
-                            <tr>
-                                <td>
-                                    <div class="flex items-center space-x-3">
-                                        <div class="avatar">
-                                            <div class="mask mask-squircle w-12 h-12">
-                                                <img src="https://via.placeholder.com/48" alt="Material Icon" />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <div class="font-bold">{{ material.title }}</div>
-                                            <div class="text-sm opacity-50">{{ material.file.name }}</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>{{ material.course_offering }}</td>
-                                <td>{{ material.uploaded_by.user.get_full_name }}</td>
-                                <td>{{ material.uploaded_at|date:'Y-m-d H:i' }}</td>
-                                <td>
-                                    <div class="flex gap-2">
-                                        <a href="{{ material.file.url }}" class="btn btn-sm btn-info" target="_blank">
-                                            <i class="fas fa-eye"></i>
-                                            View
-                                        </a>
-                                        <button class="btn btn-sm btn-error delete-material" data-material-id="{{ material.id }}">
-                                            <i class="fas fa-trash"></i>
-                                            Delete
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="5" class="text-center p-8">
-                                    <div class="text-center">
-                                        <i class="fas fa-file text-6xl text-base-content/20 mb-4"></i>
-                                        <h3 class="text-xl font-semibold text-base-content/70 mb-2">No Study Materials Found</h3>
-                                        <p class="text-base-content/50">Use the form above to upload new study materials for your courses.</p>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+            <div class="modal-footer px-4 pb-4 sm:px-6">
+                <div class="flex justify-between">
+                    <button type="button" class="btn btn-secondary hover:scale-105 transition-transform" id="add-more">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        Add More
+                    </button>
+                    <button type="submit" form="material-form" class="btn btn-primary hover:scale-105 transition-transform">Save Materials</button>
                 </div>
             </div>
         </div>
@@ -137,159 +217,459 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-
 <script>
+// Modal handling
+const modal = document.getElementById('materialModal');
+const modalClose = document.getElementById('modal-close');
+const openMaterialBtn = document.getElementById('open-material-modal');
+
+function openModal() {
+    modal.classList.add('modal-open');
+}
+function closeModal() {
+    modal.classList.remove('modal-open');
+}
+
+modalClose.addEventListener('click', closeModal);
+openMaterialBtn.addEventListener('click', () => {
+    openModal();
+    $('#material-form')[0].reset();
+    $('#material-blocks').html(`
+        <div class="material-block bg-gray-50" data-index="0">
+            <button type="button" class="btn btn-error btn-sm remove-block hidden hover:scale-105 transition-transform" aria-label="Remove material block">Remove</button>
+            <div class="form-control mb-4">
+                <label class="label text-sm font-medium text-gray-700">Title <span class="text-error">*</span></label>
+                <input type="text" class="input input-bordered w-full focus:ring-2 focus:ring-primary" name="materials[0][title]" placeholder="Enter material title" required aria-describedby="title-0-error">
+                <span id="title-0-error" class="error-text"></span>
+            </div>
+            <div class="form-control mb-4">
+                <label class="label text-sm font-medium text-gray-700">Description <span class="text-error">*</span></label>
+                <textarea class="textarea textarea-bordered w-full focus:ring-2 focus:ring-primary" name="materials[0][description]" rows="4" placeholder="Describe the material content" required aria-describedby="description-0-error"></textarea>
+                <span id="description-0-error" class="error-text"></span>
+            </div>
+            <div class="form-control mb-4">
+                <label class="label text-sm font-medium text-gray-700">Useful Links (one per line)</label>
+                <textarea class="textarea textarea-bordered w-full focus:ring-2 focus:ring-primary" name="materials[0][useful_links]" rows="3" placeholder="e.g., https://example.com"></textarea>
+            </div>
+            <div class="form-control mb-4">
+                <label class="label text-sm font-medium text-gray-700">Video Link</label>
+                <input type="url" class="input input-bordered w-full focus:ring-2 focus:ring-primary" name="materials[0][video_link]" placeholder="e.g., https://youtube.com/watch?v=xyz">
+            </div>
+            <div class="form-control mb-4">
+                <label class="label text-sm font-medium text-gray-700">Image</label>
+                <input type="file" class="file-input file-input-bordered w-full" name="materials[0][image]" accept="image/*" aria-describedby="image-0-error">
+                <label class="label">
+                    <span class="label-text-alt text-gray-500">Optional. Max 5MB, PNG/JPEG.</span>
+                </label>
+                <span id="image-0-error" class="error-text"></span>
+            </div>
+            <input type="hidden" name="materials[0][id]" class="material-id">
+        </div>
+    `);
+    $('#topic').val('');
+    $('#materialModalLabel').text('Add Study Materials');
+    $('#material-form').attr('action', '{% url 'faculty_staff:create_study_material' %}');
+    $('#course-offering-id').val($('#course_offering_id').val());
+    bindBlockEvents();
+    validateForm();
+});
+
 $(document).ready(function() {
     // Initialize Select2 for course offering
-    $('#course_offering_id').select2({
-        ajax: {
-            url: "{% url 'faculty_staff:search_course_offerings' %}",
-            dataType: 'json',
-            delay: 250,
-            data: function(params) {
-                return { q: params.term, page: params.page || 1 };
+    if ($('#course_offering_id').is('select')) {
+        $('#course_offering_id').select2({
+            ajax: {
+                url: "{% url 'faculty_staff:search_course_offerings' %}",
+                dataType: 'json',
+                delay: 250,
+                data: function(params) {
+                    return { q: params.term, page: params.page || 1 };
+                },
+                processResults: function(data, params) {
+                    params.page = params.page || 1;
+                    return {
+                        results: data.results.map(item => ({
+                            id: item.id,
+                            text: `${item.course_code} - ${item.program_name} (${item.semester_name}, ${item.session_name})`,
+                            shift: item.shift
+                        })),
+                        pagination: { more: data.pagination.more }
+                    };
+                },
+                cache: true
             },
-            processResults: function(data, params) {
-                params.page = params.page || 1;
-                return { results: data.results, pagination: { more: data.more } };
-            },
-            cache: true
-        },
-        placeholder: "Search for a course offering...",
-        minimumInputLength: 1,
-        allowClear: true
+            placeholder: "Search for a course offering...",
+            minimumInputLength: 1,
+            allowClear: true
+        });
+    }
+
+    // Add more material blocks
+    $('#add-more').on('click', function() {
+        const blocks = $('#material-blocks .material-block');
+        const index = blocks.length;
+        const newBlock = $(`
+            <div class="material-block bg-gray-50 entering" data-index="${index}">
+                <button type="button" class="btn btn-error btn-sm remove-block hover:scale-105 transition-transform" aria-label="Remove material block">Remove</button>
+                <div class="form-control mb-4">
+                    <label class="label text-sm font-medium text-gray-700">Title <span class="text-error">*</span></label>
+                    <input type="text" class="input input-bordered w-full focus:ring-2 focus:ring-primary" name="materials[${index}][title]" placeholder="Enter material title" required aria-describedby="title-${index}-error">
+                    <span id="title-${index}-error" class="error-text"></span>
+                </div>
+                <div class="form-control mb-4">
+                    <label class="label text-sm font-medium text-gray-700">Description <span class="text-error">*</span></label>
+                    <textarea class="textarea textarea-bordered w-full focus:ring-2 focus:ring-primary" name="materials[${index}][description]" rows="4" placeholder="Describe the material content" required aria-describedby="description-${index}-error"></textarea>
+                    <span id="description-${index}-error" class="error-text"></span>
+                </div>
+                <div class="form-control mb-4">
+                    <label class="label text-sm font-medium text-gray-700">Useful Links (one per line)</label>
+                    <textarea class="textarea textarea-bordered w-full focus:ring-2 focus:ring-primary" name="materials[${index}][useful_links]" rows="3" placeholder="e.g., https://example.com"></textarea>
+                </div>
+                <div class="form-control mb-4">
+                    <label class="label text-sm font-medium text-gray-700">Video Link</label>
+                    <input type="url" class="input input-bordered w-full focus:ring-2 focus:ring-primary" name="materials[${index}][video_link]" placeholder="e.g., https://youtube.com/watch?v=xyz">
+                </div>
+                <div class="form-control mb-4">
+                    <label class="label text-sm font-medium text-gray-700">Image</label>
+                    <input type="file" class="file-input file-input-bordered w-full" name="materials[${index}][image]" accept="image/*" aria-describedby="image-${index}-error">
+                    <label class="label">
+                        <span class="label-text-alt text-gray-500">Optional. Max 5MB, PNG/JPEG.</span>
+                    </label>
+                    <span id="image-${index}-error" class="error-text"></span>
+                </div>
+                <input type="hidden" name="materials[${index}][id]" class="material-id">
+            </div>
+        `);
+        $('#material-blocks').append(newBlock);
+        setTimeout(() => newBlock.removeClass('entering'), 300);
+        bindBlockEvents();
+        validateForm();
+        // Scroll to new block
+        $('.modal-body').animate({ scrollTop: $('.modal-body')[0].scrollHeight }, 300);
     });
 
-    // Handle upload form submission with AJAX
-    $('#upload-study-material-form').on('submit', function(e) {
+    function bindBlockEvents() {
+        $('.remove-block').off('click').on('click', function() {
+            const block = $(this).closest('.material-block');
+            block.addClass('exiting');
+            setTimeout(() => {
+                block.remove();
+                // Reindex blocks
+                $('#material-blocks .material-block').each(function(i) {
+                    $(this).attr('data-index', i);
+                    $(this).find('input, textarea').each(function() {
+                        const name = $(this).attr('name');
+                        if (name) {
+                            $(this).attr('name', name.replace(/materials\[\d+\]/, `materials[${i}]`));
+                        }
+                        const id = $(this).attr('aria-describedby');
+                        if (id) {
+                            $(this).attr('aria-describedby', id.replace(/-\d+-/, `-${i}-`));
+                        }
+                    });
+                    $(this).find('.error-text').each(function() {
+                        const id = $(this).attr('id');
+                        if (id) {
+                            $(this).attr('id', id.replace(/-\d+-/, `-${i}-`));
+                        }
+                    });
+                });
+                if ($('#material-blocks .material-block').length === 1) {
+                    $('#material-blocks .remove-block').addClass('hidden');
+                }
+                validateForm();
+            }, 300);
+        });
+        if ($('#material-blocks .material-block').length > 1) {
+            $('#material-blocks .remove-block').removeClass('hidden');
+        }
+    }
+
+    // Client-side form validation
+    function validateForm() {
+        $('#material-form input[required], #material-form textarea[required]').off('input').on('input', function() {
+            const errorId = $(this).attr('aria-describedby');
+            if ($(this).val().trim()) {
+                $(this).removeClass('input-error');
+                $(`#${errorId}`).text('');
+            } else {
+                $(this).addClass('input-error');
+                $(`#${errorId}`).text('This field is required.');
+            }
+        });
+    }
+
+    // Load materials when course offering is selected
+    function loadMaterials(courseOfferingId) {
+        $.ajax({
+            url: "{% url 'faculty_staff:study_materials' %}",
+            type: 'GET',
+            data: { course_offering_id: courseOfferingId },
+            success: function(response) {
+                let materialsList = $('#materials-list');
+                materialsList.empty();
+                if (response.materials && response.materials.length > 0) {
+                    response.materials.forEach(material => {
+                        let linksHtml = material.useful_links.map(link => `<a href="${link}" target="_blank" class="text-primary hover:underline">${link}</a>`).join('');
+                        materialsList.append(`
+                            <div class="material-item border-b border-gray-200 py-4" data-material-id="${material.id}">
+                                <div class="material-header flex justify-between items-center cursor-pointer">
+                                    <h6 class="text-lg font-medium text-gray-800 mb-0">${material.title} (Topic: ${material.topic})</h6>
+                                    <div class="space-x-2">
+                                        <button class="btn btn-warning btn-sm hover:scale-105 transition-transform edit-material">Edit</button>
+                                        <button class="btn btn-error btn-sm hover:scale-105 transition-transform delete-material">Delete</button>
+                                    </div>
+                                </div>
+                                <div class="material-details mt-2 p-4 bg-gray-50 rounded-lg">
+                                    <p><strong class="font-semibold">Description:</strong> ${material.description}</p>
+                                    ${material.useful_links.length ? `<p><strong class="font-semibold">Useful Links:</strong></p><div class="material-links">${linksHtml}</div>` : ''}
+                                    ${material.video_link ? `<p><strong class="font-semibold">Video:</strong> <a href="${material.video_link}" target="_blank" class="text-primary hover:underline">${material.video_link}</a></p>` : ''}
+                                    ${material.image ? `<p><strong class="font-semibold">Image:</strong></p><img src="${material.image}" alt="${material.title}" class="material-image">` : ''}
+                                    <p><strong class="font-semibold">Posted by:</strong> ${material.teacher} on ${material.created_at}</p>
+                                </div>
+                            </div>
+                        `);
+                    });
+                    $('#no-materials').hide();
+                } else {
+                    materialsList.append('<p id="no-materials" class="text-center text-gray-500">No materials found for the selected course.</p>');
+                }
+                $('#add-material-button').show();
+                bindMaterialEvents();
+            },
+            error: function(xhr, status, error) {
+                alert('An error occurred while fetching materials: ' + error);
+                $('#materials-list').empty().append('<p id="no-materials" class="text-center text-gray-500">Error loading materials.</p>');
+                $('#add-material-button').hide();
+            }
+        });
+    }
+
+    // Bind click events for material headers and action buttons
+    function bindMaterialEvents() {
+        $('.material-header').off('click').on('click', function(e) {
+            if (!$(e.target).is('button')) {
+                $(this).next('.material-details').slideToggle();
+            }
+        });
+        $('.edit-material').off('click').on('click', function() {
+            let materialItem = $(this).closest('.material-item');
+            let materialId = materialItem.data('material-id');
+            $.ajax({
+                url: "{% url 'faculty_staff:edit_study_material' %}",
+                type: 'GET',
+                data: { material_id: materialId },
+                success: function(response) {
+                    if (response.success) {
+                        $('#material-blocks').html(`
+                            <div class="material-block bg-gray-50" data-index="0">
+                                <button type="button" class="btn btn-error btn-sm remove-block hidden hover:scale-105 transition-transform" aria-label="Remove material block">Remove</button>
+                                <div class="form-control mb-4">
+                                    <label class="label text-sm font-medium text-gray-700">Title <span class="text-error">*</span></label>
+                                    <input type="text" class="input input-bordered w-full focus:ring-2 focus:ring-primary" name="materials[0][title]" value="${response.material.title}" required aria-describedby="title-0-error">
+                                    <span id="title-0-error" class="error-text"></span>
+                                </div>
+                                <div class="form-control mb-4">
+                                    <label class="label text-sm font-medium text-gray-700">Description <span class="text-error">*</span></label>
+                                    <textarea class="textarea textarea-bordered w-full focus:ring-2 focus:ring-primary" name="materials[0][description]" rows="4" required aria-describedby="description-0-error">${response.material.description}</textarea>
+                                    <span id="description-0-error" class="error-text"></span>
+                                </div>
+                                <div class="form-control mb-4">
+                                    <label class="label text-sm font-medium text-gray-700">Useful Links (one per line)</label>
+                                    <textarea class="textarea textarea-bordered w-full focus:ring-2 focus:ring-primary" name="materials[0][useful_links]" rows="3">${response.material.useful_links.join('\n')}</textarea>
+                                </div>
+                                <div class="form-control mb-4">
+                                    <label class="label text-sm font-medium text-gray-700">Video Link</label>
+                                    <input type="url" class="input input-bordered w-full focus:ring-2 focus:ring-primary" name="materials[0][video_link]" value="${response.material.video_link || ''}">
+                                </div>
+                                <div class="form-control mb-4">
+                                    <label class="label text-sm font-medium text-gray-700">Image</label>
+                                    <input type="file" class="file-input file-input-bordered w-full" name="materials[0][image]" accept="image/*" aria-describedby="image-0-error">
+                                    <label class="label">
+                                        <span class="label-text-alt text-gray-500">Optional. Upload a new image to replace the existing one.</span>
+                                    </label>
+                                    <span id="image-0-error" class="error-text"></span>
+                                </div>
+                                <input type="hidden" name="materials[0][id]" class="material-id" value="${response.material.id}">
+                            </div>
+                        `);
+                        $('#topic').val(response.material.topic);
+                        $('#course-offering-id').val(response.material.course_offering_id);
+                        $('#materialModalLabel').text('Edit Study Material');
+                        $('#material-form').attr('action', '{% url 'faculty_staff:edit_study_material' %}');
+                        openModal();
+                        bindBlockEvents();
+                        validateForm();
+                    } else {
+                        alert('Error: ' + response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    alert('An error occurred: ' + error);
+                }
+            });
+        });
+        $('.delete-material').off('click').on('click', function() {
+            if (confirm('Are you sure you want to delete this material?')) {
+                let materialId = $(this).closest('.material-item').data('material-id');
+                $.ajax({
+                    url: "{% url 'faculty_staff:delete_study_material' %}",
+                    type: 'POST',
+                    data: {
+                        material_id: materialId,
+                        csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            $(`[data-material-id="${materialId}"]`).remove();
+                            if ($('.material-item').length === 0) {
+                                $('#materials-list').append('<p id="no-materials" class="text-center text-gray-500">No materials found for the selected course.</p>');
+                            }
+                            alert(response.message);
+                        } else {
+                            alert('Error: ' + response.message);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        alert('An error occurred: ' + error);
+                    }
+                });
+            }
+        });
+    }
+
+    // Handle course offering selection
+    $('#course_offering_id').on('change', function() {
+        let courseOfferingId = $(this).val();
+        if (courseOfferingId) {
+            $('#course-offering-error').text('');
+            $('#course-offering-id').val(courseOfferingId);
+            loadMaterials(courseOfferingId);
+        } else {
+            $('#materials-list').empty().append('<p id="no-materials" class="text-center text-gray-500">Please select a course.</p>');
+            $('#add-material-button').hide();
+        }
+    });
+
+    // Check for course_offering_id in URL on page load
+    const urlParams = new URLSearchParams(window.location.search);
+    const courseOfferingId = urlParams.get('course_offering_id');
+    if (courseOfferingId) {
+        $.ajax({
+            url: "{% url 'faculty_staff:search_course_offerings' %}",
+            type: 'GET',
+            data: { id: courseOfferingId },
+            success: function(response) {
+                if (response.success && response.results.length > 0) {
+                    const course = response.results[0];
+                    $('#course-offering-text').text(
+                        `${course.course_code} - ${course.program_name} (${course.semester_name}, ${course.session_name})`
+                    );
+                    $('#course-offering-id').val(courseOfferingId);
+                    loadMaterials(courseOfferingId);
+                } else {
+                    alert('Error: Course offering not found.');
+                    $('#course-offering-text').text('Course offering not found.');
+                }
+            },
+            error: function(xhr, status, error) {
+                alert('An error occurred while fetching course offering: ' + error);
+                $('#course-offering-text').text('Error loading course offering.');
+            }
+        });
+    }
+
+    // Handle material form submission
+    $('#material-form').on('submit', function(e) {
         e.preventDefault();
-        let formData = new FormData(this);
-        let error = false;
-        let isSubmitting = false;
-
-        if (isSubmitting) return;
-        isSubmitting = true;
-
-        const submitBtn = $(this).find('button[type="submit"]');
-        submitBtn.prop('disabled', true);
-        submitBtn.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Uploading...');
-
-        // Clear previous errors
-        $('.text-error').text('');
-
-        // Validate required fields
-        if (!$('#course_offering_id').val()) {
-            $('#course-offering-error').text('Please select a course offering.');
-            error = true;
-        }
-        if (!$('#title').val()) {
-            $('#title-error').text('Please enter a title.');
-            error = true;
-        }
-        if (!$('#file')[0].files.length) {
-            $('#file-error').text('Please upload a file.');
-            error = true;
-        }
-
-        if (error) {
-            submitBtn.prop('disabled', false);
-            submitBtn.html('<i class="fas fa-upload"></i> Upload');
-            isSubmitting = false;
+        let isValid = true;
+        $('#material-form input[required], #material-form textarea[required]').each(function() {
+            const errorId = $(this).attr('aria-describedby');
+            if (!$(this).val().trim()) {
+                $(this).addClass('input-error');
+                $(`#${errorId}`).text('This field is required.');
+                isValid = false;
+            } else {
+                $(this).removeClass('input-error');
+                $(`#${errorId}`).text('');
+            }
+        });
+        if (!isValid) {
+            alert('Please fill all required fields.');
+            $('.modal-body').animate({ scrollTop: $('.input-error').first().offset().top - $('.modal-body').offset().top + $('.modal-body').scrollTop() }, 300);
             return;
         }
-
+        let formData = new FormData(this);
+        let actionUrl = $(this).attr('action') || "{% url 'faculty_staff:create_study_material' %}";
         $.ajax({
-            url: $(this).attr('action'),
+            url: actionUrl,
             type: 'POST',
             data: formData,
             processData: false,
             contentType: false,
             success: function(response) {
                 if (response.success) {
-                    const successAlert = `
-                        <div class="alert alert-success alert-dismissible fade show">
-                            ${response.message}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    `;
-                    $('.card-body').prepend(successAlert);
-                    $('#upload-study-material-form')[0].reset();
-                    $('#course_offering_id').val(null).trigger('change');
-                    setTimeout(() => {
-                        location.reload();
-                    }, 1500);
+                    let materialsList = $('#materials-list');
+                    $('#no-materials').remove();
+                    response.materials.forEach(material => {
+                        let linksHtml = material.useful_links.map(link => `<a href="${link}" target="_blank" class="text-primary hover:underline">${link}</a>`).join('');
+                        let materialHtml = `
+                            <div class="material-item border-b border-gray-200 py-4" data-material-id="${material.id}">
+                                <div class="material-header flex justify-between items-center cursor-pointer">
+                                    <h6 class="text-lg font-medium text-gray-800 mb-0">${material.title} (Topic: ${material.topic})</h6>
+                                    <div class="space-x-2">
+                                        <button class="btn btn-warning btn-sm hover:scale-105 transition-transform edit-material">Edit</button>
+                                        <button class="btn btn-error btn-sm hover:scale-105 transition-transform delete-material">Delete</button>
+                                    </div>
+                                </div>
+                                <div class="material-details mt-2 p-4 bg-gray-50 rounded-lg">
+                                    <p><strong class="font-semibold">Description:</strong> ${material.description}</p>
+                                    ${material.useful_links.length ? `<p><strong class="font-semibold">Useful Links:</strong></p><div class="material-links">${linksHtml}</div>` : ''}
+                                    ${material.video_link ? `<p><strong class="font-semibold">Video:</strong> <a href="${material.video_link}" target="_blank" class="text-primary hover:underline">${material.video_link}</a></p>` : ''}
+                                    ${material.image ? `<p><strong class="font-semibold">Image:</strong></p><img src="${material.image}" alt="${material.title}" class="material-image">` : ''}
+                                    <p><strong class="font-semibold">Posted by:</strong> ${material.teacher} on ${material.created_at}</p>
+                                </div>
+                            </div>
+                        `;
+                        if ($(`[data-material-id="${material.id}"]`).length) {
+                            $(`[data-material-id="${material.id}"]`).replaceWith(materialHtml);
+                        } else {
+                            materialsList.prepend(materialHtml);
+                        }
+                    });
+                    closeModal();
+                    $('#material-form')[0].reset();
+                    $('#materialModalLabel').text('Add Study Materials');
+                    bindMaterialEvents();
+                    alert(response.message);
                 } else {
-                    const errorAlert = `
-                        <div class="alert alert-danger alert-dismissible fade show">
-                            Error: ${response.message}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    `;
-                    $('.card-body').prepend(errorAlert);
+                    alert('Error: ' + response.message);
+                    if (response.errors) {
+                        Object.keys(response.errors).forEach(key => {
+                            if (key === 'topic') {
+                                $('#topic').addClass('input-error');
+                                $('#topic-error').text(response.errors[key]);
+                            } else {
+                                const [index, field] = key.match(/materials\[(\d+)\]\[(\w+)\]/)?.slice(1) || [];
+                                if (index && field) {
+                                    $(`#${field}-${index}-error`).text(response.errors[key]);
+                                    $(`[name="materials[${index}][${field}]"]`).addClass('input-error');
+                                }
+                            }
+                        });
+                        $('.modal-body').animate({ scrollTop: $('.input-error').first().offset().top - $('.modal-body').offset().top + $('.modal-body').scrollTop() }, 300);
+                    }
                 }
             },
             error: function(xhr, status, error) {
-                const errorAlert = `
-                    <div class="alert alert-danger alert-dismissible fade show">
-                        An error occurred: ${error}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                `;
-                $('.card-body').prepend(errorAlert);
-            },
-            complete: function() {
-                submitBtn.prop('disabled', false);
-                submitBtn.html('<i class="fas fa-upload"></i> Upload');
-                isSubmitting = false;
+                alert('An error occurred: ' + error);
             }
         });
     });
 
-    // Handle delete action with AJAX
-    $('.delete-material').on('click', function() {
-        let materialId = $(this).data('material-id');
-        if (confirm('Are you sure you want to delete this study material?')) {
-            $.ajax({
-                url: "{% url 'faculty_staff:delete_study_material' %}",
-                type: 'POST',
-                data: {
-                    material_id: materialId,
-                    csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
-                },
-                success: function(response) {
-                    if (response.success) {
-                        const successAlert = `
-                            <div class="alert alert-success alert-dismissible fade show">
-                                ${response.message}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                            </div>
-                        `;
-                        $('.card-body').prepend(successAlert);
-                        setTimeout(() => {
-                            location.reload();
-                        }, 1500);
-                    } else {
-                        const errorAlert = `
-                            <div class="alert alert-danger alert-dismissible fade show">
-                                Error: ${response.message}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                            </div>
-                        `;
-                        $('.card-body').prepend(errorAlert);
-                    }
-                },
-                error: function(xhr, status, error) {
-                    const errorAlert = `
-                        <div class="alert alert-danger alert-dismissible fade show">
-                            An error occurred: ${error}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    `;
-                    $('.card-body').prepend(errorAlert);
-                }
-            });
-        }
-    });
+    bindBlockEvents();
+    validateForm();
 });
 </script>
+
 {% endblock %}

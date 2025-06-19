@@ -1,48 +1,84 @@
 {% extends 'faculty_staff/base_dashboard.html' %}
 
-{% block title %}Study Materials{% endblock %}
+{% block title %}My Assigned Courses{% endblock %}
 
 {% block content %}
-    <div class="container">
-        <h2 class="mt-4">My Assigned Courses</h2>
+<style>
+    .table-container {
+        margin-top: 20px;
+    }
+    .table th, .table td {
+        vertical-align: middle;
+        white-space: nowrap; /* Prevent text wrapping */
+    }
+    .action-buttons {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        gap: 5px; /* Space between buttons */
+    }
+    .action-buttons .btn-sm {
+        padding: 0.25rem 0.5rem; /* Smaller padding for compact buttons */
+    }
+    @media (max-width: 576px) {
+        .action-buttons .btn-sm {
+            font-size: 0.75rem; /* Smaller font for mobile */
+            padding: 0.2rem 0.4rem;
+        }
+    }
+</style>
 
-        {% if course_offerings %}
-            <div class="table-container">
+<div class="container">
+    <h2 class="mt-4">My Assigned Courses</h2>
+
+    {% if course_offerings %}
+        <div class="table-container">
+            <div class="table-responsive">
                 <table class="table table-striped table-bordered">
                     <thead>
                         <tr>
-                            <th>Corse Code</th>
+                            <th>Course Code</th>
                             <th>Course Name</th>
                             <th>Department</th>
                             <th>Program</th>
                             <th>Semester</th>
                             <th>Semester Number</th>
                             <th>Academic Session</th>
+                            <th>Shift</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for offering in course_offerings %}
                             <tr>
-                                <td>{{ offering.course.code}}</td>
+                                <td>{{ offering.course.code }}</td>
                                 <td>{{ offering.course.name }}</td>
-                                <td>{{ offering.department.name}}</td>
-                                <td>{{ offering.program.name}}</td>
+                                <td>{{ offering.department.name }}</td>
+                                <td>{{ offering.program.name }}</td>
                                 <td>{{ offering.semester.name }}</td>
-                                <td>{{ offering.semester.number}}</td>
+                                <td>{{ offering.semester.number }}</td>
                                 <td>{{ offering.academic_session.name }}</td>
+                                <td>{{ offering.shift|capfirst }}</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="{% url 'faculty_staff:exam_results' %}?course_offering_id={{ offering.id }}"
+                                           class="btn btn-primary btn-sm">View Results</a>
+                                        <a href="{% url 'faculty_staff:attendance' %}?course_offering_id={{ offering.id }}"
+                                           class="btn btn-info btn-sm">Attendance</a>
+                                        <a href="{% url 'faculty_staff:study_materials' %}?course_offering_id={{ offering.id }}"
+                                           class="btn btn-success btn-sm">Study Materials</a>
+                                    </div>
+                                </td>
                             </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-        {% else %}
-            <div class="alert alert-info mt-4" role="alert">
-                No courses are currently assigned to you.
-            </div>
-        {% endif %}
-
-        <!-- Back button to return to Exam Results or another page -->
-        <a href="{% url 'faculty_staff:exam_results' %}" class="btn btn-secondary mt-3">Back to Exam Results</a>
-    </div>
-
+        </div>
+    {% else %}
+        <div class="alert alert-info mt-4" role="alert">
+            No courses are currently assigned to you.
+        </div>
+    {% endif %}
+</div>
 {% endblock %}

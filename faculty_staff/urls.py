@@ -29,9 +29,14 @@ urlpatterns = [
     
     
     
+    # New URLs for study materials
     path('study-materials/', views.study_materials, name='study_materials'),
-    path('upload-study-material/', views.upload_study_material, name='upload_study_material'),
+    path('create-study-material/', views.create_study_material, name='create_study_material'),
+    path('edit-study-material/', views.edit_study_material, name='edit_study_material'),
     path('delete-study-material/', views.delete_study_material, name='delete_study_material'),
+    
+    
+    
     path('search-course-offerings/', views.search_course_offerings, name='search_course_offerings'),
     path('assignments/', views.assignments, name='assignments'),
     path('create-assignment/', views.create_assignment, name='create_assignment'),
@@ -53,7 +58,10 @@ urlpatterns = [
     
     
     
-    
+    path('attendance/', views.attendance, name='attendance'),
+    path('record-attendance/', views.record_attendance, name='record_attendance'),
+    path('load-attendance/', views.load_attendance, name='load_attendance'),
+    path('edit-attendance/', views.edit_attendance, name='edit_attendance'),
     
     
     

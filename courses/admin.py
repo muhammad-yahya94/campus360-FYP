@@ -188,33 +188,33 @@ class CourseOfferingAdmin(admin.ModelAdmin):
         ]
         return urls
 
-@admin.register(StudyMaterial)
-class StudyMaterialAdmin(admin.ModelAdmin):
-    list_display = ('title', 'course_offering', 'uploaded_by', 'uploaded_at', 'is_active')
-    list_filter = ('is_active', 'course_offering__semester__program', 'uploaded_by')
-    search_fields = ('title', 'description', 'course_offering__course__name', 'uploaded_by__user__first_name')
-    autocomplete_fields = ('course_offering', 'uploaded_by')
-    readonly_fields = ('uploaded_at',)
+# @admin.register(StudyMaterial)
+# class StudyMaterialAdmin(admin.ModelAdmin):
+#     list_display = ('title', 'course_offering', 'uploaded_by', 'uploaded_at', 'is_active')
+#     list_filter = ('is_active', 'course_offering__semester__program', 'uploaded_by')
+#     search_fields = ('title', 'description', 'course_offering__course__name', 'uploaded_by__user__first_name')
+#     autocomplete_fields = ('course_offering', 'uploaded_by')
+#     readonly_fields = ('uploaded_at',)
     
-    fieldsets = (
-        ('Material Information', {
-            'fields': ('course_offering', 'title', 'description', 'file')
-        }),
-        ('Upload Details', {
-            'fields': ('uploaded_by', 'uploaded_at', 'is_active')
-        }),
-    )
+#     fieldsets = (
+#         ('Material Information', {
+#             'fields': ('course_offering', 'title', 'description', 'file')
+#         }),
+#         ('Upload Details', {
+#             'fields': ('uploaded_by', 'uploaded_at', 'is_active')
+#         }),
+#     )
     
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related('course_offering', 'uploaded_by')
+#     def get_queryset(self, request):
+#         return super().get_queryset(request).select_related('course_offering', 'uploaded_by')
 
-    def get_urls(self):
-        urls = super().get_urls()
-        urls += [
-            path('courseoffering-autocomplete/', self.admin_site.admin_view(CourseOfferingAutocompleteView.as_view()), name='courseoffering_autocomplete'),
-            path('teacher-autocomplete/', self.admin_site.admin_view(TeacherAutocompleteView.as_view()), name='teacher_autocomplete'),
-        ]
-        return urls
+#     def get_urls(self):
+#         urls = super().get_urls()
+#         urls += [
+#             path('courseoffering-autocomplete/', self.admin_site.admin_view(CourseOfferingAutocompleteView.as_view()), name='courseoffering_autocomplete'),
+#             path('teacher-autocomplete/', self.admin_site.admin_view(TeacherAutocompleteView.as_view()), name='teacher_autocomplete'),
+#         ]
+#         return urls
 
 @admin.register(Assignment)
 class AssignmentAdmin(admin.ModelAdmin):

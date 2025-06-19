@@ -158,7 +158,13 @@ $(document).ready(function() {
             },
             processResults: function(data, params) {
                 params.page = params.page || 1;
-                return { results: data.results, pagination: { more: data.pagination.more } };
+                return { 
+                    results: data.results.map(item => ({
+                        id: item.id,
+                        text: `${item.course_code} - ${item.program_name} (${item.semester_name}, ${item.session_name})`
+                    })),
+                    pagination: { more: data.pagination.more } 
+                };
             },
             cache: true
         },
@@ -167,47 +173,88 @@ $(document).ready(function() {
         allowClear: true
     });
 
+    // Function to load students for a course offering
+    function loadStudents(courseOfferingId) {
+        $.ajax({
+            url: "{% url 'faculty_staff:load_students_for_course' %}",
+            type: 'GET',
+            data: { course_offering_id: courseOfferingId },
+            success: function(response) {
+                if (response.success) {
+                    let tbody = $('#students-table-body');
+                    tbody.empty();
+                    if (response.students.length > 0) {
+                        response.students.forEach(student => {
+                            tbody.append(`
+                                <tr>
+                                    <td>${student.name}</td>
+                                    <td><input type="number" name="mid_${student.id}" class="form-control mark-input" min="0" max="100" required>
+                                        <span class="error" id="mid-error-${student.id}"></span></td>
+                                    <td><input type="number" name="sessional_${student.id}" class="form-control mark-input" min="0" max="100" required>
+                                        <span class="error" id="sessional-error-${student.id}"></span></td>
+                                    <td><input type="number" name="project_${student.id}" class="form-control mark-input" min="0" max="100" required>
+                                        <span class="error" id="project-error-${student.id}"></span></td>
+                                    <td><input type="number" name="practical_${student.id}" class="form-control mark-input" min="0" max="100" required>
+                                        <span class="error" id="practical-error-${student.id}"></span></td>
+                                </tr>
+                            `);
+                        });
+                        $('#students-table-container').show();
+                    } else {
+                        tbody.append('<tr><td colspan="5" class="text-center">No students found for the selected course offering.</td></tr>');
+                        $('#students-table-container').show();
+                    }
+                } else {
+                    alert('Error: ' + response.message);
+                    $('#students-table-container').hide();
+                }
+            },
+            error: function(xhr, status, error) {
+                alert('An error occurred: ' + error);
+                $('#students-table-container').hide();
+            }
+        });
+    }
+
     // Load students when course offering is selected
     $('#course_offering_id').on('change', function() {
         let courseOfferingId = $(this).val();
         if (courseOfferingId) {
-            $.ajax({
-                url: "{% url 'faculty_staff:load_students_for_course' %}",
-                type: 'GET',
-                data: { course_offering_id: courseOfferingId },
-                success: function(response) {
-                    if (response.success) {
-                        let tbody = $('#students-table-body');
-                        tbody.empty();
-                        if (response.students.length > 0) {
-                            response.students.forEach(student => {
-                                tbody.append(`
-                                    <tr>
-                                        <td>${student.name}</td>
-                                        <td><input type="number" name="mid_${student.id}" class="form-control mark-input" min="0" max="100" required></td>
-                                        <td><input type="number" name="sessional_${student.id}" class="form-control mark-input" min="0" max="100" required></td>
-                                        <td><input type="number" name="project_${student.id}" class="form-control mark-input" min="0" max="100" required></td>
-                                        <td><input type="number" name="practical_${student.id}" class="form-control mark-input" min="0" max="100" required></td>
-                                    </tr>
-                                `);
-                            });
-                            $('#students-table-container').show();
-                        } else {
-                            tbody.append('<tr><td colspan="5" class="text-center">No students found for the selected course offering.</td></tr>');
-                            $('#students-table-container').show();
-                        }
-                    } else {
-                        alert('Error: ' + response.message);
-                    }
-                },
-                error: function(xhr, status, error) {
-                    alert('An error occurred: ' + error);
-                }
-            });
+            loadStudents(courseOfferingId);
         } else {
             $('#students-table-container').hide();
         }
     });
+
+    // Check for course_offering_id in URL on page load
+    const urlParams = new URLSearchParams(window.location.search);
+    const courseOfferingId = urlParams.get('course_offering_id');
+    if (courseOfferingId) {
+        // Fetch course offering details to populate Select2
+        $.ajax({
+            url: "{% url 'faculty_staff:search_course_offerings' %}",
+            type: 'GET',
+            data: { id: courseOfferingId },
+            success: function(response) {
+                if (response.success && response.results.length > 0) {
+                    const course = response.results[0];
+                    const option = new Option(
+                        `${course.course_code} - ${course.program_name} (${course.semester_name}, ${course.session_name})`,
+                        course.id,
+                        true,
+                        true
+                    );
+                    $('#course_offering_id').append(option).trigger('change');
+                    loadStudents(courseOfferingId);
+                } else {
+                    alert('Error: Course offering not found.');
+                }
+            },
+            error: function(xhr, status, error) {
+                alert('An error occurred while fetching course offering: ' + error);
+            }
+        });
+    }
 
     // Handle form submission with AJAX
     $('#record-exam-results-form').on('submit', function(e) {

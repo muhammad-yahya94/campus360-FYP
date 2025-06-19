@@ -15,14 +15,14 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.db import transaction
-
+from django.core.files.storage import default_storage
 # Local app imports
 from academics.models import Department, Program, Semester
 from admissions.models import AcademicSession, AdmissionCycle, Applicant, AcademicQualification
-from courses.models import Course, CourseOffering, ExamResult, StudyMaterial, Assignment, AssignmentSubmission, Notice
+from courses.models import Course, CourseOffering, ExamResult, StudyMaterial, Assignment, AssignmentSubmission, Notice, Attendance
 from faculty_staff.models import Teacher
 from students.models import Student, StudentSemesterEnrollment, CourseEnrollment
-
+import datetime
 # Custom user model
 CustomUser = get_user_model()
 
@@ -777,91 +777,254 @@ def delete_course_offering(request):
 
 @login_required
 def study_materials(request):
-    if request.user.teacher_profile.designation == 'head_of_department':
-        study_materials = StudyMaterial.objects.filter(
-            course_offering__teacher=request.user.teacher_profile
-        ).order_by('-uploaded_at')
-        return render(request, 'faculty_staff/study_materials.html', {'study_materials': study_materials})
-    return JsonResponse({'success': False, 'message': 'Unauthorized access.'})
-
+    course_offering_id = request.GET.get('course_offering_id')
+    course_shift = None
+    materials = []
+    if course_offering_id:
+        course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
+        course_shift = course_offering.shift
+        materials = StudyMaterial.objects.filter(course_offering=course_offering).select_related('teacher')
+    
+    context = {
+        'course_offering_id': course_offering_id,
+        'course_shift': course_shift,
+        'materials': materials,
+        'today_date': timezone.now().date(),
+    }
+    return render(request, 'faculty_staff/study_materials.html', context)
 
 @login_required
-def upload_study_material(request):
-    if request.method == "POST" and request.user.teacher_profile.designation == 'head_of_department':
+def create_study_material(request):
+    if request.method == "POST":
         course_offering_id = request.POST.get('course_offering_id')
-        title = request.POST.get('title')
-        description = request.POST.get('description')
-        file = request.FILES.get('file')
+        topic = request.POST.get('topic')
+        
+        if not all([course_offering_id, topic]):
+            return JsonResponse({'success': False, 'message': 'Course offering and topic are required.'})
 
-        if not all([course_offering_id, title, file]):
-            return JsonResponse({'success': False, 'message': 'All required fields must be filled.'})
+        course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
+        teacher = get_object_or_404(Teacher, user=request.user)
+        materials_data = []
+        
+        with transaction.atomic():
+            for key in request.POST:
+                if key.startswith('materials['):
+                    index = key.split('[')[1].split(']')[0]
+                    field = key.split('[')[2].split(']')[0]
+                    if not any(m.get('index') == index for m in materials_data):
+                        materials_data.append({'index': index})
+                    for material in materials_data:
+                        if material['index'] == index:
+                            material[field] = request.POST[key]
+            
+            for index in request.FILES:
+                if index.startswith('materials['):
+                    material_index = index.split('[')[1].split(']')[0]
+                    field = index.split('[')[2].split(']')[0]
+                    for material in materials_data:
+                        if material['index'] == material_index:
+                            material[field] = request.FILES[index]
+            
+            created_materials = []
+            for material_data in materials_data:
+                if not all([material_data.get('title'), material_data.get('description')]):
+                    continue
+                
+                study_material = StudyMaterial(
+                    course_offering=course_offering,
+                    teacher=teacher,
+                    topic=topic,
+                    title=material_data.get('title'),
+                    description=material_data.get('description'),
+                    useful_links=material_data.get('useful_links', ''),
+                    video_link=material_data.get('video_link') or None
+                )
+                
+                if 'image' in material_data:
+                    study_material.image = material_data['image']
+                
+                study_material.save()
+                created_materials.append({
+                    'id': study_material.id,
+                    'topic': study_material.topic,
+                    'title': study_material.title,
+                    'description': study_material.description,
+                    'useful_links': study_material.useful_links.split('\n') if study_material.useful_links else [],
+                    'video_link': study_material.video_link,
+                    'image': study_material.image.url if study_material.image else None,
+                    'created_at': study_material.created_at.strftime('%b %d, %Y %I:%M %p'),
+                    'teacher': study_material.teacher.user.get_full_name() if study_material.teacher else 'Unknown'
+                })
+            
+            if not created_materials:
+                return JsonResponse({'success': False, 'message': 'At least one valid material is required.'})
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Study materials created successfully.',
+                'materials': created_materials
+            })
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
-        course_offering = get_object_or_404(
-            CourseOffering,
-            id=course_offering_id,
-            teacher=request.user.teacher_profile
-        )
-        StudyMaterial.objects.create(
-            course_offering=course_offering,
-            title=title,
-            description=description,
-            file=file,
-            uploaded_by=request.user.teacher_profile
-        )
-        return JsonResponse({'success': True, 'message': 'Study material uploaded successfully.'})
-    return JsonResponse({'success': False, 'message': 'Invalid request.'})
+@login_required
+def edit_study_material(request):
+    if request.method == "GET":
+        material_id = request.GET.get('material_id')
+        if not material_id:
+            return JsonResponse({'success': False, 'message': 'Material ID is required.'})
+        
+        material = get_object_or_404(StudyMaterial, id=material_id)
+        return JsonResponse({
+            'success': True,
+            'material': {
+                'id': material.id,
+                'course_offering_id': material.course_offering.id,
+                'topic': material.topic,
+                'title': material.title,
+                'description': material.description,
+                'useful_links': material.useful_links.split('\n') if material.useful_links else [],
+                'video_link': material.video_link,
+                'image': material.image.url if material.image else None
+            }
+        })
+    
+    if request.method == "POST":
+        course_offering_id = request.POST.get('course_offering_id')
+        topic = request.POST.get('topic')
+        
+        if not all([course_offering_id, topic]):
+            return JsonResponse({'success': False, 'message': 'Course offering and topic are required.'})
 
+        course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
+        teacher = get_object_or_404(Teacher, user=request.user)
+        materials_data = []
+        
+        with transaction.atomic():
+            for key in request.POST:
+                if key.startswith('materials['):
+                    index = key.split('[')[1].split(']')[0]
+                    field = key.split('[')[2].split(']')[0]
+                    if not any(m.get('index') == index for m in materials_data):
+                        materials_data.append({'index': index})
+                    for material in materials_data:
+                        if material['index'] == index:
+                            material[field] = request.POST[key]
+            
+            for index in request.FILES:
+                if index.startswith('materials['):
+                    material_index = index.split('[')[1].split(']')[0]
+                    field = index.split('[')[2].split(']')[0]
+                    for material in materials_data:
+                        if material['index'] == material_index:
+                            material[field] = request.FILES[index]
+            
+            updated_materials = []
+            for material_data in materials_data:
+                if not all([material_data.get('title'), material_data.get('description')]):
+                    continue
+                
+                material_id = material_data.get('id')
+                if material_id:
+                    material = get_object_or_404(StudyMaterial, id=material_id)
+                else:
+                    material = StudyMaterial(
+                        course_offering=course_offering,
+                        teacher=teacher
+                    )
+                
+                material.topic = topic
+                material.title = material_data.get('title')
+                material.description = material_data.get('description')
+                material.useful_links = material_data.get('useful_links', '')
+                material.video_link = material_data.get('video_link') or None
+                
+                if 'image' in material_data:
+                    if material.image:
+                        default_storage.delete(material.image.path)
+                    material.image = material_data['image']
+                
+                material.save()
+                updated_materials.append({
+                    'id': material.id,
+                    'topic': material.topic,
+                    'title': material.title,
+                    'description': material.description,
+                    'useful_links': material.useful_links.split('\n') if material.useful_links else [],
+                    'video_link': material.video_link,
+                    'image': material.image.url if material.image else None,
+                    'created_at': material.created_at.strftime('%b %d, %Y %I:%M %p'),
+                    'teacher': material.teacher.user.get_full_name() if material.teacher else 'Unknown'
+                })
+            
+            if not updated_materials:
+                return JsonResponse({'success': False, 'message': 'At least one valid material is required.'})
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Study materials updated successfully.',
+                'materials': updated_materials
+            })
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
 @login_required
 def delete_study_material(request):
-    if request.method == "POST" and request.user.teacher_profile.designation == 'head_of_department':
+    if request.method == "POST":
         material_id = request.POST.get('material_id')
-        if material_id:
-            material = get_object_or_404(
-                StudyMaterial,
-                id=material_id,
-                course_offering__teacher=request.user.teacher_profile
-            )
-            if material.file and os.path.isfile(material.file.path):
-                os.remove(material.file.path)
-            material.delete()
-            return JsonResponse({'success': True, 'message': 'Study material deleted successfully.'})
-        return JsonResponse({'success': False, 'message': 'Material ID is required.'})
-    return JsonResponse({'success': False, 'message': 'Invalid request.'})
+        if not material_id:
+            return JsonResponse({'success': False, 'message': 'Material ID is required.'})
+        
+        material = get_object_or_404(StudyMaterial, id=material_id)
+        teacher = get_object_or_404(Teacher, user=request.user)
+        
+        if material.teacher != teacher:
+            return JsonResponse({'success': False, 'message': 'You can only delete your own materials.'})
+        
+        if material.image:
+            default_storage.delete(material.image.path)
+        material.delete()
+        return JsonResponse({'success': True, 'message': 'Study material deleted successfully.'})
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
 
 @login_required
 def search_course_offerings(request):
-    if request.method == "GET":
-        search_query = request.GET.get('q', '')
-        page = int(request.GET.get('page', 1))
-        per_page = 10
-
-        course_offerings = CourseOffering.objects.filter(
-            teacher__user_id=request.user.id
-        ).select_related('course', 'semester', 'academic_session')
-
-        if search_query:
-            course_offerings = course_offerings.filter(
-                Q(course__code__icontains=search_query) |
-                Q(course__name__icontains=search_query) |
-                Q(semester__name__icontains=search_query) |
-                Q(academic_session__name__icontains=search_query)
-            )
-
-        start = (page - 1) * per_page
-        end = start + per_page
-        paginated_offerings = course_offerings[start:end]
-
-        results = [
-            {'id': offering.id, 'text': str(offering)} for offering in paginated_offerings
-        ]
-
-        return JsonResponse({
-            'results': results,
-            'pagination': {'more': end < course_offerings.count()}
-        })
-    return JsonResponse({'results': [], 'pagination': {'more': False}})
+    query = request.GET.get('q', '')
+    course_offering_id = request.GET.get('id')
+    page = int(request.GET.get('page', 1))
+    results = []
+    
+    if course_offering_id:
+        try:
+            offering = CourseOffering.objects.get(id=course_offering_id, teacher__user=request.user)
+            results.append({
+                'id': offering.id,
+                'course_code': offering.course.code,
+                'program_name': offering.program.name,
+                'semester_name': offering.semester.name,
+                'session_name': offering.academic_session.name
+            })
+        except CourseOffering.DoesNotExist:
+            pass
+    else:
+        offerings = CourseOffering.objects.filter(
+            teacher__user=request.user,
+            course__code__icontains=query
+        ).select_related('course', 'program', 'semester', 'academic_session')[:10]
+        results = [{
+            'id': o.id,
+            'course_code': o.course.code,
+            'program_name': o.program.name,
+            'semester_name': o.semester.name,
+            'session_name': o.academic_session.name
+        } for o in offerings]
+    
+    return JsonResponse({
+        'success': True,
+        'results': results,
+        'pagination': {'more': False}
+    })
 
 
 @login_required
@@ -1551,3 +1714,185 @@ def delete_semester(request):
     except Exception as e:
         print(f'Error deleting semester: {str(e)}')
         return JsonResponse({'success': False, 'message': f'Error deleting semester: {str(e)}'})
+    
+    
+    
+    
+    
+    
+@login_required
+def attendance(request):
+    students = []
+    course_offering_id = request.GET.get('course_offering_id')
+    course_shift = None
+    if course_offering_id:
+        course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
+        course_shift = course_offering.shift
+        enrollments = StudentSemesterEnrollment.objects.filter(semester=course_offering.semester).select_related('student')
+        students = [
+            {
+                'id': enrollment.student.applicant.id,
+                'name': str(enrollment.student),
+                'college_roll_no': enrollment.student.college_roll_no,
+                'university_roll_no': enrollment.student.university_roll_no
+            } for enrollment in enrollments
+        ]
+
+    context = {
+        'students': students,
+        'course_offering_id': course_offering_id,
+        'course_shift': course_shift,
+        'today_date': timezone.now().date(),
+    }
+    return render(request, 'faculty_staff/attendance.html', context)
+
+@login_required
+def record_attendance(request):
+    if request.method == "POST":
+        course_offering_id = request.POST.get('course_offering_id')
+        shift = request.POST.get('shift')
+        if not course_offering_id:
+            return JsonResponse({'success': False, 'message': 'Course offering is required.'})
+
+        course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
+        if course_offering.shift == 'both' and not shift:
+            return JsonResponse({'success': False, 'message': 'Shift is required for this course.'})
+
+        today = timezone.now().date()
+        # Check if attendance already exists
+        shifts_to_check = ['morning', 'evening'] if shift == 'both' else [shift if shift in ['morning', 'evening'] else None]
+        for check_shift in shifts_to_check:
+            if Attendance.objects.filter(
+                course_offering=course_offering,
+                date=today,
+                shift=check_shift if course_offering.shift == 'both' else None
+            ).exists():
+                return JsonResponse({'success': False, 'message': f'Attendance already recorded for {check_shift or "this course"} on this date.'})
+
+        enrollments = CourseEnrollment.objects.filter(
+            course_offering=course_offering,
+            status='enrolled'
+        ).select_related('student_semester_enrollment__student__applicant')
+        if shift in ['morning', 'evening']:
+            enrollments = enrollments.filter(student_semester_enrollment__student__applicant__shift=shift)
+        
+        teacher = get_object_or_404(Teacher, user=request.user)
+        shifts_to_record = ['morning', 'evening'] if shift == 'both' else [shift if shift in ['morning', 'evening'] else None]
+
+        for enrollment in enrollments:
+            student = enrollment.student_semester_enrollment.student
+            student_id = student.applicant.id
+            status = request.POST.get(f'status_{student_id}')
+            if status in ['present', 'absent', 'leave']:
+                for record_shift in shifts_to_record:
+                    Attendance.objects.update_or_create(
+                        student=student,
+                        course_offering=course_offering,
+                        date=today,
+                        shift=record_shift if course_offering.shift == 'both' else None,
+                        defaults={
+                            'status': status,
+                            'recorded_by': teacher,
+                            'recorded_at': timezone.now()
+                        }
+                    )
+
+        return JsonResponse({'success': True, 'message': 'Attendance recorded successfully.'})
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+
+@login_required
+def load_students_for_course(request):
+    if request.method == "GET":
+        course_offering_id = request.GET.get('course_offering_id')
+        shift = request.GET.get('shift')
+        if course_offering_id:
+            course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
+            enrollments = CourseEnrollment.objects.filter(
+                course_offering=course_offering,
+                status='enrolled'
+            ).select_related(
+                'student_semester_enrollment__student__applicant',
+                'student_semester_enrollment__semester'
+            )
+            if shift in ['morning', 'evening'] and course_offering.shift == 'both':
+                enrollments = enrollments.filter(student_semester_enrollment__student__applicant__shift=shift)
+            
+            students = [
+                {
+                    'id': course_enrollment.student_semester_enrollment.student.applicant.pk,
+                    'name': f"{course_enrollment.student_semester_enrollment.student.applicant.full_name}",
+                    'college_roll_no': course_enrollment.student_semester_enrollment.student.college_roll_no,
+                    'university_roll_no': course_enrollment.student_semester_enrollment.student.university_roll_no
+                }
+                for course_enrollment in enrollments
+                if course_enrollment.student_semester_enrollment.semester == course_offering.semester
+            ]
+            return JsonResponse({
+                'success': True,
+                'students': students
+            })
+        return JsonResponse({'success': False, 'message': 'Course offering ID is required.'})
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+
+@login_required
+def load_attendance(request):
+    if request.method == "GET":
+        course_offering_id = request.GET.get('course_offering_id')
+        date_str = request.GET.get('date')
+        shift = request.GET.get('shift')
+        if course_offering_id and date_str:
+            try:
+                date = datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
+                course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
+                attendances = Attendance.objects.filter(
+                    course_offering=course_offering,
+                    date=date
+                ).select_related('student__applicant', 'recorded_by')
+                if shift == 'both':
+                    pass  # Include all shifts
+                elif shift in ['morning', 'evening'] and course_offering.shift == 'both':
+                    attendances = attendances.filter(shift=shift)
+                elif course_offering.shift != 'both':
+                    attendances = attendances.filter(shift__isnull=True)
+                
+                results = [{
+                    'id': a.id,
+                    'student_id': a.student.applicant.id,
+                    'student_name': a.student.applicant.full_name,
+                    'college_roll_no': a.student.college_roll_no,
+                    'university_roll_no': a.student.university_roll_no,
+                    'course_code': a.course_offering.course.code,
+                    'status': a.status,
+                    'shift': a.shift,
+                    'recorded_by': a.recorded_by.user.get_full_name() if a.recorded_by else 'Unknown'
+                } for a in attendances]
+                
+                return JsonResponse({
+                    'success': True,
+                    'attendances': results
+                })
+            except ValueError:
+                return JsonResponse({'success': False, 'message': 'Invalid date format.'})
+        return JsonResponse({'success': False, 'message': 'Course offering ID and date are required.'})
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+
+@login_required
+def edit_attendance(request):
+    if request.method == "POST":
+        attendance_id = request.POST.get('attendance_id')
+        student_id = request.POST.get('student_id')
+        status = request.POST.get('status')
+        shift = request.POST.get('shift') or None
+        if attendance_id and student_id and status in ['present', 'absent', 'leave']:
+            attendance = get_object_or_404(Attendance, id=attendance_id, student__applicant_id=student_id)
+            if attendance.date != timezone.now().date():
+                return JsonResponse({'success': False, 'message': 'Can only edit today’s attendance.'})
+            teacher = get_object_or_404(Teacher, user=request.user)
+            attendance.status = status
+            attendance.shift = shift
+            attendance.recorded_by = teacher
+            attendance.recorded_at = timezone.now()
+            attendance.save()
+            return JsonResponse({'success': True, 'message': 'Attendance updated successfully.'})
+        return JsonResponse({'success': False, 'message': 'Invalid data provided.'})
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})

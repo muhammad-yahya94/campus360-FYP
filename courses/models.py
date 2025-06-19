@@ -83,20 +83,22 @@ class CourseOffering(models.Model):
 
 # ===== Study Material =====
 class StudyMaterial(models.Model):
-    course_offering = models.ForeignKey(CourseOffering, on_delete=models.CASCADE, related_name='study_materials', help_text="The course offering this study material belongs to.")
-    title = models.CharField(max_length=200, help_text="Title of the study material (e.g., 'Lecture 1 Notes').")
-    description = models.TextField(blank=True, help_text="Brief description of the study material.")
-    file = models.FileField(upload_to='study_materials/', help_text="Upload the study material file (e.g., PDF, PPT).")
-    uploaded_by = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True, related_name='uploaded_materials', help_text="The teacher who uploaded this material.")
-    uploaded_at = models.DateTimeField(auto_now_add=True, help_text="The date and time when the material was uploaded.")
-    is_active = models.BooleanField(default=True, help_text="Check if this study material is currently accessible to students.")
+    course_offering = models.ForeignKey(CourseOffering, on_delete=models.CASCADE, related_name='study_materials')
+    teacher = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True, related_name='study_materials')
+    topic = models.CharField(max_length=200)
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    useful_links = models.TextField(blank=True, help_text="Enter URLs separated by newlines")
+    video_link = models.URLField(blank=True, null=True)
+    image = models.ImageField(upload_to='study_materials/', blank=True, null=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
 
     def __str__(self):
         return f"{self.title} ({self.course_offering})"
-
-    class Meta:
-        verbose_name = "Study Material"
-        verbose_name_plural = "Study Materials"
 
 # ===== Assignment =====
 class Assignment(models.Model):
@@ -181,3 +183,33 @@ class ExamResult(models.Model):
         unique_together = ('course_offering', 'student', 'exam_type')
         verbose_name = "Exam Result"
         verbose_name_plural = "Exam Results"
+        
+        
+        
+
+
+class Attendance(models.Model):
+    STATUS_CHOICES = (
+        ('present', 'Present'),
+        ('absent', 'Absent'),
+        ('leave', 'Leave'),
+    )
+    SHIFT_CHOICES = (
+        ('morning', 'Morning'),
+        ('evening', 'Evening'),
+    )
+    
+    student = models.ForeignKey('students.Student', on_delete=models.CASCADE, related_name='attendances')
+    course_offering = models.ForeignKey(CourseOffering, on_delete=models.CASCADE, related_name='attendances')
+    date = models.DateField(default=timezone.now)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='present')
+    shift = models.CharField(max_length=10, choices=SHIFT_CHOICES, null=True, blank=True)  # For 'both' shift courses
+    recorded_by = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True, related_name='recorded_attendances')
+    recorded_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        unique_together = ('student', 'course_offering', 'date', 'shift')
+        ordering = ['date', 'student']
+
+    def __str__(self):
+        return f"{self.student.applicant.full_name} - {self.course_offering.course.code} - {self.date} - {self.status} - {self.shift or 'N/A'}"        

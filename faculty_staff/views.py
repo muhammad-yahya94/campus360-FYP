@@ -780,11 +780,30 @@ def study_materials(request):
     course_offering_id = request.GET.get('course_offering_id')
     course_shift = None
     materials = []
+
     if course_offering_id:
         course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
         course_shift = course_offering.shift
         materials = StudyMaterial.objects.filter(course_offering=course_offering).select_related('teacher')
-    
+        materials = [{
+            'id': m.id,
+            'topic': m.topic,
+            'title': m.title,
+            'description': m.description,
+            'useful_links': m.useful_links.split('\n') if m.useful_links else [],
+            'video_link': m.video_link,
+            'image': m.image.url if m.image else None,
+            'created_at': m.created_at.strftime('%b %d, %Y %I:%M %p'),
+            'teacher': m.teacher.user.get_full_name() if m.teacher else 'Unknown'
+        } for m in materials]
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({
+            'success': True,
+            'materials': materials,
+            'course_shift': course_shift
+        })
+
     context = {
         'course_offering_id': course_offering_id,
         'course_shift': course_shift,
@@ -802,8 +821,12 @@ def create_study_material(request):
         if not all([course_offering_id, topic]):
             return JsonResponse({'success': False, 'message': 'Course offering and topic are required.'})
 
-        course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
-        teacher = get_object_or_404(Teacher, user=request.user)
+        try:
+            course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
+            teacher = get_object_or_404(Teacher, user=request.user)
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': f'Error fetching course or teacher: {str(e)}'})
+
         materials_data = []
         
         with transaction.atomic():
@@ -836,7 +859,7 @@ def create_study_material(request):
                     topic=topic,
                     title=material_data.get('title'),
                     description=material_data.get('description'),
-                    useful_links=material_data.get('useful_links', ''),
+                    useful_links=material_data.get('useful_links', '').strip(),
                     video_link=material_data.get('video_link') or None
                 )
                 
@@ -975,16 +998,20 @@ def delete_study_material(request):
         if not material_id:
             return JsonResponse({'success': False, 'message': 'Material ID is required.'})
         
-        material = get_object_or_404(StudyMaterial, id=material_id)
-        teacher = get_object_or_404(Teacher, user=request.user)
-        
-        if material.teacher != teacher:
-            return JsonResponse({'success': False, 'message': 'You can only delete your own materials.'})
-        
-        if material.image:
-            default_storage.delete(material.image.path)
-        material.delete()
-        return JsonResponse({'success': True, 'message': 'Study material deleted successfully.'})
+        try:
+            material = get_object_or_404(StudyMaterial, id=material_id)
+            teacher = get_object_or_404(Teacher, user=request.user)
+            
+            if material.teacher != teacher:
+                return JsonResponse({'success': False, 'message': 'You can only delete your own materials.'})
+            
+            if material.image:
+                default_storage.delete(material.image.path)
+            material.delete()
+            return JsonResponse({'success': True, 'message': 'Study material deleted successfully.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': f'Error deleting material: {str(e)}'})
+    
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
 

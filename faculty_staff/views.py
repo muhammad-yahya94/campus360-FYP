@@ -1231,128 +1231,164 @@ def search_students(request):
 
 @login_required
 def exam_results(request):
-    # if not request.user.is_staff or request.user.teacher_profile.designation != 'head_of_department':
-    #     return render(request, 'faculty_staff/unauthorized.html', {'message': 'You do not have permission to access this page.'})
+    if not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
+        return render(request, 'faculty_staff/exam_results.html', {
+            'error': 'Unauthorized access. Only Heads of Department can access this page.'
+        })
 
-    exam_results = ExamResult.objects.values('student', 'course_offering').annotate(
-        mid_marks=Sum('marks_obtained', filter=Q(exam_type='midterm')),
-        sessional_marks=Sum('marks_obtained', filter=Q(exam_type='sessional')),
-        practical_marks=Sum('marks_obtained', filter=Q(exam_type='practical')),
-        project_marks=Sum('marks_obtained', filter=Q(exam_type='project')),
-    ).order_by('student', 'course_offering')
+    course_offering_id = request.GET.get('course_offering_id')
+    if not course_offering_id:
+        return render(request, 'faculty_staff/exam_results.html', {
+            'error': 'Course offering ID is required.'
+        })
 
-    aggregated_results = []
-    for result in exam_results:
-        try:
-            student = Student.objects.get(applicant_id=result['student'])
-            course_offering = CourseOffering.objects.get(id=result['course_offering'])
-            aggregated_results.append({
-                'student': student,
-                'course': course_offering.course,
-                'mid': result['mid_marks'] or 0,
-                'sessional': result['sessional_marks'] or 0,
-                'practical': result['practical_marks'] or 0,
-                'project': result['project_marks'] or 0,
-                'final_year': f"{course_offering.academic_session.start_year}-{course_offering.academic_session.end_year}",
-                'remarks': ExamResult.objects.filter(student=student, course_offering=course_offering).first().remarks if ExamResult.objects.filter(student=student, course_offering=course_offering).exists() else "None",
-                'id': ExamResult.objects.filter(student=student, course_offering=course_offering).first().id if ExamResult.objects.filter(student=student, course_offering=course_offering).exists() else None,
-            })
-        except (Student.DoesNotExist, CourseOffering.DoesNotExist):
-            continue
+    try:
+        course_offering = get_object_or_404(
+            CourseOffering,
+            id=course_offering_id,
+            teacher=request.user.teacher_profile
+        )
 
-    students = []
-    if request.GET.get('course_offering_id'):
-        course_offering = get_object_or_404(CourseOffering, id=request.GET.get('course_offering_id'))
-        enrollments = StudentSemesterEnrollment.objects.filter(semester=course_offering.semester).select_related('student')
+        # Filter exam results by course_offering_id
+        exam_results = ExamResult.objects.filter(
+            course_offering_id=course_offering_id
+        ).values('student', 'course_offering').annotate(
+            mid_marks=Sum('marks_obtained', filter=Q(exam_type='midterm')),
+            sessional_marks=Sum('marks_obtained', filter=Q(exam_type='sessional')),
+            practical_marks=Sum('marks_obtained', filter=Q(exam_type='practical')),
+            project_marks=Sum('marks_obtained', filter=Q(exam_type='project')),
+        ).order_by('student')
+
+        aggregated_results = []
+        for result in exam_results:
+            try:
+                student = Student.objects.get(applicant_id=result['student'])
+                aggregated_results.append({
+                    'student': student,
+                    'course': course_offering.course,
+                    'mid': result['mid_marks'] or 0,
+                    'sessional': result['sessional_marks'] or 0,
+                    'practical': result['practical_marks'] or 0,
+                    'project': result['project_marks'] or 0,
+                    'final_year': f"{course_offering.academic_session.start_year}-{course_offering.academic_session.end_year}",
+                    'remarks': ExamResult.objects.filter(student=student, course_offering=course_offering).first().remarks if ExamResult.objects.filter(student=student, course_offering=course_offering).exists() else "None",
+                    'id': ExamResult.objects.filter(student=student, course_offering=course_offering).first().id if ExamResult.objects.filter(student=student, course_offering=course_offering).exists() else None,
+                })
+            except (Student.DoesNotExist, CourseOffering.DoesNotExist):
+                continue
+
+        # Load students for the course offering
+        enrollments = StudentSemesterEnrollment.objects.filter(
+            semester=course_offering.semester
+        ).select_related('student__applicant')
         students = [{'id': enrollment.student.applicant.id, 'name': str(enrollment.student)} for enrollment in enrollments]
 
-    context = {
-        'exam_results': aggregated_results,
-        'students': students,
-    }
-    return render(request, 'faculty_staff/exam_results.html', context)
-
-
-@login_required
-def record_exam_results(request):
-    # if not request.user.is_staff or request.user.teacher_profile.designation != 'head_of_department':
-    #     return JsonResponse({'success': False, 'message': 'You do not have permission to access this page.'})
-
-    if request.method == "POST":
-        course_offering_id = request.POST.get('course_offering_id')
-        if not course_offering_id:
-            return JsonResponse({'success': False, 'message': 'Course offering is required.'})
-
-        course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
-        enrollments = StudentSemesterEnrollment.objects.filter(semester=course_offering.semester).select_related('student')
-
-        for enrollment in enrollments:
-            student = enrollment.student
-            student_id = student.applicant.id
-            mid = request.POST.get(f'mid_{student_id}')
-            sessional = request.POST.get(f'sessional_{student_id}')
-            project = request.POST.get(f'project_{student_id}')
-            practical = request.POST.get(f'practical_{student_id}')
-
-            for exam_type, marks in [('midterm', mid), ('sessional', sessional), ('project', project), ('practical', practical)]:
-                if marks is not None and marks != '':
-                    try:
-                        marks_value = int(marks)
-                        if 0 <= marks_value <= 100:
-                            ExamResult.objects.update_or_create(
-                                course_offering=course_offering,
-                                student=student,
-                                exam_type=exam_type,
-                                defaults={
-                                    'total_marks': 100,
-                                    'marks_obtained': marks_value,
-                                    'graded_by': request.user.teacher_profile,
-                                    'graded_at': timezone.now()
-                                }
-                            )
-                        else:
-                            return JsonResponse({'success': False, 'message': f'Invalid marks for {student}: must be between 0 and 100.'})
-                    except ValueError:
-                        return JsonResponse({'success': False, 'message': f'Invalid marks format for {student}.'})
-
-        return JsonResponse({'success': True, 'message': 'Exam results recorded successfully.'})
-    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+        return render(request, 'faculty_staff/exam_results.html', {
+            'course_offering': course_offering,
+            'course_offering_id': course_offering_id,
+            'students': students,
+            'exam_results': aggregated_results
+        })
+    except CourseOffering.DoesNotExist:
+        return render(request, 'faculty_staff/exam_results.html', {
+            'error': 'Invalid course offering or you are not authorized to access it.'
+        })
 
 
 @login_required
 def load_students_for_course(request):
-    if request.method == "GET":
-        course_offering_id = request.GET.get('course_offering_id')
-        if course_offering_id:
-            course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
-            course_enrollments = CourseEnrollment.objects.filter(
-                course_offering=course_offering,
-                status='enrolled'
-            ).select_related(
-                'student_semester_enrollment__student__applicant',
-                'student_semester_enrollment__semester'
-            )
-            students = [
-                {
-                    'id': course_enrollment.student_semester_enrollment.student.applicant.pk,
-                    'name': f"{course_enrollment.student_semester_enrollment.student.applicant.full_name}"
-                }
-                for course_enrollment in course_enrollments
-                if course_enrollment.student_semester_enrollment.semester == course_offering.semester
-            ]
-            return JsonResponse({
-                'success': True,
-                'students': students
-            })
+    if not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
+        return JsonResponse({'success': False, 'message': 'Unauthorized access.'})
+    
+    course_offering_id = request.GET.get('course_offering_id')
+    if not course_offering_id:
         return JsonResponse({'success': False, 'message': 'Course offering ID is required.'})
-    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+    
+    try:
+        course_offering = CourseOffering.objects.get(
+            id=course_offering_id,
+            teacher=request.user.teacher_profile
+        )
+        course_enrollments = CourseEnrollment.objects.filter(
+            course_offering=course_offering,
+            status='enrolled'
+        ).select_related('student_semester_enrollment__student__applicant')
+        students = [
+            {
+                'id': course_enrollment.student_semester_enrollment.student.applicant.pk,
+                'name': f"{course_enrollment.student_semester_enrollment.student.applicant.full_name}"
+            }
+            for course_enrollment in course_enrollments
+            if course_enrollment.student_semester_enrollment.semester == course_offering.semester
+        ]
+        return JsonResponse({
+            'success': True,
+            'students': students
+        })
+    except CourseOffering.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Course offering not found or unauthorized.'})
 
+@login_required
+def record_exam_results(request):
+    if not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
+        return JsonResponse({'success': False, 'message': 'Unauthorized access.'})
+
+    if request.method == "POST":
+        course_offering_id = request.POST.get('course_offering_id')
+        if not course_offering_id:
+            return JsonResponse({'success': False, 'message': 'Course offering ID is required.'})
+
+        course_offering = get_object_or_404(CourseOffering, id=course_offering_id, teacher=request.user.teacher_profile)
+        enrollments = CourseEnrollment.objects.filter(
+            course_offering=course_offering,
+            status='enrolled'
+        ).select_related('student_semester_enrollment__student__applicant')
+
+        try:
+            for enrollment in enrollments:
+                student = enrollment.student_semester_enrollment.student
+                student_id = student.applicant.id
+                mid = request.POST.get(f'mid_{student_id}')
+                sessional = request.POST.get(f'sessional_{student_id}')
+                project = request.POST.get(f'project_{student_id}')
+                practical = request.POST.get(f'practical_{student_id}')
+
+                for exam_type, marks in [('midterm', mid), ('sessional', sessional), ('project', project), ('practical', practical)]:
+                    if marks is not None and marks != '':
+                        try:
+                            marks_value = float(marks)
+                            if 0 <= marks_value <= 100:
+                                ExamResult.objects.update_or_create(
+                                    course_offering=course_offering,
+                                    student=student,
+                                    exam_type=exam_type,
+                                    defaults={
+                                        'total_marks': 100,
+                                        'marks_obtained': marks_value,
+                                        'graded_by': request.user.teacher_profile,
+                                        'graded_at': timezone.now()
+                                    }
+                                )
+                            else:
+                                return JsonResponse({'success': False, 'message': f'Invalid marks for {student.applicant.full_name}: must be between 0 and 100.'})
+                        except ValueError:
+                            return JsonResponse({'success': False, 'message': f'Invalid marks format for {student.applicant.full_name}.'})
+            return JsonResponse({'success': True, 'message': 'Exam results recorded successfully.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': f'Error: {str(e)}'})
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
 @login_required
 def delete_exam_result(request):
-    if request.method == "POST" and request.user.teacher_profile.designation == 'head_of_department':
+    if not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
+        return JsonResponse({'success': False, 'message': 'Unauthorized access.'})
+
+    if request.method == "POST":
         result_id = request.POST.get('result_id')
-        if result_id:
+        if not result_id:
+            return JsonResponse({'success': False, 'message': 'Result ID is required.'})
+        
+        try:
             result = get_object_or_404(
                 ExamResult,
                 id=result_id,
@@ -1360,8 +1396,9 @@ def delete_exam_result(request):
             )
             result.delete()
             return JsonResponse({'success': True, 'message': 'Exam result deleted successfully.'})
-        return JsonResponse({'success': False, 'message': 'Result ID is required.'})
-    return JsonResponse({'success': False, 'message': 'Invalid request.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': f'Error: {str(e)}'})
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
 
 

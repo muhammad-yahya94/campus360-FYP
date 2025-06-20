@@ -24,12 +24,26 @@
     .mark-input {
         width: 100px;
     }
+    .select2-selection--single {
+        background-color: #f8f9fa !important;
+        cursor: not-allowed !important;
+    }
 </style>
 
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Exam Results</h2>
+    <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-xl">
+        <div class="hero-content text-center py-8 mb-2">
+            <div>
+                <h1 class="text-4xl font-bold mb-2">Exam Results</h1>
+                <p class="text-lg opacity-90">Manage and track Results</p>
+            </div>
+        </div>
     </div>
+
+    <!-- Error Message -->
+    {% if error %}
+    <div class="alert alert-error mt-4">{{ error }}</div>
+    {% endif %}
 
     <!-- Record Exam Results Form -->
     <div class="card mb-4">
@@ -37,11 +51,12 @@
             <h5 class="card-title">Record Exam Results</h5>
             <form id="record-exam-results-form" method="post" action="{% url 'faculty_staff:record_exam_results' %}">
                 {% csrf_token %}
+                <input type="hidden" name="course_offering_id" id="hidden_course_offering_id" value="{{ course_offering_id|default_if_none:'' }}">
                 <div class="row g-3 mb-3">
                     <div class="col-md-12">
                         <label for="course_offering_id" class="form-label">Course Offering</label>
-                        <select name="course_offering_id" id="course_offering_id" class="form-select select2" required>
-                            <option value="">Search for a course offering...</option>
+                        <select name="course_offering_display" id="course_offering_id" class="form-select select2" disabled>
+                            <option value="">Loading course offering...</option>
                         </select>
                         <span id="course-offering-error" class="error"></span>
                     </div>
@@ -53,10 +68,10 @@
                         <thead>
                             <tr>
                                 <th>Student</th>
-                                <th>Mid (100)</th>
-                                <th>Sessional (100)</th>
-                                <th>Project (100)</th>
-                                <th>Practical (100)</th>
+                                <th>Mid</th>
+                                <th>Sessional</th>
+                                <th>Final</th>
+                                <th>Practical</th>
                             </tr>
                         </thead>
                         <tbody id="students-table-body">
@@ -108,7 +123,7 @@
                             <th>Mid</th>
                             <th>Sessional</th>
                             <th>Practical</th>
-                            <th>Project</th>
+                            <th>Final</th>
                             <th>Academic Session</th>
                             <th>Remarks</th>
                             <th>Actions</th>
@@ -147,31 +162,12 @@
 
 <script>
 $(document).ready(function() {
-    // Initialize Select2 for course offering
-    $('#course_offering_id').select2({     
-        ajax: {
-            url: "{% url 'faculty_staff:search_course_offerings' %}",
-            dataType: 'json',
-            delay: 250,
-            data: function(params) {
-                return { q: params.term, page: params.page || 1 };
-            },
-            processResults: function(data, params) {
-                params.page = params.page || 1;
-                return { 
-                    results: data.results.map(item => ({
-                        id: item.id,
-                        text: `${item.course_code} - ${item.program_name} (${item.semester_name}, ${item.session_name})`
-                    })),
-                    pagination: { more: data.pagination.more } 
-                };
-            },
-            cache: true
-        },
-        placeholder: "Search for a course offering...",
-        minimumInputLength: 1,
-        allowClear: true
-    });
+    // Initialize Select2 for course offering (disabled)
+    $('#course_offering_id').select2({
+        placeholder: "Course offering selected",
+        minimumResultsForSearch: Infinity, // Disable search
+        allowClear: false
+    }).prop('disabled', true);
 
     // Function to load students for a course offering
     function loadStudents(courseOfferingId) {
@@ -216,20 +212,11 @@ $(document).ready(function() {
         });
     }
 
-    // Load students when course offering is selected
-    $('#course_offering_id').on('change', function() {
-        let courseOfferingId = $(this).val();
-        if (courseOfferingId) {
-            loadStudents(courseOfferingId);
-        } else {
-            $('#students-table-container').hide();
-        }
-    });
-
     // Check for course_offering_id in URL on page load
     const urlParams = new URLSearchParams(window.location.search);
     const courseOfferingId = urlParams.get('course_offering_id');
     if (courseOfferingId) {
+        $('#hidden_course_offering_id').val(courseOfferingId);
         // Fetch course offering details to populate Select2
         $.ajax({
             url: "{% url 'faculty_staff:search_course_offerings' %}",
@@ -244,16 +231,24 @@ $(document).ready(function() {
                         true,
                         true
                     );
-                    $('#course_offering_id').append(option).trigger('change');
+                    $('#course_offering_id').empty().append(option).trigger('change');
                     loadStudents(courseOfferingId);
                 } else {
+                    $('#course_offering_id').empty().append('<option value="">Course offering not found</option>');
                     alert('Error: Course offering not found.');
+                    $('#students-table-container').hide();
                 }
             },
             error: function(xhr, status, error) {
+                $('#course_offering_id').empty().append('<option value="">Error loading course</option>');
                 alert('An error occurred while fetching course offering: ' + error);
+                $('#students-table-container').hide();
             }
         });
+    } else {
+        $('#course_offering_id').empty().append('<option value="">No course selected</option>');
+        $('#students-table-container').hide();
+        alert('Error: Course offering ID not provided.');
     }
 
     // Handle form submission with AJAX
@@ -262,8 +257,8 @@ $(document).ready(function() {
         let formData = $(this).serialize();
         let error = false;
 
-        if (!$('#course_offering_id').val()) {
-            $('#course-offering-error').text('Please select a course offering.');
+        if (!$('#hidden_course_offering_id').val()) {
+            $('#course-offering-error').text('Course offering ID is missing.');
             error = true;
         } else {
             $('#course-offering-error').text('');
@@ -294,7 +289,6 @@ $(document).ready(function() {
                 if (response.success) {
                     alert(response.message);
                     $('#record-exam-results-form')[0].reset();
-                    $('#course_offering_id').val(null).trigger('change');
                     location.reload();
                 } else {
                     alert('Error: ' + response.message);
@@ -333,4 +327,4 @@ $(document).ready(function() {
     });
 });
 </script>
-{% endblock %}
+{% endblock %}   

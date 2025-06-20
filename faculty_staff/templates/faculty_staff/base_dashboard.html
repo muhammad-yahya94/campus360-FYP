@@ -68,9 +68,12 @@
                     <li><a href="{% url 'faculty_staff:semester_management' %}" class="{% if request.resolver_match.url_name == 'semester_management' %}active{% endif %} text-base">
                         <i class="fas fa-calendar-alt"></i> Semester Management
                     </a></li>
-                    {% comment %} <li><a href="{% url 'faculty_staff:study_materials' %}" class="{% if request.resolver_match.url_name == 'study_materials' %}active{% endif %} text-base">
-                        <i class="fas fa-book"></i> Study Materials
-                    </a></li> {% endcomment %}
+                    <li><a href="{% url 'faculty_staff:weekly_timetable' %}" class="{% if request.resolver_match.url_name == 'weekly_timetable' %}active{% endif %} text-base">
+                        <i class="fas fa-book"></i>Weekly Time Table
+                    </a></li> 
+                      <li><a href="{% url 'faculty_staff:my_timetable' %}" class="{% if request.resolver_match.url_name == 'my_timetable' %}active{% endif %} text-base">
+                        <i class="fas fa-book"></i>My Time Table
+                    </a></li> 
                     <li><a href="{% url 'faculty_staff:teacher_course_list' %}" class="{% if request.resolver_match.url_name == 'teacher_course_list' %}active{% endif %} text-base">
                         <i class="fas fa-book"></i> My Courses
                     </a></li>
@@ -267,12 +270,12 @@
                                 Semester Management
                             </a>
                         </li>
-                        {% comment %} <li>
-                            <a href="{% url 'faculty_staff:study_materials' %}" class="{% if request.resolver_match.url_name == 'study_materials' %}active{% endif %} text-lg py-3">
-                                <i class="fas fa-book text-lg w-6"></i>
-                                Study Materials
-                            </a>
-                        </li> {% endcomment %}
+                        <li><a href="{% url 'faculty_staff:weekly_timetable' %}" class="{% if request.resolver_match.url_name == 'weekly_timetable' %}active{% endif %} text-base">
+                        <i class="fas fa-book"></i>Weekly Time Table
+                    </a></li>
+                         <li><a href="{% url 'faculty_staff:my_timetable' %}" class="{% if request.resolver_match.url_name == 'my_timetable' %}active{% endif %} text-base">
+                        <i class="fas fa-book"></i>My Time Table
+                    </a></li>
                         <li>
                             <a href="{% url 'faculty_staff:teacher_course_list' %}" class="{% if request.resolver_match.url_name == 'teacher_course_list' %}active{% endif %} text-lg py-3">
                                 <i class="fas fa-chalkboard text-lg w-6"></i>

@@ -29,8 +29,9 @@ urlpatterns = [
     path('delete-timetable-slot/', views.delete_timetable_slot, name='delete_timetable_slot'),
     path('timetable-schedule/<int:offering_id>/', views.timetable_schedule, name='timetable_schedule'),
     
+    path('weekly-timetable/', views.weekly_timetable, name='weekly_timetable'),
     
-    
+    path('my-timetable/', views.my_timetable, name='my_timetable'),
     
     # New URLs for study materials
     path('study-materials/', views.study_materials, name='study_materials'),

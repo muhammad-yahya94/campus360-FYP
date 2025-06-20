@@ -1057,6 +1057,164 @@ def delete_timetable_slot(request):
             'message': f'Error deleting timetable slot: {str(e)}'
         })
 
+
+@login_required
+def weekly_timetable(request):
+    if not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
+        return render(request, 'faculty_staff/error.html', {
+            'message': 'You do not have permission to view the weekly timetable.'
+        }, status=403)
+
+    department = request.user.teacher_profile.department
+    try:
+        current_session = AcademicSession.objects.get(is_active=True)
+    except AcademicSession.DoesNotExist:
+        return render(request, 'faculty_staff/error.html', {
+            'message': 'No active academic session found.'
+        }, status=404)
+
+    # Get shift filter from GET parameter (default: all)
+    shift_filter = request.GET.get('shift', 'all').lower()
+    valid_shifts = ['morning', 'evening', 'both', 'all']
+    if shift_filter not in valid_shifts:
+        shift_filter = 'all'
+
+    # Fetch timetable slots
+    queryset = TimetableSlot.objects.filter(
+        course_offering__department=department,
+        course_offering__academic_session=current_session
+    ).select_related('course_offering__course', 'course_offering__teacher', 'course_offering__program', 'venue')
+
+    # Apply shift filter
+    if shift_filter != 'all':
+        if shift_filter == 'morning':
+            queryset = queryset.filter(Q(course_offering__shift='morning') | 
+                                     (Q(course_offering__shift='both') & Q(start_time__lt='12:00:00')))
+        elif shift_filter == 'evening':
+            queryset = queryset.filter(Q(course_offering__shift='evening') | 
+                                     (Q(course_offering__shift='both') & Q(start_time__gte='12:00:00')))
+        else:  # both
+            queryset = queryset.filter(course_offering__shift='both')
+
+    # Organize slots by day
+    timetable_data = []
+    days_of_week = TimetableSlot.DAYS_OF_WEEK  # [('monday', 'Monday'), ...]
+    for day_value, day_label in days_of_week:
+        day_slots = sorted(
+            [
+                {
+                    'course_code': slot.course_offering.course.code,
+                    'venue': slot.venue.name,
+                    'start_time': slot.start_time.strftime('%H:%M'),
+                    'end_time': slot.end_time.strftime('%H:%M'),
+                    'shift': (
+                        slot.course_offering.shift.capitalize() if slot.course_offering.shift != 'both'
+                        else ('Morning' if slot.start_time.hour < 12 else 'Evening')
+                    ),
+                    'teacher': f"{slot.course_offering.teacher.user.first_name} {slot.course_offering.teacher.user.last_name}",
+                    'program': slot.course_offering.program.name,
+                }
+                for slot in queryset.filter(day=day_value)
+            ],
+            key=lambda x: x['start_time']
+        )
+        timetable_data.append({
+            'day_value': day_value,
+            'day_label': day_label,
+            'slots': day_slots
+        })
+
+    return render(request, 'faculty_staff/weekly_timetable.html', {
+        'timetable_data': timetable_data,
+        'department': department,
+        'academic_session': current_session,
+        'shift_filter': shift_filter,
+        'shift_options': [('all', 'All'), ('morning', 'Morning'), ('evening', 'Evening'), ('both', 'Both')],
+    })
+    
+    
+    
+
+@login_required
+def my_timetable(request):
+    if not hasattr(request.user, 'teacher_profile'):
+        return render(request, 'faculty_staff/error.html', {
+            'message': 'You do not have a teaching profile.'
+        }, status=403)
+
+    teacher = request.user.teacher_profile
+    department = teacher.department
+    try:
+        current_session = AcademicSession.objects.get(is_active=True)
+    except AcademicSession.DoesNotExist:
+        return render(request, 'faculty_staff/error.html', {
+            'message': 'No active academic session found.'
+        }, status=404)
+
+    # Get shift filter from GET parameter
+    shift_filter = request.GET.get('shift', 'all').lower()
+    valid_shifts = ['morning', 'evening', 'both', 'all']
+    if shift_filter not in valid_shifts:
+        shift_filter = 'all'
+
+    # Fetch timetable slots for the teacher's courses
+    queryset = TimetableSlot.objects.filter(
+        course_offering__teacher=teacher,
+        course_offering__department=department,
+        course_offering__academic_session=current_session
+    ).select_related('course_offering__course', 'course_offering__program', 'venue')
+
+    # Apply shift filter
+    if shift_filter != 'all':
+        if shift_filter == 'morning':
+            queryset = queryset.filter(Q(course_offering__shift='morning') | 
+                                      (Q(course_offering__shift='both') & Q(start_time__lt='12:00:00')))
+        elif shift_filter == 'evening':
+            queryset = queryset.filter(Q(course_offering__shift='evening') | 
+                                      (Q(course_offering__shift='both') & Q(start_time__gte='12:00:00')))
+        else:  # both
+            queryset = queryset.filter(course_offering__shift='both')
+
+    # Organize slots by day
+    timetable_data = []
+    days_of_week = TimetableSlot.DAYS_OF_WEEK  # [('monday', 'Monday'), ...]
+    for day_value, day_label in days_of_week:
+        day_slots = sorted(
+            [
+                {
+                    'course_code': slot.course_offering.course.code,
+                    'venue': slot.venue.name,
+                    'start_time': slot.start_time.strftime('%H:%M'),
+                    'end_time': slot.end_time.strftime('%H:%M'),
+                    'shift': (
+                        slot.course_offering.shift.capitalize() if slot.course_offering.shift != 'both'
+                        else ('Morning' if slot.start_time.hour < 12 else 'Evening')
+                    ),
+                    'program': slot.course_offering.program.name,
+                }
+                for slot in queryset.filter(day=day_value)
+            ],
+            key=lambda x: x['start_time']
+        )
+        timetable_data.append({
+            'day_value': day_value,
+            'day_label': day_label,
+            'slots': day_slots
+        })
+
+    return render(request, 'faculty_staff/my_timetable.html', {
+        'timetable_data': timetable_data,
+        'department': department,
+        'academic_session': current_session,
+        'shift_filter': shift_filter,
+        'shift_options': [('all', 'All'), ('morning', 'Morning'), ('evening', 'Evening'), ('both', 'Both')],
+        'teacher': teacher,
+    })
+    
+    
+    
+    
+
 @login_required
 def search_course_offerings(request):
     if not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':

@@ -1000,7 +1000,7 @@ def delete_study_material(request):
         
         try:
             material = get_object_or_404(StudyMaterial, id=material_id)
-            teacher = get_object_or_404(Teacher, user=request.user)
+            teacher = get_object_or_404(Teacher, user=request.user)  
             
             if material.teacher != teacher:
                 return JsonResponse({'success': False, 'message': 'You can only delete your own materials.'})
@@ -1056,26 +1056,47 @@ def search_course_offerings(request):
 
 @login_required
 def assignments(request):
-    if request.user.teacher_profile.designation == 'head_of_department':
+    if not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
+        return render(request, 'faculty_staff/assignments.html', {'error': 'Unauthorized access.'})
+    
+    course_offering_id = request.GET.get('course_offering_id')
+    if course_offering_id:
+        assignments = Assignment.objects.filter(
+            course_offering_id=course_offering_id,
+            course_offering__teacher=request.user.teacher_profile
+        ).select_related('course_offering').order_by('-created_at')
+        course_offering = get_object_or_404(CourseOffering, id=course_offering_id, teacher=request.user.teacher_profile)
+    else:
         assignments = Assignment.objects.filter(
             course_offering__teacher=request.user.teacher_profile
-        ).order_by('-created_at')
-        return render(request, 'faculty_staff/assignments.html', {'assignments': assignments})
-    return JsonResponse({'success': False, 'message': 'Unauthorized access.'})
-
+        ).select_related('course_offering').order_by('-created_at')
+        course_offering = None
+    
+    return render(request, 'faculty_staff/assignments.html', {
+        'assignments': assignments,
+        'course_offering': course_offering,
+        'course_offering_id': course_offering_id
+    })
 
 @login_required
 def create_assignment(request):
-    if request.method == "POST" and request.user.teacher_profile.designation == 'head_of_department':
+    if request.method == "POST" and hasattr(request.user, 'teacher_profile') and request.user.teacher_profile.designation == 'head_of_department':
         course_offering_id = request.POST.get('course_offering_id')
         title = request.POST.get('title')
-        description = request.POST.get('description')
+        description = request.POST.get('description', '')
         due_date = request.POST.get('due_date')
-        total_marks = request.POST.get('total_marks')
-        file = request.FILES.get('file')
+        max_points = request.POST.get('max_points')
+        resource_file = request.FILES.get('resource_file')
 
-        if not all([course_offering_id, title, due_date, total_marks]):
+        if not all([course_offering_id, title, due_date, max_points]):
             return JsonResponse({'success': False, 'message': 'All required fields must be filled.'})
+
+        try:
+            max_points = int(max_points)
+            if max_points < 1:
+                return JsonResponse({'success': False, 'message': 'Max points must be at least 1.'})
+        except ValueError:
+            return JsonResponse({'success': False, 'message': 'Invalid max points value.'})
 
         course_offering = get_object_or_404(
             CourseOffering,
@@ -1084,20 +1105,19 @@ def create_assignment(request):
         )
         Assignment.objects.create(
             course_offering=course_offering,
+            teacher=request.user.teacher_profile,
             title=title,
             description=description,
             due_date=due_date,
-            total_marks=total_marks,
-            file=file,
-            created_by=request.user.teacher_profile
+            max_points=max_points,
+            resource_file=resource_file
         )
         return JsonResponse({'success': True, 'message': 'Assignment created successfully.'})
-    return JsonResponse({'success': False, 'message': 'Invalid request.'})
-
+    return JsonResponse({'success': False, 'message': 'Invalid request or unauthorized access.'})
 
 @login_required
 def delete_assignment(request):
-    if request.method == "POST" and request.user.teacher_profile.designation == 'head_of_department':
+    if request.method == "POST" and hasattr(request.user, 'teacher_profile') and request.user.teacher_profile.designation == 'head_of_department':
         assignment_id = request.POST.get('assignment_id')
         if assignment_id:
             assignment = get_object_or_404(
@@ -1105,12 +1125,12 @@ def delete_assignment(request):
                 id=assignment_id,
                 course_offering__teacher=request.user.teacher_profile
             )
-            if assignment.file and os.path.isfile(assignment.file.path):
-                os.remove(assignment.file.path)
+            if assignment.resource_file and os.path.isfile(assignment.resource_file.path):
+                os.remove(assignment.resource_file.path)
             assignment.delete()
             return JsonResponse({'success': True, 'message': 'Assignment deleted successfully.'})
         return JsonResponse({'success': False, 'message': 'Assignment ID is required.'})
-    return JsonResponse({'success': False, 'message': 'Invalid request.'})
+    return JsonResponse({'success': False, 'message': 'Invalid request or unauthorized access.'})
 
 
 @login_required

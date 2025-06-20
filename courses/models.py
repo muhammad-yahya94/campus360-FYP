@@ -102,22 +102,21 @@ class StudyMaterial(models.Model):
 
 # ===== Assignment =====
 class Assignment(models.Model):
-    course_offering = models.ForeignKey(CourseOffering, on_delete=models.CASCADE, related_name='assignments', help_text="The course offering this assignment belongs to.")
-    title = models.CharField(max_length=200, help_text="Title of the assignment (e.g., 'Assignment 1: Python Basics').")
-    description = models.TextField(blank=True, help_text="Detailed description or instructions for the assignment.")
-    file = models.FileField(upload_to='assignments/', null=True, blank=True, help_text="Upload the assignment file (e.g., PDF with questions).")
-    created_by = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True, related_name='created_assignments', help_text="The teacher who created this assignment.")
-    created_at = models.DateTimeField(auto_now_add=True, help_text="The date and time when the assignment was created.")
-    due_date = models.DateTimeField(help_text="The deadline for submitting the assignment.")
-    total_marks = models.PositiveIntegerField(default=100, help_text="Total marks for the assignment.")
-    is_active = models.BooleanField(default=True, help_text="Check if this assignment is currently active and visible to students.")
+    course_offering = models.ForeignKey('CourseOffering', on_delete=models.CASCADE, related_name='assignments')
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='assignments')
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    due_date = models.DateTimeField(null=True, blank=True)
+    max_points = models.PositiveIntegerField()
+    resource_file = models.FileField(upload_to='assignments/resources/', max_length=255, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.title} ({self.course_offering})"
 
     class Meta:
-        verbose_name = "Assignment"
-        verbose_name_plural = "Assignments"
+        verbose_name_plural = 'assignments'
 
 
 

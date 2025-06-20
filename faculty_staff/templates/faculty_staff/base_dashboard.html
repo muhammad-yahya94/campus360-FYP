@@ -74,9 +74,6 @@
                     <li><a href="{% url 'faculty_staff:teacher_course_list' %}" class="{% if request.resolver_match.url_name == 'teacher_course_list' %}active{% endif %} text-base">
                         <i class="fas fa-book"></i> My Courses
                     </a></li>
-                    <li><a href="{% url 'faculty_staff:assignments' %}" class="{% if request.resolver_match.url_name in 'assignments,create_assignment,assignment_submissions' %}active{% endif %} text-base">
-                        <i class="fas fa-tasks"></i> Assignments
-                    </a></li>
                     <li><a href="{% url 'faculty_staff:notices' %}" class="{% if request.resolver_match.url_name == 'notices' %}active{% endif %} text-base">
                         <i class="fas fa-bullhorn"></i> Notices
                     </a></li>
@@ -283,12 +280,6 @@
                             <a href="{% url 'faculty_staff:teacher_course_list' %}" class="{% if request.resolver_match.url_name == 'teacher_course_list' %}active{% endif %} text-lg py-3">
                                 <i class="fas fa-chalkboard text-lg w-6"></i>
                                 My Courses
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{% url 'faculty_staff:assignments' %}" class="{% if request.resolver_match.url_name in 'assignments,create_assignment,assignment_submissions' %}active{% endif %} text-lg py-3">
-                                <i class="fas fa-tasks text-lg w-6"></i>
-                                Assignments
                             </a>
                         </li>
                         <li>

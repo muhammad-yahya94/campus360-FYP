@@ -23,8 +23,11 @@ urlpatterns = [
     path('search-semesters/', views.search_semesters, name='search_semesters'),
     path('save-course-offering/', views.save_course_offering, name='save_course_offering'),
     path('delete-course-offering/', views.delete_course_offering, name='delete_course_offering'),
-    
-    
+    path('search-venues/', views.search_venues, name='search_venues'),
+    path('save-venue/', views.save_venue, name='save_venue'),
+    path('save-timetable-slot/', views.save_timetable_slot, name='save_timetable_slot'),
+    path('delete-timetable-slot/', views.delete_timetable_slot, name='delete_timetable_slot'),
+    path('timetable-schedule/<int:offering_id>/', views.timetable_schedule, name='timetable_schedule'),
     
     
     

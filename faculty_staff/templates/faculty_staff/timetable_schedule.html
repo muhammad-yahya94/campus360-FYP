@@ -1,0 +1,564 @@
+{% extends 'faculty_staff/base_dashboard.html' %}
+
+{% block title %}Timetable Schedule - {{ course_offering.course.code }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
+  <!-- Header -->
+  <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-xl shadow-lg">
+    <div class="text-center py-8">
+      <h1 class="text-4xl font-bold mb-2">Timetable Schedule</h1>
+      <p class="text-lg opacity-90">Schedule timetable for {{ course_offering.course.code }} - {{ course_offering.program.name }} ({{ course_offering.semester.name }}, {{ course_offering.academic_session.name }})</p>
+    </div>
+  </div>
+
+  <!-- Back Button and Add Venue Button -->
+  <div class="flex justify-between items-center">
+    <a href="{% url 'faculty_staff:course_offerings' %}" class="inline-flex items-center px-4 py-2 border border-indigo-500 text-indigo-500 bg-white hover:bg-indigo-50 rounded-lg shadow-sm">
+      <i class="fas fa-arrow-left mr-2"></i>
+      Back to Course Offerings
+    </a>
+    <button id="openVenueModal" class="inline-flex items-center px-4 py-2 border border-teal-500 text-teal-500 bg-white hover:bg-teal-50 rounded-lg shadow-sm">
+      <i class="fas fa-plus mr-2"></i>
+      Add New Venue
+    </button>
+  </div>
+
+  <!-- Add Venue Modal -->
+  <div id="addVenueModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden transition-opacity duration-300 z-50">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h5 class="text-xl font-semibold text-gray-900">Add New Venue</h5>
+        <button id="closeVenueModal" class="text-gray-500 hover:text-gray-700">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div id="venue-alerts"></div>
+      <form id="venue-form" method="post" action="{% url 'faculty_staff:save_venue' %}">
+        {% csrf_token %}
+        <input type="hidden" name="department_id" value="{{ department.id }}">
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700">Venue Name</label>
+          <input type="text" name="name" id="venue_name" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+          <span id="name-error" class="text-red-500 text-sm"></span>
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700">Capacity</label>
+          <input type="number" name="capacity" id="capacity" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" min="1" required>
+          <span id="capacity-error" class="text-red-500 text-sm"></span>
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700">Department</label>
+          <input type="text" value="{{ department.name }}" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 bg-gray-100" readonly>
+        </div>
+        <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition duration-200">
+          <i class="fas fa-save mr-2"></i>
+          Save Venue
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Timetable Form -->
+  <div class="bg-white shadow-xl rounded-lg timetable-form">
+    <div class="p-6">
+      <h2 class="text-2xl font-semibold mb-4">
+        <i class="fas fa-calendar-alt mr-2"></i>
+        Schedule Timetable
+      </h2>
+      <form id="timetable-form" method="post" action="{% url 'faculty_staff:save_timetable_slot' %}" class="space-y-4">
+        {% csrf_token %}
+        <input type="hidden" name="course_offering_id" value="{{ course_offering.id }}">
+        <input type="hidden" id="course_shift" value="{{ course_offering.shift }}">
+        <div id="single-shift" {% if course_offering.shift == 'both' %}class="hidden"{% endif %}>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Day(s)</label>
+              <div class="flex flex-wrap gap-4">
+                {% for value, label in days_of_week %}
+                <label class="inline-flex items-center">
+                  <input type="checkbox" name="day[]" value="{{ value }}" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                  <span class="ml-2 text-sm text-gray-600">{{ label }}</span>
+                </label>
+                {% endfor %}
+              </div>
+              <span id="day-error" class="text-red-500 text-sm"></span>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+              <input type="time" name="start_time" id="start_time" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+              <span id="start-time-error" class="text-red-500 text-sm"></span>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+              <input type="time" name="end_time" id="end_time" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+              <span id="end-time-error" class="text-red-500 text-sm"></span>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Venue</label>
+              <select name="venue_id" id="venue_id" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500 select2" required>
+                <option value="">Search for a venue...</option>
+              </select>
+              <span id="venue-error" class="text-red-500 text-sm"></span>
+            </div>
+          </div>
+        </div>
+        <div id="both-shifts" {% if course_offering.shift != 'both' %}class="hidden"{% endif %}>
+          <div class="mb-6">
+            <h3 class="text-lg font-medium text-gray-800 mb-2">Morning Shift</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Day(s)</label>
+                <div class="flex flex-wrap gap-4">
+                  {% for value, label in days_of_week %}
+                  <label class="inline-flex items-center">
+                    <input type="checkbox" name="morning_day[]" value="{{ value }}" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                    <span class="ml-2 text-sm text-gray-600">{{ label }}</span>
+                  </label>
+                  {% endfor %}
+                </div>
+                <span id="morning-day-error" class="text-red-500 text-sm"></span>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                <input type="time" name="morning_start_time" id="morning_start_time" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                <span id="morning-start-time-error" class="text-red-500 text-sm"></span>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                <input type="time" name="morning_end_time" id="morning_end_time" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                <span id="morning-end-error" class="text-red-500 text-sm"></span>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Venue</label>
+                <select name="morning_venue_id" id="morning_venue_id" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500 select2" required>
+                  <option value="">Search for a venue...</option>
+                </select>
+                <span id="morning-venue-error" class="text-red-500 text-sm"></span>
+              </div>
+            </div>
+          </div>
+          <div class="mb-6">
+            <h3 class="text-lg font-medium text-gray-800 mb-2">Evening Shift</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Day(s)</label>
+                <div class="flex flex-wrap gap-4">
+                  {% for value, label in days_of_week %}
+                  <label class="inline-flex items-center">
+                    <input type="checkbox" name="evening_day[]" value="{{ value }}" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                    <span class="ml-2 text-sm text-gray-600">{{ label }}</span>
+                  </label>
+                  {% endfor %}
+                </div>
+                <span id="evening-day-error" class="text-red-500 text-sm"></span>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                <input type="time" name="evening_start_time" id="evening_start_time" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                <span id="evening-start-time-error" class="text-red-500 text-sm"></span>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                <input type="time" name="evening_end_time" id="evening_end_time" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                <span id="evening-end-error" class="text-red-500 text-sm"></span>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Venue</label>
+                <select name="evening_venue_id" id="evening_venue_id" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500 select2" required>
+                  <option value="">Search for a venue...</option>
+                </select>
+                <span id="evening-venue-error" class="text-red-500 text-sm"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition duration-200">
+          <i class="fas fa-clock mr-2"></i>
+          Schedule Timetable
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Existing Timetable Slots -->
+  <div class="bg-white shadow-xl rounded-lg">
+    <div class="p-6">
+      <h2 class="text-2xl font-semibold mb-4">
+        <i class="fas fa-table mr-2"></i>
+        Scheduled Slots
+      </h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="p-3 font-semibold">Day</th>
+              <th class="p-3 font-semibold">Time</th>
+              <th class="p-3 font-semibold">Venue</th>
+              <th class="p-3 font-semibold"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for slot in timetable_slots %}
+            <tr class="border-t">
+              <td class="p-3">{{ slot.get_day_display }}</td>
+              <td class="p-3">{{ slot.start_time|time:"H:i" }}–{{ slot.end_time|time:"H:i" }}</td>
+              <td class="p-3">{{ slot.venue.name }}</td>
+              <td class="p-3">
+                <button class="delete-timetable-slot inline-flex items-center px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200" data-slot-id="{{ slot.id }}">
+                  <i class="fas fa-trash mr-2"></i>
+                  Delete
+                </button>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="4" class="p-8 text-center">
+                <div>
+                  <i class="fas fa-calendar-alt text-6xl text-gray-300 mb-4"></i>
+                  <h3 class="text-xl font-semibold text-gray-600 mb-2">No Timetable Slots Scheduled</h3>
+                  <p class="text-gray-500">Use the form above to schedule timetable slots.</p>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+$(document).ready(function() {
+  let isSubmitting = false;
+
+  // Function to toggle required attributes based on shift
+  const toggleRequiredFields = () => {
+    const shift = $('#course_shift').val();
+    if (shift === 'both') {
+      // Enable required for both-shifts fields
+      $('#both-shifts [required]').prop('required', true);
+      // Disable required for single-shift fields
+      $('#single-shift [required]').prop('required', false);
+    } else {
+      // Enable required for single-shift fields
+      $('#single-shift [required]').prop('required', true);
+      // Disable required for both-shifts fields
+      $('#both-shifts [required]').prop('required', false);
+    }
+  };
+
+  // Initialize required fields based on shift
+  toggleRequiredFields();
+
+  // Modal toggle functionality
+  $('#openVenueModal').on('click', function() {
+    $('#addVenueModal').removeClass('hidden').addClass('opacity-100');
+  });
+  $('#closeVenueModal').on('click', function() {
+    $('#addVenueModal').addClass('hidden').removeClass('opacity-100');
+  });
+  $('#addVenueModal').on('click', function(e) {
+    if (e.target === this) {
+      $(this).addClass('hidden').removeClass('opacity-100');
+    }
+  });
+
+  // Initialize Select2 for venue dropdowns
+  const initializeSelect2 = (selector) => {
+    $(selector).select2({
+      placeholder: "Search for a venue...",
+      minimumInputLength: 1,
+      allowClear: true,
+      ajax: {
+        url: "{% url 'faculty_staff:search_venues' %}",
+        dataType: 'json',
+        delay: 250,
+        data: function(params) {
+          return { q: params.term, page: params.page || 1 };
+        },
+        processResults: function(data, params) {
+          params.page = params.page || 1;
+          return {
+            results: data.results,
+            pagination: { more: data.pagination.more }
+          };
+        },
+        cache: true
+      }
+    }).on('select2:select select2:clear', function() {
+      // Trigger validation on Select2 change
+      $(this).trigger('change');
+    });
+  };
+
+  initializeSelect2('#venue_id');
+  initializeSelect2('#morning_venue_id');
+  initializeSelect2('#evening_venue_id');
+
+  // Time validation function
+  const validateTime = (startTime, endTime, shift, prefix = '') => {
+    const errors = [];
+    if (!startTime || !endTime) {
+      errors.push(`${prefix}Start and end times are required.`);
+      return errors;
+    }
+    if (startTime >= endTime) {
+      errors.push(`${prefix}End time must be after start time.`);
+      return errors;
+    }
+    return errors;
+  };
+
+  // Handle venue form submission
+  $('#venue-form').on('submit', function(e) {
+    e.preventDefault();
+    if (isSubmitting) return;
+    isSubmitting = true;
+
+    const submitBtn = $(this).find('button[type="submit"]');
+    submitBtn.prop('disabled', true);
+    submitBtn.html('<svg class="animate-spin h-5 w-5 mr-2 inline" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V8h8a8 8 0 01-8 8 8 8 0 01-8-8z"></path></svg> Saving...');
+
+    $('.text-red-500').text('');
+
+    let isValid = true;
+    if (!$('#venue_name').val().trim()) {
+      $('#name-error').text('Venue name is required.');
+      isValid = false;
+    }
+    if (!$('#capacity').val() || $('#capacity').val() <= 0) {
+      $('#capacity-error').text('Capacity must be a positive number.');
+      isValid = false;
+    }
+
+    if (!isValid) {
+      submitBtn.prop('disabled', false);
+      submitBtn.html('<i class="fas fa-save mr-2"></i> Save Venue');
+      isSubmitting = false;
+      return;
+    }
+
+    $.ajax({
+      url: $(this).attr('action'),
+      type: 'POST',
+      data: $(this).serialize(),
+      success: function(response) {
+        if (response.success) {
+          $('#venue-alerts').html(`
+            <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded mb-4">
+              ${response.message}
+              <button class="float-right text-green-700 hover:text-green-900" onclick="$(this).parent().remove()">✕</button>
+            </div>
+          `);
+          $('#venue-form')[0].reset();
+          // Refresh venue dropdowns
+          ['#venue_id', '#morning_venue_id', '#evening_venue_id'].forEach(id => {
+            $(id).val(null).trigger('change');
+            $(id).select2('destroy');
+            initializeSelect2(id);
+          });
+          setTimeout(() => {
+            $('#addVenueModal').addClass('hidden').removeClass('opacity-100');
+          }, 1500);
+        } else {
+          $('#venue-alerts').html(`
+            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
+              Error: ${response.message}
+              <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
+            </div>
+          `);
+        }
+      },
+      error: function(xhr, status, error) {
+        $('#venue-alerts').html(`
+          <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
+            An error occurred: ${error}
+            <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
+          </div>
+        `);
+      },
+      complete: function() {
+        submitBtn.prop('disabled', false);
+        submitBtn.html('<i class="fas fa-save mr-2"></i> Save Venue');
+        isSubmitting = false;
+      }
+    });
+  });
+
+  // Handle timetable form submission
+  $('#timetable-form').on('submit', function(e) {
+    e.preventDefault();
+    if (isSubmitting) return;
+    isSubmitting = true;
+
+    const submitBtn = $(this).find('button[type="submit"]');
+    submitBtn.prop('disabled', true);
+    submitBtn.html('<svg class="animate-spin h-5 w-5 mr-2 inline" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V8h8a8 8 0 01-8 8 8 8 0 01-8-8z"></path></svg> Processing...');
+
+    $('.text-red-500').text('');
+
+    let isValid = true;
+    const shift = $('#course_shift').val();
+
+    // Re-toggle required fields before validation
+    toggleRequiredFields();
+
+    if (shift === 'both') {
+      const morningDays = $('input[name="morning_day[]"]:checked').map(function() { return $(this).val(); }).get();
+      const morningStart = $('#morning_start_time').val();
+      const morningEnd = $('#morning_end_time').val();
+      const morningVenue = $('#morning_venue_id').val();
+      const eveningDays = $('input[name="evening_day[]"]:checked').map(function() { return $(this).val(); }).get();
+      const eveningStart = $('#evening_start_time').val();
+      const eveningEnd = $('#evening_end_time').val();
+      const eveningVenue = $('#evening_venue_id').val();
+
+      if (!morningDays.length || !morningVenue) {
+        $('#morning-day-error').text(!morningDays.length ? 'At least one day is required.' : '');
+        $('#morning-venue-error').text(!morningVenue ? 'Venue is required.' : '');
+        isValid = false;
+      }
+      if (!eveningDays.length || !eveningVenue) {
+        $('#evening-day-error').text(!eveningDays.length ? 'At least one day is required.' : '');
+        $('#evening-venue-error').text(!eveningVenue ? 'Venue is required.' : '');
+        isValid = false;
+      }
+
+      const morningErrors = validateTime(morningStart, morningEnd, 'morning', 'Morning: ');
+      const eveningErrors = validateTime(eveningStart, eveningEnd, 'evening', 'Evening: ');
+      if (morningErrors.length) {
+        $('#morning-start-time-error').text(morningErrors.join(' '));
+        isValid = false;
+      }
+      if (eveningErrors.length) {
+        $('#evening-start-time-error').text(eveningErrors.join(' '));
+        isValid = false;
+      }
+    } else {
+      const days = $('input[name="day[]"]:checked').map(function() { return $(this).val(); }).get();
+      const startTime = $('#start_time').val();
+      const endTime = $('#end_time').val();
+      const venue = $('#venue_id').val();
+
+      if (!days.length || !venue) {
+        $('#day-error').text(!days.length ? 'At least one day is required.' : '');
+        $('#venue-error').text(!venue ? 'Venue is required.' : '');
+        isValid = false;
+      }
+
+      const errors = validateTime(startTime, endTime, shift);
+      if (errors.length) {
+        $('#start-time-error').text(errors.join(' '));
+        isValid = false;
+      }
+    }
+
+    if (!isValid) {
+      submitBtn.prop('disabled', false);
+      submitBtn.html('<i class="fas fa-clock mr-2"></i> Schedule Timetable');
+      isSubmitting = false;
+      return;
+    }
+
+    $.ajax({
+      url: $(this).attr('action'),
+      type: 'POST',
+      data: $(this).serialize(),
+      success: function(response) {
+        if (response.success) {
+          const successAlert = `
+            <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded mb-4">
+              ${response.message}
+              <button class="float-right text-green-700 hover:text-green-900" onclick="$(this).parent().remove()">✕</button>
+            </div>
+          `;
+          $('.timetable-form').prepend(successAlert);
+
+          $('#timetable-form')[0].reset();
+          $('.select2').val(null).trigger('change');
+          $('input[type="checkbox"]').prop('checked', false);
+          // Re-toggle required fields after reset
+          toggleRequiredFields();
+
+          setTimeout(() => { location.reload(); }, 1500);
+        } else {
+          const errorAlert = `
+            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
+              Error: ${response.message}
+              <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
+            </div>
+          `;
+          $('.timetable-form').prepend(errorAlert);
+        }
+      },
+      error: function(xhr, status, error) {
+        const errorAlert = `
+          <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
+            An error occurred: ${error}
+            <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
+          </div>
+        `;
+        $('.timetable-form').prepend(errorAlert);
+      },
+      complete: function() {
+        submitBtn.prop('disabled', false);
+        submitBtn.html('<i class="fas fa-clock mr-2"></i> Schedule Timetable');
+        isSubmitting = false;
+      }
+    });
+  });
+
+  // Handle delete timetable slot
+  $('.delete-timetable-slot').on('click', function() {
+    let slotId = $(this).data('slot-id');
+    if (confirm('Are you sure you want to delete this timetable slot?')) {
+      $.ajax({
+        url: "{% url 'faculty_staff:delete_timetable_slot' %}",
+        type: 'POST',
+        data: {
+          slot_id: slotId,
+          csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+        },
+        success: function(response) {
+          if (response.success) {
+            const successAlert = `
+              <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded mb-4">
+                ${response.message}
+                <button class="float-right text-green-700 hover:text-green-900" onclick="$(this).parent().remove()">✕</button>
+              </div>
+            `;
+            $('.timetable-form').prepend(successAlert);
+            setTimeout(() => { location.reload(); }, 1500);
+          } else {
+            const errorAlert = `
+              <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
+                Error: ${response.message}
+                <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
+              </div>
+            `;
+            $('.timetable-form').prepend(errorAlert);
+          }
+        },
+        error: function(xhr, status, error) {
+          const errorAlert = `
+            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
+              An error occurred: ${error}
+              <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
+            </div>
+          `;
+          $('.timetable-form').prepend(errorAlert);
+        }
+      });
+    }
+  });
+});
+</script>
+{% endblock %}

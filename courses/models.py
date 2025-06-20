@@ -3,7 +3,7 @@ from users.models import CustomUser
 from academics.models import Program, Department, Faculty, Semester
 from admissions.models import Applicant, AcademicSession
 from faculty_staff.models import Teacher
-# from students.models import Student
+from django.core.exceptions import ValidationError
 import os
 from django.utils import timezone
 
@@ -78,6 +78,67 @@ class CourseOffering(models.Model):
 
 
 
+
+class Venue(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    department = models.ForeignKey(Department, on_delete=models.CASCADE)
+    capacity = models.PositiveIntegerField()
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.department.name})"
+
+class TimetableSlot(models.Model):
+    DAYS_OF_WEEK = [
+        ('monday', 'Monday'),
+        ('tuesday', 'Tuesday'),
+        ('wednesday', 'Wednesday'),
+        ('thursday', 'Thursday'),
+        ('friday', 'Friday'),
+        ('saturday', 'Saturday'),
+        ('sunday', 'Sunday'),
+    ]
+
+    course_offering = models.ForeignKey('CourseOffering', on_delete=models.CASCADE, related_name='timetable_slots')
+    day = models.CharField(max_length=10, choices=DAYS_OF_WEEK)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    venue = models.ForeignKey('Venue', on_delete=models.PROTECT)
+
+    class Meta:
+        unique_together = ['course_offering', 'day', 'start_time', 'venue']
+
+    def clean(self):
+        # Basic validation
+        if self.start_time >= self.end_time:
+            raise ValidationError("End time must be after start time.")
+
+        # Check for scheduling conflicts
+        overlapping_slots = TimetableSlot.objects.filter(
+            course_offering__academic_session=self.course_offering.academic_session,
+            day=self.day,
+            venue=self.venue,
+            start_time__lt=self.end_time,
+            end_time__gt=self.start_time
+        ).exclude(id=self.id)
+
+        if overlapping_slots.exists():
+            raise ValidationError(f"Venue {self.venue.name} is already booked on {self.get_day_display()} from {self.start_time} to {self.end_time}.")
+
+        # Check for teacher conflicts
+        teacher_slots = TimetableSlot.objects.filter(
+            course_offering__teacher=self.course_offering.teacher,
+            course_offering__academic_session=self.course_offering.academic_session,
+            day=self.day,
+            start_time__lt=self.end_time,
+            end_time__gt=self.start_time
+        ).exclude(id=self.id)
+
+        if teacher_slots.exists():
+            raise ValidationError(f"Teacher {self.course_offering.teacher} is already scheduled on {self.get_day_display()} from {self.start_time} to {self.end_time}.")
+
+    def __str__(self):
+        return f"{self.course_offering.course.code} - {self.get_day_display()} {self.start_time} to {self.end_time} at {self.venue.name}"
 
 
 

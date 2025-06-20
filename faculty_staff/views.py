@@ -19,11 +19,13 @@ from django.core.files.storage import default_storage
 # Local app imports
 from academics.models import Department, Program, Semester
 from admissions.models import AcademicSession, AdmissionCycle, Applicant, AcademicQualification
-from courses.models import Course, CourseOffering, ExamResult, StudyMaterial, Assignment, AssignmentSubmission, Notice, Attendance
+from courses.models import Course, CourseOffering, ExamResult, StudyMaterial, Assignment, AssignmentSubmission, Notice, Attendance, Venue, TimetableSlot
 from faculty_staff.models import Teacher
 from students.models import Student, StudentSemesterEnrollment, CourseEnrollment
 import datetime
 # Custom user model
+
+from datetime import time
 CustomUser = get_user_model()
 
 
@@ -440,14 +442,16 @@ def add_course(request):
 
 @login_required
 def course_offerings(request):
-    # if not request.user.is_staff or request.user.teacher_profile.designation != 'head_of_department':
-    #     messages.error(request, 'You do not have permission to access this page.')
-    #     return redirect('home')
+    if not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
+        return render(request, 'faculty_staff/course_offerings.html', {
+            'error': 'Unauthorized access. Only Heads of Department can access this page.'
+        })
 
     hod_department = request.user.teacher_profile.department
     if not hod_department:
-        messages.error(request, 'HOD must be associated with a department.')
-        return redirect('home')
+        return render(request, 'faculty_staff/course_offerings.html', {
+            'error': 'HOD must be associated with a department.'
+        })
 
     academic_sessions = AcademicSession.objects.all().order_by('-start_year')
     programs = Program.objects.filter(department=hod_department)
@@ -456,6 +460,9 @@ def course_offerings(request):
     course_offerings = CourseOffering.objects.filter(
         department=hod_department
     ).select_related('course', 'teacher', 'program', 'department', 'academic_session', 'semester')
+    timetable_slots = TimetableSlot.objects.filter(
+        course_offering__department=hod_department
+    ).select_related('course_offering__course', 'course_offering__teacher', 'course_offering__program', 'course_offering__semester', 'venue')
 
     context = {
         'academic_sessions': academic_sessions,
@@ -463,11 +470,46 @@ def course_offerings(request):
         'programs': programs,
         'teachers': teachers,
         'course_offerings': course_offerings,
+        'timetable_slots': timetable_slots,
         'department': hod_department,
         'session_id': None,
     }
     return render(request, 'faculty_staff/course_offerings.html', context)
 
+@login_required
+def timetable_schedule(request, offering_id):
+    if not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
+        return render(request, 'faculty_staff/timetable_schedule.html', {
+            'error': 'Unauthorized access. Only Heads of Department can access this page.'
+        })
+
+    hod_department = request.user.teacher_profile.department
+    if not hod_department:
+        return render(request, 'faculty_staff/timetable_schedule.html', {
+            'error': 'HOD must be associated with a department.'
+        })
+
+    try:
+        course_offering = CourseOffering.objects.get(
+            id=offering_id,
+            department=hod_department
+        )
+    except CourseOffering.DoesNotExist:
+        return render(request, 'faculty_staff/timetable_schedule.html', {
+            'error': 'Course offering not found or you do not have permission to access it.'
+        })
+
+    timetable_slots = TimetableSlot.objects.filter(
+        course_offering=course_offering
+    ).select_related('venue')
+
+    context = {
+        'course_offering': course_offering,
+        'timetable_slots': timetable_slots,
+        'department': hod_department,
+        'days_of_week': TimetableSlot.DAYS_OF_WEEK
+    }
+    return render(request, 'faculty_staff/timetable_schedule.html', context)
 
 @login_required
 def search_courses(request):
@@ -482,14 +524,14 @@ def search_courses(request):
         })
     return JsonResponse({'results': [], 'more': False})
 
-
 @login_required
 def search_teachers(request):
     if request.method == "GET":
         search_query = request.GET.get('q', '')
         teachers = Teacher.objects.filter(
             Q(user__first_name__icontains=search_query) | Q(user__last_name__icontains=search_query),
-            is_active=True 
+            is_active=True,
+            department=request.user.teacher_profile.department
         ).values('id', 'user__first_name', 'user__last_name', 'department__name')[:10]
         return JsonResponse({
             'results': [
@@ -502,12 +544,11 @@ def search_teachers(request):
         })
     return JsonResponse({'results': [], 'more': False})
 
-
+@login_required
 def get_academic_sessions(request):
     sessions = AcademicSession.objects.all()
     results = [{'id': session.id, 'text': session.name} for session in sessions]
     return JsonResponse({'results': results})
-
 
 @login_required
 def search_programs(request):
@@ -556,7 +597,6 @@ def search_programs(request):
         })
     return JsonResponse({'results': [], 'pagination': {'more': False}})
 
-
 @login_required
 def search_semesters(request):
     if request.method == "GET":
@@ -583,186 +623,479 @@ def search_semesters(request):
         })
     return JsonResponse({'results': [], 'more': False})
 
-
+@login_required
 def get_offering_type_choices(request):
     choices = [{'id': value, 'text': label} for value, label in CourseOffering.OFFERING_TYPES]
     return JsonResponse({'results': choices})
 
-
-
+@login_required
+def search_venues(request):
+    if request.method == "GET":
+        search_query = request.GET.get('q', '')
+        page = int(request.GET.get('page', 1))
+        per_page = 10
+        hod_department = request.user.teacher_profile.department
+        venues = Venue.objects.filter(
+            Q(name__icontains=search_query),
+            department=hod_department,
+            is_active=True
+        )
+        start = (page - 1) * per_page
+        end = start + per_page
+        paginated_venues = venues[start:end]
+        results = [
+            {'id': venue.id, 'text': f"{venue.name} (Capacity: {venue.capacity})"}
+            for venue in paginated_venues
+        ]
+        return JsonResponse({
+            'results': results,
+            'pagination': {'more': end < venues.count()}
+        })
+    return JsonResponse({'results': [], 'pagination': {'more': False}})
 
 @login_required
 @transaction.atomic
 def save_course_offering(request):
-    print(f'Request method: {request.method}, User: {request.user}')
-    
-    if request.method == "POST" and hasattr(request.user, 'teacher_profile') and request.user.teacher_profile.designation == 'head_of_department':
-        course_id = request.POST.get('course_id')
-        teacher_id = request.POST.get('teacher_id')
-        program_id = request.POST.get('program_id')
-        semester_id = request.POST.get('semester_id')
-        academic_session_id = request.POST.get('academic_session_id')
-        offering_type = request.POST.get('offering_type')
-        shift = request.POST.get('shift')
-        
-        print(f'course_id: {course_id}, teacher_id: {teacher_id}, program_id: {program_id}, '
-              f'semester_id: {semester_id}, academic_session_id: {academic_session_id}, '
-              f'offering_type: {offering_type}, shift: {shift}')
+    if request.method != "POST" or not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid request method or insufficient permissions.'
+        })
 
-        # Check for missing fields
-        required_fields = {
-            'course_id': 'Course',
-            'teacher_id': 'Teacher',
-            'program_id': 'Program',
-            'semester_id': 'Semester',
-            'academic_session_id': 'Academic Session',
-            'offering_type': 'Offering Type',
-            'shift': 'Shift'
-        }
-        missing_fields = [field_name for field_name, field_label in required_fields.items() if not request.POST.get(field_name)]
-        if missing_fields:
-            print(f'Missing fields: {", ".join([required_fields[field] for field in missing_fields])}')
-            return JsonResponse({
-                'success': False,
-                'message': f'Missing required fields: {", ".join([required_fields[field] for field in missing_fields])}'
-            })
+    course_id = request.POST.get('course_id')
+    teacher_id = request.POST.get('teacher_id')
+    program_id = request.POST.get('program_id')
+    semester_id = request.POST.get('semester_id')
+    academic_session_id = request.POST.get('academic_session_id')
+    offering_type = request.POST.get('offering_type')
+    shift = request.POST.get('shift')
 
-        # Validate offering type
-        valid_offering_types = [choice[0] for choice in CourseOffering.OFFERING_TYPES]
-        if offering_type not in valid_offering_types:
-            print(f'Invalid offering type: {offering_type}')
-            return JsonResponse({
-                'success': False,
-                'message': 'Invalid offering type selected.'
-            })
+    required_fields = {
+        'course_id': 'Course',
+        'teacher_id': 'Teacher',
+        'program_id': 'Program',
+        'semester_id': 'Semester',
+        'academic_session_id': 'Academic Session',
+        'offering_type': 'Offering Type',
+        'shift': 'Shift'
+    }
+    missing_fields = [field_name for field_name, field_label in required_fields.items() if not request.POST.get(field_name)]
+    if missing_fields:
+        return JsonResponse({
+            'success': False,
+            'message': f'Missing required fields: {", ".join([required_fields[field] for field in missing_fields])}'
+        })
 
-        # Validate shift
-        valid_shifts = ['morning', 'evening', 'both']
-        if shift not in valid_shifts:
-            print(f'Invalid shift: {shift}')
-            return JsonResponse({
-                'success': False,
-                'message': 'Invalid shift selected.'
-            })
+    valid_offering_types = [choice[0] for choice in CourseOffering.OFFERING_TYPES]
+    if offering_type not in valid_offering_types:
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid offering type selected.'
+        })
 
-        # Retrieve objects
-        try:
-            course = Course.objects.get(id=course_id)
-            teacher = Teacher.objects.get(id=teacher_id, is_active=True)
-            program = Program.objects.get(id=program_id)
-            semester = Semester.objects.get(id=semester_id)
-            academic_session = AcademicSession.objects.get(id=academic_session_id)
-        except (Course.DoesNotExist, Teacher.DoesNotExist, Program.DoesNotExist, 
-                Semester.DoesNotExist, AcademicSession.DoesNotExist) as e:
-            print(f'Object retrieval failed: {str(e)}')
-            return JsonResponse({
-                'success': False,
-                'message': 'One or more selected items no longer exist.'
-            })
+    valid_shifts = ['morning', 'evening', 'both']
+    if shift not in valid_shifts:
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid shift selected.'
+        })
 
-        # Check for existing offerings
-        existing_offerings = CourseOffering.objects.filter(
+    try:
+        course = Course.objects.get(id=course_id)
+        teacher = Teacher.objects.get(id=teacher_id, is_active=True)
+        program = Program.objects.get(id=program_id)
+        semester = Semester.objects.get(id=semester_id)
+        academic_session = AcademicSession.objects.get(id=academic_session_id)
+    except (Course.DoesNotExist, Teacher.DoesNotExist, Program.DoesNotExist, 
+            Semester.DoesNotExist, AcademicSession.DoesNotExist) as e:
+        return JsonResponse({
+            'success': False,
+            'message': 'One or more selected items no longer exist.'
+        })
+
+    existing_offerings = CourseOffering.objects.filter(
+        course=course,
+        program=program,
+        academic_session=academic_session,
+        semester=semester,
+        offering_type=offering_type,
+        shift=shift
+    )
+    if existing_offerings.exists():
+        return JsonResponse({
+            'success': False,
+            'message': 'This exact course offering already exists.'
+        })
+
+    active_students = Student.objects.filter(
+        program=program,
+        current_semester=semester,
+        current_status='active'
+    )
+    if not active_students.exists():
+        return JsonResponse({
+            'success': False,
+            'message': 'No active students found for this program and semester.'
+        })
+
+    compatible_students = []
+    for student in active_students:
+        applicant_shift = student.applicant.shift
+        if shift == 'both' or applicant_shift == shift:
+            compatible_students.append(student)
+
+    if not compatible_students:
+        return JsonResponse({
+            'success': False,
+            'message': 'No students have a compatible shift preference for this course offering.'
+        })
+
+    try:
+        offering = CourseOffering.objects.create(
             course=course,
+            teacher=teacher,
+            department=program.department,
             program=program,
             academic_session=academic_session,
             semester=semester,
+            is_active=True,
             offering_type=offering_type,
-            shift=shift
+            shift=shift,
+            current_enrollment=0   
         )
-        if existing_offerings.exists():
-            print('Course offering already exists')
-            return JsonResponse({
-                'success': False,
-                'message': 'This exact course offering already exists.'
-            })
 
-        # Get active students with compatible shift
-        active_students = Student.objects.filter(
-            program=program,
-            current_semester=semester,
-            current_status='active'
-        )
-        if not active_students.exists():
-            print('No active students found')
-            return JsonResponse({
-                'success': False,
-                'message': 'No active students found for this program and semester.'
-            })
-
-        # Filter students by shift compatibility
-        compatible_students = []
-        for student in active_students:
-            applicant_shift = student.applicant.shift
-            if shift == 'both' or applicant_shift == shift:
-                compatible_students.append(student)
-            else:
-                print(f'Skipping student {student.applicant.full_name}: Applicant shift {applicant_shift}, Course shift {shift}')
-
-        if not compatible_students:
-            print('No students with compatible shifts')
-            return JsonResponse({
-                'success': False,
-                'message': 'No students have a compatible shift preference for this course offering.'
-            })
-
-        # Create course offering and enroll compatible students
-        try:
-            offering = CourseOffering.objects.create(
-                course=course,
-                teacher=teacher,
-                department=program.department,
-                program=program,
-                academic_session=academic_session,
+        enrolled_count = 0
+        enrolled_student_names = []
+        for student in compatible_students:
+            semester_enrollment, created = StudentSemesterEnrollment.objects.get_or_create(
+                student=student,
                 semester=semester,
-                is_active=True,
-                offering_type=offering_type,
-                shift=shift,
-                current_enrollment=0   
+                defaults={'status': 'enrolled'}
             )
+            course_enrollment, created = CourseEnrollment.objects.get_or_create(
+                student_semester_enrollment=semester_enrollment,
+                course_offering=offering,
+                defaults={'status': 'enrolled'}
+            )
+            if created or course_enrollment.status != 'enrolled':
+                course_enrollment.status = 'enrolled'
+                course_enrollment.save()
+                enrolled_count += 1
+                enrolled_student_names.append(student.applicant.full_name)
 
-            enrolled_count = 0
-            enrolled_student_names = []
-            for student in compatible_students:
-                semester_enrollment, created = StudentSemesterEnrollment.objects.get_or_create(
-                    student=student,
-                    semester=semester,
-                    defaults={'status': 'enrolled'}
-                )
-                course_enrollment, created = CourseEnrollment.objects.get_or_create(
-                    student_semester_enrollment=semester_enrollment,
-                    course_offering=offering,
-                    defaults={'status': 'enrolled'}
-                )
-                if created:
-                    enrolled_count += 1
-                    enrolled_student_names.append(student.applicant.full_name)
-                elif course_enrollment.status != 'enrolled':
-                    course_enrollment.status = 'enrolled'
-                    course_enrollment.save()
-                    enrolled_count += 1
-                    enrolled_student_names.append(student.applicant.full_name)
+        offering.current_enrollment = enrolled_count
+        offering.save()
+        
+        return JsonResponse({  
+            'success': True,
+            'message': f'Successfully created course offering for {course.code} ({shift.capitalize()} shift) with {enrolled_count} students enrolled.',
+            'offering_id': offering.id
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error saving course offering: {str(e)}'
+        })
+@login_required
+def save_venue(request):
+    if request.method != "POST" or not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid request method or insufficient permissions.'
+        })
 
-            offering.current_enrollment = enrolled_count
-            offering.save()
-            print(f'Course offering created: {course.code}, Shift: {shift}, Enrolled: {enrolled_count}, Students: {", ".join(enrolled_student_names)}')
-            
+    name = request.POST.get('name')
+    capacity = request.POST.get('capacity')
+    department_id = request.POST.get('department_id')
+
+    required_fields = {
+        'name': 'Venue Name',
+        'capacity': 'Capacity',
+        'department_id': 'Department'
+    }
+    missing_fields = [field_name for field_name, field_label in required_fields.items() if not request.POST.get(field_name)]
+    if missing_fields:
+        return JsonResponse({
+            'success': False,
+            'message': f'Missing required fields: {", ".join([required_fields[field] for field in missing_fields])}'
+        })
+
+    try:
+        capacity = int(capacity)
+        if capacity <= 0:
+            return JsonResponse({
+                'success': False,
+                'message': 'Capacity must be a positive number.'
+            })
+    except ValueError:
+        return JsonResponse({
+            'success': False,
+            'message': 'Capacity must be a valid number.'
+        })
+
+    hod_department = request.user.teacher_profile.department
+    if not hod_department or str(department_id) != str(hod_department.id):
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid department or you do not have permission to add venues for this department.'
+        })
+
+    try:
+        department = Department.objects.get(id=department_id)
+    except Department.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'Department does not exist.'
+        })
+
+    if Venue.objects.filter(name=name, department=department).exists():
+        return JsonResponse({
+            'success': False,
+            'message': f'Venue "{name}" already exists in this department.'
+        })
+
+    try:
+        venue = Venue.objects.create(
+            name=name,
+            capacity=capacity,
+            department=department,
+            is_active=True
+        )
+        return JsonResponse({
+            'success': True,
+            'message': f'Venue "{venue.name}" created successfully.',
+            'venue_id': venue.id
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error creating venue: {str(e)}'
+        })
+        
+@login_required
+@transaction.atomic
+def save_timetable_slot(request):
+    if request.method != "POST" or not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid request method or insufficient permissions.'
+        })
+
+    course_offering_id = request.POST.get('course_offering_id')
+    if not course_offering_id:
+        return JsonResponse({
+            'success': False,
+            'message': 'Course Offering ID is required.'
+        })
+
+    try:
+        course_offering = CourseOffering.objects.get(id=course_offering_id, department=request.user.teacher_profile.department)
+    except CourseOffering.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'Selected course offering does not exist.'
+        })
+
+    shift = course_offering.shift
+
+    def validate_and_convert_time(start_time_str, end_time_str, shift_type):
+        if not start_time_str or not end_time_str:
+            return False, None, None, f"{shift_type.capitalize()} start and end times are required."
+        try:
+            start_h, start_m = map(int, start_time_str.split(':'))
+            end_h, end_m = map(int, end_time_str.split(':'))
+            start_t = time(start_h, start_m)
+            end_t = time(end_h, end_m)
+            if start_t >= end_t:
+                return False, None, None, f"{shift_type.capitalize()} end time must be after start time."
+            return True, start_t, end_t, None
+        except (ValueError, IndexError):
+            return False, None, None, f"Invalid {shift_type} time format."
+
+    try:
+        if shift == 'both':
+            morning_days = request.POST.getlist('morning_day[]')
+            morning_start_time = request.POST.get('morning_start_time')
+            morning_end_time = request.POST.get('morning_end_time')
+            morning_venue_id = request.POST.get('morning_venue_id')
+            evening_days = request.POST.getlist('evening_day[]')
+            evening_start_time = request.POST.get('evening_start_time')
+            evening_end_time = request.POST.get('evening_end_time')
+            evening_venue_id = request.POST.get('evening_venue_id')
+
+            required_fields = {
+                'morning_day': morning_days,
+                'morning_start_time': morning_start_time,
+                'morning_end_time': morning_end_time,
+                'morning_venue_id': morning_venue_id,
+                'evening_day': evening_days,
+                'evening_start_time': evening_start_time,
+                'evening_end_time': evening_end_time,
+                'evening_venue_id': evening_venue_id
+            }
+            missing_fields = [key for key, value in required_fields.items() if not value]
+            if missing_fields:
+                return JsonResponse({
+                    'success': False,
+                    'message': f'Missing required fields: {", ".join(missing_fields)}'
+                })
+
+            morning_valid, morning_start_t, morning_end_t, morning_error = validate_and_convert_time(morning_start_time, morning_end_time, 'morning')
+            evening_valid, evening_start_t, evening_end_t, evening_error = validate_and_convert_time(evening_start_time, evening_end_time, 'evening')
+            if not morning_valid:
+                return JsonResponse({'success': False, 'message': morning_error})
+            if not evening_valid:
+                return JsonResponse({'success': False, 'message': evening_error})
+
+            morning_venue = Venue.objects.get(id=morning_venue_id, department=request.user.teacher_profile.department, is_active=True)
+            evening_venue = Venue.objects.get(id=evening_venue_id, department=request.user.teacher_profile.department, is_active=True)
+
+            saved_slots = []
+            for day in morning_days:
+                slot = TimetableSlot(
+                    course_offering=course_offering,
+                    day=day,
+                    start_time=morning_start_t,  # datetime.time object
+                    end_time=morning_end_t,      # datetime.time object
+                    venue=morning_venue
+                )
+                slot.clean()
+                slot.save()
+                saved_slots.append(f"{dict(TimetableSlot.DAYS_OF_WEEK)[day]} (Morning)")
+            for day in evening_days:
+                slot = TimetableSlot(
+                    course_offering=course_offering,
+                    day=day,
+                    start_time=evening_start_t,  # datetime.time object
+                    end_time=evening_end_t,      # datetime.time object
+                    venue=evening_venue
+                )
+                slot.clean()
+                slot.save()
+                saved_slots.append(f"{dict(TimetableSlot.DAYS_OF_WEEK)[day]} (Evening)")
+
             return JsonResponse({
                 'success': True,
-                'message': f'Successfully created course offering for {course.code} ({shift.capitalize()} shift) with {enrolled_count} students enrolled.',
-                'offering_id': offering.id
+                'message': f'Timetable slots scheduled for {course_offering.course.code} on {", ".join(saved_slots)}.'
             })
-        except Exception as e:
-            print(f'Error saving course offering: {str(e)}')
-            return JsonResponse({
-                'success': False,
-                'message': f'Error saving course offering: {str(e)}'
-            })
+        else:
+            days = request.POST.getlist('day[]')
+            start_time = request.POST.get('start_time')
+            end_time = request.POST.get('end_time')
+            venue_id = request.POST.get('venue_id')
 
-    print('Failed: Invalid method or permissions')
+            required_fields = {
+                'day': days,
+                'start_time': start_time,
+                'end_time': end_time,
+                'venue_id': venue_id
+            }
+            missing_fields = [field_name for field_name, field_label in required_fields.items() if not field_label]
+            if missing_fields:
+                return JsonResponse({
+                    'success': False,
+                    'message': f'Missing required fields: {", ".join([field_name for field_name in missing_fields])}'
+                })
+
+            venue = Venue.objects.get(id=venue_id, department=request.user.teacher_profile.department, is_active=True)
+
+            valid_time, start_t, end_t, error_msg = validate_and_convert_time(start_time, end_time, shift)
+            if not valid_time:
+                return JsonResponse({
+                    'success': False,
+                    'message': error_msg
+                })
+
+            saved_days = []
+            for day in days:
+                slot = TimetableSlot(
+                    course_offering=course_offering,
+                    day=day,
+                    start_time=start_t,  # datetime.time object
+                    end_time=end_t,      # datetime.time object
+                    venue=venue
+                )
+                slot.clean()
+                slot.save()
+                saved_days.append(dict(TimetableSlot.DAYS_OF_WEEK)[day])
+
+            return JsonResponse({
+                'success': True,
+                'message': f'Timetable slot(s) scheduled for {course_offering.course.code} on {", ".join(saved_days)}.'
+            })
+    except (Venue.DoesNotExist, ValueError) as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error scheduling timetable: {str(e)}'
+        })
+
+@login_required
+def delete_timetable_slot(request):
+    if request.method != "POST" or not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid request method or insufficient permissions.'
+        })
+
+    slot_id = request.POST.get('slot_id')
+    if not slot_id:
+        return JsonResponse({
+            'success': False,
+            'message': 'Timetable slot ID is required.'
+        })
+
+    try:
+        slot = get_object_or_404(TimetableSlot, id=slot_id, course_offering__department=request.user.teacher_profile.department)
+        slot.delete()
+        return JsonResponse({
+            'success': True,
+            'message': 'Timetable slot deleted successfully.'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error deleting timetable slot: {str(e)}'
+        })
+
+@login_required
+def search_course_offerings(request):
+    if not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
+        return JsonResponse({'success': False, 'message': 'Unauthorized access.'})
+    
+    search_query = request.GET.get('q', '')
+    page = int(request.GET.get('page', 1))
+    per_page = 10
+    hod_department = request.user.teacher_profile.department
+
+    course_offerings = CourseOffering.objects.filter(
+        department=hod_department
+    ).select_related('course', 'program', 'semester', 'academic_session')
+
+    if search_query:
+        course_offerings = course_offerings.filter(
+            Q(course__code__icontains=search_query) | 
+            Q(course__name__icontains=search_query) |
+            Q(program__name__icontains=search_query)
+        )
+
+    start = (page - 1) * per_page
+    end = start + per_page
+    paginated_offerings = course_offerings[start:end]
+
     return JsonResponse({
-        'success': False,
-        'message': 'Invalid request method or insufficient permissions.'
+        'success': True,
+        'results': [
+            {
+                'id': offering.id,
+                'course_code': offering.course.code,
+                'program_name': offering.program.name,
+                'semester_name': offering.semester.name,
+                'session_name': offering.academic_session.name
+            } for offering in paginated_offerings
+        ],
+        'pagination': {'more': end < course_offerings.count()}
     })
+
 
 @login_required
 def delete_course_offering(request):
@@ -1216,7 +1549,7 @@ def delete_notice(request):
 
 
 @login_required
-def search_students(request):
+def search_students(request):  
     if request.method == "GET":
         search_query = request.GET.get('q', '')
         students = Student.objects.filter(

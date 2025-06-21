@@ -9,11 +9,16 @@
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.0/dist/full.min.css" rel="stylesheet" type="text/css" />
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+
+
     <script>
         // Theme management
         function changeTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
             localStorage.setItem('selectedTheme', theme);
+            // Close modal after selection
+            document.getElementById('theme-modal').checked = false;
         }
         
         // Load saved theme on page load
@@ -25,7 +30,7 @@
 </head>
 <body class="bg-base-100">
     <!-- Mobile menu button -->
-    <div class="navbar bg-base-100 lg:hidden border-b border-base-200">
+    <div class="navbar bg-base-100 lg:hidden border-b border-base-200 px-2">
         <div class="navbar-start">
             <div class="dropdown">
                 <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
@@ -33,7 +38,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path>
                     </svg>
                 </div>
-                <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+                <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-64 max-w-[90vw]">
                     <li><a href="{% url 'faculty_staff:hod_dashboard' %}" class="{% if request.resolver_match.url_name == 'hod_dashboard' %}active{% endif %} text-base">
                         <i class="fas fa-tachometer-alt"></i> Dashboard
                     </a></li>
@@ -54,7 +59,7 @@
                     </li>
                     <li>
                         <details>
-                            <summary class="text-base"><i class="fas fa-book"></i> Courses</summary>
+                            <summary class="text-base"><i class="fas fa-chalkboard-teacher"></i> Courses</summary>
                             <ul class="p-2">
                                 <li><a href="{% url 'faculty_staff:add_course' %}" class="{% if request.resolver_match.url_name == 'add_course' %}active{% endif %} text-base">
                                     <i class="fas fa-plus"></i> Add Course
@@ -69,18 +74,18 @@
                         <i class="fas fa-calendar-alt"></i> Semester Management
                     </a></li>
                     <li><a href="{% url 'faculty_staff:weekly_timetable' %}" class="{% if request.resolver_match.url_name == 'weekly_timetable' %}active{% endif %} text-base">
-                        <i class="fas fa-book"></i>Weekly Time Table
+                        <i class="fas fa-calendar-week"></i> Weekly Timetable
                     </a></li> 
-                      <li><a href="{% url 'faculty_staff:my_timetable' %}" class="{% if request.resolver_match.url_name == 'my_timetable' %}active{% endif %} text-base">
-                        <i class="fas fa-book"></i>My Time Table
+                    <li><a href="{% url 'faculty_staff:my_timetable' %}" class="{% if request.resolver_match.url_name == 'my_timetable' %}active{% endif %} text-base">
+                        <i class="fas fa-clock"></i> My Timetable
                     </a></li> 
                     <li><a href="{% url 'faculty_staff:teacher_course_list' %}" class="{% if request.resolver_match.url_name == 'teacher_course_list' %}active{% endif %} text-base">
-                        <i class="fas fa-book"></i> My Courses
+                        <i class="fas fa-book-open"></i> My Courses
                     </a></li>
                     <li><a href="{% url 'faculty_staff:notices' %}" class="{% if request.resolver_match.url_name == 'notices' %}active{% endif %} text-base">
                         <i class="fas fa-bullhorn"></i> Notices
                     </a></li>
-                    <li><a href="{% url 'faculty_staff:logout' %}" class="text-base">
+                    <li><a href="{% url 'faculty_staff:logout' %}" class="text-error hover:bg-error hover:text-error-content text-base">
                         <i class="fas fa-sign-out-alt"></i> Logout
                     </a></li>
                 </ul>
@@ -89,40 +94,81 @@
         <div class="navbar-center">
             <span class="text-xl font-bold">Faculty Dashboard</span>
         </div>
-        <div class="navbar-end">
-            <!-- Theme Selector -->
-            <div class="dropdown dropdown-end mr-2">
-                <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
-                    <i class="fas fa-palette text-lg"></i>
-                </div>
-                <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
-                    <li class="menu-title text-base">Themes</li>
-                    <li><a onclick="changeTheme('light')" class="text-base"><i class="fas fa-sun"></i> Light</a></li>
-                    <li><a onclick="changeTheme('dark')" class="text-base"><i class="fas fa-moon"></i> Dark</a></li>
-                    <li><a onclick="changeTheme('cupcake')" class="text-base"><i class="fas fa-heart"></i> Cupcake</a></li>
-                    <li><a onclick="changeTheme('corporate')" class="text-base"><i class="fas fa-briefcase"></i> Corporate</a></li>
-                    <li><a onclick="changeTheme('synthwave')" class="text-base"><i class="fas fa-music"></i> Synthwave</a></li>
-                    <li><a onclick="changeTheme('cyberpunk')" class="text-base"><i class="fas fa-robot"></i> Cyberpunk</a></li>
-                    <li><a onclick="changeTheme('valentine')" class="text-base"><i class="fas fa-heart"></i> Valentine</a></li>
-                    <li><a onclick="changeTheme('garden')" class="text-base"><i class="fas fa-leaf"></i> Garden</a></li>
-                    <li><a onclick="changeTheme('forest')" class="text-base"><i class="fas fa-tree"></i> Forest</a></li>
-                    <li><a onclick="changeTheme('luxury')" class="text-base"><i class="fas fa-gem"></i> Luxury</a></li>
-                    <li><a onclick="changeTheme('dracula')" class="text-base"><i class="fas fa-bat"></i> Dracula</a></li>
-                    <li><a onclick="changeTheme('business')" class="text-base"><i class="fas fa-chart-line"></i> Business</a></li>
-                </ul>
-            </div>
+        <div class="navbar-end flex items-center gap-2">
+            <!-- Theme Selector Button -->
+            <label for="theme-modal" class="btn btn-ghost btn-circle">
+                <i class="fas fa-palette text-lg"></i>
+            </label>
             
             <!-- User Profile -->
             <div class="dropdown dropdown-end">
                 <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
-                    <div class="w-10 rounded-full bg-primary text-primary-content flex items-center justify-center">
+                    <div class="w-8 h-8 rounded-full bg-primary text-primary-content flex items-center justify-center">
                         <i class="fas fa-user"></i>
                     </div>
                 </div>
-                <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+                <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-64 max-w-[80vw]">
                     <li class="menu-title text-base">{{ request.user.get_full_name }}</li>
-                    <li><a href="{% url 'faculty_staff:logout' %}" class="text-base">Logout</a></li>
+                    <li><a href="{% url 'faculty_staff:logout' %}" class="text-error hover:bg-error hover:text-error-content text-base">Logout</a></li>
                 </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Theme Modal -->
+    <input type="checkbox" id="theme-modal" class="modal-toggle" />
+    <div class="modal" role="dialog">
+        <div class="modal-box w-11/12 max-w-2xl">
+            <h3 class="text-lg font-bold mb-4">Select Theme</h3>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <button onclick="changeTheme('light')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-sun text-yellow-500"></i> Light
+                </button>
+                <button onclick="changeTheme('dark')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-moon text-gray-300"></i> Dark
+                </button>
+                <button onclick="changeTheme('cupcake')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-heart text-pink-500"></i> Cupcake
+                </button>
+                <button onclick="changeTheme('corporate')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-briefcase text-blue-600"></i> Corporate
+                </button>
+                <button onclick="changeTheme('synthwave')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-music text-purple-500"></i> Synthwave
+                </button>
+                <button onclick="changeTheme('cyberpunk')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-robot text-green-400"></i> Cyberpunk
+                </button>
+                <button onclick="changeTheme('valentine')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-heart text-red-500"></i> Valentine
+                </button>
+                <button onclick="changeTheme('garden')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-leaf text-green-500"></i> Garden
+                </button>
+                <button onclick="changeTheme('forest')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-tree text-green-700"></i> Forest
+                </button>
+                <button onclick="changeTheme('luxury')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-gem text-yellow-600"></i> Luxury
+                </button>
+                <button onclick="changeTheme('dracula')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-bat text-purple-600"></i> Dracula
+                </button>
+                <button onclick="changeTheme('business')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-chart-line text-blue-500"></i> Business
+                </button>
+                <button onclick="changeTheme('autumn')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-maple-leaf text-orange-600"></i> Autumn
+                </button>
+                <button onclick="changeTheme('winter')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-snowflake text-blue-300"></i> Winter
+                </button>
+                <button onclick="changeTheme('night')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-moon text-indigo-400"></i> Night
+                </button>
+            </div>
+            <div class="modal-action">
+                <label for="theme-modal" class="btn btn-ghost">Close</label>
             </div>
         </div>
     </div>
@@ -166,8 +212,7 @@
         <!-- Sidebar -->
         <div class="drawer-side">
             <label for="my-drawer-2" aria-label="close sidebar" class="drawer-overlay"></label>
-            <aside class="min-h-full w-80 bg-base-200 text-base-content">
-                <!-- Sidebar content here -->
+            <aside class="min-h-full w-64 lg:w-80 bg-base-200 text-base-content">
                 <div class="p-4">
                     <div class="flex items-center gap-3 mb-8 p-4 bg-base-100 rounded-lg shadow-sm">
                         <div class="avatar">
@@ -181,63 +226,35 @@
                         </div>
                     </div>
 
-                    <!-- Theme Selector in Sidebar -->
+                    <!-- Theme Selector Button in Sidebar -->
                     <div class="mb-6">
-                        <div class="dropdown dropdown-top w-full">
-                            <div tabindex="0" role="button" class="btn btn-outline w-full justify-start text-base">
-                                <i class="fas fa-palette"></i>
-                                Change Theme
-                                <i class="fas fa-chevron-up ml-auto"></i>
-                            </div>
-                            <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-full max-h-60 overflow-y-auto">
-                                <li class="menu-title text-base">Select Theme</li>
-                                <li><a onclick="changeTheme('light')" class="text-base justify-start"><i class="fas fa-sun text-yellow-500"></i> Light</a></li>
-                                <li><a onclick="changeTheme('dark')" class="text-base justify-start"><i class="fas fa-moon text-gray-300"></i> Dark</a></li>
-                                <li><a onclick="changeTheme('cupcake')" class="text-base justify-start"><i class="fas fa-heart text-pink-500"></i> Cupcake</a></li>
-                                <li><a onclick="changeTheme('corporate')" class="text-base justify-start"><i class="fas fa-briefcase text-blue-600"></i> Corporate</a></li>
-                                <li><a onclick="changeTheme('synthwave')" class="text-base justify-start"><i class="fas fa-music text-purple-500"></i> Synthwave</a></li>
-                                <li><a onclick="changeTheme('cyberpunk')" class="text-base justify-start"><i class="fas fa-robot text-green-400"></i> Cyberpunk</a></li>
-                                <li><a onclick="changeTheme('valentine')" class="text-base justify-start"><i class="fas fa-heart text-red-500"></i> Valentine</a></li>
-                                <li><a onclick="changeTheme('garden')" class="text-base justify-start"><i class="fas fa-leaf text-green-500"></i> Garden</a></li>
-                                <li><a onclick="changeTheme('forest')" class="text-base justify-start"><i class="fas fa-tree text-green-700"></i> Forest</a></li>
-                                <li><a onclick="changeTheme('luxury')" class="text-base justify-start"><i class="fas fa-gem text-yellow-600"></i> Luxury</a></li>
-                                <li><a onclick="changeTheme('dracula')" class="text-base justify-start"><i class="fas fa-bat text-purple-600"></i> Dracula</a></li>
-                                <li><a onclick="changeTheme('business')" class="text-base justify-start"><i class="fas fa-chart-line text-blue-500"></i> Business</a></li>
-                                <li><a onclick="changeTheme('autumn')" class="text-base justify-start"><i class="fas fa-maple-leaf text-orange-600"></i> Autumn</a></li>
-                                <li><a onclick="changeTheme('winter')" class="text-base justify-start"><i class="fas fa-snowflake text-blue-300"></i> Winter</a></li>
-                                <li><a onclick="changeTheme('night')" class="text-base justify-start"><i class="fas fa-moon text-indigo-400"></i> Night</a></li>
-                            </ul>
-                        </div>
+                        <label for="theme-modal" class="btn btn-outline w-full justify-start text-base">
+                            <i class="fas fa-palette"></i> Change Theme
+                            <i class="fas fa-chevron-up ml-auto"></i>
+                        </label>
                     </div>
                     
                     <ul class="menu p-0 w-full text-base">
                         <li>
                             <a href="{% url 'faculty_staff:hod_dashboard' %}" class="{% if request.resolver_match.url_name == 'hod_dashboard' %}active{% endif %} text-lg py-3">
-                                <i class="fas fa-tachometer-alt text-lg w-6"></i>
-                                Dashboard
+                                <i class="fas fa-tachometer-alt text-lg w-6"></i> Dashboard
                             </a>
                         </li>
                         <li>
                             <a href="{% url 'faculty_staff:staff_management' %}" class="{% if request.resolver_match.url_name == 'staff_management' %}active{% endif %} text-lg py-3">
-                                <i class="fas fa-users text-lg w-6"></i>
-                                Staff Management
+                                <i class="fas fa-users text-lg w-6"></i> Staff Management
                             </a>
                         </li>
                         <li>
                             <details {% if 'session_students' in request.resolver_match.url_name %}open{% endif %}>
                                 <summary class="text-lg py-3">
-                                    <i class="fas fa-graduation-cap text-lg w-6"></i>
-                                    Session Students
+                                    <i class="fas fa-graduation-cap text-lg w-6"></i> Session Students
                                 </summary>
                                 <ul>
                                     {% for session in academic_sessions %}
-                                    <li>
-                                        <a href="{% url 'faculty_staff:session_students' session.id %}" class="{% if request.resolver_match.url_name == 'session_students' and request.resolver_match.kwargs.session_id == session.id %}active{% endif %} text-base py-2 pl-8">
-                                            {{ session.name }}
-                                        </a>
-                                    </li>
+                                    <li><a href="{% url 'faculty_staff:session_students' session.id %}" class="{% if request.resolver_match.url_name == 'session_students' and request.resolver_match.kwargs.session_id == session.id %}active{% endif %} text-base">{{ session.name }}</a></li>
                                     {% empty %}
-                                    <li><span class="text-base-content/50 text-base py-2 pl-8">No Sessions Available</span></li>
+                                    <li><a class="text-gray-400 cursor-not-allowed text-base">No Sessions Available</a></li>
                                     {% endfor %}
                                 </ul>
                             </details>
@@ -245,83 +262,48 @@
                         <li>
                             <details {% if request.resolver_match.url_name in 'add_course,course_offerings' %}open{% endif %}>
                                 <summary class="text-lg py-3">
-                                    <i class="fas fa-book text-lg w-6"></i>
-                                    Courses
+                                    <i class="fas fa-chalkboard-teacher text-lg w-6"></i> Courses
                                 </summary>
-                                <ul>
-                                    <li>
-                                        <a href="{% url 'faculty_staff:add_course' %}" class="{% if request.resolver_match.url_name == 'add_course' %}active{% endif %} text-base py-2 pl-8">
-                                            <i class="fas fa-plus text-sm w-4"></i>
-                                            Add Course
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a href="{% url 'faculty_staff:course_offerings' %}" class="{% if request.resolver_match.url_name == 'course_offerings' %}active{% endif %} text-base py-2 pl-8">
-                                            <i class="fas fa-user-plus text-sm w-4"></i>
-                                            Assign Course
-                                        </a>
-                                    </li>
+                                <ul class="p-2">
+                                    <li><a href="{% url 'faculty_staff:add_course' %}" class="{% if request.resolver_match.url_name == 'add_course' %}active{% endif %} text-base">
+                                        <i class="fas fa-plus"></i> Add Course
+                                    </a></li>
+                                    <li><a href="{% url 'faculty_staff:course_offerings' %}" class="{% if request.resolver_match.url_name == 'course_offerings' %}active{% endif %} text-base">
+                                        <i class="fas fa-user-plus"></i> Assign Course
+                                    </a></li>
                                 </ul>
                             </details>
                         </li>
                         <li>
                             <a href="{% url 'faculty_staff:semester_management' %}" class="{% if request.resolver_match.url_name == 'semester_management' %}active{% endif %} text-lg py-3">
-                                <i class="fas fa-calendar-alt text-lg w-6"></i>
-                                Semester Management
+                                <i class="fas fa-calendar-alt text-lg w-6"></i> Semester Management
                             </a>
                         </li>
-                        <li><a href="{% url 'faculty_staff:weekly_timetable' %}" class="{% if request.resolver_match.url_name == 'weekly_timetable' %}active{% endif %} text-base">
-                        <i class="fas fa-book"></i>Weekly Time Table
-                    </a></li>
-                         <li><a href="{% url 'faculty_staff:my_timetable' %}" class="{% if request.resolver_match.url_name == 'my_timetable' %}active{% endif %} text-base">
-                        <i class="fas fa-book"></i>My Time Table
-                    </a></li>
+                        <li>
+                            <a href="{% url 'faculty_staff:weekly_timetable' %}" class="{% if request.resolver_match.url_name == 'weekly_timetable' %}active{% endif %} text-lg py-3">
+                                <i class="fas fa-calendar-week text-lg w-6"></i> Weekly Timetable
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'faculty_staff:my_timetable' %}" class="{% if request.resolver_match.url_name == 'my_timetable' %}active{% endif %} text-lg py-3">
+                                <i class="fas fa-clock text-lg w-6"></i> My Timetable
+                            </a>
+                        </li>
                         <li>
                             <a href="{% url 'faculty_staff:teacher_course_list' %}" class="{% if request.resolver_match.url_name == 'teacher_course_list' %}active{% endif %} text-lg py-3">
-                                <i class="fas fa-chalkboard text-lg w-6"></i>
-                                My Courses
+                                <i class="fas fa-book-open text-lg w-6"></i> My Courses
                             </a>
                         </li>
                         <li>
                             <a href="{% url 'faculty_staff:notices' %}" class="{% if request.resolver_match.url_name == 'notices' %}active{% endif %} text-lg py-3">
-                                <i class="fas fa-bullhorn text-lg w-6"></i>
-                                Notices
+                                <i class="fas fa-bullhorn text-lg w-6"></i> Notices
                             </a>
                         </li>
                         <div class="divider"></div>
                         <li>
                             <a href="{% url 'faculty_staff:logout' %}" class="text-error hover:bg-error hover:text-error-content text-lg py-3">
-                                <i class="fas fa-sign-out-alt text-lg w-6"></i>
-                                Logout
+                                <i class="fas fa-sign-out-alt text-lg w-6"></i> Logout
                             </a>
-                        </li>
-                    </ul>
-                </div>
-            </aside>
-        </div>
-                        <li>
-                            <div class="flex flex-col gap-4">
-                                <!-- Theme Toggle -->
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-2">
-                                        <i class="fas fa-moon"></i>
-                                        <span>Theme</span>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <div class="form-control">
-                                            <label class="label cursor-pointer justify-start gap-2">
-                                                <span class="label-text">Dark Mode</span>
-                                                <input type="checkbox" class="toggle toggle-primary" id="theme-toggle" />
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- Logout Button -->
-                                <a href="{% url 'faculty_staff:logout' %}" class="btn btn-error w-full">
-                                    <i class="fas fa-sign-out-alt me-2"></i>
-                                    Logout
-                                </a>
-                            </div>
                         </li>
                     </ul>
                 </div>

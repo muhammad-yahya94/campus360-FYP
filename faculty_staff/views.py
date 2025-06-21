@@ -82,8 +82,7 @@ def hod_dashboard(request):
         is_active=True
     ).count()
 
-    # Fetch academic sessions for the sidebar
-    academic_sessions = AcademicSession.objects.all().order_by('-start_year')
+
 
     context = {
         'total_staff': total_staff,
@@ -93,7 +92,6 @@ def hod_dashboard(request):
         'department_programs': department_programs,
         'working_semesters': working_semesters,
         'department': hod_department,
-        'academic_sessions': academic_sessions,
     }
     return render(request, 'faculty_staff/hod_dashboard.html', context)
 
@@ -125,13 +123,11 @@ def staff_management(request):
     page_number = request.GET.get('page')
     staff_members = paginator.get_page(page_number)
 
-    academic_sessions = AcademicSession.objects.all().order_by('-start_year')
 
     context = {
         'staff_members': staff_members,
         'department': hod_department,
         'designation_choices': Teacher.DESIGNATION_CHOICES,
-        'academic_sessions': academic_sessions,
     }
     return render(request, 'faculty_staff/staff_management.html', context)
 
@@ -170,7 +166,6 @@ def add_staff(request):
                     'email': not email,
                     'designation': not designation,
                 },
-                'academic_sessions': AcademicSession.objects.all().order_by('-start_year'),
             })
 
         if CustomUser.objects.filter(email=email).exists():
@@ -180,7 +175,6 @@ def add_staff(request):
                 'staff_members': Teacher.objects.filter(department=hod_department),
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
                 'form_errors': {'email': 'exists'},
-                'academic_sessions': AcademicSession.objects.all().order_by('-start_year'),
             })
 
         if designation not in dict(Teacher.DESIGNATION_CHOICES).keys():
@@ -190,7 +184,6 @@ def add_staff(request):
                 'staff_members': Teacher.objects.filter(department=hod_department),
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
                 'form_errors': {'designation': True},
-                'academic_sessions': AcademicSession.objects.all().order_by('-start_year'),
             })
 
         try:
@@ -227,15 +220,12 @@ def add_staff(request):
                 'staff_members': Teacher.objects.filter(department=hod_department),
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
                 'form_errors': {},
-                'academic_sessions': AcademicSession.objects.all().order_by('-start_year'),
             })
 
-    academic_sessions = AcademicSession.objects.all().order_by('-start_year')
     return render(request, 'faculty_staff/staff_management.html', {
         'department': hod_department,
         'staff_members': Teacher.objects.filter(department=hod_department),
         'designation_choices': Teacher.DESIGNATION_CHOICES,
-        'academic_sessions': academic_sessions,
     })
 
 
@@ -274,7 +264,6 @@ def edit_staff(request, staff_id):
                     'email': not email,
                     'designation': not designation,
                 },
-                'academic_sessions': AcademicSession.objects.all().order_by('-start_year'),
             })
 
         if CustomUser.objects.filter(email=email).exclude(id=teacher.user.id).exists():
@@ -284,7 +273,6 @@ def edit_staff(request, staff_id):
                 'staff_members': Teacher.objects.filter(department=hod_department),
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
                 'form_errors': {'email': 'exists'},
-                'academic_sessions': AcademicSession.objects.all().order_by('-start_year'),
             })
 
         if designation not in dict(Teacher.DESIGNATION_CHOICES).keys():
@@ -294,7 +282,6 @@ def edit_staff(request, staff_id):
                 'staff_members': Teacher.objects.filter(department=hod_department),
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
                 'form_errors': {'designation': True},
-                'academic_sessions': AcademicSession.objects.all().order_by('-start_year'),
             })
 
         try:
@@ -324,15 +311,13 @@ def edit_staff(request, staff_id):
                 'staff_members': Teacher.objects.filter(department=hod_department),
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
                 'form_errors': {},
-                'academic_sessions': AcademicSession.objects.all().order_by('-start_year'),
             })
 
-    academic_sessions = AcademicSession.objects.all().order_by('-start_year')
+
     return render(request, 'faculty_staff/staff_management.html', {
         'department': hod_department,
         'staff_members': Teacher.objects.filter(department=hod_department),
         'designation_choices': Teacher.DESIGNATION_CHOICES,
-        'academic_sessions': academic_sessions,
     })
 
 

@@ -3,91 +3,91 @@
 {% block title %}My Assigned Courses{% endblock %}
 
 {% block content %}
-<style>
-    .table-container {
-        margin-top: 20px;
-    }
-    .table th, .table td {
-        vertical-align: middle;
-        white-space: nowrap; /* Prevent text wrapping */
-    }
-    .action-buttons {
-        display: flex;
-        flex-direction: row;
-        flex-wrap: nowrap;
-        gap: 5px; /* Space between buttons */
-    }
-    .action-buttons .btn-sm {
-        padding: 0.25rem 0.5rem; /* Smaller padding for compact buttons */
-    }
-    @media (max-width: 576px) {
-        .action-buttons .btn-sm {
-            font-size: 0.75rem; /* Smaller font for mobile */
-            padding: 0.2rem 0.4rem;
-        }
-    }
-</style>
-
-<div class="container">
-    <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-xl">
-        <div class="hero-content text-center py-8">
-            <div>
-                <h1 class="text-4xl font-bold mb-2">Assigned Courses</h1>
-                <p class="text-lg opacity-90">Manage and track courses</p>
-            </div>
-        </div>
+<div class="max-w-full mx-auto px-2 sm:px-4 lg:px-6 py-4">
+  <!-- Hero -->
+  <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-xl shadow-lg mb-4">
+    <div class="text-center py-6">
+      <h1 class="text-3xl sm:text-4xl font-bold mb-2">Assigned Courses</h1>
+      <p class="text-base sm:text-lg opacity-90">Manage and track your courses</p>
     </div>
+  </div>
 
-    {% if course_offerings %}
-        <div class="table-container">
-            <div class="table-responsive">
-                <table class="table table-striped table-bordered">
-                    <thead>
-                        <tr>
-                            <th>Course Code</th>
-                            <th>Course Name</th>
-                            <th>Department</th>
-                            <th>Program</th>
-                            <th>Semester</th>
-                            <th>Semester Number</th>
-                            <th>Academic Session</th>
-                            <th>Shift</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for offering in course_offerings %}
-                            <tr>
-                                <td>{{ offering.course.code }}</td>
-                                <td>{{ offering.course.name }}</td>
-                                <td>{{ offering.department.name }}</td>
-                                <td>{{ offering.program.name }}</td>
-                                <td>{{ offering.semester.name }}</td>
-                                <td>{{ offering.semester.number }}</td>
-                                <td>{{ offering.academic_session.name }}</td>
-                                <td>{{ offering.shift|capfirst }}</td>
-                                <td>
-                                    <div class="action-buttons">
-                                        <a href="{% url 'faculty_staff:exam_results' %}?course_offering_id={{ offering.id }}"
-                                           class="btn btn-primary btn-sm">View Results</a>
-                                        <a href="{% url 'faculty_staff:attendance' %}?course_offering_id={{ offering.id }}"
-                                           class="btn btn-info btn-sm">Attendance</a>
-                                        <a href="{% url 'faculty_staff:study_materials' %}?course_offering_id={{ offering.id }}"
-                                           class="btn btn-success btn-sm">Study Materials</a>
-                                        <a href="{% url 'faculty_staff:assignments' %}?course_offering_id={{ offering.id }}"
-                                           class="btn btn-warning btn-sm">Assignments</a>
-                                    </div>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    {% else %}
-        <div class="alert alert-info mt-4" role="alert">
-            No courses are currently assigned to you.
-        </div>
-    {% endif %}
+  {% if course_offerings %}
+    <!-- Table with Horizontal Slider -->
+    <div class="bg-white shadow-xl rounded-lg overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="table w-full min-w-[800px]">
+          <thead>
+            <tr>
+              <th class="text-sm min-w-[80px]">Code</th>
+              <th class="text-sm min-w-[120px]">Course</th>
+              <th class="text-sm min-w-[100px] hidden sm:table-cell">Dept</th>
+              <th class="text-sm min-w-[100px] hidden sm:table-cell">Program</th>
+              <th class="text-sm min-w-[100px]">Sem</th>
+              <th class="text-sm min-w-[80px] hidden lg:table-cell">Sem No.</th>
+              <th class="text-sm min-w-[100px] hidden lg:table-cell">Session</th>
+              <th class="text-sm min-w-[80px] hidden md:table-cell">Shift</th>
+              <th class="text-sm min-w-[120px]">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for offering in course_offerings %}
+              <tr class="hover">
+                <td class="text-sm">{{ offering.course.code }}</td>
+                <td class="text-sm truncate max-w-[120px]">{{ offering.course.name }}</td>
+                <td class="text-sm truncate max-w-[100px] hidden sm:table-cell">{{ offering.department.name }}</td>
+                <td class="text-sm truncate max-w-[100px] hidden sm:table-cell">{{ offering.program.name }}</td>
+                <td class="text-sm truncate max-w-[100px]">{{ offering.semester.name }}</td>
+                <td class="text-sm hidden lg:table-cell">{{ offering.semester.number }}</td>
+                <td class="text-sm truncate max-w-[100px] hidden lg:table-cell">{{ offering.academic_session.name }}</td>
+                <td class="text-sm hidden md:table-cell">{{ offering.shift|capfirst }}</td>
+                <td>
+                  <!-- Desktop: Inline Buttons -->
+                  <div class="hidden sm:flex flex-wrap gap-2">
+                    <a href="{% url 'faculty_staff:exam_results' %}?course_offering_id={{ offering.id }}"
+                       class="btn btn-primary btn-sm text-sm">Results</a>
+                    <a href="{% url 'faculty_staff:attendance' %}?course_offering_id={{ offering.id }}"
+                       class="btn btn-info btn-sm text-sm">Attendance</a>
+                    <a href="{% url 'faculty_staff:study_materials' %}?course_offering_id={{ offering.id }}"
+                       class="btn btn-success btn-sm text-sm">Materials</a>
+                    <a href="{% url 'faculty_staff:assignments' %}?course_offering_id={{ offering.id }}"
+                       class="btn btn-warning btn-sm text-sm">Assignments</a>
+                  </div>
+                  <!-- Mobile: Dropdown -->
+                  <div class="sm:hidden dropdown dropdown-end">
+                    <div tabindex="0" role="button" class="btn btn-ghost btn-sm">
+                      <i class="fas fa-ellipsis-v"></i>
+                    </div>
+                    <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-48">
+                      <li>
+                        <a href="{% url 'faculty_staff:exam_results' %}?course_offering_id={{ offering.id }}"
+                           class="text-sm">Results</a>
+                      </li>
+                      <li>
+                        <a href="{% url 'faculty_staff:attendance' %}?course_offering_id={{ offering.id }}"
+                           class="text-sm">Attendance</a>
+                      </li>
+                      <li>
+                        <a href="{% url 'faculty_staff:study_materials' %}?course_offering_id={{ offering.id }}"
+                           class="text-sm">Study Materials</a>
+                      </li>
+                      <li>
+                        <a href="{% url 'faculty_staff:assignments' %}?course_offering_id={{ offering.id }}"
+                           class="text-sm">Assignments</a>
+                      </li>
+                    </ul>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% else %}
+    <div class="alert alert-info mt-4 text-center">
+      <i class="fas fa-info-circle mr-2"></i> No courses are currently assigned to you.
+    </div>
+  {% endif %}
 </div>
 {% endblock %}

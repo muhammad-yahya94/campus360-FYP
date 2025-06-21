@@ -1,173 +1,363 @@
 {% extends 'faculty_staff/base_dashboard.html' %}
 
-{% block title %}Course Offerings{% endblock %}
+{% block title %}Courses{% endblock %}
+
+<style>
+  body {
+    overflow-x: hidden;
+    margin: 0; /* Ensure no default margins cause overflow */
+    max-width: 100%; /* Prevent content from exceeding viewport */
+  }
+  .container {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto; /* Center the content */
+  }
+</style>
+
 
 {% block content %}
-<div class="max-w-7xl mx-auto space-y-6">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
   <!-- Header -->
-  <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-xl">
+  <header class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-2xl shadow-md">
     <div class="hero-content text-center py-8">
       <div>
-        <h1 class="text-4xl font-bold mb-2">Course Offerings</h1>
-        <p class="text-lg opacity-90">Manage course offerings and timetable for {{ department.name }}</p>
+        <h1 class="text-4xl font-bold mb-3">Course Offerings</h1>
+        <p class="text-xl opacity-80">Manage courses and timetables for {{ department.name }}</p>
       </div>
     </div>
-  </div>
+  </header>
 
   <!-- Course Offering Form -->
-  <div class="card bg-base-100 shadow-xl assignment-form">
-    <div class="card-body">
-      <h2 class="card-title text-2xl mb-4">
-        <i class="fas fa-book"></i>
+  <section class="card bg-base-100 shadow-xl assignment-form">
+    <div class="card-body p-6">
+      <h2 class="card-title text-2xl font-semibold mb-4">
+        <i class="fas fa-book mr-2"></i>
         Assign Course
       </h2>
-      <form id="course-offering-form" method="post" action="{% url 'faculty_staff:save_course_offering' %}" class="space-y-4">
+      <form id="course-offering-form" method="post" action="{% url 'faculty_staff:save_course_offering' %}" class="space-y-6">
         {% csrf_token %}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="form-control">
-            <label class="label">
+            <label class="label" for="course_id">
               <span class="label-text">Course</span>
             </label>
-            <select name="course_id" id="course_id" class="select select-bordered select2" required>
+            <select name="course_id" id="course_id" class="select select-bordered select2" aria-label="Select course" required>
               <option value="">Search for a course...</option>
             </select>
-            <span id="course-error" class="text-error"></span>
+            <span id="course-error" class="text-error text-sm mt-1"></span>
           </div>
           <div class="form-control">
-            <label class="label">
+            <label class="label" for="offering_type">
               <span class="label-text">Offering Type</span>
             </label>
-            <select name="offering_type" id="offering_type" class="select select-bordered select2" required>
+            <select name="offering_type" id="offering_type" class="select select-bordered select2" aria-label="Select offering type" required>
               <option value="">Select offering type...</option>
             </select>
-            <span id="offering-type-error" class="text-error"></span>
+            <span id="offering-type-error" class="text-error text-sm mt-1"></span>
           </div>
           <div class="form-control">
-            <label class="label">
+            <label class="label" for="teacher_id">
               <span class="label-text">Teacher</span>
             </label>
-            <select name="teacher_id" id="teacher_id" class="select select-bordered select2" required>
-              <option value="">Search for a teacher...</option>
+            <select name="teacher_id" id="teacher_id" class="select select-bordered select2" aria-label="Select teacher" required>
+              <option value="">Select a teacher...</option>
             </select>
-            <span id="teacher-error" class="text-error"></span>
+            <span id="teacher-error" class="text-error text-sm mt-1"></span>
           </div>
           <div class="form-control">
-            <label class="label">
+            <label class="label" for="academic_session_id">
               <span class="label-text">Academic Session</span>
             </label>
-            <select name="academic_session_id" id="academic_session_id" class="select select-bordered select2" required>
+            <select name="academic_session_id" id="academic_session_id" class="select select-bordered select2" aria-label="Select academic session" required>
               <option value="">Select an academic session...</option>
             </select>
-            <span id="academic-session-error" class="text-error"></span>
+            <span id="academic-session-error" class="text-error text-sm mt-1"></span>
           </div>
           <div class="form-control">
-            <label class="label">
+            <label class="label" for="program_id">
               <span class="label-text">Program</span>
             </label>
-            <select name="program_id" id="program_id" class="select select-bordered select2" required>
+            <select name="program_id" id="program_id" class="select select-bordered select2" aria-label="Select program" required>
               <option value="">Select an academic session first...</option>
             </select>
-            <span id="program-error" class="text-error"></span>
+            <span id="program-error" class="text-error text-sm mt-1"></span>
           </div>
           <div class="form-control">
-            <label class="label">
+            <label class="label" for="semester_id">
               <span class="label-text">Semester</span>
             </label>
-            <select name="semester_id" id="semester_id" class="select select-bordered select2" required>
+            <select name="semester_id" id="semester_id" class="select select-bordered select2" aria-label="Select semester" required>
               <option value="">Search for a semester...</option>
             </select>
-            <span id="semester-error" class="text-error"></span>
+            <span id="semester-error" class="text-error text-sm mt-1"></span>
           </div>
           <div class="form-control">
-            <label class="label">
+            <label class="label" for="shift">
               <span class="label-text">Shift</span>
             </label>
-            <select name="shift" id="shift" class="select select-bordered" required>
+            <select name="shift" id="shift" class="select select-bordered" aria-label="Select shift" required>
               <option value="">Select a shift...</option>
               <option value="morning">Morning</option>
               <option value="evening">Evening</option>
               <option value="both">Both</option>
             </select>
-            <span id="shift-error" class="text-error"></span>
+            <span id="shift-error" class="text-error text-sm mt-1"></span>
+          </div>
+          <div class="form-control">
+            <label class="label" for="is_active">
+              <span class="label-text">Active</span>
+            </label>
+            <input type="checkbox" name="is_active" id="is_active" class="checkbox checkbox-primary" checked aria-label="Toggle active status" />
           </div>
         </div>
         <button type="submit" class="btn btn-primary w-full">
-          <i class="fas fa-check"></i>
+          <i class="fas fa-check mr-2"></i>
           Assign Course
         </button>
       </form>
     </div>
+  </section>
+
+  <!-- Edit Course Offering Modal -->
+  <input type="checkbox" id="edit-offering-modal" class="modal-toggle" />
+  <div class="modal" role="dialog" aria-labelledby="edit-offering-title">
+    <div class="modal-box w-11/12 max-w-3xl">
+      <h3 id="edit-offering-title" class="text-lg font-bold mb-4">Edit Course Offering</h3>
+      <form id="edit-offering-form" method="post" action="{% url 'faculty_staff:edit_course_offering' %}" class="space-y-6">
+        {% csrf_token %}
+        <input type="hidden" name="offering_id" id="edit_offering_id" />
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="form-control">
+            <label class="label" for="edit_course_id">
+              <span class="label-text">Course</span>
+            </label>
+            <select name="course_id" id="edit_course_id" class="select select-bordered select2" aria-label="Select course" required>
+              <option value="">Search for a course...</option>
+            </select>
+            <span id="edit-course-error" class="text-error text-sm mt-1"></span>
+          </div>
+          <div class="form-control">
+            <label class="label" for="edit_offering_type">
+              <span class="label-text">Offering Type</span>
+            </label>
+            <select name="offering_type" id="edit_offering_type" class="select select-bordered select2" aria-label="Select offering type" required>
+              <option value="">Select offering type...</option>
+            </select>
+            <span id="edit-offering-type-error" class="text-error text-sm mt-1"></span>
+          </div>
+          <div class="form-control">
+            <label class="label" for="edit_teacher_id">
+              <span class="label-text">Teacher</span>
+            </label>
+            <select name="teacher_id" id="edit_teacher_id" class="select select-bordered select2" aria-label="Select teacher" required>
+              <option value="">Select a teacher...</option>
+            </select>
+            <span id="edit-teacher-error" class="text-error text-sm mt-1"></span>
+          </div>
+          <div class="form-control">
+            <label class="label" for="edit_academic_session_id">
+              <span class="label-text">Academic Session</span>
+            </label>
+            <select name="academic_session_id" id="edit_academic_session_id" class="select select-bordered select2" aria-label="Select academic session" required>
+              <option value="">Select an academic session...</option>
+            </select>
+            <span id="edit-academic-session-error" class="text-error text-sm mt-1"></span>
+          </div>
+          <div class="form-control">
+            <label class="label" for="edit_program_id">
+              <span class="label-text">Program</span>
+            </label>
+            <select name="program_id" id="edit_program_id" class="select select-bordered select2" aria-label="Select program" required>
+              <option value="">Select an academic session first...</option>
+            </select>
+            <span id="edit-program-error" class="text-error text-sm mt-1"></span>
+          </div>
+          <div class="form-control">
+            <label class="label" for="edit_semester_id">
+              <span class="label-text">Semester</span>
+            </label>
+            <select name="semester_id" id="edit_semester_id" class="select select-bordered select2" aria-label="Select semester" required>
+              <option value="">Search for a semester...</option>
+            </select>
+            <span id="edit-semester-error" class="text-error text-sm mt-1"></span>
+          </div>
+          <div class="form-control">
+            <label class="label" for="edit_shift">
+              <span class="label-text">Shift</span>
+            </label>
+            <select name="shift" id="edit_shift" class="select select-bordered" aria-label="Select shift" required>
+              <option value="">Select a shift...</option>
+              <option value="morning">Morning</option>
+              <option value="evening">Evening</option>
+              <option value="both">Both</option>
+            </select>
+            <span id="edit-shift-error" class="text-error text-sm mt-1"></span>
+          </div>
+          <div class="form-control">
+            <label class="label" for="edit_is_active">
+              <span class="label-text">Active</span>
+            </label>
+            <input type="checkbox" name="is_active" id="edit_is_active" class="checkbox checkbox-primary" aria-label="Toggle active status" />
+          </div>
+        </div>
+        <div class="modal-action">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save mr-2"></i> Save Changes
+          </button>
+          <label for="edit-offering-modal" class="btn btn-ghost">Cancel</label>
+        </div>
+      </form>
+    </div>
   </div>
 
-  <!-- Course Offerings Table -->
-  <div class="card bg-base-100 shadow-xl">
-    <div class="card-body">
-      <h2 class="card-title text-2xl mb-4">
-        <i class="fas fa-table"></i>
-        Assigned Courses
-      </h2>
-      <div class="overflow-x-auto">
-        <table class="table table-zebra">
-          <thead>
+  <!-- Edit Timetable Slot Modal -->
+  <input type="checkbox" id="edit-timetable-modal" class="modal-toggle" />
+  <div class="modal" role="dialog" aria-labelledby="edit-timetable-title">
+    <div class="modal-box w-11/12 max-w-2xl">
+      <h3 id="edit-timetable-title" class="text-lg font-bold mb-4">Edit Timetable Slot</h3>
+      <form id="edit-timetable-form" method="post" action="{% url 'faculty_staff:edit_timetable_slot' %}" class="space-y-6">
+        {% csrf_token %}
+        <input type="hidden" name="slot_id" id="edit_slot_id" />
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="form-control">
+            <label class="label" for="edit_timetable_course_offering_id">
+              <span class="label-text">Course Offering</span>
+            </label>
+            <select name="course_offering_id" id="edit_timetable_course_offering_id" class="select select-bordered" disabled aria-label="Course offering">
+              <option value="">Select a course offering...</option>
+            </select>
+          </div>
+          <div class="form-control">
+            <label class="label" for="edit_day">
+              <span class="label-text">Day</span>
+            </label>
+            <select name="day" id="edit_day" class="select select-bordered" aria-label="Select day" required>
+              <option value="">Select a day...</option>
+              <option value="MONDAY">Monday</option>
+              <option value="TUESDAY">Tuesday</option>
+              <option value="WEDNESDAY">Wednesday</option>
+              <option value="THURSDAY">Thursday</option>
+              <option value="FRIDAY">Friday</option>
+              <option value="SATURDAY">Saturday</option>
+              <option value="SUNDAY">Sunday</option>
+            </select>
+            <span id="edit-day-error" class="text-error text-sm mt-1"></span>
+          </div>
+          <div class="form-control">
+            <label class="label" for="edit_start_time">
+              <span class="label-text">Start Time</span>
+            </label>
+            <input type="time" name="start_time" id="edit_start_time" class="input input-bordered" aria-label="Start time" required />
+            <span id="edit-start-time-error" class="text-error text-sm mt-1"></span>
+          </div>
+          <div class="form-control">
+            <label class="label" for="edit_end_time">
+              <span class="label-text">End Time</span>
+            </label>
+            <input type="time" name="end_time" id="edit_end_time" class="input input-bordered" aria-label="End time" required />
+            <span id="edit-end-time-error" class="text-error text-sm mt-1"></span>
+          </div>
+          <div class="form-control">
+            <label class="label" for="edit_venue_id">
+              <span class="label-text">Venue</span>
+            </label>
+            <select name="venue_id" id="edit_venue_id" class="select select-bordered select2" aria-label="Select venue" required>
+              <option value="">Search for a venue...</option>
+            </select>
+            <span id="edit-venue-error" class="text-error text-sm mt-1"></span>
+          </div>
+        </div>
+        <div class="modal-action">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save mr-2"></i> Save Changes
+          </button>
+          <label for="edit-timetable-modal" class="btn btn-ghost">Cancel</label>
+        </div>
+      </form>
+    </div>
+  </div>
+
+<!-- Course Offerings Table -->
+<section class="card bg-base-100 shadow-xl mb-8">
+  <div class="card-body p-6 min-h-[400px]">
+    <h2>
+      <i class="fas fa-table mr-2"></i>
+      Assigned Courses
+    </h2>
+    <div class="relative">
+      <div class="xs:hidden text-center text-sm text-base-content/60 py-2">Swipe to view more</div>
+      <div class="overflow-x-auto scroll-smooth h-full">
+        <table class="table table-zebra w-full min-w-[1320px] table-fixed" aria-label="Course Offerings">
+          <thead class="bg-base-200">
             <tr>
-              <th>Course Code</th>
-              <th>Course Name</th>
-              <th>Program</th>
-              <th>Department</th>
-              <th>Teacher</th>
-              <th>Academic Session</th>
-              <th>Semester</th>
-              <th>Offering Type</th>
-              <th>Shift</th>
-              <th>Active</th>
-              <th>Actions</th>
+              <th class="text-sm w-[120px] text-center">Code</th>
+              <th class="text-sm w-[120px] text-left">Course</th>
+              <th class="text-sm w-[120px] text-left">Program</th>
+              <th class="text-sm w-[120px] text-left">Dept</th>
+              <th class="text-sm w-[120px] text-left">Teacher</th>
+              <th class="text-sm w-[120px] text-left">Session</th>
+              <th class="text-sm w-[120px] text-center">Sem</th>
+              <th class="text-sm w-[120px] text-center">Type</th>
+              <th class="text-sm w-[120px] text-center">Shift</th>
+              <th class="text-sm w-[120px] text-center">Active</th>
+              <th class="text-sm w-[120px] text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
             {% for offering in course_offerings %}
-            <tr>
-              <td>{{ offering.course.code }}</td>
-              <td>{{ offering.course.name }}</td>
-              <td>{{ offering.program.name|default:"N/A" }}</td>
-              <td>{{ offering.department.name|default:"N/A" }}</td>
-              <td>
+            <tr class="hover:bg-base-200 transition-colors">
+              <td class="text-sm text-center border-r border-base-300">{{ offering.course.code }}</td>
+              <td class="text-sm text-left border-r border-base-300 overflow-hidden text-ellipsis whitespace-nowrap">{{ offering.course.name }}</td>
+              <td class="text-sm text-left border-r border-base-300 overflow-hidden text-ellipsis whitespace-nowrap">{{ offering.program.name|default:"N/A" }}</td>
+              <td class="text-sm text-left border-r border-base-300 overflow-hidden text-ellipsis whitespace-nowrap">{{ offering.department.name|default:"N/A" }}</td>
+              <td class="text-sm text-left border-r border-base-300 overflow-hidden text-ellipsis whitespace-nowrap">
                 {% if offering.teacher %}
-                {{ offering.teacher.user.get_full_name }} ({{ offering.teacher.department.name|default:"N/A" }})
+                {{ offering.teacher.user.get_full_name }}
                 {% else %}
                 <span class="text-warning">Not Assigned</span>
                 {% endif %}
               </td>
-              <td>{{ offering.academic_session.name }}</td>
-              <td>{{ offering.semester.name }}</td>
-              <td>{{ offering.get_offering_type_display }}</td>
-              <td>{{ offering.shift }}</td>
-              <td>
-                <span class="badge {% if offering.is_active %}badge-success{% else %}badge-error{% endif %}">
+              <td class="text-sm text-left border-r border-base-300 overflow-hidden text-ellipsis whitespace-nowrap">{{ offering.academic_session.name }}</td>
+              <td class="text-sm text-center border-r border-base-300">{{ offering.semester.name }}</td>
+              <td class="text-sm text-center border-r border-base-300">{{ offering.get_offering_type_display }}</td>
+              <td class="text-sm text-center border-r border-base-300">{{ offering.shift|capfirst }}</td>
+              <td class="text-sm text-center border-r border-base-300">
+                <span class="badge {% if offering.is_active %}badge-success{% else %}badge-error{% endif %} text-xs">
                   {{ offering.is_active|yesno:"Active,Inactive" }}
                 </span>
               </td>
-              <td>
-                <a href="{% url 'faculty_staff:exam_results' %}?course_offering_id={{ offering.id }}" class="btn btn-sm btn-info">
-                  <i class="fas fa-eye"></i>
-                  View Results
-                </a>
-                <a href="{% url 'faculty_staff:timetable_schedule' offering.id %}" class="btn btn-sm btn-teal">
-                  <i class="fas fa-calendar-alt"></i>
-                  Edit Timetable
-                </a>
-                <button class="btn btn-sm btn-error delete-offering" data-offering-id="{{ offering.id }}">
-                  <i class="fas fa-trash"></i>
-                  Delete
-                </button>
+              <td class="text-sm text-center">
+                <div class="flex flex-row gap-1 flex-nowrap justify-center">
+                  <a href="{% url 'faculty_staff:exam_results' %}?course_offering_id={{ offering.id }}"
+                     class="btn btn-xs btn-info tooltip tooltip-primary px-2" data-tip="View Results" aria-label="View Results">
+                    <i class="fas fa-eye"></i>
+                  </a>
+                  <a href="{% url 'faculty_staff:timetable_schedule' offering.id %}"
+                     class="btn btn-xs btn-accent tooltip tooltip-primary px-2" data-tip="Edit Timetable" aria-label="Edit Timetable">
+                    <i class="fas fa-calendar-alt"></i>
+                  </a>
+                  <label for="edit-offering-modal"
+                         class="btn btn-xs btn-warning tooltip tooltip-primary px-2 edit-offering"
+                         data-offering-id="{{ offering.id }}"
+                         data-tip="Edit Offering" aria-label="Edit Offering">
+                    <i class="fas fa-edit"></i>
+                  </label>
+                  <button class="btn btn-xs btn-error tooltip tooltip-primary px-2 delete-offering"
+                          data-offering-id="{{ offering.id }}"
+                          data-tip="Delete Offering" aria-label="Delete Offering">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
               </td>
             </tr>
             {% empty %}
             <tr>
-              <td colspan="11" class="text-center p-8">
+              <td colspan="11" class="text-center p-8 border-b border-base-300">
                 <div class="text-center">
                   <i class="fas fa-book text-6xl text-base-content/20 mb-4"></i>
-                  <h3 class="text-xl font-semibold text-base-content/70 mb-2">No Course Offerings Found</h3>
-                  <p class="text-base-content/50">Use the form above to assign courses.</p>
+                  <h3 class="text-xl font-semibold text-base-content/70 mb-2">No Courses Found</h3>
+                  <p class="text-base-content/50">Assign courses using the form above.</p>
                 </div>
               </td>
             </tr>
@@ -176,260 +366,364 @@
         </table>
       </div>
     </div>
-  </div>
+  </section>
 
   <!-- Timetable Display -->
-  <div class="card bg-base-100 shadow-xl">
-    <div class="card-body">
-      <h2 class="card-title text-2xl mb-4">
-        <i class="fas fa-calendar-alt"></i>
+  <section class="card bg-base-100 shadow-xl mb-8">
+    <div class="card-body p-6 min-h-[400px]">
+      <h2>
+        <i class="fas fa-calendar-alt mr-2"></i>
         Timetable
       </h2>
-      <div class="overflow-x-auto">
-        <table class="table table-zebra">
-          <thead>
-            <tr>
-              <th>Course Code</th>
-              <th>Course Name</th>
-              <th>Teacher</th>
-              <th>Program</th>
-              <th>Semester</th>
-              <th>Shift</th>
-              <th>Day</th>
-              <th>Time</th>
-              <th>Venue</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for slot in timetable_slots %}
-            <tr>
-              <td>{{ slot.course_offering.course.code }}</td>
-              <td>{{ slot.course_offering.course.name }}</td>
-              <td>{{ slot.course_offering.teacher.user.get_full_name|default:"N/A" }}</td>
-              <td>{{ slot.course_offering.program.name|default:"N/A" }}</td>
-              <td>{{ slot.course_offering.semester.name }}</td>
-              <td>{{ slot.course_offering.shift }}</td>
-              <td>{{ slot.get_day_display }}</td>
-              <td>{{ slot.start_time|time:"H:i" }}–{{ slot.end_time|time:"H:i" }}</td>
-              <td>{{ slot.venue.name }}</td>
-              <td>
-                <button class="btn btn-sm btn-error delete-timetable-slot" data-slot-id="{{ slot.id }}">
-                  <i class="fas fa-trash"></i>
-                  Delete
-                </button>
-              </td>
-            </tr>
-            {% empty %}
-            <tr>
-              <td colspan="10" class="text-center p-8">
-                <div class="text-center">
-                  <i class="fas fa-calendar-alt text-6xl text-base-content/20 mb-4"></i>
-                  <h3 class="text-xl font-semibold text-base-content/70 mb-2">No Timetable Slots Found</h3>
-                  <p class="text-base-content/50">Use the "Edit Timetable" link in the Assigned Courses table to schedule slots.</p>
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <div class="relative">
+        <div class="xs:hidden text-center text-sm text-base-content/60 py-2">Swipe to view more</div>
+        <div class="overflow-x-auto scroll-smooth h-full">
+          <table class="table table-zebra w-full min-w-[1200px] table-fixed" aria-label="Timetable Slots">
+            <thead class="bg-base-200">
+              <tr>
+                <th class="text-sm w-[120px] sticky top-0 z-20 border-r border-b border-base-300 text-center">Code</th>
+                <th class="text-sm w-[120px] sticky top-0 z-20 border-r border-b border-base-300 text-left">Course</th>
+                <th class="text-sm w-[120px] sticky top-0 z-20 border-r border-b border-base-300 text-left">Teacher</th>
+                <th class="text-sm w-[120px] sticky top-0 z-20 border-r border-b border-base-300 text-left">Program</th>
+                <th class="text-sm w-[120px] sticky top-0 z-20 border-r border-b border-base-300 text-center">Sem</th>
+                <th class="text-sm w-[120px] sticky top-0 z-20 border-r border-b border-base-300 text-center">Shift</th>
+                <th class="text-sm w-[120px] sticky top-0 z-20 border-r border-b border-base-300 text-center">Day</th>
+                <th class="text-sm w-[120px] sticky top-0 z-20 border-r border-b border-base-300 text-center">Time</th>
+                <th class="text-sm w-[120px] sticky top-0 z-20 border-r border-b border-base-300 text-left">Venue</th>
+                <th class="text-sm w-[120px] sticky top-0 z-20 border-b border-base-300 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for slot in timetable_slots %}
+              <tr class="hover:bg-base-200 transition-colors">
+                <td class="text-sm text-center border-r border-base-300">{{ slot.course_offering.course.code }}</td>
+                <td class="text-sm text-left border-r border-base-300 overflow-hidden text-ellipsis whitespace-nowrap">{{ slot.course_offering.course.name }}</td>
+                <td class="text-sm text-left border-r border-base-300 overflow-hidden text-ellipsis whitespace-nowrap">{{ slot.course_offering.teacher.user.get_full_name|default:"N/A" }}</td>
+                <td class="text-sm text-left border-r border-base-300 overflow-hidden text-ellipsis whitespace-nowrap">{{ slot.course_offering.program.name|default:"N/A" }}</td>
+                <td class="text-sm text-center border-r border-base-300">{{ slot.course_offering.semester.name }}</td>
+                <td class="text-sm text-center border-r border-base-300">{{ slot.course_offering.shift|capfirst }}</td>
+                <td class="text-sm text-center border-r border-base-300">{{ slot.get_day_display }}</td>
+                <td class="text-sm text-center border-r border-base-300">{{ slot.start_time|time:"H:i" }}–{{ slot.end_time|time:"H:i" }}</td>
+                <td class="text-sm text-left border-r border-base-300 overflow-hidden text-ellipsis whitespace-nowrap">{{ slot.venue.name }}</td>
+                <td class="text-sm text-center">
+                  <div class="flex flex-row gap-1 flex-nowrap justify-center">
+                    <label for="edit-timetable-modal"
+                           class="btn btn-xs btn-warning tooltip tooltip-primary px-2 edit-timetable-slot"
+                           data-slot-id="{{ slot.id }}"
+                           data-tip="Edit Slot" aria-label="Edit Timetable Slot">
+                      <i class="fas fa-edit"></i>
+                    </label>
+                    <button class="btn btn-xs btn-error tooltip tooltip-primary px-2 delete-timetable-slot"
+                            data-slot-id="{{ slot.id }}"
+                            data-tip="Delete Slot" aria-label="Delete Timetable Slot">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="10" class="text-center p-8 border-b border-base-300">
+                  <div class="text-center">
+                    <i class="fas fa-calendar-alt text-6xl text-base-content/20 mb-4"></i>
+                    <h3 class="text-xl font-semibold text-base-content/70 mb-2">No Timetable Slots Found</h3>
+                    <p class="text-base-content/50">Schedule slots via the Timetable link above.</p>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
-  </div>
+  </section>
 </div>
-{% endblock %}
 
-{% block extra_js %}
+
 <!-- Include Select2 CSS and JS -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<style>
+  .overflow-x-auto::before,
+  .overflow-x-auto::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 12px;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .overflow-x-auto::before {
+    left: 0;
+    background: linear-gradient(to right, rgba(0,0,0,0.15), transparent);
+  }
+  .overflow-x-auto::after {
+    right: 0;
+    background: linear-gradient(to left, rgba(0,0,0,0.15), transparent);
+  }
+  .table th, .table td {
+    padding: 0.5rem 0.75rem;
+    vertical-align: middle;
+  }
+  .table tbody tr {
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+  }
+  .btn-xs {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+</style>
 
 <script>
 $(document).ready(function() {
   let isSubmitting = false;
 
   // Initialize Select2 for course
-  $('#course_id').select2({
-    ajax: {
-      url: "{% url 'faculty_staff:search_courses' %}",
-      dataType: 'json',
-      delay: 250,
-      data: function(params) {
-        return { q: params.term, page: params.page || 1 };
+  function initSelect2Course(selector) {
+    $(selector).select2({
+      ajax: {
+        url: "{% url 'faculty_staff:search_courses' %}",
+        dataType: 'json',
+        delay: 250,
+        data: function(params) {
+          return { q: params.term, page: params.page || 1 };
+        },
+        processResults: function(data, params) {
+          params.page = params.page || 1;
+          return {
+            results: data.results,
+            pagination: { more: data.more }
+          };
+        },
+        cache: true
       },
-      processResults: function(data, params) {
-        params.page = params.page || 1;
-        return {
-          results: data.results,
-          pagination: { more: data.more }
-        };
-      },
-      cache: true
-    },
-    placeholder: "Search for a course...",
-    minimumInputLength: 1,
-    allowClear: true
-  });
+      placeholder: "Search for a course...",
+      minimumInputLength: 1,
+      allowClear: true
+    });
+  }
 
   // Initialize Select2 for teacher
-  $('#teacher_id').select2({
-    ajax: {
-      url: "{% url 'faculty_staff:search_teachers' %}",
-      dataType: 'json',
-      delay: 250,
-      data: function(params) {
-        return { q: params.term, page: params.page || 1 };
+  function initSelect2Teacher(selector) {
+    $(selector).select2({
+      ajax: {
+        url: "{% url 'faculty_staff:search_teachers' %}",
+        dataType: 'json',
+        delay: 250,
+        data: function(params) {
+          return { q: params.term, page: params.page || 1 };
+        },
+        processResults: function(data, params) {
+          params.page = params.page || 1;
+          return {
+            results: data.results,
+            pagination: { more: data.more }
+          };
+        },
+        cache: true
       },
-      processResults: function(data, params) {
-        params.page = params.page || 1;
-        return {
-          results: data.results,
-          pagination: { more: data.more }
-        };
-      },
-      cache: true
-    },
-    placeholder: "Search for a teacher...",
-    minimumInputLength: 1,
-    allowClear: true
-  });
+      placeholder: "Select a teacher...",
+      minimumInputLength: 1,
+      allowClear: true
+    });
+  }
 
   // Initialize Select2 for academic session
-  $('#academic_session_id').select2({
-    ajax: {
-      url: "{% url 'faculty_staff:get_academic_sessions' %}",
-      dataType: 'json',
-      delay: 250,
-      data: function(params) {
-        return { q: params.term, page: params.page || 1 };
+  function initSelect2AcademicSession(selector) {
+    $(selector).select2({
+      ajax: {
+        url: "{% url 'faculty_staff:get_academic_sessions' %}",
+        dataType: 'json',
+        delay: 250,
+        data: function(params) {
+          return { q: params.term, page: params.page || 1 };
+        },
+        processResults: function(data, params) {
+          params.page = params.page || 1;
+          return {
+            results: data.results,
+            pagination: { more: data.pagination ? data.pagination.more : false }
+          };
+        },
+        cache: true
       },
-      processResults: function(data, params) {
-        params.page = params.page || 1;
-        return {
-          results: data.results,
-          pagination: { more: data.pagination ? data.pagination.more : false }
-        };
-      },
-      cache: true
-    },
-    placeholder: "Select an academic session...",
-    minimumInputLength: 0,
-    allowClear: true
-  });
+      placeholder: "Select an academic session...",
+      minimumInputLength: 0,
+      allowClear: true
+    });
+  }
 
   // Initialize Select2 for program
-  $('#program_id').select2({
-    ajax: {
-      url: "{% url 'faculty_staff:search_programs' %}",
-      dataType: 'json',
-      delay: 250,
-      data: function(params) {
-        return {
-          q: params.term,
-          academic_session_id: $('#academic_session_id').val(),
-          page: params.page || 1
-        };
-      },
-      processResults: function(data, params) {
-        params.page = params.page || 1;
-        return {
-          results: data.results,
-          pagination: { more: data.pagination.more }
-        };
-      },
-      cache: true
-    },
-    placeholder: "Select an academic session first...",
-    minimumInputLength: 1,
-    allowClear: true
-  });
-
-  // Update program dropdown when academic session changes
-  $('#academic_session_id').on('change', function() {
-    $('#program_id').val(null).trigger('change');
-    if ($(this).val()) {
-      $('#program_id').prop('disabled', false);
-      $('#program_id').select2('destroy').select2({
-        ajax: {
-          url: "{% url 'faculty_staff:search_programs' %}",
-          dataType: 'json',
-          delay: 250,
-          data: function(params) {
-            return {
-              q: params.term,
-              academic_session_id: $('#academic_session_id').val(),
-              page: params.page || 1
-            };
-          },
-          processResults: function(data, params) {
-            params.page = params.page || 1;
-            return {
-              results: data.results,
-              pagination: { more: data.pagination.more }
-            };
-          },
-          cache: true
+  function initSelect2Program(selector, academicSessionSelector) {
+    $(selector).select2({
+      ajax: {
+        url: "{% url 'faculty_staff:search_programs' %}",
+        dataType: 'json',
+        delay: 250,
+        data: function(params) {
+          return {
+            q: params.term,
+            academic_session_id: $(academicSessionSelector).val(),
+            page: params.page || 1
+          };
         },
-        placeholder: "Search for a program...",
-        minimumInputLength: 1,
-        allowClear: true
-      });
-    } else {
-      $('#program_id').prop('disabled', true);
-      $('#program_id').select2('destroy').select2({
-        placeholder: "Select an academic session first...",
-        disabled: true
-      });
-    }
-  });
+        processResults: function(data, params) {
+          params.page = params.page || 1;
+          return {
+            results: data.results,
+            pagination: { more: data.pagination.more }
+          };
+        },
+        cache: true
+      },
+      placeholder: "Select an academic session first...",
+      minimumInputLength: 1,
+      allowClear: true
+    });
+  }
 
   // Initialize Select2 for semester
-  $('#semester_id').select2({
-    ajax: {
-      url: "{% url 'faculty_staff:search_semesters' %}",
-      dataType: 'json',
-      delay: 250,
-      data: function(params) {
-        return {
-          q: params.term,
-          page: params.page || 1,
-          program_id: $('#program_id').val()
-        };
+  function initSelect2Semester(selector) {
+    $(selector).select2({
+      ajax: {
+        url: "{% url 'faculty_staff:search_semesters' %}",
+        dataType: 'json',
+        delay: 250,
+        data: function(params) {
+          return {
+            q: params.term,
+            page: params.page || 1,
+            program_id: $('#program_id').val() || $('#edit_program_id').val()
+          };
+        },
+        processResults: function(data, params) {
+          params.page = params.page || 1;
+          return {
+            results: data.results,
+            pagination: { more: data.more }
+          };
+        },
+        cache: true
       },
-      processResults: function(data, params) {
-        params.page = params.page || 1;
-        return {
-          results: data.results,
-          pagination: { more: data.more }
-        };
-      },
-      cache: true
-    },
-    placeholder: "Search for a semester...",
-    minimumInputLength: 1,
-    allowClear: true
-  });
+      placeholder: "Search for a semester...",
+      minimumInputLength: 1,
+      allowClear: true
+    });
+  }
 
   // Initialize Select2 for offering type
-  $('#offering_type').select2({
-    ajax: {
-      url: "{% url 'faculty_staff:get_offering_type_choices' %}",
-      dataType: 'json',
-      delay: 250,
-      data: function(params) {
-        return { q: params.term, page: params.page || 1 };
+  function initSelect2OfferingType(selector) {
+    $(selector).select2({
+      ajax: {
+        url: "{% url 'faculty_staff:get_offering_type_choices' %}",
+        dataType: 'json',
+        delay: 250,
+        data: function(params) {
+          return { q: params.term, page: params.page || 1 };
+        },
+        processResults: function(data, params) {
+          params.page = params.page || 1;
+          return { results: data.results };
+        },
+        cache: true
       },
-      processResults: function(data, params) {
-        params.page = params.page || 1;
-        return { results: data.results };
+      placeholder: "Select offering type...",
+      minimumResultsForSearch: Infinity,
+      allowClear: true
+    });
+  }
+
+  // Initialize Select2 for venue
+  function initSelect2Venue(selector) {
+    $(selector).select2({
+      ajax: {
+        url: "{% url 'faculty_staff:search_venues' %}",
+        dataType: 'json',
+        delay: 250,
+        data: function(params) {
+          return { q: params.term, page: params.page || 1 };
+        },
+        processResults: function(data, params) {
+          params.page = params.page || 1;
+          return {
+            results: data.results,
+            pagination: { more: data.more }
+          };
+        },
+        cache: true
       },
-      cache: true
-    },
-    placeholder: "Select offering type...",
-    minimumResultsForSearch: Infinity,
-    allowClear: true
-  });
+      placeholder: "Search for a venue...",
+      minimumInputLength: 1,
+      allowClear: true
+    });
+  }
+
+  // Initialize Select2 for main form
+  initSelect2Course('#course_id');
+  initSelect2Teacher('#teacher_id');
+  initSelect2AcademicSession('#academic_session_id');
+  initSelect2Program('#program_id', '#academic_session_id');
+  initSelect2Semester('#semester_id');
+  initSelect2OfferingType('#offering_type');
+
+  // Initialize Select2 for edit offering form
+  initSelect2Course('#edit_course_id');
+  initSelect2Teacher('#edit_teacher_id');
+  initSelect2AcademicSession('#edit_academic_session_id');
+  initSelect2Program('#edit_program_id', '#edit_academic_session_id');
+  initSelect2Semester('#edit_semester_id');
+  initSelect2OfferingType('#edit_offering_type');
+
+  // Initialize Select2 for edit timetable form
+  initSelect2Venue('#edit_venue_id');
+
+  // Update program dropdown when academic session changes
+  function handleAcademicSessionChange(selector, programSelector) {
+    $(selector).on('change', function() {
+      $(programSelector).val(null).trigger('change');
+      if ($(this).val()) {
+        $(programSelector).prop('disabled', false);
+        $(programSelector).select2('destroy').select2({
+          ajax: {
+            url: "{% url 'faculty_staff:search_programs' %}",
+            dataType: 'json',
+            delay: 250,
+            data: function(params) {
+              return {
+                q: params.term,
+                academic_session_id: $(selector).val(),
+                page: params.page || 1
+              };
+            },
+            processResults: function(data, params) {
+              params.page = params.page || 1;
+              return {
+                results: data.results,
+                pagination: { more: data.pagination.more }
+              };
+            },
+            cache: true
+          },
+          placeholder: "Search for a program...",
+          minimumInputLength: 1,
+          allowClear: true
+        });
+      } else {
+        $(programSelector).prop('disabled', true);
+        $(programSelector).select2('destroy').select2({
+          placeholder: "Select an academic session first...",
+          disabled: true
+        });
+      }
+    });
+  }
+
+  handleAcademicSessionChange('#academic_session_id', '#program_id');
+  handleAcademicSessionChange('#edit_academic_session_id', '#edit_program_id');
 
   // Handle course offering form submission
   $('#course-offering-form').on('submit', function(e) {
@@ -444,7 +738,7 @@ $(document).ready(function() {
     $('.text-error').text('');
     
     let isValid = true;
-    $('select[required]').each(function() {
+    $('select[required]', this).each(function() {
       if (!$(this).val()) {
         const fieldName = $(this).attr('name');
         $(`#${fieldName}-error`).text('This field is required.');
@@ -454,7 +748,7 @@ $(document).ready(function() {
     
     if (!isValid) {
       submitBtn.prop('disabled', false);
-      submitBtn.text('Assign Course');
+      submitBtn.html('<i class="fas fa-check mr-2"></i> Assign Course');
       isSubmitting = false;
       return;
     }
@@ -474,8 +768,9 @@ $(document).ready(function() {
           $('.assignment-form').prepend(successAlert);
           
           $('#course-offering-form')[0].reset();
-          $('.select2').val(null).trigger('change');
+          $('.select2', '#course-offering-form').val(null).trigger('change');
           $('#shift').val('');
+          $('#is_active').prop('checked', true);
           
           setTimeout(() => { location.reload(); }, 1500);
         } else {
@@ -499,7 +794,228 @@ $(document).ready(function() {
       },
       complete: function() {
         submitBtn.prop('disabled', false);
-        submitBtn.text('Assign Course');
+        submitBtn.html('<i class="fas fa-check mr-2"></i> Assign Course');
+        isSubmitting = false;
+      }
+    });
+  });
+
+  // Handle edit course offering
+  $('.edit-offering').on('click', function() {
+    const offeringId = $(this).data('offering-id');
+    $.ajax({
+      url: "{% url 'faculty_staff:get_course_offering' %}",
+      type: 'GET',
+      data: { offering_id: offeringId },
+      success: function(response) {
+        if (response.success) {
+          const data = response.data;
+          $('#edit_offering_id').val(data.id);
+          $('#edit_course_id').append(new Option(data.course.text, data.course.id, true, true)).trigger('change');
+          $('#edit_offering_type').append(new Option(data.offering_type.text, data.offering_type.id, true, true)).trigger('change');
+          $('#edit_teacher_id').append(new Option(data.teacher.text, data.teacher.id, true, true)).trigger('change');
+          $('#edit_academic_session_id').append(new Option(data.academic_session.text, data.academic_session.id, true, true)).trigger('change');
+          $('#edit_program_id').append(new Option(data.program.text, data.program.id, true, true)).trigger('change');
+          $('#edit_semester_id').append(new Option(data.semester.text, data.semester.id, true, true)).trigger('change');
+          $('#edit_shift').val(data.shift);
+          $('#edit_is_active').prop('checked', data.is_active);
+          $('#edit-offering-modal').prop('checked', true);
+        } else {
+          const errorAlert = `
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+              Error: ${response.message}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          `;
+          $('.assignment-form').prepend(errorAlert);
+        }
+      },
+      error: function(xhr, status, error) {
+        const errorAlert = `
+          <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            An error occurred: ${error}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        `;
+        $('.assignment-form').prepend(errorAlert);
+      }
+    });
+  });
+
+  // Handle edit offering form submission
+  $('#edit-offering-form').on('submit', function(e) {
+    e.preventDefault();
+    if (isSubmitting) return;
+    isSubmitting = true;
+
+    const submitBtn = $(this).find('button[type="submit"]');
+    submitBtn.prop('disabled', true);
+    submitBtn.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...');
+    
+    $('.text-error', this).text('');
+    
+    let isValid = true;
+    $('select[required]', this).each(function() {
+      if (!$(this).val()) {
+        const fieldName = $(this).attr('name');
+        $(`#edit-${fieldName}-error`).text('This field is required.');
+        isValid = false;
+      }
+    });
+    
+    if (!isValid) {
+      submitBtn.prop('disabled', false);
+      submitBtn.html('<i class="fas fa-save mr-2"></i> Save Changes');
+      isSubmitting = false;
+      return;
+    }
+    
+    $.ajax({
+      url: $(this).attr('action'),
+      type: 'POST',
+      data: $(this).serialize(),
+      success: function(response) {
+        if (response.success) {
+          const successAlert = `
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+              ${response.message}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          `;
+          $('.assignment-form').prepend(successAlert);
+          $('#edit-offering-modal').prop('checked', false);
+          setTimeout(() => { location.reload(); }, 1500);
+        } else {
+          const errorAlert = `
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+              Error: ${response.message}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          `;
+          $('.assignment-form').prepend(errorAlert);
+        }
+      },
+      error: function(xhr, status, error) {
+        const errorAlert = `
+          <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            An error occurred: ${error}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        `;
+        $('.assignment-form').prepend(errorAlert);
+      },
+      complete: function() {
+        submitBtn.prop('disabled', false);
+        submitBtn.html('<i class="fas fa-save mr-2"></i> Save Changes');
+        isSubmitting = false;
+      }
+    });
+  });
+
+  // Handle edit timetable slot
+  $('.edit-timetable-slot').on('click', function() {
+    const slotId = $(this).data('slot-id');
+    $.ajax({
+      url: "{% url 'faculty_staff:get_timetable_slot' %}",
+      type: 'GET',
+      data: { slot_id: slotId },
+      success: function(response) {
+        if (response.success) {
+          const data = response.data;
+          $('#edit_slot_id').val(data.id);
+          $('#edit_timetable_course_offering_id').append(new Option(data.course_offering.text, data.course_offering.id, true, true));
+          $('#edit_day').val(data.day);
+          $('#edit_start_time').val(data.start_time);
+          $('#edit_end_time').val(data.end_time);
+          $('#edit_venue_id').append(new Option(data.venue.text, data.venue.id, true, true)).trigger('change');
+          $('#edit-timetable-modal').prop('checked', true);
+        } else {
+          const errorAlert = `
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+              Error: ${response.message}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          `;
+          $('.assignment-form').prepend(errorAlert);
+        }
+      },
+      error: function(xhr, status, error) {
+        const errorAlert = `
+          <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            An error occurred: ${error}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        `;
+        $('.assignment-form').prepend(errorAlert);
+      }
+    });
+  });
+
+  // Handle edit timetable form submission
+  $('#edit-timetable-form').on('submit', function(e) {
+    e.preventDefault();
+    if (isSubmitting) return;
+    isSubmitting = true;
+
+    const submitBtn = $(this).find('button[type="submit"]');
+    submitBtn.prop('disabled', true);
+    submitBtn.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...');
+    
+    $('.text-error', this).text('');
+    
+    let isValid = true;
+    $('select[required], input[required]', this).each(function() {
+      if (!$(this).val()) {
+        const fieldName = $(this).attr('name');
+        $(`#edit-${fieldName}-error`).text('This field is required.');
+        isValid = false;
+      }
+    });
+    
+    if (!isValid) {
+      submitBtn.prop('disabled', false);
+      submitBtn.html('<i class="fas fa-save mr-2"></i> Save Changes');
+      isSubmitting = false;
+      return;
+    }
+    
+    $.ajax({
+      url: $(this).attr('action'),
+      type: 'POST',
+      data: $(this).serialize(),
+      success: function(response) {
+        if (response.success) {
+          const successAlert = `
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+              ${response.message}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          `;
+          $('.assignment-form').prepend(successAlert);
+          $('#edit-timetable-modal').prop('checked', false);
+          setTimeout(() => { location.reload(); }, 1500);
+        } else {
+          const errorAlert = `
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+              Error: ${response.message}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          `;
+          $('.assignment-form').prepend(errorAlert);
+        }
+      },
+      error: function(xhr, status, error) {
+        const errorAlert = `
+          <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            An error occurred: ${error}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        `;
+        $('.assignment-form').prepend(errorAlert);
+      },
+      complete: function() {
+        submitBtn.prop('disabled', false);
+        submitBtn.html('<i class="fas fa-save mr-2"></i> Save Changes');
         isSubmitting = false;
       }
     });
@@ -507,7 +1023,7 @@ $(document).ready(function() {
 
   // Handle delete course offering
   $('.delete-offering').on('click', function() {
-    let offeringId = $(this).data('offering-id');
+    const offeringId = $(this).data('offering-id');
     if (confirm('Are you sure you want to delete this course offering?')) {
       $.ajax({
         url: "{% url 'faculty_staff:delete_course_offering' %}",
@@ -543,7 +1059,7 @@ $(document).ready(function() {
               <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
           `;
-          $('.assignment-form').prepend(errorAlert);
+            $('.assignment-form').prepend(errorAlert);
         }
       });
     }
@@ -551,7 +1067,7 @@ $(document).ready(function() {
 
   // Handle delete timetable slot
   $('.delete-timetable-slot').on('click', function() {
-    let slotId = $(this).data('slot-id');
+    const slotId = $(this).data('slot-id');
     if (confirm('Are you sure you want to delete this timetable slot?')) {
       $.ajax({
         url: "{% url 'faculty_staff:delete_timetable_slot' %}",
@@ -587,7 +1103,7 @@ $(document).ready(function() {
               <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
           `;
-          $('.assignment-form').prepend(errorAlert);
+            $('.assignment-form').prepend(errorAlert);
         }
       });
     }

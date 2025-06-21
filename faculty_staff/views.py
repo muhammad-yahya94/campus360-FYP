@@ -4,6 +4,7 @@ import os
 # Django imports
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_GET, require_POST
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Sum, Q
@@ -304,7 +305,7 @@ def edit_staff(request, staff_id):
             messages.success(request, f'Teacher {teacher.user.get_full_name()} has been updated successfully.')
             return redirect('faculty_staff:staff_management')
 
-        except Exception as e:
+        except Exception as e:  
             messages.error(request, f'Error updating teacher: {str(e)}')
             return render(request, 'faculty_staff/staff_management.html', {
                 'department': hod_department,
@@ -1013,6 +1014,85 @@ def save_timetable_slot(request):
             'success': False,
             'message': f'Error scheduling timetable: {str(e)}'
         })
+        
+        
+        
+@login_required
+@require_GET
+def get_course_offering(request):
+    offering_id = request.GET.get('offering_id')
+    try:
+        offering = CourseOffering.objects.get(id=offering_id)
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'id': offering.id,
+                'course': {'id': offering.course.id, 'text': offering.course.name},
+                'offering_type': {'id': offering.offering_type, 'text': offering.get_offering_type_display()},
+                'teacher': {'id': offering.teacher.id, 'text': offering.teacher.user.get_full_name()} if offering.teacher else {'id': '', 'text': ''},
+                'academic_session': {'id': offering.academic_session.id, 'text': offering.academic_session.name},
+                'program': {'id': offering.program.id, 'text': offering.program.name},
+                'semester': {'id': offering.semester.id, 'text': offering.semester.name},
+                'shift': offering.shift,
+                'is_active': offering.is_active
+            }
+        })
+    except CourseOffering.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Course offering not found'})
+
+@login_required
+@require_POST
+def edit_course_offering(request):
+    offering_id = request.POST.get('offering_id')
+    try:
+        offering = CourseOffering.objects.get(id=offering_id)
+        offering.course = get_object_or_404(Course, id=request.POST.get('course_id'))
+        offering.offering_type = request.POST.get('offering_type')
+        offering.teacher = get_object_or_404(Teacher, id=request.POST.get('teacher_id')) if request.POST.get('teacher_id') else None
+        offering.academic_session = get_object_or_404(AcademicSession, id=request.POST.get('academic_session_id'))
+        offering.program = get_object_or_404(Program, id=request.POST.get('program_id'))
+        offering.semester = get_object_or_404(Semester, id=request.POST.get('semester_id'))
+        offering.shift = request.POST.get('shift')
+        offering.is_active = request.POST.get('is_active') == 'on'
+        offering.save()
+        return JsonResponse({'success': True, 'message': 'Course offering updated successfully'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
+
+@login_required
+@require_GET
+def get_timetable_slot(request):
+    slot_id = request.GET.get('slot_id')
+    try:
+        slot = TimetableSlot.objects.get(id=slot_id)
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'id': slot.id,
+                'course_offering': {'id': slot.course_offering.id, 'text': slot.course_offering.course.name},
+                'day': slot.day,
+                'start_time': slot.start_time.strftime('%H:%M'),
+                'end_time': slot.end_time.strftime('%H:%M'),
+                'venue': {'id': slot.venue.id, 'text': slot.venue.name}
+            }
+        })
+    except TimetableSlot.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Timetable slot not found'})
+
+@login_required
+@require_POST
+def edit_timetable_slot(request):
+    slot_id = request.POST.get('slot_id')
+    try:
+        slot = TimetableSlot.objects.get(id=slot_id)
+        slot.day = request.POST.get('day')
+        slot.start_time = request.POST.get('start_time')
+        slot.end_time = request.POST.get('end_time')
+        slot.venue = get_object_or_404(Venue, id=request.POST.get('venue_id'))
+        slot.save()
+        return JsonResponse({'success': True, 'message': 'Timetable slot updated successfully'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
 
 @login_required
 def delete_timetable_slot(request):

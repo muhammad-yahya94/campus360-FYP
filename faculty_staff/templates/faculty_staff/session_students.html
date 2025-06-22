@@ -60,7 +60,7 @@
                                 <th>University Roll No</th>
                                 <th>College Roll No</th>
                                 <th>Program</th>
-                                <th>Current Semester</th>
+                                {% comment %} <th>Current Semester</th> {% endcomment %}
                                 <th>Status</th>
                                 <th>Enrollment Date</th>
                             </tr>
@@ -72,7 +72,7 @@
                                 <td>{{ student.university_roll_no|default:"N/A" }}</td>
                                 <td>{{ student.college_roll_no|default:"N/A" }}</td>
                                 <td>{{ student.program.name }}</td>
-                                <td>{{ student.current_semester.number }}</td>
+                                {% comment %} <td>{{ student.current_semester.number }}</td> {% endcomment %}
                                 <td>
                                     <span class="badge {% if student.current_status == 'active' %}badge-success{% elif student.current_status == 'graduated' %}badge-info{% else %}badge-error{% endif %}">
                                         {{ student.current_status|title }}

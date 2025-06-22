@@ -439,16 +439,36 @@ def course_offerings(request):
             'error': 'HOD must be associated with a department.'
         })
 
-    academic_sessions = AcademicSession.objects.all().order_by('-start_year')
+    # Get filter parameters from GET request
+    session_id = request.GET.get('session_id')
+    program_id = request.GET.get('program_id')
+    semester_id = request.GET.get('semester_id')
+
+    # Base querysets
+    academic_sessions = AcademicSession.objects.filter(is_active=True).order_by('-start_year')
     programs = Program.objects.filter(department=hod_department)
     teachers = Teacher.objects.filter(is_active=True, department=hod_department)
-    semesters = Semester.objects.filter(program__in=programs).distinct()
-    course_offerings = CourseOffering.objects.filter(
-        department=hod_department
-    ).select_related('course', 'teacher', 'program', 'department', 'academic_session', 'semester')
-    timetable_slots = TimetableSlot.objects.filter(
-        course_offering__department=hod_department
-    ).select_related('course_offering__course', 'course_offering__teacher', 'course_offering__program', 'course_offering__semester', 'venue')
+    semesters = Semester.objects.filter(program__in=programs, is_active=True).distinct()
+
+    # Filter course offerings
+    course_offerings = CourseOffering.objects.filter(department=hod_department)
+    if session_id:
+        course_offerings = course_offerings.filter(academic_session_id=session_id)
+    if program_id:
+        course_offerings = course_offerings.filter(program_id=program_id)
+    if semester_id:
+        course_offerings = course_offerings.filter(semester_id=semester_id)
+    course_offerings = course_offerings.select_related('course', 'teacher', 'program', 'department', 'academic_session', 'semester')
+
+    # Filter timetable slots
+    timetable_slots = TimetableSlot.objects.filter(course_offering__department=hod_department)
+    if session_id:
+        timetable_slots = timetable_slots.filter(course_offering__academic_session_id=session_id)
+    if program_id:
+        timetable_slots = timetable_slots.filter(course_offering__program_id=program_id)
+    if semester_id:
+        timetable_slots = timetable_slots.filter(course_offering__semester_id=semester_id)
+    timetable_slots = timetable_slots.select_related('course_offering__course', 'course_offering__teacher', 'course_offering__program', 'course_offering__semester', 'venue')
 
     context = {
         'academic_sessions': academic_sessions,
@@ -458,7 +478,9 @@ def course_offerings(request):
         'course_offerings': course_offerings,
         'timetable_slots': timetable_slots,
         'department': hod_department,
-        'session_id': None,
+        'session_id': session_id,
+        'program_id': program_id,
+        'semester_id': semester_id,
     }
     return render(request, 'faculty_staff/course_offerings.html', context)
 
@@ -517,7 +539,7 @@ def search_teachers(request):
         teachers = Teacher.objects.filter(
             Q(user__first_name__icontains=search_query) | Q(user__last_name__icontains=search_query),
             is_active=True,
-            department=request.user.teacher_profile.department
+            # department=request.user.teacher_profile.department
         ).values('id', 'user__first_name', 'user__last_name', 'department__name')[:10]
         return JsonResponse({
             'results': [
@@ -590,7 +612,7 @@ def search_semesters(request):
         program_id = request.GET.get('program_id')
 
         filters = Q(name__icontains=search_query) | Q(program__name__icontains=search_query)
-
+        filters &= Q(is_active=True)
         if program_id:
             filters &= Q(program_id=program_id)
 
@@ -630,7 +652,7 @@ def search_venues(request):
         end = start + per_page
         paginated_venues = venues[start:end]
         results = [
-            {'id': venue.id, 'text': f"{venue.name} (Capacity: {venue.capacity})"}
+            {'id': venue.id, 'text': f"{venue.name} (Room no.: {venue.capacity})"}
             for venue in paginated_venues
         ]
         return JsonResponse({
@@ -699,6 +721,7 @@ def save_course_offering(request):
             'message': 'One or more selected items no longer exist.'
         })
 
+    # Check for existing offerings with the same credentials
     existing_offerings = CourseOffering.objects.filter(
         course=course,
         program=program,
@@ -712,6 +735,42 @@ def save_course_offering(request):
             'success': False,
             'message': 'This exact course offering already exists.'
         })
+
+    # New Validation: Check if the course is already assigned to another teacher with the same credentials
+    conflicting_offerings = CourseOffering.objects.filter(
+        course=course,
+        program=program,
+        academic_session=academic_session,
+        semester=semester,
+        offering_type=offering_type
+    ).exclude(teacher__isnull=True).exclude(teacher=teacher)
+    if conflicting_offerings.exists():
+        return JsonResponse({
+            'success': False,
+            'message': 'This course is already assigned to another teacher with the same credentials.'
+        })
+
+    # New Validation: Check teacher shift conflicts
+    teacher_existing_offerings = CourseOffering.objects.filter(
+        teacher=teacher,
+        course=course,
+        program=program,
+        academic_session=academic_session,
+        semester=semester,
+        offering_type=offering_type
+    )
+    for existing_offering in teacher_existing_offerings:
+        existing_shift = existing_offering.shift
+        if shift == 'both' and existing_shift in ['morning', 'evening']:
+            return JsonResponse({
+                'success': False,
+                'message': 'Teacher is already assigned this course for a specific shift (morning or evening) and cannot be assigned for both shifts.'
+            })
+        if existing_shift == 'both' and shift in ['morning', 'evening']:
+            return JsonResponse({
+                'success': False,
+                'message': 'Teacher is already assigned this course for both shifts and cannot be assigned for a specific shift (morning or evening).'
+            })
 
     active_students = Student.objects.filter(
         program=program,
@@ -782,6 +841,7 @@ def save_course_offering(request):
             'success': False,
             'message': f'Error saving course offering: {str(e)}'
         })
+        
 @login_required
 def save_venue(request):
     if request.method != "POST" or not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
@@ -1082,7 +1142,7 @@ def get_timetable_slot(request):
 @login_required
 @require_POST
 def edit_timetable_slot(request):
-    slot_id = request.POST.get('slot_id')
+    slot_id = request.POST.get('slot_id')  
     try:
         slot = TimetableSlot.objects.get(id=slot_id)
         slot.day = request.POST.get('day')
@@ -2516,7 +2576,7 @@ def load_attendance(request):
         return JsonResponse({'success': False, 'message': 'Course offering ID and date are required.'})
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
-@login_required
+@login_required   
 def edit_attendance(request):
     if request.method == "POST":
         attendance_id = request.POST.get('attendance_id')

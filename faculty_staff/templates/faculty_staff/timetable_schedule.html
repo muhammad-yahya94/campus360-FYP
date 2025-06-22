@@ -20,7 +20,7 @@
     </a>
     <button id="openVenueModal" class="inline-flex items-center px-4 py-2 border border-teal-500 text-teal-500 bg-white hover:bg-teal-50 rounded-lg shadow-sm">
       <i class="fas fa-plus mr-2"></i>
-      Add New Venue
+      Add New Room
     </button>
   </div>
 
@@ -28,7 +28,7 @@
   <div id="addVenueModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden transition-opacity duration-300 z-50">
     <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
       <div class="flex justify-between items-center mb-4">
-        <h5 class="text-xl font-semibold text-gray-900">Add New Venue</h5>
+        <h5 class="text-xl font-semibold text-gray-900">Add New Room</h5>
         <button id="closeVenueModal" class="text-gray-500 hover:text-gray-700">
           <i class="fas fa-times"></i>
         </button>
@@ -38,12 +38,12 @@
         {% csrf_token %}
         <input type="hidden" name="department_id" value="{{ department.id }}">
         <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700">Venue Name</label>
+          <label class="block text-sm font-medium text-gray-700">Class Room</label>
           <input type="text" name="name" id="venue_name" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
           <span id="name-error" class="text-red-500 text-sm"></span>
         </div>
         <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700">Capacity</label>
+          <label class="block text-sm font-medium text-gray-700">Room No.</label>
           <input type="number" name="capacity" id="capacity" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" min="1" required>
           <span id="capacity-error" class="text-red-500 text-sm"></span>
         </div>
@@ -53,7 +53,7 @@
         </div>
         <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition duration-200">
           <i class="fas fa-save mr-2"></i>
-          Save Venue
+          Save Room
         </button>
       </form>
     </div>
@@ -95,9 +95,9 @@
               <span id="end-time-error" class="text-red-500 text-sm"></span>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Venue</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Room</label>
               <select name="venue_id" id="venue_id" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500 select2" required>
-                <option value="">Search for a venue...</option>
+                <option value="">Search for a Room...</option>
               </select>
               <span id="venue-error" class="text-red-500 text-sm"></span>
             </div>
@@ -130,9 +130,9 @@
                 <span id="morning-end-error" class="text-red-500 text-sm"></span>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Venue</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Room</label>
                 <select name="morning_venue_id" id="morning_venue_id" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500 select2" required>
-                  <option value="">Search for a venue...</option>
+                  <option value="">Search for a room...</option>
                 </select>
                 <span id="morning-venue-error" class="text-red-500 text-sm"></span>
               </div>
@@ -164,9 +164,9 @@
                 <span id="evening-end-error" class="text-red-500 text-sm"></span>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Venue</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Room</label>
                 <select name="evening_venue_id" id="evening_venue_id" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500 select2" required>
-                  <option value="">Search for a venue...</option>
+                  <option value="">Search for a room...</option>
                 </select>
                 <span id="evening-venue-error" class="text-red-500 text-sm"></span>
               </div>
@@ -194,7 +194,8 @@
             <tr>
               <th class="p-3 font-semibold">Day</th>
               <th class="p-3 font-semibold">Time</th>
-              <th class="p-3 font-semibold">Venue</th>
+              <th class="p-3 font-semibold">Class Room</th>
+              <th class="p-3 font-semibold">Room No.</th>
               <th class="p-3 font-semibold"></th>
             </tr>
           </thead>
@@ -204,6 +205,7 @@
               <td class="p-3">{{ slot.get_day_display }}</td>
               <td class="p-3">{{ slot.start_time|time:"H:i" }}–{{ slot.end_time|time:"H:i" }}</td>
               <td class="p-3">{{ slot.venue.name }}</td>
+               <td class="p-3">{{ slot.venue.capacity }}</td>
               <td class="p-3">
                 <button class="delete-timetable-slot inline-flex items-center px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200" data-slot-id="{{ slot.id }}">
                   <i class="fas fa-trash mr-2"></i>
@@ -274,7 +276,7 @@ $(document).ready(function() {
   // Initialize Select2 for venue dropdowns
   const initializeSelect2 = (selector) => {
     $(selector).select2({
-      placeholder: "Search for a venue...",
+      placeholder: "Search for a room...",
       minimumInputLength: 1,
       allowClear: true,
       ajax: {
@@ -331,17 +333,17 @@ $(document).ready(function() {
 
     let isValid = true;
     if (!$('#venue_name').val().trim()) {
-      $('#name-error').text('Venue name is required.');
+      $('#name-error').text('Class Room is required.');
       isValid = false;
     }
     if (!$('#capacity').val() || $('#capacity').val() <= 0) {
-      $('#capacity-error').text('Capacity must be a positive number.');
+      $('#capacity-error').text('Room No. must be a positive number.');
       isValid = false;
     }
 
     if (!isValid) {
       submitBtn.prop('disabled', false);
-      submitBtn.html('<i class="fas fa-save mr-2"></i> Save Venue');
+      submitBtn.html('<i class="fas fa-save mr-2"></i> Save Room');
       isSubmitting = false;
       return;
     }
@@ -387,7 +389,7 @@ $(document).ready(function() {
       },
       complete: function() {
         submitBtn.prop('disabled', false);
-        submitBtn.html('<i class="fas fa-save mr-2"></i> Save Venue');
+        submitBtn.html('<i class="fas fa-save mr-2"></i> Save Room');
         isSubmitting = false;
       }
     });
@@ -561,4 +563,4 @@ $(document).ready(function() {
   });
 });
 </script>
-{% endblock %}
+{% endblock %}    

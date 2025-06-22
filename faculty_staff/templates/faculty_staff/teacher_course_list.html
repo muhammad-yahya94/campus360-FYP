@@ -13,33 +13,33 @@
   </div>
 
   {% if course_offerings %}
-    <!-- Table with Horizontal Slider -->
+    <!-- Table with Horizontal Bottom Slider -->
     <div class="bg-white shadow-xl rounded-lg overflow-hidden">
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto" style="max-width: 100%;">
         <table class="table w-full min-w-[800px]">
           <thead>
             <tr>
-              <th class="text-sm min-w-[80px]">Code</th>
-              <th class="text-sm min-w-[120px]">Course</th>
-              <th class="text-sm min-w-[100px] hidden sm:table-cell">Dept</th>
-              <th class="text-sm min-w-[100px] hidden sm:table-cell">Program</th>
-              <th class="text-sm min-w-[100px]">Sem</th>
-              <th class="text-sm min-w-[80px] hidden lg:table-cell">Sem No.</th>
-              <th class="text-sm min-w-[100px] hidden lg:table-cell">Session</th>
-              <th class="text-sm min-w-[80px] hidden md:table-cell">Shift</th>
-              <th class="text-sm min-w-[120px]">Actions</th>
+              <th class="text-sm min-w-[80px] sticky top-0 bg-white z-10">Code</th>
+              <th class="text-sm min-w-[120px] sticky top-0 bg-white z-10">Course</th>
+              <th class="text-sm min-w-[100px] sticky top-0 bg-white z-10 hidden sm:table-cell">Dept</th>
+              <th class="text-sm min-w-[100px] sticky top-0 bg-white z-10 hidden sm:table-cell">Program</th>
+              <th class="text-sm min-w-[100px] sticky top-0 bg-white z-10">Sem</th>
+              <th class="text-sm min-w-[80px] sticky top-0 bg-white z-10 hidden lg:table-cell">Sem No.</th>
+              <th class="text-sm min-w-[100px] sticky top-0 bg-white z-10 hidden lg:table-cell">Session</th>
+              <th class="text-sm min-w-[80px] sticky top-0 bg-white z-10 hidden md:table-cell">Shift</th>
+              <th class="text-sm min-w-[120px] sticky top-0 bg-white z-10">Actions</th>
             </tr>
           </thead>
           <tbody>
             {% for offering in course_offerings %}
               <tr class="hover">
                 <td class="text-sm">{{ offering.course.code }}</td>
-                <td class="text-sm truncate max-w-[120px]">{{ offering.course.name }}</td>
-                <td class="text-sm truncate max-w-[100px] hidden sm:table-cell">{{ offering.department.name }}</td>
-                <td class="text-sm truncate max-w-[100px] hidden sm:table-cell">{{ offering.program.name }}</td>
-                <td class="text-sm truncate max-w-[100px]">{{ offering.semester.name }}</td>
+                <td class="text-sm">{{ offering.course.name }}</td>
+                <td class="text-sm hidden sm:table-cell">{{ offering.department.name }}</td>
+                <td class="text-sm hidden sm:table-cell">{{ offering.program.name }}</td>
+                <td class="text-sm">{{ offering.semester.name }}</td>
                 <td class="text-sm hidden lg:table-cell">{{ offering.semester.number }}</td>
-                <td class="text-sm truncate max-w-[100px] hidden lg:table-cell">{{ offering.academic_session.name }}</td>
+                <td class="text-sm hidden lg:table-cell">{{ offering.academic_session.name }}</td>
                 <td class="text-sm hidden md:table-cell">{{ offering.shift|capfirst }}</td>
                 <td>
                   <!-- Desktop: Inline Buttons -->
@@ -49,7 +49,7 @@
                     <a href="{% url 'faculty_staff:attendance' %}?course_offering_id={{ offering.id }}"
                        class="btn btn-info btn-sm text-sm">Attendance</a>
                     <a href="{% url 'faculty_staff:study_materials' %}?course_offering_id={{ offering.id }}"
-                       class="btn btn-success btn-sm text-sm">Materials</a>
+                       class="btn btn-success btn-sm text-sm">Course content</a>
                     <a href="{% url 'faculty_staff:assignments' %}?course_offering_id={{ offering.id }}"
                        class="btn btn-warning btn-sm text-sm">Assignments</a>
                   </div>
@@ -91,3 +91,60 @@
   {% endif %}
 </div>
 {% endblock %}
+
+<style>
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .table th,
+  .table td {
+    padding: 0.75rem;
+    vertical-align: middle;
+    white-space: normal; /* Allow text to wrap instead of truncate */
+    text-overflow: unset; /* Remove text overflow clipping */
+  }
+  .table th {
+    background-color: #f9fafb;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .overflow-x-auto {
+    overflow-x: auto; /* Enable horizontal scrolling */
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on mobile */
+  }
+  .overflow-x-auto::-webkit-scrollbar {
+    height: 8px;
+  }
+  .overflow-x-auto::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+  .overflow-x-auto::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+  }
+  .overflow-x-auto::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+  /* Add gradient effect for scrollable area */
+  .overflow-x-auto::before,
+  .overflow-x-auto::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 20px;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .overflow-x-auto::before {
+    left: 0;
+    background: linear-gradient(to right, rgba(255, 255, 255, 0.8), transparent);
+  }
+  .overflow-x-auto::after {
+    right: 0;
+    background: linear-gradient(to left, rgba(255, 255, 255, 0.8), transparent);
+  }
+</style>

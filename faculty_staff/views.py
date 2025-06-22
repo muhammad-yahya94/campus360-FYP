@@ -390,6 +390,7 @@ class CourseForm(forms.Form):
     code = forms.CharField(max_length=10, required=True, help_text="Enter the unique course code (e.g., CS101).")
     name = forms.CharField(max_length=200, required=True, help_text="Enter the full name of the course.")
     credits = forms.IntegerField(min_value=1, required=True, help_text="Enter the number of credit hours.")
+    lab_work = forms.IntegerField(min_value=0, required=False, help_text="Enter the number of lab work.")
     is_active = forms.BooleanField(required=False, initial=True, help_text="Check this if the course is active.")
     description = forms.CharField(widget=forms.Textarea, required=False, help_text="Provide a description.")
 
@@ -412,6 +413,7 @@ def add_course(request):
                 code=code,
                 name=form.cleaned_data['name'],
                 credits=form.cleaned_data['credits'],
+                lab_work=form.cleaned_data['lab_work'],
                 is_active=form.cleaned_data['is_active'],
                 description=form.cleaned_data['description']
             )
@@ -1229,7 +1231,9 @@ def weekly_timetable(request):
             [
                 {
                     'course_code': slot.course_offering.course.code,
+                    'course_name': slot.course_offering.course.name,
                     'venue': slot.venue.name,
+                    'room_no':slot.venue.capacity,
                     'start_time': slot.start_time.strftime('%H:%M'),
                     'end_time': slot.end_time.strftime('%H:%M'),
                     'shift': (
@@ -1308,7 +1312,9 @@ def my_timetable(request):
             [
                 {
                     'course_code': slot.course_offering.course.code,
+                    'course_name': slot.course_offering.course.name,
                     'venue': slot.venue.name,
+                    'room_no':slot.venue.capacity,
                     'start_time': slot.start_time.strftime('%H:%M'),
                     'end_time': slot.end_time.strftime('%H:%M'),
                     'shift': (

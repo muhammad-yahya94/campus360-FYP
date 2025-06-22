@@ -13,6 +13,7 @@ class Course(models.Model):
     code = models.CharField(max_length=10, unique=True, help_text="Enter the unique course code (e.g., CS101).")  # e.g., CS101
     name = models.CharField(max_length=200, help_text="Enter the full name of the course (e.g., Introduction to Programming).")  # e.g., Introduction to Programming
     credits = models.PositiveIntegerField(help_text="Enter the number of credit hours for this course.")  # e.g., 3
+    lab_work = models.IntegerField(default=0, help_text="Enter the number of lab hours per week for this course (if applicable).")  # e.g., 2
     is_active = models.BooleanField(default=True, help_text="Check this if the course is currently active and can be offered.")
     description = models.TextField(blank=True, help_text="Provide a brief description or syllabus summary for the course.")
     prerequisites = models.ManyToManyField('self', blank=True, symmetrical=False, related_name='required_for', help_text="Select any courses that are required to be completed before taking this course (optional).")
@@ -96,7 +97,6 @@ class TimetableSlot(models.Model):
         ('thursday', 'Thursday'),
         ('friday', 'Friday'),
         ('saturday', 'Saturday'),
-        ('sunday', 'Sunday'),
     ]
 
     course_offering = models.ForeignKey('CourseOffering', on_delete=models.CASCADE, related_name='timetable_slots')

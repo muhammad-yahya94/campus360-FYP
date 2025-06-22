@@ -53,6 +53,15 @@
                     </div>
                     <div class="form-control">
                         <label class="label">
+                            <span class="label-text">Lab work</span>
+                        </label>
+                        <input type="number" name="lab_work" id="lab_work" class="input input-bordered" value="{{ form.lab_work.value|default:0 }}" min="0" required>
+                        {% if form.errors.lab_work %}
+                        <span class="text-error">{{ form.errors.lab_work.0 }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
                             <span class="label-text">Active</span>
                         </label>
                         <select name="is_active" id="is_active" class="select select-bordered">

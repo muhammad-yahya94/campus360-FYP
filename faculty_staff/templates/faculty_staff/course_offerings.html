@@ -218,18 +218,18 @@
           <table class="table table-zebra w-full min-w-[1320px] table-fixed" aria-label="Course Offerings">
             <thead class="bg-base-200">
               <tr>
-                <th class="text-sm w-[120px] text-center">Code</th>
-                <th class="text-sm w-[120px] text-left">Course</th>
-                <th class="text-sm w-[120px] text-left">Program</th>
-                <th class="text-sm w-[120px] text-left">Dept</th>
-                <th class="text-sm w-[120px] text-left">Teacher</th>
-                <th class="text-sm w-[120px] text-left">prof Dept</th>
-                <th class="text-sm w-[120px] text-left">Session</th>
-                <th class="text-sm w-[120px] text-center">Sem</th>
-                <th class="text-sm w-[120px] text-center">Type</th>
-                <th class="text-sm w-[120px] text-center">Shift</th>
-                <th class="text-sm w-[120px] text-center">Active</th>
-                <th class="text-sm w-[120px] text-center">Actions</th>
+                <th class="text-sm w-[150px] text-center">Code</th>
+                <th class="text-sm w-[150px] text-left">Course</th>
+                <th class="text-sm w-[150px] text-left">Program</th>
+                <th class="text-sm w-[150px] text-left">Dept</th>
+                <th class="text-sm w-[150px] text-left">Teacher</th>
+                <th class="text-sm w-[150px] text-left">prof Dept</th>
+                <th class="text-sm w-[150px] text-left">Session</th>
+                <th class="text-sm w-[150px] text-center">Sem</th>
+                <th class="text-sm w-[150px] text-center">Type</th>
+                <th class="text-sm w-[150px] text-center">Shift</th>
+                <th class="text-sm w-[150px] text-center">Active</th>
+                <th class="text-sm w-[150px] text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -311,14 +311,15 @@
             <thead class="bg-base-200">
               <tr>
                 <th class="text-sm w-[120px] sticky top-0 z-20 border-r border-b border-base-300 text-center">Code</th>
-                <th class="text-sm w-[120px] sticky top-0 z-20 border-r border-b border-base-300 text-left">Course</th>
-                <th class="text-sm w-[120px] sticky top-0 z-20 border-r border-b border-base-300 text-left">Teacher</th>
-                <th class="text-sm w-[120px] sticky top-0 z-20 border-r border-b border-base-300 text-left">Program</th>
+                <th class="text-sm w-[150px] sticky top-0 z-20 border-r border-b border-base-300 text-left">Course</th>
+                <th class="text-sm w-[150px] sticky top-0 z-20 border-r border-b border-base-300 text-left">Teacher</th>
+                <th class="text-sm w-[150px] sticky top-0 z-20 border-r border-b border-base-300 text-left">Program</th>
                 <th class="text-sm w-[120px] sticky top-0 z-20 border-r border-b border-base-300 text-center">Sem</th>
                 <th class="text-sm w-[120px] sticky top-0 z-20 border-r border-b border-base-300 text-center">Shift</th>
                 <th class="text-sm w-[120px] sticky top-0 z-20 border-r border-b border-base-300 text-center">Day</th>
                 <th class="text-sm w-[120px] sticky top-0 z-20 border-r border-b border-base-300 text-center">Time</th>
-                <th class="text-sm w-[120px] sticky top-0 z-20 border-r border-b border-base-300 text-left">Venue</th>
+                <th class="text-sm w-[150px] sticky top-0 z-20 border-r border-b border-base-300 text-left">Class Room</th>
+                <th class="text-sm w-[100px] sticky top-0 z-20 border-r border-b border-base-300 text-left">Room no.</th>
                 <th class="text-sm w-[120px] sticky top-0 z-20 border-b border-base-300 text-center">Actions</th>
               </tr>
             </thead>
@@ -334,6 +335,7 @@
                 <td class="text-sm text-center border-r border-base-300">{{ slot.get_day_display }}</td>
                 <td class="text-sm text-center border-r border-base-300">{{ slot.start_time|time:"H:i" }}–{{ slot.end_time|time:"H:i" }}</td>
                 <td class="text-sm text-left border-r border-base-300 overflow-hidden text-ellipsis whitespace-nowrap">{{ slot.venue.name }}</td>
+                                <td class="text-sm text-left border-r border-base-300 overflow-hidden text-ellipsis whitespace-nowrap">{{ slot.venue.capacity }}</td>
                 <td class="text-sm text-center">
                   <div class="flex flex-row gap-1 flex-nowrap justify-center">
                     <label for="edit-timetable-modal"

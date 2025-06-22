@@ -45,8 +45,10 @@
             <div id="slots-{{ day.day_value }}" class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for slot in day.slots %}
                 <div class="relative p-4 rounded-lg shadow-md transition duration-200 {% if slot.shift == 'Morning' %}bg-blue-100 border-blue-300 hover:bg-blue-200{% elif slot.shift == 'Evening' %}bg-purple-100 border-purple-300 hover:bg-purple-200{% else %}bg-green-100 border-green-300 hover:bg-green-200{% endif %}" data-tooltip="Teacher: {{ slot.teacher }}<br>Program: {{ slot.program }}">
-                  <p class="font-semibold text-lg {% if slot.shift == 'Morning' %}text-blue-800{% elif slot.shift == 'Evening' %}text-purple-800{% else %}text-green-800{% endif %}">{{ slot.course_code }}</p>
-                  <p class="text-sm text-gray-600"><i class="fas fa-map-marker-alt mr-1"></i>{{ slot.venue }}</p>
+                  <p class="font-semibold text-lg {% if slot.shift == 'Morning' %}text-blue-800{% elif slot.shift == 'Evening' %}text-purple-800{% else %}text-green-800{% endif %}">
+                    {{ slot.course_code }} - {{ slot.course_name }}
+                  </p>
+                  <p class="text-sm text-gray-600"><i class="fas fa-map-marker-alt mr-1"></i>{{ slot.venue }} - room no. {{ slot.room_no }}</p>
                   <p class="text-sm text-gray-600"><i class="fas fa-clock mr-1"></i>{{ slot.start_time }}–{{ slot.end_time }}</p>
                   <p class="text-sm italic {% if slot.shift == 'Morning' %}text-blue-600{% elif slot.shift == 'Evening' %}text-purple-600{% else %}text-green-600{% endif %}">{{ slot.shift }}</p>
                 </div>

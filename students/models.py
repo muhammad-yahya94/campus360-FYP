@@ -28,7 +28,6 @@ class Student(models.Model):
     enrollment_date = models.DateField(help_text="Select the official date when the student was enrolled.")
     graduation_date = models.DateField(null=True, blank=True, help_text="Select the date when the student graduated (optional).")
     program = models.ForeignKey(Program, on_delete=models.CASCADE, related_name='students', help_text="The program the student is enrolled in")
-    current_semester = models.ForeignKey(Semester, on_delete=models.PROTECT, related_name='current_students', help_text="Current semester of the student")
     
     current_status = models.CharField(
         max_length=20,
@@ -51,22 +50,6 @@ class Student(models.Model):
 
     def __str__(self):
         return f"{self.applicant.full_name} ({self.university_roll_no})"
-
-    def save(self, *args, **kwargs):
-        # Automatically create a user if not exists
-        if not self.user and self.applicant.user:
-            self.user = self.applicant.user
-            
-        # If this is a new student, set their current semester to the first semester of their program
-        if not self.pk and not self.current_semester:
-            first_semester = Semester.objects.filter(
-                program=self.program,
-                number=1
-            ).first()
-            if first_semester:
-                self.current_semester = first_semester
-                
-        super().save(*args, **kwargs)
         
 
 class StudentSemesterEnrollment(models.Model):

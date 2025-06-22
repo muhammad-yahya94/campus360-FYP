@@ -89,34 +89,25 @@
     .photo-preview-container.has-image::before {
         content: "";
     }
-    .form-select{
-        outline:none;
+    .form-select {
+        outline: none;
     }
-    
 </style>
 
 <!-- Navbar Start -->
 <nav class="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0">
-    <!-- User Icon and Name -->
     <div class="d-flex align-items-center me-auto px-4">
         <i class="fa fa-user fa-lg me-2 text-primary"></i>
-        <span class="fw-bold">{{ request.user.get_full_name|default:request.user.first_name }} </span>
+        <span class="fw-bold">{{ request.user.get_full_name|default:request.user.first_name }}</span>
     </div>
-
-    <!-- Toggle Button for Mobile -->
     <button class="navbar-toggler me-4" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
     </button>
-
-    <!-- Navbar Links -->
     <div class="collapse navbar-collapse" id="navbarCollapse">
         <div class="navbar-nav ms-auto">
             <a href="{% url 'my_applications' %}" class="nav-item nav-link {% if request.path == '/apply/my-applications/' %}active{% endif %}">My Applications</a>
             <a href="{% url 'apply' %}" class="nav-item nav-link {% if request.path == '/apply/' %}active{% endif %}">Application Form</a>
-            <a href="{% url 'home' %}" class="btn btn-primary py-4 px-lg-5 d-none d-lg-block">
-                Go Back<i class="fa fa-arrow-right ms-3"></i>
-            </a>
-            <!-- Mobile version of Go Back button -->
+            <a href="{% url 'home' %}" class="btn btn-primary py-4 px-lg-5 d-none d-lg-block">Go Back<i class="fa fa-arrow-right ms-3"></i></a>
             <a href="{% url 'home' %}" class="nav-item nav-link d-lg-none">Go Back</a>
         </div>
     </div>
@@ -161,8 +152,7 @@
                         <div class="row mt-4" id="facultyContainer">
                             {% for faculty in faculties %}
                             <div class="col-md-4 mb-3">
-                                <div class="card program-card" data-faculty="{{ faculty.id }}"
-                                     data-faculty-name="{{ faculty.name }}">
+                                <div class="card program-card" data-faculty="{{ faculty.id }}" data-faculty-name="{{ faculty.name }}">
                                     <div class="card-body text-center">
                                         <i class="fas {{ faculty.icon|default:'fa-building' }} faculty-icon text-primary"></i>
                                         <h5>{{ faculty.name }}</h5>
@@ -174,8 +164,7 @@
                         </div>
                     </div>
                     <div class="text-end mt-4">
-                        <button class="btn btn-primary" id="toStep2" disabled>Next <i
-                                class="fas fa-arrow-right ms-2"></i></button>
+                        <button class="btn btn-primary" id="toStep2" disabled>Next <i class="fas fa-arrow-right ms-2"></i></button>
                     </div>
                 </div>
 
@@ -189,10 +178,8 @@
                         </div>
                     </div>
                     <div class="d-flex justify-content-between mt-4">
-                        <button class="btn btn-outline-secondary" id="backToStep1"><i
-                                class="fas fa-arrow-left me-2"></i> Back</button>
-                        <button class="btn btn-primary" id="toStep3" disabled>Next <i
-                                class="fas fa-arrow-right ms-2"></i></button>
+                        <button class="btn btn-outline-secondary" id="backToStep1"><i class="fas fa-arrow-left me-2"></i> Back</button>
+                        <button class="btn btn-primary" id="toStep3" disabled>Next <i class="fas fa-arrow-right ms-2"></i></button>
                     </div>
                 </div>
 
@@ -209,10 +196,8 @@
                         </div>
                     </div>
                     <div class="d-flex justify-content-between mt-4">
-                        <button class="btn btn-outline-secondary" id="backToStep2"><i
-                                class="fas fa-arrow-left me-2"></i> Back</button>
-                        <button class="btn btn-primary" id="toStep4" disabled>Next <i
-                                class="fas fa-arrow-right ms-2"></i></button>
+                        <button class="btn btn-outline-secondary" id="backToStep2"><i class="fas fa-arrow-left me-2"></i> Back</button>
+                        <button class="btn btn-primary" id="toStep4" disabled>Next <i class="fas fa-arrow-right ms-2"></i></button>
                     </div>
                 </div>
 
@@ -221,11 +206,13 @@
                     <div class="admission-step">
                         <h4><i class="fas fa-file-alt me-2"></i>Admission Form</h4>
                         <p class="text-muted" id="selectedProgramText">Applying for: <span id="displayProgram"></span></p>
+                        <p class="text-muted" id="selectedSessionText">Academic Session: <span id="displaySession"></span></p>
                         <form id="admissionForm" method="POST" enctype="multipart/form-data" action="{% url 'submit_application' %}">
                             {% csrf_token %}
                             <input type="hidden" id="selectedFacultyId" name="faculty">
                             <input type="hidden" id="selectedDepartmentId" name="department">
                             <input type="hidden" id="selectedProgramId" name="program">
+                            <input type="hidden" id="selectedSessionId" name="session">
 
                             <!-- Applicant Details Section -->
                             <div class="card mb-4 border-0">
@@ -236,8 +223,7 @@
                                     <div class="row mb-4">
                                         <div class="col-md-3">
                                             <label for="applicantPhoto" class="form-label text-dark">Recent Photograph</label>
-                                            <input type="file" class="form-control form-control-lg" id="applicantPhoto"
-                                                   name="applicant_photo" accept="image/*" required>
+                                            <input type="file" class="form-control form-control-lg" id="applicantPhoto" name="applicant_photo" accept="image/*" required>
                                         </div>
                                         <div class="col-md-3">
                                             <div class="photo-preview-container" id="photoPreviewContainer">
@@ -248,35 +234,29 @@
                                     <div class="row mb-4 g-3">
                                         <div class="col-md-4">
                                             <label for="fullName" class="form-label text-dark">Full Name</label>
-                                            <input type="text" class="form-control form-control-lg" id="fullName"
-                                                   name="full_name" required>
+                                            <input type="text" class="form-control form-control-lg" id="fullName" name="full_name" required>
                                         </div>
                                         <div class="col-md-4">
                                             <label for="religion" class="form-label text-dark">Religion</label>
-                                            <input type="text" class="form-control form-control-lg" id="religion"
-                                                   name="religion" required>
+                                            <input type="text" class="form-control form-control-lg" id="religion" name="religion" required>
                                         </div>
                                         <div class="col-md-4">
                                             <label for="caste" class="form-label text-dark">Caste</label>
-                                            <input type="text" class="form-control form-control-lg" id="caste"
-                                                   name="caste" required>
+                                            <input type="text" class="form-control form-control-lg" id="caste" name="caste" required>
                                         </div>
                                     </div>
                                     <div class="row mb-4 g-3">
                                         <div class="col-md-4">
                                             <label for="cnic" class="form-label text-dark">CNIC No.</label>
-                                            <input type="text" class="form-control form-control-lg" id="cnic"
-                                                   name="cnic" placeholder="XXXXX-XXXXXXX-X" required>
+                                            <input type="text" class="form-control form-control-lg" id="cnic" name="cnic" placeholder="XXXXX-XXXXXXX-X" required>
                                         </div>
                                         <div class="col-md-4">
                                             <label for="dob" class="form-label text-dark">Date of Birth</label>
-                                            <input type="date" class="form-control form-control-lg" id="dob" name="dob"
-                                                   required>
+                                            <input type="date" class="form-control form-control-lg" id="dob" name="dob" required>
                                         </div>
                                         <div class="col-md-4">
                                             <label for="contactNo" class="form-label text-dark">Contact No.</label>
-                                            <input type="tel" class="form-control form-control-lg" id="contactNo"
-                                                   name="contact_no" required>
+                                            <input type="tel" class="form-control form-control-lg" id="contactNo" name="contact_no" required>
                                         </div>
                                     </div>
                                     <div class="row mb-4 g-3">
@@ -290,8 +270,7 @@
                                         </div>
                                         <div class="col-md-8">
                                             <label for="identificationMark" class="form-label text-dark">Identification Mark</label>
-                                            <textarea class="form-control form-control-lg" id="identificationMark"
-                                                      name="identification_mark" rows="2"></textarea>
+                                            <textarea class="form-control form-control-lg" id="identificationMark" name="identification_mark" rows="2"></textarea>
                                         </div>
                                     </div>
                                 </div>
@@ -306,30 +285,25 @@
                                     <div class="row mb-4 g-3">
                                         <div class="col-md-4">
                                             <label for="fatherName" class="form-label text-dark">Full Name</label>
-                                            <input type="text" class="form-control form-control-lg" id="fatherName"
-                                                   name="father_name" required>
+                                            <input type="text" class="form-control form-control-lg" id="fatherName" name="father_name" required>
                                         </div>
                                         <div class="col-md-4">
                                             <label for="fatherOccupation" class="form-label text-dark">Occupation</label>
-                                            <input type="text" class="form-control form-control-lg" id="fatherOccupation"
-                                                   name="father_occupation" required>
+                                            <input type="text" class="form-control form-control-lg" id="fatherOccupation" name="father_occupation" required>
                                         </div>
                                         <div class="col-md-4">
                                             <label for="fatherCnic" class="form-label text-dark">CNIC No.</label>
-                                            <input type="text" class="form-control form-control-lg" id="fatherCnic"
-                                                   name="father_cnic" placeholder="XXXXX-XXXXXXX-X" required>
+                                            <input type="text" class="form-control form-control-lg" id="fatherCnic" name="father_cnic" placeholder="XXXXX-XXXXXXX-X" required>
                                         </div>
                                     </div>
                                     <div class="row mb-4 g-3">
                                         <div class="col-md-6">
                                             <label for="monthlyIncome" class="form-label text-dark">Monthly Income</label>
-                                            <input type="number" class="form-control form-control-lg" id="monthlyIncome"
-                                                   name="monthly_income" required>
+                                            <input type="number" class="form-control form-control-lg" id="monthlyIncome" name="monthly_income" required>
                                         </div>
                                         <div class="col-md-6">
                                             <label for="relationship" class="form-label text-dark">Relationship with Applicant</label>
-                                            <select class="form-select form-select-lg" id="relationship"
-                                                    name="relationship" required>
+                                            <select class="form-select form-select-lg" id="relationship" name="relationship" required>
                                                 <option value="">Select</option>
                                                 <option value="father">Father</option>
                                                 <option value="guardian">Guardian</option>
@@ -339,8 +313,7 @@
                                     <div class="row">
                                         <div class="col-md-12">
                                             <label for="permanentAddress" class="form-label text-dark">Permanent Address</label>
-                                            <textarea class="form-control form-control-lg" id="permanentAddress"
-                                                      name="permanent_address" rows="3" required></textarea>
+                                            <textarea class="form-control form-control-lg" id="permanentAddress" name="permanent_address" rows="3" required></textarea>
                                         </div>
                                     </div>
                                 </div>
@@ -353,7 +326,6 @@
                                 </div>
                                 <div class="card-body">
                                     <div id="academicQualificationsContainer">
-                                        <!-- Initial row for academic qualification -->
                                         <div class="academic-qualification-row mb-4" data-index="0">
                                             <input type="hidden" name="academic_levels[]" value="">
                                             <div class="row g-3">
@@ -389,9 +361,7 @@
                                                 </div>
                                                 <div class="col-md-3">
                                                     <label for="academic_certificate_0" class="form-label text-dark">Certificate/Transcript</label>
-                                                    <input type="file" class="form-control form-control-lg" id="academic_certificate_0" 
-                                                           name="academic_certificate[]" accept=".pdf,.jpg,.jpeg,.png"
-                                                           onchange="validateFile(this, 0)">
+                                                    <input type="file" class="form-control form-control-lg" id="academic_certificate_0" name="academic_certificate[]" accept=".pdf,.jpg,.jpeg,.png" onchange="validateFile(this, 0)">
                                                     <small class="text-muted">Max size: 5MB, Formats: PDF, JPG, PNG</small>
                                                 </div>
                                                 <div class="col-md-2">
@@ -451,9 +421,7 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <button type="button" class="btn btn-secondary mt-3" onclick="addActivity()">
-                                        <i class="fas fa-plus"></i> Add Another Activity
-                                    </button>
+                                    <button type="button" class="btn btn-primary mt-3" id="addActivityRow">Add Another Activity</button>
                                 </div>
                             </div>
 
@@ -461,8 +429,7 @@
                             <div class="form-check mb-4">
                                 <input class="form-check-input" type="checkbox" id="declaration" name="declaration" required>
                                 <label class="form-check-label text-dark" for="declaration">
-                                    I declare that all information provided is correct and complete. I understand that
-                                    providing false information may result in cancellation of admission.
+                                    I declare that all information provided is correct and complete. I understand that providing false information may result in cancellation of admission.
                                 </label>
                             </div>
 
@@ -472,8 +439,7 @@
                         </form>
                     </div>
                     <div class="d-flex justify-content-between mt-4">
-                        <button class="btn btn-outline-secondary" id="backToStep3"><i
-                                class="fas fa-arrow-left me-2"></i> Back</button>
+                        <button class="btn btn-outline-secondary" id="backToStep3"><i class="fas fa-arrow-left me-2"></i> Back</button>
                     </div>
                 </div>
             </div>
@@ -487,606 +453,622 @@
 <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
 
 <script>
-// Define the submit URL using Django's URL template tag
-const submitUrl = "{% url 'submit_application' %}";
+    // Define the submit URL using Django's URL template tag
+    const submitUrl = "{% url 'submit_application' %}";
 
-// Current selection tracking
-let currentSelection = {
-    faculty: null,
-    facultyName: null,
-    department: null,
-    departmentName: null,
-    program: null,
-    programName: null
-};
+    // Current selection tracking
+    let currentSelection = {
+        faculty: null,
+        facultyName: null,
+        department: null,
+        departmentName: null,
+        program: null,
+        programName: null,
+        session: null,
+        sessionName: null
+    };
 
-// Function to update the visible step
-function showStep(stepId, stepTabId) {
-    $('.tab-pane').removeClass('show active');
-    $(`#${stepId}`).addClass('show active');
-    $('.nv-pill').removeClass('active completed').addClass('disabled');
-    $(`#${stepTabId}`).removeClass('disabled').addClass('active');
-    for (let i = 1; i < parseInt(stepId.replace('step', '')); i++) {
-        $(`#step${i}-tab`).removeClass('disabled').addClass('completed');
-    }
-}
-
-// Function to show step without updating URL
-function navigateToStep(stepId, stepTabId) {
-    showStep(stepId, stepTabId);
-} 
-
-// Step 1: Faculty Selection
-$('.program-card[data-faculty]').click(function () {
-    $('.program-card').removeClass('active');
-    $(this).addClass('active');
-    currentSelection.faculty = $(this).data('faculty');
-    currentSelection.facultyName = $(this).data('faculty-name');
-    $('#toStep2').prop('disabled', false);
-});
-
-// Step 2: Department Selection
-$('#toStep2').click(function () {
-    if (!currentSelection.faculty) return;
-    $('#displayFaculty').text(currentSelection.facultyName);
-    $('#selectedFacultyId').val(currentSelection.faculty);
-
-    $.ajax({
-        url: "{% url 'get_departments' %}",
-        method: 'GET',
-        data: { faculty_id: currentSelection.faculty },
-        success: function (response) {
-            let departmentsHtml = '';
-            response.departments.forEach(dept => {
-                departmentsHtml += `
-                    <div class="col-md-6 mb-3">
-                        <div class="card program-card department-card" 
-                             data-dept="${dept.id}" 
-                             data-dept-name="${dept.name}">
-                            <div class="card-body">
-                                <h5>${dept.name}</h5>
-                                <p class="text-muted">${dept.program_count} program(s)</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-            $('#departmentContainer').html(departmentsHtml);
-
-            $('.department-card').click(function () {
-                $('.department-card').removeClass('active');
-                $(this).addClass('active');
-                currentSelection.department = $(this).data('dept');
-                currentSelection.departmentName = $(this).data('dept-name');
-                $('#toStep3').prop('disabled', false);
-            });
-        },
-        error: function (xhr) {
-            console.error('Department AJAX error:', xhr);
-            alert("Error loading departments: " + (xhr.responseJSON?.message || "Please try again."));
+    // Function to update the visible step
+    function showStep(stepId, stepTabId) {
+        $('.tab-pane').removeClass('show active');
+        $(`#${stepId}`).addClass('show active');
+        $('.nv-pill').removeClass('active completed').addClass('disabled');
+        $(`#${stepTabId}`).removeClass('disabled').addClass('active');
+        for (let i = 1; i < parseInt(stepId.replace('step', '')); i++) {
+            $(`#step${i}-tab`).removeClass('disabled').addClass('completed');
         }
+    }
+
+    // Function to show step without updating URL
+    function navigateToStep(stepId, stepTabId) {
+        showStep(stepId, stepTabId);
+    }
+
+    // Step 1: Faculty Selection
+    $('.program-card[data-faculty]').click(function () {
+        $('.program-card').removeClass('active');
+        $(this).addClass('active');
+        currentSelection.faculty = $(this).data('faculty');
+        currentSelection.facultyName = $(this).data('faculty-name');
+        $('#toStep2').prop('disabled', false);
     });
 
-    navigateToStep('step2', 'step2-tab', '/apply/department/');
-});
-
-// Step 3: Program Selection
-$('#toStep3').click(function () {
-    if (!currentSelection.department) {
-        alert("Please select a department before proceeding.");
-        return;
-    }
-    $('#displayDepartment').text(currentSelection.departmentName);
-    $('#selectedDepartmentId').val(currentSelection.department);
-
-    $.ajax({
-        url: "{% url 'get_programs' %}",
-        method: 'GET',
-        data: { department_id: currentSelection.department },
-        success: function (response) {
-            let programsHtml = '';
-            if (response.length === 0) {
-                programsHtml = '<div class="col-12"><p class="text-muted">No programs available for this department.</p></div>';
-                $('#toStep4').prop('disabled', true);
-            } else {
-                response.forEach(program => {
-                    if (program.is_open) {
-                        programsHtml += `
-                            <div class="col-md-6 mb-3">
-                                <div class="card program-card program-option" 
-                                     data-program="${program.id}" 
-                                     data-program-name="${program.name}">
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-between">
-                                            <h5>${program.name}</h5>
-                                            <span class="badge badge-open">Open</span>
-                                        </div>
-                                        <p class="text-muted mt-2">${program.duration || '4-year'} degree program</p>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    }
-                });
-            }
-            $('#programContainer').html(programsHtml);
-
-            $('#programContainer').off('click', '.program-option').on('click', '.program-option', function () {
-                $('.program-option').removeClass('active');
-                $(this).addClass('active');
-                currentSelection.program = $(this).data('program');
-                currentSelection.programName = $(this).data('program-name');
-                $('#toStep4').prop('disabled', false);
-                console.log('Selected Program:', currentSelection.program, currentSelection.programName);
-            });
-
-            $('#toStep4').prop('disabled', true);
-        },
-        error: function (xhr) {
-            console.error('Program AJAX error:', xhr);
-            alert("Error loading programs: " + (xhr.responseJSON?.message || "Please try again."));
-            $('#programContainer').html('<div class="col-12"><p class="text-danger">Failed to load programs.</p></div>');
-            $('#toStep4').prop('disabled', true);
-        }
-    });
-
-    navigateToStep('step3', 'step3-tab', '/apply/program/');
-});
-
-// Step 4: Application Form
-$('#toStep4').click(function () {
-    if (!currentSelection.program) return;
-    $('#displayProgram').text(currentSelection.programName);
-    $('#selectedProgramId').val(currentSelection.program);
-    navigateToStep('step4', 'step4-tab', '/apply/form/');
-});
-
-// Back buttons
-$('#backToStep1').click(function () {
-    navigateToStep('step1', 'step1-tab', '/apply/faculty/');
-});
-
-$('#backToStep2').click(function () {
-    navigateToStep('step2', 'step2-tab', '/apply/department/');
-});
-
-$('#backToStep3').click(function () {
-    navigateToStep('step3', 'step3-tab', '/apply/program/');
-});
-
-// Handle browser back/forward navigation
-window.addEventListener('popstate', function (event) {
-    if (event.state && event.state.stepId && event.state.stepTabId) {
-        showStep(event.state.stepId, event.state.stepTabId);
-    } else {
-        showStep('step1', 'step1-tab');
-    }
-});
-
-// Initialize URL on page load
-history.replaceState({ stepId: 'step1', stepTabId: 'step1-tab' }, '', '/apply/');
-
-// Image Preview for Applicant Photo
-$('#applicantPhoto').on('change', function () {
-    const file = this.files[0];
-    const $preview = $('#photoPreview');
-    const $previewContainer = $('#photoPreviewContainer');
-
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            $preview.attr('src', e.target.result).show();
-            $previewContainer.addClass('has-image');
-        };
-        reader.readAsDataURL(file);
-    } else {
-        $preview.hide();
-        $previewContainer.removeClass('has-image');
-    }
-});
-
-// Dynamic Academic Qualifications
-let academicIndex = 0;
-$('#addAcademicRow').click(function () {
-    academicIndex++;
-    const newRow = `
-        <div class="academic-qualification-row mb-4" data-index="${academicIndex}">
-            <input type="hidden" name="academic_levels[]" value="">
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <label for="academic_degree_${academicIndex}" class="form-label text-dark">Degree Name</label>
-                    <input type="text" class="form-control form-control-lg" id="academic_degree_${academicIndex}" name="academic_degree[]" required>
-                </div>
-                <div class="col-md-3">
-                    <label for="academic_board_${academicIndex}" class="form-label text-dark">Board/University</label>
-                    <input type="text" class="form-control form-control-lg" id="academic_board_${academicIndex}" name="academic_board[]" required>
-                </div>
-                <div class="col-md-2">
-                    <label for="academic_passing_year_${academicIndex}" class="form-label text-dark">Passing Year</label>
-                    <input type="number" class="form-control form-control-lg" id="academic_passing_year_${academicIndex}" name="academic_passing_year[]" required>
-                </div>
-                <div class="col-md-2">
-                    <label for="academic_total_marks_${academicIndex}" class="form-label text-dark">Total Marks</label>
-                    <input type="number" class="form-control form-control-lg" id="academic_total_marks_${academicIndex}" 
-                           name="academic_total_marks[]" required min="0"
-                           onchange="validateTotalMarks(this)">
-                </div>
-                <div class="col-md-2">
-                    <label for="academic_marks_obtained_${academicIndex}" class="form-label text-dark">Marks Obtained</label>
-                    <input type="number" class="form-control form-control-lg" id="academic_marks_obtained_${academicIndex}" 
-                           name="academic_marks_obtained[]" required min="0"
-                           onchange="validateMarks(this)">
-                </div>
-            </div>
-            <div class="row g-3 mt-3">
-                <div class="col-md-3">
-                    <label for="academic_grade_${academicIndex}" class="form-label text-dark">Grade/Division/CGPA</label>
-                    <input type="text" class="form-control form-control-lg" id="academic_grade_${academicIndex}" name="academic_grade[]" required>
-                </div>
-                <div class="col-md-3">
-                    <label for="academic_major_${academicIndex}" class="form-label text-dark">Major Subject</label>
-                    <input type="text" class="form-control form-control-lg" id="academic_major_${academicIndex}" name="academic_major[]" required>
-                </div>
-                <div class="col-md-3">
-                    <label for="academic_certificate_${academicIndex}" class="form-label text-dark">Certificate/Transcript</label>
-                    <input type="file" class="form-control form-control-lg" id="academic_certificate_${academicIndex}" 
-                           name="academic_certificate[]" accept=".pdf,.jpg,.jpeg,.png"
-                           onchange="validateFile(this, ${academicIndex})">
-                    <small class="text-muted">Max size: 5MB, Formats: PDF, JPG, PNG</small>
-                </div>
-                <div class="col-md-2">
-                    <button type="button" class="btn btn-danger mt-4 remove-academic-row">Remove</button>
-                </div>
-            </div>
-        </div>
-    `;
-    $('#academicQualificationsContainer').append(newRow);
-    if ($('.academic-qualification-row').length > 1) {
-        $('.remove-academic-row').show();
-    }
-});
-
-$(document).on('click', '.remove-academic-row', function () {
-    $(this).closest('.academic-qualification-row').remove();
-    if ($('.academic-qualification-row').length <= 1) {
-        $('.remove-academic-row').hide();
-    }
-});
-
-// Dynamic Extra Activities
-let activityIndex = 0;
-$('#addActivityRow').click(function () {
-    activityIndex++;
-    const newRow = `
-        <div class="extra-activity-row mb-4" data-index="${activityIndex}">
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <label for="activity_${activityIndex}" class="form-label text-dark">Activity</label>
-                    <input type="text" class="form-control form-control-lg" id="activity_${activityIndex}" name="activity[]">
-                </div>
-                <div class="col-md-3">
-                    <label for="position_${activityIndex}" class="form-label text-dark">Position/Role</label>
-                    <input type="text" class="form-control form-control-lg" id="position_${activityIndex}" name="position[]">
-                </div>
-                <div class="col-md-3">
-                    <label for="achievement_${activityIndex}" class="form-label text-dark">Achievements</label>
-                    <input type="text" class="form-control form-control-lg" id="achievement_${activityIndex}" name="achievement[]">
-                </div>
-                <div class="col-md-2">
-                    <label for="activity_year_${activityIndex}" class="form-label text-dark">Year</label>
-                    <input type="number" class="form-control form-control-lg" id="activity_year_${activityIndex}" name="activity_year[]">
-                </div>
-                <div class="col-md-1">
-                    <button type="button" class="btn btn-danger mt-4 remove-activity-row">Remove</button>
-                </div>
-            </div>
-        </div>
-    `;
-    $('#extraActivitiesContainer').append(newRow);
-    if ($('.extra-activity-row').length > 1) {
-        $('.remove-activity-row').show();
-    }
-});
-
-$(document).on('click', '.remove-activity-row', function () {
-    $(this).closest('.extra-activity-row').remove();
-    if ($('.extra-activity-row').length <= 1) {
-        $('.remove-activity-row').hide();
-    }
-});
-
-// Custom CNIC validation method
-$.validator.addMethod("cnicFormat", function(value, element) {
-    return this.optional(element) || /^[0-9]{5}-[0-9]{7}-[0-9]$/.test(value);
-}, "Please enter a valid CNIC (XXXXX-XXXXXXX-X)");
-
-// Form validation
-$("#admissionForm").validate({
-    errorClass: "error",
-    validClass: "is-valid",
-    errorElement: "span",
-    highlight: function (element) {
-        $(element).addClass("is-invalid").removeClass("is-valid");
-    },
-    unhighlight: function (element) {
-        $(element).removeClass("is-invalid").addClass("is-valid");
-    },
-    rules: {
-        full_name: "required",
-        religion: "required",
-        caste: "required",
-        cnic: {
-            required: true,
-            cnicFormat: true
-        },
-        dob: "required",
-        contact_no: {
-            required: true,
-            pattern: /^\d{11,15}$/
-        },
-        father_name: "required",
-        father_occupation: "required",
-        father_cnic: {
-            required: true,
-            cnicFormat: true
-        },
-        monthly_income: {
-            required: true,
-            number: true,
-            min: 0
-        },
-        relationship: "required",
-        permanent_address: "required",
-        applicant_photo: {
-            required: true
-        },
-        declaration: "required",
-        shift: "required",
-        "academic_degree[]": {
-            required: true
-        },
-        "academic_board[]": {
-            required: true
-        },
-        "academic_passing_year[]": {
-            required: true,
-            digits: true,
-            min: 1950,
-            max: new Date().getFullYear()
-        },
-        "academic_total_marks[]": {
-            required: true,
-            number: true,
-            min: 0
-        },
-        "academic_marks_obtained[]": {
-            required: true,
-            number: true,
-            min: 0
-        },
-        "academic_grade[]": {
-            required: true
-        },
-        "academic_major[]": {
-            required: true
-        }
-    },
-    messages: {
-        cnic: {
-            cnicFormat: "Please enter a valid CNIC (XXXXX-XXXXXXX-X)"
-        },
-        father_cnic: {
-            cnicFormat: "Please enter a valid CNIC (XXXXX-XXXXXXX-X)"
-        },
-        contact_no: {
-            pattern: "Contact number must be 11-15 digits"
-        },
-        shift: {
-            required: "Please select a preferred shift"
-        }
-    },
-    submitHandler: function (form, event) {
-        event.preventDefault();
-        console.log("Form submission triggered");
-        const formData = new FormData(form);
-        console.log("Form Data:");
-        for (let [key, value] of formData.entries()) {
-            console.log(`${key}: ${value}`);
-        }
-        const $submitButton = $('button[type="submit"]');
-        $submitButton.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...');
-        $submitButton.prop('disabled', true);
+    // Step 2: Department Selection
+    $('#toStep2').click(function () {
+        if (!currentSelection.faculty) return;
+        $('#displayFaculty').text(currentSelection.facultyName);
+        $('#selectedFacultyId').val(currentSelection.faculty);
 
         $.ajax({
-            url: submitUrl,
-            method: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            headers: {
-                'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val()
-            },
+            url: "{% url 'get_departments' %}",
+            method: 'GET',
+            data: { faculty_id: currentSelection.faculty },
             success: function (response) {
-                console.log('Submission success:', response);
-                if (response.success) {
-                    window.location.href = "{% url 'application_success' %}";
-                } else {
-                    alert(response.message || "Error submitting application");
-                    $submitButton.html('Submit Application').prop('disabled', false);
-                }
+                let departmentsHtml = '';
+                response.departments.forEach(dept => {
+                    departmentsHtml += `
+                        <div class="col-md-6 mb-3">
+                            <div class="card program-card department-card" 
+                                 data-dept="${dept.id}" 
+                                 data-dept-name="${dept.name}">
+                                <div class="card-body">
+                                    <h5>${dept.name}</h5>
+                                    <p class="text-muted">${dept.program_count} program(s)</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                $('#departmentContainer').html(departmentsHtml);
+
+                $('.department-card').click(function () {
+                    $('.department-card').removeClass('active');
+                    $(this).addClass('active');
+                    currentSelection.department = $(this).data('dept');
+                    currentSelection.departmentName = $(this).data('dept-name');
+                    $('#toStep3').prop('disabled', false);
+                });
             },
             error: function (xhr) {
-                console.error("Submission error:", xhr);
-                alert("Error: " + (xhr.responseJSON?.message || xhr.statusText || "Submission failed"));
-                $submitButton.html('Submit Application').prop('disabled', false);
+                console.error('Department AJAX error:', xhr);
+                alert("Error loading departments: " + (xhr.responseJSON?.message || "Please try again."));
             }
         });
-    }
-});
 
-// CNIC input formatting
-$('input[name="cnic"], input[name="father_cnic"]').on('input', function () {
-    let value = $(this).val().replace(/\D/g, '');
-    if (value.length > 5) value = value.slice(0, 5) + '-' + value.slice(5);
-    if (value.length > 13) value = value.slice(0, 13) + '-' + value.slice(13);
-    $(this).val(value.slice(0, 15));
-});
+        navigateToStep('step2', 'step2-tab');
+    });
 
-// Phone number formatting
-$('input[name="contact_no"]').on('input', function () {
-    $(this).val($(this).val().replace(/\D/g, '').slice(0, 15));
-});
-
-// Date validation (minimum age 16 years)
-$('input[name="dob"]').on('change', function () {  
-    const dob = new Date($(this).val());
-    const today = new Date();
-    let age = today.getFullYear() - dob.getFullYear();
-    const m = today.getMonth() - dob.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
-    if (age < 16) {
-        $(this).val('');
-        alert('Applicant must be at least 16 years old');
-    }
-});
-
-// File validation function
-function validateFile(input, index) {
-    const file = input.files[0];
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    const validTypes = ['application/pdf', 'image/jpeg', 'image/png'];
-    
-    if (file) {
-        if (file.size > maxSize) {
-            alert('File size must be less than 5MB');
-            input.value = '';
-            return false;
+    // Step 3: Program Selection
+    $('#toStep3').click(function () {
+        if (!currentSelection.department) {
+            alert("Please select a department before proceeding.");
+            return;
         }
+        $('#displayDepartment').text(currentSelection.departmentName);
+        $('#selectedDepartmentId').val(currentSelection.department);
+
+        $.ajax({
+            url: "{% url 'get_programs' %}",
+            method: 'GET',
+            data: { department_id: currentSelection.department },
+            success: function (response) {
+                let programsHtml = '';
+                if (response.length === 0) {
+                    programsHtml = '<div class="col-12"><p class="text-muted">No programs available for this department.</p></div>';
+                    $('#toStep4').prop('disabled', true);
+                } else {
+                    response.forEach(program => {
+                        if (program.is_open) {
+                            programsHtml += `
+                                <div class="col-md-6 mb-3">
+                                    <div class="card program-card program-option" 
+                                         data-program="${program.id}" 
+                                         data-program-name="${program.name}">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between">
+                                                <h5>${program.name}</h5>
+                                                <span class="badge badge-open">Open</span>
+                                            </div>
+                                            <p class="text-muted mt-2">${program.duration || '4-year'} degree program</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    });
+                }
+                $('#programContainer').html(programsHtml);
+
+                $('#programContainer').off('click', '.program-option').on('click', '.program-option', function () {
+                    $('.program-option').removeClass('active');
+                    $(this).addClass('active');
+                    currentSelection.program = $(this).data('program');
+                    currentSelection.programName = $(this).data('program-name');
+                    $('#toStep4').prop('disabled', false);
+
+                    // Fetch the academic session for the selected program
+                    $.ajax({
+                        url: "{% url 'get_session_for_program' %}",
+                        method: 'GET',
+                        data: { program_id: currentSelection.program },
+                        success: function (sessionResponse) {
+                            if (sessionResponse.session) {
+                                currentSelection.session = sessionResponse.session.id;
+                                currentSelection.sessionName = sessionResponse.session.name;
+                                $('#displaySession').text(currentSelection.sessionName);
+                                $('#selectedSessionId').val(currentSelection.session);
+                            } else {
+                                $('#displaySession').text('Not available');
+                                $('#selectedSessionId').val('');
+                            }
+                        },
+                        error: function (xhr) {
+                            console.error('Session AJAX error:', xhr);
+                            $('#displaySession').text('Error loading session');
+                            $('#selectedSessionId').val('');
+                        }
+                    });
+                });
+
+                $('#toStep4').prop('disabled', true);
+            },
+            error: function (xhr) {
+                console.error('Program AJAX error:', xhr);
+                alert("Error loading programs: " + (xhr.responseJSON?.message || "Please try again."));
+                $('#programContainer').html('<div class="col-12"><p class="text-danger">Failed to load programs.</p></div>');
+                $('#toStep4').prop('disabled', true);
+            }
+        });
+
+        navigateToStep('step3', 'step3-tab');
+    });
+
+    // Step 4: Application Form
+    $('#toStep4').click(function () {
+        if (!currentSelection.program) return;
+        $('#displayProgram').text(currentSelection.programName);
+        $('#displaySession').text(currentSelection.sessionName || 'Not selected');
+        $('#selectedProgramId').val(currentSelection.program);
+        $('#selectedSessionId').val(currentSelection.session || '');
+        navigateToStep('step4', 'step4-tab');
+    });
+
+    // Back buttons
+    $('#backToStep1').click(function () {
+        navigateToStep('step1', 'step1-tab');
+    });
+
+    $('#backToStep2').click(function () {
+        navigateToStep('step2', 'step2-tab');
+    });
+
+    $('#backToStep3').click(function () {
+        navigateToStep('step3', 'step3-tab');
+    });
+
+    // Handle browser back/forward navigation
+    window.addEventListener('popstate', function (event) {
+        if (event.state && event.state.stepId && event.state.stepTabId) {
+            showStep(event.state.stepId, event.state.stepTabId);
+        } else {
+            showStep('step1', 'step1-tab');
+        }
+    });
+
+    // Initialize URL on page load
+    history.replaceState({ stepId: 'step1', stepTabId: 'step1-tab' }, '', '/apply/');
+
+    // Image Preview for Applicant Photo
+    $('#applicantPhoto').on('change', function () {
+        const file = this.files[0];
+        const $preview = $('#photoPreview');
+        const $previewContainer = $('#photoPreviewContainer');
+
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                $preview.attr('src', e.target.result).show();
+                $previewContainer.addClass('has-image');
+            };
+            reader.readAsDataURL(file);
+        } else {
+            $preview.hide();
+            $previewContainer.removeClass('has-image');
+        }
+    });
+
+    // Dynamic Academic Qualifications
+    let academicIndex = 0;
+    $('#addAcademicRow').click(function () {
+        academicIndex++;
+        const newRow = `
+            <div class="academic-qualification-row mb-4" data-index="${academicIndex}">
+                <input type="hidden" name="academic_levels[]" value="">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label for="academic_degree_${academicIndex}" class="form-label text-dark">Degree Name</label>
+                        <input type="text" class="form-control form-control-lg" id="academic_degree_${academicIndex}" name="academic_degree[]" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="academic_board_${academicIndex}" class="form-label text-dark">Board/University</label>
+                        <input type="text" class="form-control form-control-lg" id="academic_board_${academicIndex}" name="academic_board[]" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="academic_passing_year_${academicIndex}" class="form-label text-dark">Passing Year</label>
+                        <input type="number" class="form-control form-control-lg" id="academic_passing_year_${academicIndex}" name="academic_passing_year[]" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="academic_total_marks_${academicIndex}" class="form-label text-dark">Total Marks</label>
+                        <input type="number" class="form-control form-control-lg" id="academic_total_marks_${academicIndex}" name="academic_total_marks[]" required min="0" onchange="validateTotalMarks(this)">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="academic_marks_obtained_${academicIndex}" class="form-label text-dark">Marks Obtained</label>
+                        <input type="number" class="form-control form-control-lg" id="academic_marks_obtained_${academicIndex}" name="academic_marks_obtained[]" required min="0" onchange="validateMarks(this)">
+                    </div>
+                </div>
+                <div class="row g-3 mt-3">
+                    <div class="col-md-3">
+                        <label for="academic_grade_${academicIndex}" class="form-label text-dark">Grade/Division/CGPA</label>
+                        <input type="text" class="form-control form-control-lg" id="academic_grade_${academicIndex}" name="academic_grade[]" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="academic_major_${academicIndex}" class="form-label text-dark">Major Subject</label>
+                        <input type="text" class="form-control form-control-lg" id="academic_major_${academicIndex}" name="academic_major[]" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="academic_certificate_${academicIndex}" class="form-label text-dark">Certificate/Transcript</label>
+                        <input type="file" class="form-control form-control-lg" id="academic_certificate_${academicIndex}" name="academic_certificate[]" accept=".pdf,.jpg,.jpeg,.png" onchange="validateFile(this, ${academicIndex})">
+                        <small class="text-muted">Max size: 5MB, Formats: PDF, JPG, PNG</small>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-danger mt-4 remove-academic-row">Remove</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        $('#academicQualificationsContainer').append(newRow);
+        if ($('.academic-qualification-row').length > 1) {
+            $('.remove-academic-row').show();
+        }
+    });
+
+    $(document).on('click', '.remove-academic-row', function () {
+        $(this).closest('.academic-qualification-row').remove();
+        if ($('.academic-qualification-row').length <= 1) {
+            $('.remove-academic-row').hide();
+        }
+    });
+
+    // Dynamic Extra Activities
+    let activityIndex = 0;
+    $('#addActivityRow').click(function () {
+        activityIndex++;
+        const newRow = `
+            <div class="extra-activity-row mb-4" data-index="${activityIndex}">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label for="activity_${activityIndex}" class="form-label text-dark">Activity</label>
+                        <input type="text" class="form-control form-control-lg" id="activity_${activityIndex}" name="activity[]">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="position_${activityIndex}" class="form-label text-dark">Position/Role</label>
+                        <input type="text" class="form-control form-control-lg" id="position_${activityIndex}" name="position[]">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="achievement_${activityIndex}" class="form-label text-dark">Achievements</label>
+                        <input type="text" class="form-control form-control-lg" id="achievement_${activityIndex}" name="achievement[]">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="activity_year_${activityIndex}" class="form-label text-dark">Year</label>
+                        <input type="number" class="form-control form-control-lg" id="activity_year_${activityIndex}" name="activity_year[]">
+                    </div>
+                    <div class="col-md-1">
+                        <button type="button" class="btn btn-danger mt-4 remove-activity-row">Remove</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        $('#activities-container').append(newRow);
+        if ($('.extra-activity-row').length > 1) {
+            $('.remove-activity-row').show();
+        }
+    });
+
+    $(document).on('click', '.remove-activity-row', function () {
+        $(this).closest('.extra-activity-row').remove();
+        if ($('.extra-activity-row').length <= 1) {
+            $('.remove-activity-row').hide();
+        }
+    });
+
+    // Custom CNIC validation method
+    $.validator.addMethod("cnicFormat", function(value, element) {
+        return this.optional(element) || /^[0-9]{5}-[0-9]{7}-[0-9]$/.test(value);
+    }, "Please enter a valid CNIC (XXXXX-XXXXXXX-X)");
+
+    // Form validation
+    $("#admissionForm").validate({
+        errorClass: "error",
+        validClass: "is-valid",
+        errorElement: "span",
+        highlight: function (element) {
+            $(element).addClass("is-invalid").removeClass("is-valid");
+        },
+        unhighlight: function (element) {
+            $(element).removeClass("is-invalid").addClass("is-valid");
+        },
+        rules: {
+            full_name: "required",
+            religion: "required",
+            caste: "required",
+            cnic: {
+                required: true,
+                cnicFormat: true
+            },
+            dob: "required",
+            contact_no: {
+                required: true,
+                pattern: /^\d{11,15}$/
+            },
+            father_name: "required",
+            father_occupation: "required",
+            father_cnic: {
+                required: true,
+                cnicFormat: true
+            },
+            monthly_income: {
+                required: true,
+                number: true,
+                min: 0
+            },
+            relationship: "required",
+            permanent_address: "required",
+            applicant_photo: {
+                required: true
+            },
+            declaration: "required",
+            shift: "required",
+            "academic_degree[]": {
+                required: true
+            },
+            "academic_board[]": {
+                required: true
+            },
+            "academic_passing_year[]": {
+                required: true,
+                digits: true,
+                min: 1950,
+                max: new Date().getFullYear()
+            },
+            "academic_total_marks[]": {
+                required: true,
+                number: true,
+                min: 0
+            },
+            "academic_marks_obtained[]": {
+                required: true,
+                number: true,
+                min: 0
+            },
+            "academic_grade[]": {
+                required: true
+            },
+            "academic_major[]": {
+                required: true
+            }
+        },
+        messages: {
+            cnic: {
+                cnicFormat: "Please enter a valid CNIC (XXXXX-XXXXXXX-X)"
+            },
+            father_cnic: {
+                cnicFormat: "Please enter a valid CNIC (XXXXX-XXXXXXX-X)"
+            },
+            contact_no: {
+                pattern: "Contact number must be 11-15 digits"
+            },
+            shift: {
+                required: "Please select a preferred shift"
+            }
+        },
+        submitHandler: function (form, event) {
+            event.preventDefault();
+            console.log("Form submission triggered");
+            const formData = new FormData(form);
+            console.log("Form Data:");
+            for (let [key, value] of formData.entries()) {
+                console.log(`${key}: ${value}`);
+            }
+            const $submitButton = $('button[type="submit"]');
+            $submitButton.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...');
+            $submitButton.prop('disabled', true);
+
+            $.ajax({
+                url: submitUrl,
+                method: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                headers: {
+                    'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val()
+                },
+                success: function (response) {
+                    console.log('Submission success:', response);
+                    if (response.success) {
+                        window.location.href = "{% url 'application_success' %}";
+                    } else {
+                        alert(response.message || "Error submitting application");
+                        $submitButton.html('Submit Application').prop('disabled', false);
+                    }
+                },
+                error: function (xhr) {
+                    console.error("Submission error:", xhr);
+                    alert("Error: " + (xhr.responseJSON?.message || xhr.statusText || "Submission failed"));
+                    $submitButton.html('Submit Application').prop('disabled', false);
+                }
+            });
+        }
+    });
+
+    // CNIC input formatting
+    $('input[name="cnic"], input[name="father_cnic"]').on('input', function () {
+        let value = $(this).val().replace(/\D/g, '');
+        if (value.length > 5) value = value.slice(0, 5) + '-' + value.slice(5);
+        if (value.length > 13) value = value.slice(0, 13) + '-' + value.slice(13);
+        $(this).val(value.slice(0, 15));
+    });
+
+    // Phone number formatting
+    $('input[name="contact_no"]').on('input', function () {
+        $(this).val($(this).val().replace(/\D/g, '').slice(0, 15));
+    });
+
+    // Date validation (minimum age 16 years)
+    $('input[name="dob"]').on('change', function () {  
+        const dob = new Date($(this).val());
+        const today = new Date();
+        let age = today.getFullYear() - dob.getFullYear();
+        const m = today.getMonth() - dob.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+        if (age < 16) {
+            $(this).val('');
+            alert('Applicant must be at least 16 years old');
+        }
+    });
+
+    // File validation function
+    function validateFile(input, index) {
+        const file = input.files[0];
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        const validTypes = ['application/pdf', 'image/jpeg', 'image/png'];
         
-        if (!validTypes.includes(file.type)) {
-            alert('Please upload a valid file (PDF, JPG, or PNG)');
+        if (file) {
+            if (file.size > maxSize) {
+                alert('File size must be less than 5MB');
+                input.value = '';
+                return false;
+            }
+            
+            if (!validTypes.includes(file.type)) {
+                alert('Please upload a valid file (PDF, JPG, or PNG)');
+                input.value = '';
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Add marks validation function
+    function validateMarks(input) {
+        const row = input.closest('.academic-qualification-row');
+        const totalMarks = parseInt(row.querySelector('input[name="academic_total_marks[]"]').value) || 0;
+        const obtainedMarks = parseInt(input.value) || 0;
+        
+        if (obtainedMarks > totalMarks) {
+            alert('Obtained marks cannot be greater than total marks');
             input.value = '';
             return false;
         }
+        return true;
     }
-    return true;
-}
 
-// Add marks validation function
-function validateMarks(input) {
-    const row = input.closest('.academic-qualification-row');
-    const totalMarks = parseInt(row.querySelector('input[name="academic_total_marks[]"]').value) || 0;
-    const obtainedMarks = parseInt(input.value) || 0;
-    
-    if (obtainedMarks > totalMarks) {
-        alert('Obtained marks cannot be greater than total marks');
-        input.value = '';
-        return false;
+    // Function to validate total marks
+    function validateTotalMarks(input) {
+        const row = input.closest('.academic-qualification-row');
+        const totalMarks = parseInt(input.value) || 0;
+        const obtainedMarks = parseInt(row.querySelector('input[name="academic_marks_obtained[]"]').value) || 0;
+        
+        if (obtainedMarks > totalMarks) {
+            alert('Total marks cannot be less than obtained marks');
+            input.value = '';
+            return false;
+        }
+        return true;
     }
-    return true;
-}
 
-// Function to validate total marks
-function validateTotalMarks(input) {
-    const row = input.closest('.academic-qualification-row');
-    const totalMarks = parseInt(input.value) || 0;
-    const obtainedMarks = parseInt(row.querySelector('input[name="academic_marks_obtained[]"]').value) || 0;
-    
-    if (obtainedMarks > totalMarks) {
-        alert('Total marks cannot be less than obtained marks');
-        input.value = '';
-        return false;
-    }
-    return true;
-}
-
-// Add event listeners for the initial row
-$(document).ready(function() {
-    // Add validation to initial row
-    $('#academic_total_marks_0').on('change', function() {
-        validateTotalMarks(this);
-    });
-    
-    $('#academic_marks_obtained_0').on('change', function() {
-        validateMarks(this);
-    });
-});
-
-function addActivity() {
-    const container = document.getElementById('activities-container');
-    const newEntry = document.createElement('div');
-    newEntry.className = 'activity-entry mb-3';
-    newEntry.innerHTML = `
-        <div class="row">
-            <div class="col-md-6">
-                <div class="form-group">
-                    <label for="id_activity" class="form-label text-dark">Activity</label>
-                    <input type="text" name="activity[]" class="form-control form-control-lg" placeholder="e.g., Debate Club, Sports Team">
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="form-group">
-                    <label for="id_position" class="form-label text-dark">Position</label>
-                    <input type="text" name="position[]" class="form-control form-control-lg" placeholder="e.g., Captain, Secretary">
-                </div>
-            </div>
-        </div>
-        <div class="row mt-3">
-            <div class="col-md-6">
-                <div class="form-group">
-                    <label for="id_achievement" class="form-label text-dark">Achievement</label>
-                    <input type="text" name="achievement[]" class="form-control form-control-lg" placeholder="e.g., Won 1st Prize">
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="form-group">
-                    <label for="id_activity_year" class="form-label text-dark">Year</label>
-                    <input type="number" name="activity_year[]" class="form-control form-control-lg" placeholder="e.g., 2023">
-                </div>
-            </div>
-        </div>
-        <div class="row mt-3">
-            <div class="col-md-12">
-                <div class="form-group">
-                    <label for="id_certificate_file" class="form-label text-dark">Certificate/Proof of Participation</label>
-                    <input type="file" name="certificate_file[]" class="form-control form-control-lg" accept=".pdf,.jpg,.jpeg,.png">
-                    <small class="form-text text-muted">Upload certificate or proof of participation (PDF, JPG, PNG, max 5MB)</small>
-                </div>
-            </div>
-        </div>
-        <button type="button" class="btn btn-danger mt-2" onclick="this.parentElement.remove()">
-            <i class="fas fa-trash"></i> Remove Activity
-        </button>
-    `;
-    container.appendChild(newEntry);
-}
-
-// Add file validation
-document.addEventListener('DOMContentLoaded', function() {
-    const fileInputs = document.querySelectorAll('input[type="file"]');
-    fileInputs.forEach(input => {
-        input.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                // Check file type
-                const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
-                if (!allowedTypes.includes(file.type)) {
-                    alert('Invalid file type. Please upload PDF, JPG, or PNG files only.');
-                    this.value = '';
-                    return;
-                }
-                
-                // Check file size (5MB)
-                const maxSize = 5 * 1024 * 1024; // 5MB in bytes
-                if (file.size > maxSize) {
-                    alert('File size too large. Maximum size is 5MB.');
-                    this.value = '';
-                    return;
-                }
-            }
+    // Add event listeners for the initial row
+    $(document).ready(function() {
+        $('#academic_total_marks_0').on('change', function() {
+            validateTotalMarks(this);
+        });
+        
+        $('#academic_marks_obtained_0').on('change', function() {
+            validateMarks(this);
         });
     });
-});
+
+    function addActivity() {
+        const container = document.getElementById('activities-container');
+        const newEntry = document.createElement('div');
+        newEntry.className = 'activity-entry mb-3';
+        newEntry.innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_activity" class="form-label text-dark">Activity</label>
+                        <input type="text" name="activity[]" class="form-control form-control-lg" placeholder="e.g., Debate Club, Sports Team">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_position" class="form-label text-dark">Position</label>
+                        <input type="text" name="position[]" class="form-control form-control-lg" placeholder="e.g., Captain, Secretary">
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_achievement" class="form-label text-dark">Achievement</label>
+                        <input type="text" name="achievement[]" class="form-control form-control-lg" placeholder="e.g., Won 1st Prize">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_activity_year" class="form-label text-dark">Year</label>
+                        <input type="number" name="activity_year[]" class="form-control form-control-lg" placeholder="e.g., 2023">
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <div class="form-group">
+                        <label for="id_certificate_file" class="form-label text-dark">Certificate/Proof of Participation</label>
+                        <input type="file" name="certificate_file[]" class="form-control form-control-lg" accept=".pdf,.jpg,.jpeg,.png">
+                        <small class="form-text text-muted">Upload certificate or proof of participation (PDF, JPG, PNG, max 5MB)</small>
+                    </div>
+                </div>
+            </div>
+            <button type="button" class="btn btn-danger mt-2" onclick="this.parentElement.remove()">
+                <i class="fas fa-trash"></i> Remove Activity
+            </button>
+        `;
+        container.appendChild(newEntry);
+    }
+
+    // Add file validation
+    document.addEventListener('DOMContentLoaded', function() {
+        const fileInputs = document.querySelectorAll('input[type="file"]');
+        fileInputs.forEach(input => {
+            input.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+                    if (!allowedTypes.includes(file.type)) {
+                        alert('Invalid file type. Please upload PDF, JPG, or PNG files only.');
+                        this.value = '';
+                        return;
+                    }
+                    const maxSize = 5 * 1024 * 1024;
+                    if (file.size > maxSize) {
+                        alert('File size too large. Maximum size is 5MB.');
+                        this.value = '';
+                        return;
+                    }
+                }
+            });
+        });
+    });
 </script>
 
 {% endblock core_content %}

@@ -39,11 +39,6 @@ class AcademicSession(models.Model):
     def __str__(self):
         return self.name
 
-    def save(self, *args, **kwargs):
-        if self.is_active:
-            # Deactivate all other sessions
-            AcademicSession.objects.exclude(pk=self.pk).update(is_active=False)
-        super().save(*args, **kwargs)
 
 # ===== 6. Admissions =====
 class AdmissionCycle(models.Model):
@@ -60,6 +55,7 @@ class AdmissionCycle(models.Model):
 
 class Applicant(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='applications', help_text="Select the user account associated with this applicant.")
+    session = models.ForeignKey(AcademicSession, on_delete=models.CASCADE, null=True, blank=True, help_text="Select the academic session this applicant applied for.")
     faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE, help_text="Select the faculty the applicant is applying to.")
     department = models.ForeignKey(Department, on_delete=models.CASCADE, help_text="Select the department the applicant is applying to.")
     program = models.ForeignKey(Program, on_delete=models.CASCADE, help_text="Select the specific program the applicant is applying for.")

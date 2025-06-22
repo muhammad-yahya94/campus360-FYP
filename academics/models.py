@@ -61,29 +61,31 @@ class Program(models.Model):
 # ===== Semester Model =====
 class Semester(models.Model):
     program = models.ForeignKey(Program, on_delete=models.CASCADE, related_name='semesters', help_text="Select the program this semester belongs to.")
+    session = models.ForeignKey('admissions.AcademicSession', on_delete=models.CASCADE, related_name='semesters', help_text="Select the academic session this semester belongs to.")
     number = models.PositiveIntegerField(help_text="Semester number in the program sequence")
-    name = models.CharField(max_length=100, help_text="Name of the semester (e.g., 'semester 1', 'semester 2')")
+    name = models.CharField(max_length=100, help_text="Name of the semester (e.g., 'Semester 1', 'Semester 2')")
     description = models.TextField(blank=True, help_text="Description of what this semester covers")
     start_time = models.DateField(null=True, blank=True, help_text="Start date of the semester")
     end_time = models.DateField(null=True, blank=True, help_text="End date of the semester")
     is_active = models.BooleanField(default=True, help_text="Whether this semester is currently active")
     
     class Meta:
-        unique_together = ('program', 'number')
+        unique_together = ('program', 'number', 'session')  # Ensure uniqueness across program, number, and session
         ordering = ['program', 'number']
         verbose_name = "Semester"
         verbose_name_plural = "Semesters"
 
     def __str__(self):
-        return f"{self.program.name} - Semester {self.number}: {self.name}"
+        return f"{self.program.name} - Semester {self.number} ({self.session.name})"
 
     def save(self, *args, **kwargs):
-        # Ensure semester numbers are sequential
+        # Ensure semester numbers are sequential within the session and program
         if self.number > 1:
             prev_semester = Semester.objects.filter(
                 program=self.program,
+                session=self.session,
                 number=self.number - 1
             ).first()
             if not prev_semester:
-                raise ValidationError(f"Semester {self.number-1} must exist before semester {self.number}")
+                raise ValidationError(f"Semester {self.number-1} must exist before semester {self.number} for session {self.session.name}")
         super().save(*args, **kwargs)

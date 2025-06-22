@@ -6,7 +6,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.contrib.auth.decorators import login_required
 from announcements.models import Event, News
 from academics.models import Faculty, Department, Program
-from admissions.models import AdmissionCycle, Applicant, AcademicQualification, ExtraCurricularActivity
+from admissions.models import AcademicSession, AdmissionCycle, Applicant, AcademicQualification, ExtraCurricularActivity
 from users.models import CustomUser
 from payment.models import Payment 
 import json
@@ -14,7 +14,7 @@ import logging
 from datetime import datetime  
 from site_elements.models import Alumni, Gallery
 from faculty_staff.models import Teacher, Office, OfficeStaff
-
+from django.core.exceptions import ObjectDoesNotExist
 from django.template.loader import render_to_string
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
@@ -228,13 +228,74 @@ def apply(request):
         return redirect('admission')
         
     faculties = Faculty.objects.prefetch_related('departments')
-    admission_cycle = AdmissionCycle.objects.filter(is_open=True)
+    admission_cycles = AdmissionCycle.objects.filter(is_open=True).select_related('session', 'program')
     
-    return render(request, 'apply.html', {
+    # Prepare context with faculties and admission cycles
+    context = {
         'faculties': faculties,
-        'admission_cycle': admission_cycle,
-    })
+        'admission_cycles': admission_cycles,
+    }
+    
+    return render(request, 'apply.html', context)
 
+def get_session_for_program(request):
+    """
+    View to retrieve the academic session for a given program based on an open admission cycle.
+    Only accessible to logged-in users.
+    Returns JSON response with session details or an error message.
+
+    Query Parameter:
+        program_id (int): The ID of the program to fetch the session for.
+
+    Response:
+        - success: boolean indicating if the request was successful
+        - session: dict with id and name if successful, or None
+        - message/error: string with error message if unsuccessful
+        - status: HTTP status code
+    """
+    # Extract program_id from query parameters
+    program_id = request.GET.get('program_id')
+
+    # Validate program_id
+    if not program_id:
+        return JsonResponse({'success': False, 'error': 'Program ID is required.'}, status=400)
+
+    try:
+        # Convert program_id to integer
+        program_id = int(program_id)
+
+        # Fetch the open AdmissionCycle for the given program
+        admission_cycle = AdmissionCycle.objects.filter(
+            program_id=program_id,
+            is_open=True
+        ).select_related('session').first()
+
+        if not admission_cycle or not admission_cycle.session:
+            return JsonResponse({
+                'success': False,
+                'message': 'No open session found for this program.'
+            })
+
+        # Get the associated session
+        session = admission_cycle.session
+
+        # Prepare response with session details
+        session_data = {
+            'id': session.id,
+            'name': session.name  # Adjust 'name' based on your AcademicSession model
+        }
+
+        return JsonResponse({
+            'success': True,
+            'session': session_data
+        })
+
+    except ValueError:
+        return JsonResponse({'success': False, 'error': 'Invalid program ID format.'}, status=400)
+    except ObjectDoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Program or session not found.'}, status=500)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @require_GET
 def get_departments(request):
@@ -281,9 +342,23 @@ def get_programs(request):
 @require_POST
 def submit_application(request):
     try:
+        # Get the session ID from the form (added via hidden input in the template)
+        session_id = request.POST.get('session')
+        if not session_id:
+            raise ValueError("Academic session is required.")
+
+        # Fetch the session object
+        session = AcademicSession.objects.get(id=session_id)
+        
+        # Check if an applicant already exists for this user and session (due to OneToOneField)
+        existing_applicant = Applicant.objects.filter(user=request.user, session=session).first()
+        if existing_applicant:
+            raise ValueError("You have already submitted an application for this session.")
+
         # Create Applicant
         applicant = Applicant.objects.create(
             user=request.user,
+            session=session,
             faculty_id=request.POST.get('faculty'),
             department_id=request.POST.get('department'),
             program_id=request.POST.get('program'),

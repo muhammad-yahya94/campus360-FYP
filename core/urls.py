@@ -24,7 +24,7 @@ urlpatterns = [
     path('apply/form/', views.submit_application, name='submit_application'),
     path('apply/success/', views.application_success, name='application_success'),
     path('apply/my-applications/', views.my_applications, name='my_applications'),
-    
+    path('get-session-for-program/', views.get_session_for_program, name='get_session_for_program'),
     # API endpoints
     path('api/departments/', views.get_departments, name='get_departments'),
     path('api/programs/', views.get_programs, name='get_programs'),

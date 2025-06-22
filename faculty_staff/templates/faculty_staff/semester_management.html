@@ -47,6 +47,18 @@
                         </div>
                         <div class="form-control">
                             <label class="label">
+                                <span class="label-text">Session</span>
+                            </label>
+                            <select name="session_id" id="add_session_id" class="select select-bordered select2 w-full max-w-xs" required>
+                                <option value="">Select a session...</option>
+                                {% for session in academic_sessions %}
+                                <option value="{{ session.id }}">{{ session.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <span id="add-session-error" class="text-error"></span>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
                                 <span class="label-text">Semester Number</span>
                             </label>
                             <input type="number" name="number" id="add_number" class="input input-bordered" required min="1">
@@ -107,12 +119,12 @@
                     Search Semesters
                 </h2>
                 <form id="search-form" method="get" action="{% url 'faculty_staff:semester_management' %}" class="space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div class="form-control">
                             <label class="label">
                                 <span class="label-text">Search</span>
                             </label>
-                            <input type="text" name="q" id="q" class="input input-bordered" value="{{ search_query }}" placeholder="Search by name, description, or program...">
+                            <input type="text" name="q" id="q" class="input input-bordered" value="{{ search_query }}" placeholder="Search by name, description, program, or session...">
                         </div>
                         <div class="form-control">
                             <label class="label">
@@ -122,6 +134,17 @@
                                 <option value="">All Programs in {{ request.user.teacher_profile.department.name }}</option>
                                 {% for program in programs %}
                                 <option value="{{ program.id }}" {% if selected_program == program.id|stringformat:'s' %}selected{% endif %}>{{ program.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text">Filter by Session</span>
+                            </label>
+                            <select name="session_id" id="session_id_filter" class="select select-bordered select2">
+                                <option value="">All Sessions</option>
+                                {% for session in academic_sessions %}
+                                <option value="{{ session.id }}" {% if selected_session == session.id|stringformat:'s' %}selected{% endif %}>{{ session.name }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -146,6 +169,7 @@
                         <thead>
                             <tr>
                                 <th>Program</th>
+                                <th>Session</th>
                                 <th>Semester Number</th>
                                 <th>Name</th>
                                 <th>Description</th>
@@ -159,6 +183,7 @@
                             {% for semester in semesters %}
                             <tr>
                                 <td>{{ semester.program.name }}</td>
+                                <td>{{ semester.session.name }}</td>
                                 <td>{{ semester.number }}</td>
                                 <td>{{ semester.name }}</td>
                                 <td>{{ semester.description|default:"N/A" }}</td>
@@ -174,6 +199,7 @@
                                         <button class="btn btn-sm btn-warning edit-semester" 
                                                 data-semester-id="{{ semester.id }}"
                                                 data-program-id="{{ semester.program.id }}"
+                                                data-session-id="{{ semester.session.id }}"
                                                 data-number="{{ semester.number }}"
                                                 data-name="{{ semester.name }}"
                                                 data-description="{{ semester.description|default:'' }}"
@@ -192,7 +218,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="8" class="text-center p-8">
+                                <td colspan="9" class="text-center p-8">
                                     <div class="text-center">
                                         <i class="fas fa-calendar text-6xl text-base-content/20 mb-4"></i>
                                         <h3 class="text-xl font-semibold text-base-content/70 mb-2">No Semesters Found</h3>
@@ -207,13 +233,13 @@
                 <!-- Pagination -->
                 <div class="join mt-4">
                     {% if semesters.has_previous %}
-                    <a href="?page={{ semesters.previous_page_number }}&q={{ search_query }}&program_id={{ selected_program }}" class="btn join-item">Previous</a>
+                    <a href="?page={{ semesters.previous_page_number }}&q={{ search_query }}&program_id={{ selected_program }}&session_id={{ selected_session }}" class="btn join-item">Previous</a>
                     {% endif %}
                     {% for num in semesters.paginator.page_range %}
-                    <a href="?page={{ num }}&q={{ search_query }}&program_id={{ selected_program }}" class="btn join-item {% if semesters.number == num %}btn-active{% endif %}">{{ num }}</a>
+                    <a href="?page={{ num }}&q={{ search_query }}&program_id={{ selected_program }}&session_id={{ selected_session }}" class="btn join-item {% if semesters.number == num %}btn-active{% endif %}">{{ num }}</a>
                     {% endfor %}
                     {% if semesters.has_next %}
-                    <a href="?page={{ semesters.next_page_number }}&q={{ search_query }}&program_id={{ selected_program }}" class="btn join-item">Next</a>
+                    <a href="?page={{ semesters.next_page_number }}&q={{ search_query }}&program_id={{ selected_program }}&session_id={{ selected_session }}" class="btn join-item">Next</a>
                     {% endif %}
                 </div>
             </div>
@@ -239,6 +265,18 @@
                             {% endfor %}
                         </select>
                         <span id="edit-program-error" class="text-error"></span>
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Session</span>
+                        </label>
+                        <select name="session_id" id="edit_session_id" class="select select-bordered select2 w-full max-w-xs" required>
+                            <option value="">Select a session...</option>
+                            {% for session in academic_sessions %}
+                            <option value="{{ session.id }}">{{ session.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <span id="edit-session-error" class="text-error"></span>
                     </div>
                     <div class="form-control">
                         <label class="label">
@@ -439,6 +477,7 @@ $(document).ready(function() {
     $(document).on('click', '.edit-semester', function() {
         const semesterId = $(this).data('semester-id');
         const programId = $(this).data('program-id');
+        const sessionId = $(this).data('session-id');
         const number = $(this).data('number');
         const name = $(this).data('name');
         const description = $(this).data('description');
@@ -446,11 +485,12 @@ $(document).ready(function() {
         const endTime = $(this).data('end-time');
         const isActive = $(this).data('is-active');
 
-        console.log('Edit clicked:', { semesterId, programId, number, name, description, startTime, endTime, isActive });
+        console.log('Edit clicked:', { semesterId, programId, sessionId, number, name, description, startTime, endTime, isActive });
 
         // Populate modal form
         $('#edit_semester_id').val(semesterId);
         $('#edit_program_id').val(programId).trigger('change');
+        $('#edit_session_id').val(sessionId).trigger('change');
         $('#edit_number').val(number);
         $('#edit_name').val(name);
         $('#edit_description').val(description);
@@ -539,6 +579,7 @@ $(document).ready(function() {
     $('#editSemesterModal').on('close', function() {
         $('#edit-semester-form')[0].reset();
         $('#edit_program_id').val(null).trigger('change');
+        $('#edit_session_id').val(null).trigger('change');
         $('.text-error').text('');
         $('#editSemesterModal .modal-box .alert').remove();
     });

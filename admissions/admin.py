@@ -60,7 +60,7 @@ class CustomUserAutocompleteView(AutocompleteJsonView):
 
 @admin.register(Applicant)
 class ApplicantAdmin(admin.ModelAdmin):
-    list_display = ('full_name', 'program', 'status', 'applied_at', 'user_email', 'view_photo')
+    list_display = ('full_name','session', 'program', 'status', 'applied_at', 'user_email', 'view_photo')
     list_filter = ('status', 'program__department__faculty', 'program__department', 'program', 'applied_at')
     search_fields = ['full_name', 'cnic', 'program__name']
     autocomplete_fields = ['user', 'faculty', 'department', 'program']  # Keep user here
@@ -68,7 +68,7 @@ class ApplicantAdmin(admin.ModelAdmin):
     readonly_fields = ('applied_at', 'created_at')
     fieldsets = (
         ('Application Information', {
-            'fields': ('user', 'faculty', 'department', 'program', 'status', 'applied_at')
+            'fields': ('user','session', 'faculty', 'department', 'program', 'status', 'applied_at')
         }),
         ('Personal Information', {
             'fields': (

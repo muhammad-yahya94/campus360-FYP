@@ -8,7 +8,7 @@
   <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-xl shadow-lg mb-6">
     <div class="text-center py-8">
       <h1 class="text-4xl font-bold mb-2">Weekly Timetable</h1>
-      <p class="text-lg opacity-90">{{ department.name }} - {{ academic_session.name }}</p>
+      <p class="text-lg opacity-90">{{ department.name }} - {{ academic_session.name|default:'No Active Session' }}</p>
     </div>
   </div>
 
@@ -19,8 +19,17 @@
       Back to Course Offerings
     </a>
     <div class="flex items-center gap-4">
+      <label for="session-filter" class="text-sm font-medium text-gray-700">Select Session:</label>
+      <select id="session-filter" onchange="window.location.href='?session_id=' + this.value + '&shift=' + document.getElementById('shift-filter').value" class="border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500">
+        {% comment %} <option value="">All Sessions</option> {% endcomment %}
+        {% for session in academic_sessions %}
+          <option value="{{ session.id }}" {% if request.GET.session_id|default:'' == session.id|stringformat:"s" %}selected{% endif %}>
+            {{ session.name }}
+          </option>
+        {% endfor %}
+      </select>
       <label for="shift-filter" class="text-sm font-medium text-gray-700">Filter by Shift:</label>
-      <select id="shift-filter" onchange="window.location.href='?shift=' + this.value" class="border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500">
+      <select id="shift-filter" onchange="window.location.href='?session_id=' + document.getElementById('session-filter').value + '&shift=' + this.value" class="border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500">
         {% for value, label in shift_options %}
           <option value="{{ value }}" {% if shift_filter == value %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
@@ -48,7 +57,7 @@
                   <p class="font-semibold text-lg {% if slot.shift == 'Morning' %}text-blue-800{% elif slot.shift == 'Evening' %}text-purple-800{% else %}text-green-800{% endif %}">
                     {{ slot.course_code }} - {{ slot.course_name }}
                   </p>
-                  <p class="text-sm text-gray-600"><i class="fas fa-map-marker-alt mr-1"></i>{{ slot.venue }} - room no. {{ slot.room_no }}</p>
+                  <p class="text-sm text-gray-600"><i class="fas fa-map-marker-alt mr-1"></i>{{ slot.venue }} room no. {{ slot.room_no }}</p>
                   <p class="text-sm text-gray-600"><i class="fas fa-clock mr-1"></i>{{ slot.start_time }}–{{ slot.end_time }}</p>
                   <p class="text-sm italic {% if slot.shift == 'Morning' %}text-blue-600{% elif slot.shift == 'Evening' %}text-purple-600{% else %}text-green-600{% endif %}">{{ slot.shift }}</p>
                 </div>
@@ -64,6 +73,28 @@
         <i class="fas fa-calendar-alt text-6xl text-gray-300 mb-4"></i>
         <h3 class="text-xl font-semibold text-gray-600 mb-2">No Timetable Slots Scheduled</h3>
         <p class="text-gray-500">Schedule timetable slots for courses in this department.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Programs Section -->
+  <div class="bg-white shadow-xl rounded-lg p-6 mt-6">
+    <h2 class="text-2xl font-semibold mb-4">
+      <i class="fas fa-list mr-2"></i>
+      Programs Running in {{ academic_session.name|default:'No Active Session' }}
+    </h2>
+    {% if programs %}
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for program in programs %}
+          <div class="p-4 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition duration-200">
+            <p class="text-lg font-semibold text-gray-800">{{ program.course_offering__program__name }}</p>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="text-center p-8">
+        <i class="fas fa-info-circle text-6xl text-gray-300 mb-4"></i>
+        <p class="text-gray-500">No programs are currently running in this session.</p>
       </div>
     {% endif %}
   </div>

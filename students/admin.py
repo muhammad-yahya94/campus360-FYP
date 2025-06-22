@@ -113,10 +113,10 @@ class CourseOfferingAutocompleteView(AutocompleteJsonView):
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
     form = StudentAdminForm
-    list_display = ('applicant', 'program', 'current_semester', 'university_roll_no', 'current_status', 'enrollment_date')
-    list_filter = ('current_status', 'program', 'current_semester')  
+    list_display = ('applicant', 'program', 'university_roll_no', 'current_status', 'enrollment_date')
+    list_filter = ('current_status', 'program')  
     search_fields = ('applicant__full_name', 'university_roll_no', 'college_roll_no', 'user__email', 'program__name', 'program__degree_type', 'program__department__name')
-    autocomplete_fields = ('applicant', 'user', 'program', 'current_semester')
+    autocomplete_fields = ('applicant', 'user', 'program')
     readonly_fields = ('enrollment_date', 'graduation_date')
     
     fieldsets = (
@@ -124,7 +124,7 @@ class StudentAdmin(admin.ModelAdmin):
             'fields': ('applicant', 'user', 'university_roll_no', 'college_roll_no')
         }),
         ('Academic Information', {
-            'fields': ('program', 'current_semester', 'enrollment_date', 'graduation_date', 'current_status')
+            'fields': ('program', 'enrollment_date', 'graduation_date', 'current_status')
         }),
         ('Emergency Contact', {
             'fields': ('emergency_contact', 'emergency_phone'),
@@ -134,15 +134,9 @@ class StudentAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related(
-            'applicant', 'user', 'program', 'current_semester'
+            'applicant', 'user', 'program'
         )
 
-    def save_model(self, request, obj, form, change):
-        if not obj.current_semester and obj.program:
-            first_semester = Semester.objects.filter(program=obj.program, number=1).first()
-            if first_semester:
-                obj.current_semester = first_semester
-        super().save_model(request, obj, form, change)
 
     def get_urls(self):
         urls = super().get_urls()

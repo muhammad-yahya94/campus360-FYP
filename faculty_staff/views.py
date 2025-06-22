@@ -355,12 +355,11 @@ def session_students(request, session_id):
     hod_department = request.user.teacher_profile.department
     session = get_object_or_404(AcademicSession, id=session_id)
     programs = Program.objects.filter(department=hod_department)
-    applicants = Applicant.objects.filter(program__in=programs)
+    applicants = Applicant.objects.filter(program__in=programs, session=session)  # Filter applicants by session
     students = Student.objects.filter(
         applicant__in=applicants,
-        program__in=programs,
-        enrollment_date__year=session.start_year
-    ).select_related('applicant', 'program', 'current_semester')
+        program__in=programs
+    ).select_related('applicant', 'program')
 
     search_query = request.GET.get('q', '').strip()
     if search_query:
@@ -445,15 +444,20 @@ def course_offerings(request):
     session_id = request.GET.get('session_id')
     program_id = request.GET.get('program_id')
     semester_id = request.GET.get('semester_id')
+    page = request.GET.get('page', 1)
 
-    # Base querysets
+    # Base querysets with active filters
     academic_sessions = AcademicSession.objects.filter(is_active=True).order_by('-start_year')
-    programs = Program.objects.filter(department=hod_department)
+    programs = Program.objects.filter(department=hod_department, is_active=True)
     teachers = Teacher.objects.filter(is_active=True, department=hod_department)
     semesters = Semester.objects.filter(program__in=programs, is_active=True).distinct()
 
-    # Filter course offerings
-    course_offerings = CourseOffering.objects.filter(department=hod_department)
+    # Filter course offerings for active semesters and programs
+    course_offerings = CourseOffering.objects.filter(
+        department=hod_department,
+        semester__is_active=True,
+        program__is_active=True
+    )
     if session_id:
         course_offerings = course_offerings.filter(academic_session_id=session_id)
     if program_id:
@@ -462,8 +466,16 @@ def course_offerings(request):
         course_offerings = course_offerings.filter(semester_id=semester_id)
     course_offerings = course_offerings.select_related('course', 'teacher', 'program', 'department', 'academic_session', 'semester')
 
-    # Filter timetable slots
-    timetable_slots = TimetableSlot.objects.filter(course_offering__department=hod_department)
+    # Pagination for course offerings
+    paginator = Paginator(course_offerings, 20)  # 10 items per page
+    page_obj = paginator.get_page(page)
+
+    # Filter timetable slots for active semesters and programs
+    timetable_slots = TimetableSlot.objects.filter(
+        course_offering__department=hod_department,
+        course_offering__semester__is_active=True,
+        course_offering__program__is_active=True
+    )
     if session_id:
         timetable_slots = timetable_slots.filter(course_offering__academic_session_id=session_id)
     if program_id:
@@ -472,13 +484,17 @@ def course_offerings(request):
         timetable_slots = timetable_slots.filter(course_offering__semester_id=semester_id)
     timetable_slots = timetable_slots.select_related('course_offering__course', 'course_offering__teacher', 'course_offering__program', 'course_offering__semester', 'venue')
 
+    # Pagination for timetable slots
+    timetable_paginator = Paginator(timetable_slots, 20)  # 10 items per page
+    timetable_page_obj = timetable_paginator.get_page(page)
+
     context = {
         'academic_sessions': academic_sessions,
         'semesters': semesters,
         'programs': programs,
         'teachers': teachers,
-        'course_offerings': course_offerings,
-        'timetable_slots': timetable_slots,
+        'course_offerings': page_obj,  # Pass paginated object
+        'timetable_slots': timetable_page_obj,  # Pass paginated object
         'department': hod_department,
         'session_id': session_id,
         'program_id': program_id,
@@ -564,7 +580,7 @@ def get_academic_sessions(request):
 def search_programs(request):
     if request.method == "GET":
         search_query = request.GET.get('q', '')
-        academic_session_id = request.GET.get('academic_session_id', '')
+        # academic_session_id = request.GET.get('academic_session_id', '')
         page = int(request.GET.get('page', 1))
         per_page = 10
         hod_department = request.user.teacher_profile.department
@@ -573,19 +589,19 @@ def search_programs(request):
 
         programs = Program.objects.filter(department=hod_department)
 
-        if academic_session_id:
-            try:
-                academic_session = AcademicSession.objects.get(id=academic_session_id)
-                filtered_programs = programs.filter(
-                    course_offerings__academic_session=academic_session
-                ).distinct()
-                if filtered_programs.exists():
-                    programs = filtered_programs
-            except AcademicSession.DoesNotExist:
-                return JsonResponse({
-                    'results': [],
-                    'pagination': {'more': False}
-                })
+        # if academic_session_id:
+        #     try:
+        #         academic_session = AcademicSession.objects.get(id=academic_session_id)
+        #         filtered_programs = programs.filter(
+        #             course_offerings__academic_session=academic_session
+        #         ).distinct()
+        #         if filtered_programs.exists():
+        #             programs = filtered_programs
+        #     except AcademicSession.DoesNotExist:
+        #         return JsonResponse({
+        #             'results': [],
+        #             'pagination': {'more': False}
+        #         })
 
         if search_query:
             programs = programs.filter(
@@ -612,21 +628,24 @@ def search_semesters(request):
     if request.method == "GET":
         search_query = request.GET.get('q', '')
         program_id = request.GET.get('program_id')
+        academic_session_id = request.GET.get('academic_session_id')
 
         filters = Q(name__icontains=search_query) | Q(program__name__icontains=search_query)
         filters &= Q(is_active=True)
         if program_id:
             filters &= Q(program_id=program_id)
+        if academic_session_id:
+            filters &= Q(session_id=academic_session_id)
 
         semesters = Semester.objects.filter(filters).values(
-            'id', 'name', 'program__name'
+            'id', 'name', 'program__name', 'session__name'
         )[:10]
 
         return JsonResponse({
             'results': [
                 {
                     'id': semester['id'],
-                    'text': f"{semester['name']} ({semester['program__name']})"
+                    'text': f"{semester['name']} (Session: {semester['session__name']}) (Program: {semester['program__name']})"
                 } for semester in semesters
             ],
             'more': False
@@ -776,7 +795,6 @@ def save_course_offering(request):
 
     active_students = Student.objects.filter(
         program=program,
-        current_semester=semester,
         current_status='active'
     )
     if not active_students.exists():
@@ -1193,9 +1211,17 @@ def weekly_timetable(request):
         }, status=403)
 
     department = request.user.teacher_profile.department
-    try:
-        current_session = AcademicSession.objects.get(is_active=True)
-    except AcademicSession.DoesNotExist:
+    # Get all active sessions for the filter
+    academic_sessions = AcademicSession.objects.filter(is_active=True).order_by('-start_year')
+    selected_session_id = request.GET.get('session_id')
+
+    # Determine the current session
+    if selected_session_id:
+        current_session = AcademicSession.objects.filter(id=selected_session_id, is_active=True).first()
+    else:
+        current_session = AcademicSession.objects.filter(is_active=True).order_by('-start_year').first()
+    
+    if not current_session:
         return render(request, 'faculty_staff/error.html', {
             'message': 'No active academic session found.'
         }, status=404)
@@ -1233,7 +1259,7 @@ def weekly_timetable(request):
                     'course_code': slot.course_offering.course.code,
                     'course_name': slot.course_offering.course.name,
                     'venue': slot.venue.name,
-                    'room_no':slot.venue.capacity,
+                    'room_no': slot.venue.capacity,
                     'start_time': slot.start_time.strftime('%H:%M'),
                     'end_time': slot.end_time.strftime('%H:%M'),
                     'shift': (
@@ -1250,8 +1276,14 @@ def weekly_timetable(request):
         timetable_data.append({
             'day_value': day_value,
             'day_label': day_label,
-            'slots': day_slots
+            'slots': day_slots  
         })
+
+    # Fetch unique programs for the current session and department
+    programs = TimetableSlot.objects.filter(
+        course_offering__department=department,
+        course_offering__academic_session=current_session
+    ).values('course_offering__program__name').distinct()
 
     return render(request, 'faculty_staff/weekly_timetable.html', {
         'timetable_data': timetable_data,
@@ -1259,8 +1291,9 @@ def weekly_timetable(request):
         'academic_session': current_session,
         'shift_filter': shift_filter,
         'shift_options': [('all', 'All'), ('morning', 'Morning'), ('evening', 'Evening'), ('both', 'Both')],
+        'academic_sessions': academic_sessions,
+        'programs': programs,  # Pass the list of programs
     })
-    
     
     
 
@@ -1273,9 +1306,17 @@ def my_timetable(request):
 
     teacher = request.user.teacher_profile
     department = teacher.department
-    try:
-        current_session = AcademicSession.objects.get(is_active=True)
-    except AcademicSession.DoesNotExist:
+    # Get all active sessions for the filter
+    academic_sessions = AcademicSession.objects.filter(is_active=True).order_by('-start_year')
+    selected_session_id = request.GET.get('session_id')
+
+    # Determine the current session
+    if selected_session_id:
+        current_session = AcademicSession.objects.filter(id=selected_session_id, is_active=True).first()
+    else:
+        current_session = AcademicSession.objects.filter(is_active=True).order_by('-start_year').first()
+    
+    if not current_session:
         return render(request, 'faculty_staff/error.html', {
             'message': 'No active academic session found.'
         }, status=404)
@@ -1314,7 +1355,7 @@ def my_timetable(request):
                     'course_code': slot.course_offering.course.code,
                     'course_name': slot.course_offering.course.name,
                     'venue': slot.venue.name,
-                    'room_no':slot.venue.capacity,
+                    'room_no': slot.venue.capacity,
                     'start_time': slot.start_time.strftime('%H:%M'),
                     'end_time': slot.end_time.strftime('%H:%M'),
                     'shift': (
@@ -1340,6 +1381,7 @@ def my_timetable(request):
         'shift_filter': shift_filter,
         'shift_options': [('all', 'All'), ('morning', 'Morning'), ('evening', 'Evening'), ('both', 'Both')],
         'teacher': teacher,
+        'academic_sessions': academic_sessions,  # Pass all active sessions for the filter
     })
     
     
@@ -2060,8 +2102,6 @@ def logout_view(request):
 
 
 
-
-
 @login_required
 def semester_management(request):
     """
@@ -2073,6 +2113,7 @@ def semester_management(request):
             'error': 'You do not have permission to manage semesters.',
             'programs': [],
             'semesters': [],
+            'academic_sessions': [],
         })
     
     hod_department = request.user.teacher_profile.department
@@ -2103,8 +2144,10 @@ def semester_management(request):
         'semesters': page_obj,
         'search_query': search_query,
         'selected_program': program_id,
+        'academic_sessions': AcademicSession.objects.all().order_by('-start_year'),  # Add all sessions
     }
     return render(request, 'faculty_staff/semester_management.html', context)
+
 
 @login_required
 def add_semester(request):
@@ -2117,6 +2160,7 @@ def add_semester(request):
     
     hod_department = request.user.teacher_profile.department
     program_id = request.POST.get('program_id')
+    session_id = request.POST.get('session_id')  # New field for session
     number = request.POST.get('number')
     name = request.POST.get('name')
     description = request.POST.get('description', '')
@@ -2124,10 +2168,10 @@ def add_semester(request):
     end_time = request.POST.get('end_time')
     is_active = request.POST.get('is_active', 'false') == 'true'
     
-    print(f'Add semester attempt: program_id={program_id}, number={number}, name={name}, user={request.user}, department={hod_department}')
+    print(f'Add semester attempt: program_id={program_id}, session_id={session_id}, number={number}, name={name}, user={request.user}, department={hod_department}')
     
     # Validate required fields
-    required_fields = {'program_id': 'Program', 'number': 'Semester Number', 'name': 'Name'}
+    required_fields = {'program_id': 'Program', 'session_id': 'Session', 'number': 'Semester Number', 'name': 'Name'}
     missing_fields = [field_label for field_name, field_label in required_fields.items() if not request.POST.get(field_name)]
     if missing_fields:
         print(f'Missing fields: {", ".join(missing_fields)}')
@@ -2135,13 +2179,15 @@ def add_semester(request):
     
     try:
         program = Program.objects.get(id=program_id, department=hod_department)
+        session = get_object_or_404(AcademicSession, id=session_id)  # Validate session
         number = int(number)
         if number < 1:
             raise ValueError("Semester number must be a positive integer.")
         
-        # Create semester
+        # Create semester with session
         semester = Semester(
             program=program,
+            session=session,  # Assign the session object
             number=number,
             name=name,
             description=description,
@@ -2150,15 +2196,18 @@ def add_semester(request):
             is_active=is_active
         )
         semester.save()  # Validation in model will check sequential numbers
-        print(f'Semester created: {semester} by user: {request.user}')
+        print(f'Semester created: {semester} by user: {request.user} for session: {session}')
         return JsonResponse({
             'success': True,
-            'message': f'Semester {semester.name} added successfully!',
+            'message': f'Semester {semester.name} added successfully for session {session.name}!',
             'semester_id': semester.id
         })
     except Program.DoesNotExist:
         print(f'Program not found or not in department: program_id={program_id}, department={hod_department}')
         return JsonResponse({'success': False, 'message': 'Selected program is invalid or not in your department.'})
+    except AcademicSession.DoesNotExist:
+        print(f'Session not found: session_id={session_id}')
+        return JsonResponse({'success': False, 'message': 'Selected session is invalid.'})
     except ValueError as e:
         print(f'Invalid data: {str(e)}')
         return JsonResponse({'success': False, 'message': f'Invalid data: {str(e)}'})
@@ -2167,8 +2216,8 @@ def add_semester(request):
         return JsonResponse({'success': False, 'message': f'Validation error: {str(e)}'})
     except Exception as e:
         print(f'Error adding semester: {str(e)}')
-        return JsonResponse({'success': False, 'message': f'Error adding semester: {str(e)}'})
-
+        return JsonResponse({'success': False, 'message': f'Error adding semester: {str(e)}'})    
+    
 @login_required
 def edit_semester(request):
     """
@@ -2268,160 +2317,6 @@ def delete_semester(request):
         print(f'Error deleting semester: {str(e)}')
         return JsonResponse({'success': False, 'message': f'Error deleting semester: {str(e)}'})
 
-@login_required
-def add_semester(request):
-    """
-    AJAX view to add a new semester.
-    """
-    if request.method != "POST" or not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
-        print(f'Unauthorized or invalid request to add semester by user: {request.user}')
-        return JsonResponse({'success': False, 'message': 'Invalid request or insufficient permissions.'})
-    
-    program_id = request.POST.get('program_id')
-    number = request.POST.get('number')
-    name = request.POST.get('name')
-    description = request.POST.get('description', '')
-    start_time = request.POST.get('start_time')
-    end_time = request.POST.get('end_time')
-    is_active = request.POST.get('is_active', 'false') == 'true'
-    
-    print(f'Add semester attempt: program_id={program_id}, number={number}, name={name}, user={request.user}')
-    
-    # Validate required fields
-    required_fields = {'program_id': 'Program', 'number': 'Semester Number', 'name': 'Name'}
-    missing_fields = [field_label for field_name, field_label in required_fields.items() if not request.POST.get(field_name)]
-    if missing_fields:
-        print(f'Missing fields: {", ".join(missing_fields)}')
-        return JsonResponse({'success': False, 'message': f'Missing required fields: {", ".join(missing_fields)}'})
-    
-    try:
-        program = Program.objects.get(id=program_id)
-        number = int(number)
-        if number < 1:
-            raise ValueError("Semester number must be a positive integer.")
-        
-        # Create semester
-        semester = Semester(
-            program=program,
-            number=number,
-            name=name,
-            description=description,
-            start_time=start_time or None,
-            end_time=end_time or None,
-            is_active=is_active
-        )
-        semester.save()  # Validation in model will check sequential numbers
-        print(f'Semester created: {semester} by user: {request.user}')
-        return JsonResponse({
-            'success': True,
-            'message': f'Semester {semester.name} added successfully!',
-            'semester_id': semester.id
-        })
-    except Program.DoesNotExist:
-        print(f'Program not found: program_id={program_id}')
-        return JsonResponse({'success': False, 'message': 'Selected program no longer exists.'})
-    except ValueError as e:
-        print(f'Invalid data: {str(e)}')
-        return JsonResponse({'success': False, 'message': f'Invalid data: {str(e)}'})
-    except ValidationError as e:
-        print(f'Validation error: {str(e)}')
-        return JsonResponse({'success': False, 'message': f'Validation error: {str(e)}'})
-    except Exception as e:
-        print(f'Error adding semester: {str(e)}')
-        return JsonResponse({'success': False, 'message': f'Error adding semester: {str(e)}'})
-
-@login_required
-def edit_semester(request):
-    """
-    AJAX view to edit an existing semester.
-    """
-    if request.method != "POST" or not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
-        print(f'Unauthorized or invalid request to edit semester by user: {request.user}')
-        return JsonResponse({'success': False, 'message': 'Invalid request or insufficient permissions.'})
-    
-    semester_id = request.POST.get('semester_id')
-    program_id = request.POST.get('program_id')
-    number = request.POST.get('number')
-    name = request.POST.get('name')
-    description = request.POST.get('description', '')
-    start_time = request.POST.get('start_time')
-    end_time = request.POST.get('end_time')
-    is_active = request.POST.get('is_active', 'false') == 'true'
-    
-    print(f'Edit semester attempt: semester_id={semester_id}, program_id={program_id}, number={number}, name={name}, user={request.user}')
-    
-    # Validate required fields
-    required_fields = {'semester_id': 'Semester', 'program_id': 'Program', 'number': 'Semester Number', 'name': 'Name'}
-    missing_fields = [field_label for field_name, field_label in required_fields.items() if not request.POST.get(field_name)]
-    if missing_fields:
-        print(f'Missing fields: {", ".join(missing_fields)}')
-        return JsonResponse({'success': False, 'message': f'Missing required fields: {", ".join(missing_fields)}'})
-    
-    try:
-        semester = get_object_or_404(Semester, id=semester_id)
-        program = Program.objects.get(id=program_id)
-        number = int(number)
-        if number < 1:
-            raise ValueError("Semester number must be a positive integer.")
-        
-        # Update fields
-        semester.program = program
-        semester.number = number
-        semester.name = name
-        semester.description = description
-        semester.start_time = start_time or None
-        semester.end_time = end_time or None
-        semester.is_active = is_active
-        semester.save()  # Validation in model will check sequential numbers
-        print(f'Semester updated: {semester} by user: {request.user}')
-        return JsonResponse({
-            'success': True,
-            'message': f'Semester {semester.name} updated successfully!',
-            'semester_id': semester.id
-        })
-    except Program.DoesNotExist:
-        print(f'Program not found: program_id={program_id}')
-        return JsonResponse({'success': False, 'message': 'Selected program no longer exists.'})
-    except ValueError as e:
-        print(f'Invalid data: {str(e)}')
-        return JsonResponse({'success': False, 'message': f'Invalid data: {str(e)}'})
-    except ValidationError as e:
-        print(f'Validation error: {str(e)}')
-        return JsonResponse({'success': False, 'message': f'Validation error: {str(e)}'})
-    except Exception as e:
-        print(f'Error editing semester: {str(e)}')
-        return JsonResponse({'success': False, 'message': f'Error editing semester: {str(e)}'})
-
-@login_required
-def delete_semester(request):
-    """
-    AJAX view to delete a semester.
-    """
-    if request.method != "POST" or not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
-        print(f'Unauthorized or invalid request to delete semester by user: {request.user}')
-        return JsonResponse({'success': False, 'message': 'Invalid request or insufficient permissions.'})
-    
-    semester_id = request.POST.get('semester_id')
-    print(f'Delete semester attempt: semester_id={semester_id}, user={request.user}')
-    
-    if not semester_id:
-        print('Missing semester_id for deletion')
-        return JsonResponse({'success': False, 'message': 'Missing semester ID.'})
-    
-    try:
-        semester = get_object_or_404(Semester, id=semester_id)
-        semester_name = semester.name
-        semester.delete()
-        print(f'Semester deleted: {semester_name} by user: {request.user}')    
-        return JsonResponse({
-            'success': True,
-            'message': f'Semester {semester_name} deleted successfully!'
-        })
-    except Exception as e:
-        print(f'Error deleting semester: {str(e)}')
-        return JsonResponse({'success': False, 'message': f'Error deleting semester: {str(e)}'})
-    
-    
     
     
     

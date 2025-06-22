@@ -8,7 +8,7 @@
   <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-xl shadow-lg mb-6">
     <div class="text-center py-8">
       <h1 class="text-4xl font-bold mb-2">My Timetable</h1>
-      <p class="text-lg opacity-90">{{ teacher.user.first_name }} {{ teacher.user.last_name }} - {{ department.name }} - {{ academic_session.name }}</p>
+      <p class="text-lg opacity-90">{{ teacher.user.first_name }} {{ teacher.user.last_name }} - {{ department.name }} - {{ academic_session.name|default:'No Active Session' }}</p>
     </div>
   </div>
 
@@ -19,8 +19,17 @@
       Back to Course Offerings
     </a>
     <div class="flex items-center gap-4">
+      <label for="session-filter" class="text-sm font-medium text-gray-700">Select Session:</label>
+      <select id="session-filter" onchange="window.location.href='?session_id=' + this.value + '&shift=' + document.getElementById('shift-filter').value" class="border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500">
+        {% comment %} <option value="">All Sessions</option> {% endcomment %}
+        {% for session in academic_sessions %}
+          <option value="{{ session.id }}" {% if request.GET.session_id|default:'' == session.id|stringformat:"s" %}selected{% endif %}>
+            {{ session.name }}
+          </option>
+        {% endfor %}
+      </select>
       <label for="shift-filter" class="text-sm font-medium text-gray-700">Filter by Shift:</label>
-      <select id="shift-filter" onchange="window.location.href='?shift=' + this.value" class="border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500">
+      <select id="shift-filter" onchange="window.location.href='?session_id=' + document.getElementById('session-filter').value + '&shift=' + this.value" class="border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500">
         {% for value, label in shift_options %}
           <option value="{{ value }}" {% if shift_filter == value %}selected{% endif %}>{{ label }}</option>
         {% endfor %}

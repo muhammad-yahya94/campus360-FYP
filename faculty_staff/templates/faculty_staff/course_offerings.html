@@ -53,6 +53,27 @@
     padding-left: 0.5rem;
     padding-right: 0.5rem;
   }
+  .pagination {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+  .pagination .page-link {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 0.25rem;
+    text-decoration: none;
+    color: #333;
+  }
+  .pagination .page-link:hover {
+    background-color: #f0f0f0;
+  }
+  .pagination .page-link.active {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+  }
 </style>
 
 {% block content %}
@@ -218,8 +239,8 @@
           <table class="table table-zebra w-full min-w-[1320px] table-fixed" aria-label="Course Offerings">
             <thead class="bg-base-200">
               <tr>
-                <th class="text-sm w-[150px] text-center">Code</th>
-                <th class="text-sm w-[150px] text-left">Course</th>
+                <th class="text-sm w-[100px] text-center">Code</th>
+                <th class="text-sm w-[200px] text-left">Course</th>
                 <th class="text-sm w-[150px] text-left">Program</th>
                 <th class="text-sm w-[150px] text-left">Dept</th>
                 <th class="text-sm w-[150px] text-left">Teacher</th>
@@ -258,10 +279,6 @@
                 </td>
                 <td class="text-sm text-center">
                   <div class="flex flex-row gap-1 flex-nowrap justify-center">
-                    {% comment %} <a href="{% url 'faculty_staff:exam_results' %}?course_offering_id={{ offering.id }}"
-                       class="btn btn-xs btn-info tooltip tooltip-primary px-2" data-tip="View Results" aria-label="View Results">
-                      <i class="fas fa-eye"></i>
-                    </a> {% endcomment %}
                     <a href="{% url 'faculty_staff:timetable_schedule' offering.id %}"
                        class="btn btn-xs btn-accent tooltip tooltip-primary px-2" data-tip="Edit Timetable" aria-label="Edit Timetable">
                       <i class="fas fa-calendar-alt"></i>
@@ -282,7 +299,7 @@
               </tr>
               {% empty %}
               <tr>
-                <td colspan="11" class="text-center p-8 border-b border-base-300">
+                <td colspan="12" class="text-center p-8 border-b border-base-300">
                   <div class="text-center">
                     <i class="fas fa-book text-6xl text-base-content/20 mb-4"></i>
                     <h3 class="text-xl font-semibold text-base-content/70 mb-2">No Courses Found</h3>
@@ -295,6 +312,40 @@
           </table>
         </div>
       </div>
+      <!-- Pagination for Course Offerings -->
+      {% if course_offerings.has_other_pages %}
+        <div class="flex justify-center items-center gap-2 mt-4">
+          {% if course_offerings.has_previous %}
+            <a href="?page=1&session_id={{ session_id|default:'' }}&program_id={{ program_id|default:'' }}&semester_id={{ semester_id|default:'' }}"
+               class="px-3 py-1 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200">
+              First
+            </a>
+            <a href="?page={{ course_offerings.previous_page_number }}&session_id={{ session_id|default:'' }}&program_id={{ program_id|default:'' }}&semester_id={{ semester_id|default:'' }}"
+               class="px-3 py-1 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200">
+              Previous
+            </a>
+          {% endif %}
+          {% for num in course_offerings.paginator.page_range %}
+            <a href="?page={{ num }}&session_id={{ session_id|default:'' }}&program_id={{ program_id|default:'' }}&semester_id={{ semester_id|default:'' }}"
+               class="px-3 py-1 {% if course_offerings.number == num %}bg-blue-600 text-white{% else %}bg-gray-200 text-gray-800 hover:bg-gray-300{% endif %} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200">
+              {{ num }}
+            </a>
+          {% endfor %}
+          {% if course_offerings.has_next %}
+            <a href="?page={{ course_offerings.next_page_number }}&session_id={{ session_id|default:'' }}&program_id={{ program_id|default:'' }}&semester_id={{ semester_id|default:'' }}"
+               class="px-3 py-1 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200">
+              Next
+            </a>
+            <a href="?page={{ course_offerings.paginator.num_pages }}&session_id={{ session_id|default:'' }}&program_id={{ program_id|default:'' }}&semester_id={{ semester_id|default:'' }}"
+               class="px-3 py-1 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200">
+              Last
+            </a>
+          {% endif %}
+          <span class="text-sm text-gray-600 ml-2">
+            Page {{ course_offerings.number }} of {{ course_offerings.paginator.num_pages }}
+          </span>
+        </div>
+      {% endif %}
     </div>
   </section>
 
@@ -310,8 +361,8 @@
           <table class="table table-zebra w-full min-w-[1200px] table-fixed" aria-label="Timetable Slots">
             <thead class="bg-base-200">
               <tr>
-                <th class="text-sm w-[120px] sticky top-0 z-20 border-r border-b border-base-300 text-center">Code</th>
-                <th class="text-sm w-[150px] sticky top-0 z-20 border-r border-b border-base-300 text-left">Course</th>
+                <th class="text-sm w-[100px] sticky top-0 z-20 border-r border-b border-base-300 text-center">Code</th>
+                <th class="text-sm w-[200px] sticky top-0 z-20 border-r border-b border-base-300 text-left">Course</th>
                 <th class="text-sm w-[150px] sticky top-0 z-20 border-r border-b border-base-300 text-left">Teacher</th>
                 <th class="text-sm w-[150px] sticky top-0 z-20 border-r border-b border-base-300 text-left">Program</th>
                 <th class="text-sm w-[120px] sticky top-0 z-20 border-r border-b border-base-300 text-center">Sem</th>
@@ -335,7 +386,7 @@
                 <td class="text-sm text-center border-r border-base-300">{{ slot.get_day_display }}</td>
                 <td class="text-sm text-center border-r border-base-300">{{ slot.start_time|time:"H:i" }}–{{ slot.end_time|time:"H:i" }}</td>
                 <td class="text-sm text-left border-r border-base-300 overflow-hidden text-ellipsis whitespace-nowrap">{{ slot.venue.name }}</td>
-                                <td class="text-sm text-left border-r border-base-300 overflow-hidden text-ellipsis whitespace-nowrap">{{ slot.venue.capacity }}</td>
+                <td class="text-sm text-left border-r border-base-300 overflow-hidden text-ellipsis whitespace-nowrap">{{ slot.venue.capacity }}</td>
                 <td class="text-sm text-center">
                   <div class="flex flex-row gap-1 flex-nowrap justify-center">
                     <label for="edit-timetable-modal"
@@ -354,7 +405,7 @@
               </tr>
               {% empty %}
               <tr>
-                <td colspan="10" class="text-center p-8 border-b border-base-300">
+                <td colspan="11" class="text-center p-8 border-b border-base-300">
                   <div class="text-center">
                     <i class="fas fa-calendar-alt text-6xl text-base-content/20 mb-4"></i>
                     <h3 class="text-xl font-semibold text-base-content/70 mb-2">No Timetable Slots Found</h3>
@@ -367,6 +418,40 @@
           </table>
         </div>
       </div>
+      <!-- Pagination for Timetable Slots -->
+      {% if timetable_slots.has_other_pages %}
+        <div class="flex justify-center items-center gap-2 mt-4">
+          {% if timetable_slots.has_previous %}
+            <a href="?page=1&session_id={{ session_id|default:'' }}&program_id={{ program_id|default:'' }}&semester_id={{ semester_id|default:'' }}"
+               class="px-3 py-1 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200">
+              First
+            </a>
+            <a href="?page={{ timetable_slots.previous_page_number }}&session_id={{ session_id|default:'' }}&program_id={{ program_id|default:'' }}&semester_id={{ semester_id|default:'' }}"
+               class="px-3 py-1 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200">
+              Previous
+            </a>
+          {% endif %}
+          {% for num in timetable_slots.paginator.page_range %}
+            <a href="?page={{ num }}&session_id={{ session_id|default:'' }}&program_id={{ program_id|default:'' }}&semester_id={{ semester_id|default:'' }}"
+               class="px-3 py-1 {% if timetable_slots.number == num %}bg-blue-600 text-white{% else %}bg-gray-200 text-gray-800 hover:bg-gray-300{% endif %} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200">
+              {{ num }}
+            </a>
+          {% endfor %}
+          {% if timetable_slots.has_next %}
+            <a href="?page={{ timetable_slots.next_page_number }}&session_id={{ session_id|default:'' }}&program_id={{ program_id|default:'' }}&semester_id={{ semester_id|default:'' }}"
+               class="px-3 py-1 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200">
+              Next
+            </a>
+            <a href="?page={{ timetable_slots.paginator.num_pages }}&session_id={{ session_id|default:'' }}&program_id={{ program_id|default:'' }}&semester_id={{ semester_id|default:'' }}"
+               class="px-3 py-1 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200">
+              Last
+            </a>
+          {% endif %}
+          <span class="text-sm text-gray-600 ml-2">
+            Page {{ timetable_slots.number }} of {{ timetable_slots.paginator.num_pages }}
+          </span>
+        </div>
+      {% endif %}
     </div>
   </section>
 </div>
@@ -636,34 +721,36 @@ $(document).ready(function() {
     });
   }
 
-  // Initialize Select2 for semester
-  function initSelect2Semester(selector) {
-    $(selector).select2({
-      ajax: {
-        url: "{% url 'faculty_staff:search_semesters' %}",
-        dataType: 'json',
-        delay: 250,
-        data: function(params) {
-          return {
-            q: params.term,
-            page: params.page || 1,
-            program_id: $('#program_id').val() || $('#edit_program_id').val()
-          };
-        },
-        processResults: function(data, params) {
-          params.page = params.page || 1;
-          return {
-            results: data.results,
-            pagination: { more: data.more }
-          };
-        },
-        cache: true
+ 
+// Initialize Select2 for semester
+function initSelect2Semester(selector, academicSessionSelector) {
+  $(selector).select2({
+    ajax: {
+      url: "{% url 'faculty_staff:search_semesters' %}",
+      dataType: 'json',
+      delay: 250,
+      data: function(params) {
+        return {
+          q: params.term,
+          page: params.page || 1,
+          program_id: $('#program_id').val() || $('#edit_program_id').val(),
+          academic_session_id: $(academicSessionSelector).val() || ''
+        };
       },
-      placeholder: "Search for a semester...",
-      minimumInputLength: 1,
-      allowClear: true
-    });
-  }
+      processResults: function(data, params) {
+        params.page = params.page || 1;
+        return {
+          results: data.results,
+          pagination: { more: data.more }
+        };
+      },
+      cache: true
+    },
+    placeholder: "Search for a semester...",
+    minimumInputLength: 1,
+    allowClear: true
+  });
+}
 
   // Initialize Select2 for offering type
   function initSelect2OfferingType(selector) {

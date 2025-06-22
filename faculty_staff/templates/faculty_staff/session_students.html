@@ -10,7 +10,7 @@
             <div class="hero-content text-center py-8">
                 <div>
                     <h1 class="text-4xl font-bold mb-2">Students in Session: {{ session.name }}</h1>
-                    <p class="text-lg opacity-90">Manage students enrolled in this session</p>
+                    <p class="text-lg opacity-90">Manage students enrolled in this session for {{ department.name }}</p>
                 </div>
             </div>
         </div>
@@ -86,7 +86,7 @@
                                     <div class="text-center">
                                         <i class="fas fa-users text-6xl text-base-content/20 mb-4"></i>
                                         <h3 class="text-xl font-semibold text-base-content/70 mb-2">No Students Found</h3>
-                                        <p class="text-base-content/50">Use the search form above to find students or check if the session has any enrolled students.</p>
+                                        <p class="text-base-content/50">No students are enrolled in {{ session.name }} for {{ department.name }}. Check the session or add new applicants.</p>
                                     </div>
                                 </td>
                             </tr>
@@ -107,7 +107,7 @@
                     <a href="?page={{ students.next_page_number }}&q={{ request.GET.q|default:'' }}" class="btn join-item">Next</a>
                     {% endif %}
                 </div>
-            </div>
+            </div>  
         </div>
     </div>
 </div>

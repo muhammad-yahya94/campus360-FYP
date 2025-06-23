@@ -108,11 +108,19 @@
             
             <!-- User Profile -->
             <div class="dropdown dropdown-end">
+
                 <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
-                    <div class="w-8 h-8 rounded-full bg-primary text-primary-content flex items-center justify-center">
-                        <i class="fas fa-user"></i>
-                    </div>
+                    {% if user.profile_picture %}
+                        <div class="w-8 h-8 rounded-full">
+                            <img src="{{ user.profile_picture.url }}" alt="User Avatar" class="w-full h-full object-cover rounded-full" />
+                        </div>
+                    {% else %}
+                        <div class="w-8 h-8 rounded-full bg-primary text-primary-content flex items-center justify-center">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    {% endif %}
                 </div>
+
                 <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-64 max-w-[80vw]">
                     <li class="menu-title text-base">
                         {{ teacher_full_name }}
@@ -228,22 +236,35 @@
             <label for="my-drawer-2" aria-label="close sidebar" class="drawer-overlay"></label>
             <aside class="min-h-full w-64 lg:w-80 bg-base-200 text-base-content">
                 <div class="p-4">
-                    <div class="flex items-center gap-3 mb-8 p-4 bg-base-100 rounded-lg shadow-sm">
-                        <div class="avatar">
+                <div class="flex items-center gap-3 mb-8 p-4 bg-base-100 rounded-lg shadow-sm">
+                    <div class="avatar">
+                        {% if user.profile_picture %}
+                            <div class="w-12 h-12 rounded-full">
+                                <img src="{{ user.profile_picture.url }}" alt="Teacher Avatar" class="w-full h-full object-cover rounded-full" />
+                            </div>
+                        {% else %}
                             <div class="w-12 rounded-full bg-primary text-primary-content flex items-center justify-center">
                                 <i class="fas fa-graduation-cap text-xl"></i>
                             </div>
-                        </div>
-                        <div>
-                            <h2 class="text-xl font-bold">Faculty Dashboard</h2>
-                            <p class="text-sm text-base-content/70">
-                                {{ teacher_full_name }}
-                                <span class="{% if teacher_status == 'on_break' %}text-red-500{% elif teacher_status == 'on_lecture' %}text-green-500{% elif teacher_status == 'on_leave' %}text-orange-500{% elif teacher_status == 'available' %}text-blue-500{% else %}text-gray-500{% endif %}">
-                                    ({{ teacher_status }} {% if teacher_status == 'on_break' %}🛑{% elif teacher_status == 'on_lecture' %}📢{% elif teacher_status == 'on_leave' %}🌴{% elif teacher_status == 'available' %}✅{% else %}🤷{% endif %})
-                                </span>
-                            </p>
-                        </div>
+                        {% endif %}
                     </div>
+                    <div>
+                        <h2 class="text-xl font-bold">Faculty Dashboard</h2>
+                        <p class="text-sm text-base-content/70">
+                            {{ teacher_full_name }}
+                            <span class="{% if teacher_status == 'on_break' %}text-red-500{% elif teacher_status == 'on_lecture' %}text-green-500{% elif teacher_status == 'on_leave' %}text-orange-500{% elif teacher_status == 'available' %}text-blue-500{% else %}text-gray-500{% endif %}">
+                                ({{ teacher_status }} 
+                                {% if teacher_status == 'on_break' %}🛑
+                                {% elif teacher_status == 'on_lecture' %}📢
+                                {% elif teacher_status == 'on_leave' %}🌴
+                                {% elif teacher_status == 'available' %}✅
+                                {% else %}🤷
+                                {% endif %})
+                            </span>
+                        </p>
+                    </div>
+                </div>
+
 
                     <!-- Theme Selector Button in Sidebar -->
                     <div class="mb-6">
@@ -341,7 +362,7 @@
                 </div>
             </aside>
         </div>
-    </div>
+    </div>    
 
     {% block extra_js %}{% endblock %}
 </body>

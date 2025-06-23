@@ -73,9 +73,22 @@ from .models import Teacher, TeacherDetails
 User = get_user_model()
 
 class UserUpdateForm(forms.ModelForm):
+    profile_picture = forms.ImageField(
+        required=False,
+        widget=forms.FileInput(attrs={'class': 'input input-bordered w-full', 'accept': 'image/*'})
+    )
+
     class Meta:
         model = User
         fields = ['profile_picture', 'first_name', 'last_name', 'email', 'info']
+
+    def clean_profile_picture(self):
+        profile_picture = self.cleaned_data.get('profile_picture')
+        if profile_picture:
+            if profile_picture.size > 2 * 1024 * 1024:  # Limit to 2MB
+                raise ValidationError("Image file too large (max 2MB).")
+            return profile_picture
+        return profile_picture
 
 class TeacherUpdateForm(forms.ModelForm):
     class Meta:

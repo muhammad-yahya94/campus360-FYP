@@ -2636,11 +2636,13 @@ def settings(request):
         'password_form': password_form,
         'status_form': status_form,
         'contact_no': contact,
-        'status':TeacherDetails.STATUS_CHOICES,
+        'status': TeacherDetails.STATUS_CHOICES,
         'form_errors': {
             'first_name': user_form.errors.get('first_name'),
             'last_name': user_form.errors.get('last_name'),
             'email': user_form.errors.get('email'),
+            'profile_picture': user_form.errors.get('profile_picture'),
+            'info': user_form.errors.get('info'),
             'contact_no': teacher_form.errors.get('contact_no'),
             'qualification': teacher_form.errors.get('qualification'),
             'hire_date': teacher_form.errors.get('hire_date'),
@@ -2652,7 +2654,7 @@ def settings(request):
 def update_account(request):
     if request.method == 'POST':
         teacher_profile = request.user.teacher_profile
-        user_form = UserUpdateForm(request.POST, instance=request.user)
+        user_form = UserUpdateForm(request.POST, request.FILES, instance=request.user)
         teacher_form = TeacherUpdateForm(request.POST, instance=teacher_profile)
         if user_form.is_valid() and teacher_form.is_valid():
             user_form.save()

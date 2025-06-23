@@ -1,0 +1,55 @@
+{% extends 'faculty_staff/base_dashboard.html' %}
+
+{% block title %}Professor Dashboard - {{ user_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <!-- Hero Section -->
+  <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-lg shadow-lg mb-6">
+    <div class="text-center py-6">
+      <h1 class="text-3xl sm:text-4xl font-bold mb-2">Professor Dashboard</h1>
+      <p class="text-base sm:text-lg opacity-90">Welcome, {{ user_name }}! Manage your courses and student activities.</p>
+    </div>
+  </div>
+
+  <!-- Course Overview -->
+  {% if course_offerings %}
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden mb-6">
+      <div class="p-6">
+        <h2 class="text-2xl font-semibold text-gray-900 mb-4">My Assigned Courses</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {% for offering in course_offerings %}
+            <div class="bg-gray-50 p-4 rounded-lg shadow hover:shadow-md transition-shadow">
+              <h3 class="text-lg font-medium text-gray-900">{{ offering.course.code }} - {{ offering.course.name }}</h3>
+              <p class="text-sm text-gray-600">Semester: {{ offering.semester.name }}</p>
+              <p class="text-sm text-gray-600">Program: {{ offering.program.name }}</p>
+              <p class="text-sm text-gray-600">Session: {{ offering.academic_session.name }}</p>
+              <div class="mt-4 flex flex-wrap gap-2">
+                <a href="{% url 'faculty_staff:view_students' %}?course_offering_id={{ offering.id }}"
+                   class="btn btn-secondary btn-sm text-sm">View Students</a>
+                <a href="{% url 'faculty_staff:attendance' %}?course_offering_id={{ offering.id }}"
+                   class="btn btn-info btn-sm text-sm">Attendance</a>
+                <a href="{% url 'faculty_staff:assignments' %}?course_offering_id={{ offering.id }}"
+                   class="btn btn-warning btn-sm text-sm">Assignments</a>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="alert alert-info text-center">
+      <i class="fas fa-info-circle mr-2"></i> You have no assigned courses at the moment.
+    </div>
+  {% endif %}
+
+  <!-- Quick Actions -->
+  <div class="bg-white shadow-lg rounded-lg p-6">
+    <h2 class="text-2xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <a href="{% url 'faculty_staff:exam_results' %}" class="btn btn-primary w-full">View Exam Results</a>
+      <a href="{% url 'faculty_staff:study_materials' %}" class="btn btn-success w-full">Manage Study Materials</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

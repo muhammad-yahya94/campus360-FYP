@@ -7,7 +7,8 @@ app_name = 'faculty_staff'
 urlpatterns = [
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
-    path('dashboard/', views.hod_dashboard, name='hod_dashboard'),
+    path('hod-dashboard/', views.hod_dashboard, name='hod_dashboard'),
+    path('prof-dashboard/', views.professor_dashboard, name='professor_dashboard'),
     path('staff-management/', views.staff_management, name='staff_management'),
     path('staff/add/', views.add_staff, name='add_staff'),
     path('staff/edit/<int:staff_id>/', views.edit_staff, name='edit_staff'),
@@ -81,4 +82,7 @@ urlpatterns = [
     path('semester/add/', views.add_semester, name='add_semester'),
     path('semester/edit/', views.edit_semester, name='edit_semester'),
     path('semester/delete/', views.delete_semester, name='delete_semester'),
+    
+    
+    path('view-students/', views.view_students, name='view_students'),
 ]

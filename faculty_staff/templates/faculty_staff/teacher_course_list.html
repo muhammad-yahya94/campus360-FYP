@@ -52,6 +52,8 @@
                        class="btn btn-success btn-sm text-sm">Course content</a>
                     <a href="{% url 'faculty_staff:assignments' %}?course_offering_id={{ offering.id }}"
                        class="btn btn-warning btn-sm text-sm">Assignments</a>
+                    <a href="{% url 'faculty_staff:view_students' %}?course_offering_id={{ offering.id }}"
+                       class="btn btn-secondary btn-sm text-sm">View Students</a>
                   </div>
                   <!-- Mobile: Dropdown -->
                   <div class="sm:hidden dropdown dropdown-end">
@@ -75,6 +77,10 @@
                         <a href="{% url 'faculty_staff:assignments' %}?course_offering_id={{ offering.id }}"
                            class="text-sm">Assignments</a>
                       </li>
+                      <li>
+                        <a href="{% url 'faculty_staff:view_students' %}?course_offering_id={{ offering.id }}"
+                           class="text-sm">View Students</a>
+                      </li>
                     </ul>
                   </div>
                 </td>
@@ -90,7 +96,6 @@
     </div>
   {% endif %}
 </div>
-{% endblock %}
 
 <style>
   .table {
@@ -148,3 +153,4 @@
     background: linear-gradient(to left, rgba(255, 255, 255, 0.8), transparent);
   }
 </style>
+{% endblock %}

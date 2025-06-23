@@ -33,6 +33,35 @@ class Teacher(models.Model):
         verbose_name = "Teacher"
         verbose_name_plural = "Teachers"
 
+class TeacherDetails(models.Model):
+    # Employment Type Choices
+    EMPLOYMENT_TYPE_CHOICES = [
+        ('visitor', 'Visitor'),
+        ('contract', 'Contract Based'),
+        ('permanent', 'Permanent'),
+    ]
+
+    # Status Choices
+    STATUS_CHOICES = [
+        ('on_break', 'On Break'),
+        ('on_lecture', 'On Lecture'),
+        ('on_leave', 'On Leave'),
+        ('available', 'Available'),
+    ]
+
+    teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE, related_name='details', help_text="Select the teacher to associate these details with.")
+    employment_type = models.CharField(max_length=20, choices=EMPLOYMENT_TYPE_CHOICES, blank=True, null=True, help_text="Select the employment type of the teacher (optional).")
+    salary_per_lecture = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, help_text="Enter the teacher's salary per lecture (optional).")
+    fixed_salary = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, help_text="Enter the teacher's fix salary (optional).")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, blank=True, null=True, help_text="Select the current status of the teacher (optional).")
+    last_updated = models.DateTimeField(auto_now=True, help_text="Automatically updated with the last modification date.")
+
+    def __str__(self):
+        return f"{self.teacher.user.first_name}'s Details ({self.employment_type or 'N/A'})"
+
+    class Meta:
+        verbose_name = "Teacher Details"
+        verbose_name_plural = "Teacher Details"
 
 # ===== Office =====
 class Office(models.Model):

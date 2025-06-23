@@ -96,6 +96,7 @@ TEMPLATES = [
                 'core.context_processors.faculty_context',
                 'core.context_processors.offices_context',
                 'faculty_staff.context_processors.academic_sessions_processor', 
+                'faculty_staff.context_processors.teacher_details_status',
             ],
         },
     },

@@ -114,7 +114,12 @@
                     </div>
                 </div>
                 <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-64 max-w-[80vw]">
-                    <li class="menu-title text-base">{{ request.user.get_full_name }}</li>
+                    <li class="menu-title text-base">
+                        {{ teacher_full_name }}
+                        <span class="{% if teacher_status == 'on_break' %}text-red-500{% elif teacher_status == 'on_lecture' %}text-green-500{% elif teacher_status == 'on_leave' %}text-orange-500{% elif teacher_status == 'available' %}text-blue-500{% else %}text-gray-500{% endif %}">
+                            ({{ teacher_status }} {% if teacher_status == 'on_break' %}🛑{% elif teacher_status == 'on_lecture' %}📢{% elif teacher_status == 'on_leave' %}🌴{% elif teacher_status == 'available' %}✅{% else %}🤷{% endif %})
+                        </span>
+                    </li>
                     <li><a href="{% url 'faculty_staff:logout' %}" class="text-error hover:bg-error hover:text-error-content text-base">Logout</a></li>
                 </ul>
             </div>
@@ -228,7 +233,12 @@
                         </div>
                         <div>
                             <h2 class="text-xl font-bold">Faculty Dashboard</h2>
-                            <p class="text-sm text-base-content/70">{{ request.user.get_full_name }}</p>
+                            <p class="text-sm text-base-content/70">
+                                {{ teacher_full_name }}
+                                <span class="{% if teacher_status == 'on_break' %}text-red-500{% elif teacher_status == 'on_lecture' %}text-green-500{% elif teacher_status == 'on_leave' %}text-orange-500{% elif teacher_status == 'available' %}text-blue-500{% else %}text-gray-500{% endif %}">
+                                    ({{ teacher_status }} {% if teacher_status == 'on_break' %}🛑{% elif teacher_status == 'on_lecture' %}📢{% elif teacher_status == 'on_leave' %}🌴{% elif teacher_status == 'available' %}✅{% else %}🤷{% endif %})
+                                </span>
+                            </p>
                         </div>
                     </div>
 

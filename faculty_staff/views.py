@@ -21,7 +21,7 @@ from django.core.files.storage import default_storage
 from academics.models import Department, Program, Semester
 from admissions.models import AcademicSession, AdmissionCycle, Applicant, AcademicQualification
 from courses.models import Course, CourseOffering, ExamResult, StudyMaterial, Assignment, AssignmentSubmission, Notice, Attendance, Venue, TimetableSlot
-from faculty_staff.models import Teacher
+from faculty_staff.models import Teacher, TeacherDetails
 from students.models import Student, StudentSemesterEnrollment, CourseEnrollment
 import datetime
 # Custom user model
@@ -122,7 +122,6 @@ def professor_dashboard(request):
 
 
 
-
 @hod_required
 def staff_management(request):
     hod_department = request.user.teacher_profile.department
@@ -145,15 +144,15 @@ def staff_management(request):
     paginator = Paginator(staff_list, 10)
     page_number = request.GET.get('page')
     staff_members = paginator.get_page(page_number)
-
-
+    print(f'this is employettpe {TeacherDetails.EMPLOYMENT_TYPE_CHOICES}')
     context = {
         'staff_members': staff_members,
         'department': hod_department,
         'designation_choices': Teacher.DESIGNATION_CHOICES,
+        'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
+        'status_choices': TeacherDetails.STATUS_CHOICES,
     }
     return render(request, 'faculty_staff/staff_management.html', context)
-
 
 @hod_required
 def add_staff(request):
@@ -163,7 +162,7 @@ def add_staff(request):
         first_name = request.POST.get('first_name')
         last_name = request.POST.get('last_name')
         email = request.POST.get('email')
-        designation = request.POST.get('designation')   
+        designation = request.POST.get('designation')
         contact_no = request.POST.get('contact_no', '')
         qualification = request.POST.get('qualification', '')
         hire_date = request.POST.get('hire_date', None)
@@ -172,6 +171,10 @@ def add_staff(request):
         twitter_url = request.POST.get('twitter_url', '')
         personal_website = request.POST.get('personal_website', '')
         experience = request.POST.get('experience', '')
+        employment_type = request.POST.get('employment_type', '')
+        salary_per_lecture = request.POST.get('salary_per_lecture', None)
+        fixed_salary = request.POST.get('fixed_salary', None)
+        status = request.POST.get('status', '')
 
         if not all([first_name, last_name, email, designation]):
             messages.error(request, 'Please fill in all required fields (First Name, Last Name, Email, Designation).')
@@ -179,6 +182,8 @@ def add_staff(request):
                 'department': hod_department,
                 'staff_members': Teacher.objects.filter(department=hod_department),
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
+                'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
+                'status_choices': TeacherDetails.STATUS_CHOICES,
                 'form_errors': {
                     'first_name': not first_name,
                     'last_name': not last_name,
@@ -193,6 +198,8 @@ def add_staff(request):
                 'department': hod_department,
                 'staff_members': Teacher.objects.filter(department=hod_department),
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
+                'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
+                'status_choices': TeacherDetails.STATUS_CHOICES,
                 'form_errors': {'email': 'exists'},
             })
 
@@ -202,6 +209,8 @@ def add_staff(request):
                 'department': hod_department,
                 'staff_members': Teacher.objects.filter(department=hod_department),
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
+                'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
+                'status_choices': TeacherDetails.STATUS_CHOICES,
                 'form_errors': {'designation': True},
             })
 
@@ -229,6 +238,15 @@ def add_staff(request):
                 experience=experience
             )
 
+            # Create TeacherDetails
+            TeacherDetails.objects.create(
+                teacher=teacher,
+                employment_type=employment_type if employment_type else None,
+                salary_per_lecture=salary_per_lecture if salary_per_lecture else None,
+                fixed_salary=fixed_salary if fixed_salary else None,
+                status=status if status else None
+            )
+
             messages.success(request, f'Teacher {user.get_full_name()} has been added successfully.')
             return redirect('faculty_staff:staff_management')
 
@@ -238,6 +256,8 @@ def add_staff(request):
                 'department': hod_department,
                 'staff_members': Teacher.objects.filter(department=hod_department),
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
+                'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
+                'status_choices': TeacherDetails.STATUS_CHOICES,
                 'form_errors': {},
             })
 
@@ -245,13 +265,15 @@ def add_staff(request):
         'department': hod_department,
         'staff_members': Teacher.objects.filter(department=hod_department),
         'designation_choices': Teacher.DESIGNATION_CHOICES,
+        'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
+        'status_choices': TeacherDetails.STATUS_CHOICES,
     })
-
 
 @hod_required
 def edit_staff(request, staff_id):
     hod_department = request.user.teacher_profile.department
     teacher = get_object_or_404(Teacher, id=staff_id, department=hod_department)
+    details = teacher.details if hasattr(teacher, 'details') else None
 
     if request.method == 'POST':
         first_name = request.POST.get('first_name')
@@ -266,6 +288,10 @@ def edit_staff(request, staff_id):
         twitter_url = request.POST.get('twitter_url', '')
         personal_website = request.POST.get('personal_website', '')
         experience = request.POST.get('experience', '')
+        employment_type = request.POST.get('employment_type', '')
+        salary_per_lecture = request.POST.get('salary_per_lecture', None)
+        fixed_salary = request.POST.get('fixed_salary', None)
+        status = request.POST.get('status', '')
 
         if not all([first_name, last_name, email, designation]):
             messages.error(request, 'Please fill in all required fields (First Name, Last Name, Email, Designation).')
@@ -273,6 +299,8 @@ def edit_staff(request, staff_id):
                 'department': hod_department,
                 'staff_members': Teacher.objects.filter(department=hod_department),
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
+                'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
+                'status_choices': TeacherDetails.STATUS_CHOICES,
                 'form_errors': {
                     'first_name': not first_name,
                     'last_name': not last_name,
@@ -287,6 +315,8 @@ def edit_staff(request, staff_id):
                 'department': hod_department,
                 'staff_members': Teacher.objects.filter(department=hod_department),
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
+                'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
+                'status_choices': TeacherDetails.STATUS_CHOICES,
                 'form_errors': {'email': 'exists'},
             })
 
@@ -296,6 +326,8 @@ def edit_staff(request, staff_id):
                 'department': hod_department,
                 'staff_members': Teacher.objects.filter(department=hod_department),
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
+                'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
+                'status_choices': TeacherDetails.STATUS_CHOICES,
                 'form_errors': {'designation': True},
             })
 
@@ -316,26 +348,44 @@ def edit_staff(request, staff_id):
             teacher.experience = experience
             teacher.save()
 
+            # Update or create TeacherDetails
+            if details:
+                details.employment_type = employment_type if employment_type else None
+                details.salary_per_lecture = salary_per_lecture if salary_per_lecture else None
+                details.fixed_salary = fixed_salary if fixed_salary else None
+                details.status = status if status else None
+                details.save()
+            else:
+                TeacherDetails.objects.create(
+                    teacher=teacher,
+                    employment_type=employment_type if employment_type else None,
+                    salary_per_lecture=salary_per_lecture if salary_per_lecture else None,
+                    fixed_salary=fixed_salary if fixed_salary else None,
+                    status=status if status else None
+                )
+
             messages.success(request, f'Teacher {teacher.user.get_full_name()} has been updated successfully.')
             return redirect('faculty_staff:staff_management')
 
-        except Exception as e:  
+        except Exception as e:
             messages.error(request, f'Error updating teacher: {str(e)}')
             return render(request, 'faculty_staff/staff_management.html', {
                 'department': hod_department,
                 'staff_members': Teacher.objects.filter(department=hod_department),
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
+                'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
+                'status_choices': TeacherDetails.STATUS_CHOICES,
                 'form_errors': {},
             })
-
-
+    print(f'this is {TeacherDetails.EMPLOYMENT_TYPE_CHOICES} and {TeacherDetails.STATUS_CHOICES}')        
     return render(request, 'faculty_staff/staff_management.html', {
         'department': hod_department,
         'staff_members': Teacher.objects.filter(department=hod_department),
         'designation_choices': Teacher.DESIGNATION_CHOICES,
+        'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
+        'status_choices': TeacherDetails.STATUS_CHOICES,
     })
-
-
+    
 @hod_required
 def delete_staff(request, staff_id):
     hod_department = request.user.teacher_profile.department
@@ -343,7 +393,7 @@ def delete_staff(request, staff_id):
 
     if request.method == 'POST':
         teacher_name = teacher.user.get_full_name()
-        teacher.delete()
+        teacher.delete()  # This will cascade delete TeacherDetails due to on_delete=models.CASCADE
         messages.success(request, f'Teacher {teacher_name} has been deleted successfully.')
         return redirect('faculty_staff:staff_management')
 
@@ -1290,10 +1340,11 @@ def weekly_timetable(request):
     
 
 
+
 @hod_or_professor_required
 def my_timetable(request):
     teacher = request.user.teacher_profile   
-    department = teacher.department
+    # department = teacher.department  # Removed department restriction
     # Get all active sessions (relaxed filter to include sessions with inactive semesters)
     academic_sessions = AcademicSession.objects.filter(is_active=True).distinct().order_by('-start_year')
     logger.debug(f"All active academic sessions: {academic_sessions}")
@@ -1315,9 +1366,9 @@ def my_timetable(request):
     logger.debug(f"Selected current session: {current_session}, Semesters: {current_session.semesters.all()}")
 
     # Debug: Log active and inactive semesters per program for the selected session
-    programs = Program.objects.filter(department=department).distinct()
+    programs = Program.objects.all().distinct()  # Changed to include all programs, not just department-specific
     for program in programs:
-        semesters = Semester.objects.filter(program=program, session=current_session)  # Updated to use 'session'
+        semesters = Semester.objects.filter(program=program, session=current_session)
         active_semesters = semesters.filter(is_active=True).count()
         inactive_semesters = semesters.count() - active_semesters
         logger.debug(f"Program: {program.name}, Active Semesters: {active_semesters}, Inactive Semesters: {inactive_semesters}")
@@ -1331,10 +1382,9 @@ def my_timetable(request):
     if shift_filter not in valid_shifts:
         shift_filter = 'all'
 
-    # Fetch timetable slots for the teacher's courses
+    # Fetch timetable slots for the teacher's courses across all departments
     queryset = TimetableSlot.objects.filter(
         course_offering__teacher=teacher,
-        course_offering__department=department,
         course_offering__academic_session=current_session
     ).select_related('course_offering__course', 'course_offering__program', 'venue')
 
@@ -1392,8 +1442,7 @@ def my_timetable(request):
     # Debug: Check offerings and their semester status
     offerings = CourseOffering.objects.filter(
         academic_session=current_session,
-        teacher=teacher,
-        department=department
+        teacher=teacher
     )
     active_offerings = offerings.filter(semester__is_active=True)
     inactive_offerings = offerings.exclude(semester__is_active=True)
@@ -1405,15 +1454,16 @@ def my_timetable(request):
 
     return render(request, 'faculty_staff/my_timetable.html', {
         'timetable_data': timetable_data,
-        'department': department,
+        # 'department': department,  # Removed since not used
         'academic_session': current_session,
         'shift_filter': shift_filter,
         'shift_options': [('all', 'All'), ('morning', 'Morning'), ('evening', 'Evening'), ('both', 'Both')],
         'teacher': teacher,
         'academic_sessions': academic_sessions,
         'include_inactive': include_inactive,  # Pass to template for UI feedback
-    })    
+    })
     
+        
 
 @hod_required
 def search_course_offerings(request):

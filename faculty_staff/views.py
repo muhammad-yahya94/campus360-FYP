@@ -8,7 +8,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Sum, Q
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth import get_user_model
 from django.http import JsonResponse
 from django import forms
@@ -23,6 +23,7 @@ from admissions.models import AcademicSession, AdmissionCycle, Applicant, Academ
 from courses.models import Course, CourseOffering, ExamResult, StudyMaterial, Assignment, AssignmentSubmission, Notice, Attendance, Venue, TimetableSlot
 from faculty_staff.models import Teacher, TeacherDetails
 from students.models import Student, StudentSemesterEnrollment, CourseEnrollment
+from .forms import UserUpdateForm, TeacherUpdateForm, TeacherStatusForm, PasswordChangeForm
 import datetime
 # Custom user model
 from django.urls import reverse
@@ -2615,3 +2616,79 @@ def view_students(request):
         'course_offering': course_offering,
         'students': students,
     })
+    
+@hod_or_professor_required
+def settings(request):
+    print(f'status values -- {TeacherDetails.STATUS_CHOICES}')
+    teacher_profile = request.user.teacher_profile
+    teacher_details = teacher_profile.details if hasattr(teacher_profile, 'details') else None
+    print(f'Teacher profile: {teacher_profile.contact_no}, Details: {teacher_details}')
+    user_form = UserUpdateForm(instance=request.user)
+    teacher_form = TeacherUpdateForm(instance=teacher_profile)
+    password_form = PasswordChangeForm(request.user)
+    status_form = TeacherStatusForm(instance=teacher_details) if teacher_details else TeacherStatusForm()
+    contact = teacher_profile.contact_no
+    print(f'this is contact -- {contact}')
+    return render(request, 'faculty_staff/settings.html', {
+        'active_tab': request.GET.get('tab', 'account'),
+        'user_form': user_form,
+        'teacher_form': teacher_form,
+        'password_form': password_form,
+        'status_form': status_form,
+        'contact_no': contact,
+        'status':TeacherDetails.STATUS_CHOICES,
+        'form_errors': {
+            'first_name': user_form.errors.get('first_name'),
+            'last_name': user_form.errors.get('last_name'),
+            'email': user_form.errors.get('email'),
+            'contact_no': teacher_form.errors.get('contact_no'),
+            'qualification': teacher_form.errors.get('qualification'),
+            'hire_date': teacher_form.errors.get('hire_date'),
+            'status': status_form.errors.get('status') if teacher_details else None,
+        }
+    })
+
+@hod_or_professor_required
+def update_account(request):
+    if request.method == 'POST':
+        teacher_profile = request.user.teacher_profile
+        user_form = UserUpdateForm(request.POST, instance=request.user)
+        teacher_form = TeacherUpdateForm(request.POST, instance=teacher_profile)
+        if user_form.is_valid() and teacher_form.is_valid():
+            user_form.save()
+            teacher_form.save()
+            messages.success(request, 'Account updated successfully.')
+            return redirect('faculty_staff:settings')
+        else:
+            messages.error(request, 'Error updating account. Please check the form.')
+    return redirect('faculty_staff:settings')
+
+@hod_or_professor_required
+def change_password(request):
+    if request.method == 'POST':
+        password_form = PasswordChangeForm(request.user, request.POST)
+        if password_form.is_valid():
+            user = password_form.save()
+            update_session_auth_hash(request, user)  # Keep the user logged in
+            messages.success(request, 'Password changed successfully.')
+            return redirect('faculty_staff:settings')
+        else:
+            messages.error(request, 'Error changing password. Please check the form.')
+    return redirect('faculty_staff:settings')
+
+@hod_or_professor_required
+def update_status(request):
+    if request.method == 'POST':
+        teacher_profile = request.user.teacher_profile
+        teacher_details = teacher_profile.details if hasattr(teacher_profile, 'details') else None
+        if teacher_details:
+            status_form = TeacherStatusForm(request.POST, instance=teacher_details)
+            if status_form.is_valid():
+                status_form.save()
+                messages.success(request, 'Status updated successfully.')
+                return redirect('faculty_staff:settings')
+            else:
+                messages.error(request, 'Error updating status. Please check the form.')
+        else:
+            messages.error(request, 'Teacher details not found.')
+    return redirect('faculty_staff:settings')

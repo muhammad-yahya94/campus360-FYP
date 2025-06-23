@@ -85,4 +85,12 @@ urlpatterns = [
     
     
     path('view-students/', views.view_students, name='view_students'),
+    
+    
+    
+    
+    path('settings/', views.settings, name='settings'),
+    path('update_account/', views.update_account, name='update_account'),
+    path('change_password/', views.change_password, name='change_password'),
+    path('update_status/', views.update_status, name='update_status'),
 ]

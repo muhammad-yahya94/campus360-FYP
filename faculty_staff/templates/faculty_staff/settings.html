@@ -1,0 +1,125 @@
+{% extends 'faculty_staff/base_dashboard.html' %}
+
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6 px-2 sm:px-4 py-6">
+    <!-- Header -->
+    <div class="hero bg-gradient-to-r from-indigo-600 to-purple-500 text-white rounded-xl shadow-lg">
+        <div class="hero-content text-center py-6 sm:py-8">
+            <div>
+                <h1 class="text-3xl sm:text-4xl font-bold mb-2">Settings</h1>
+                <p class="text-base sm:text-lg opacity-90">Manage your account and preferences</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accordion Sections -->
+    <div class="space-y-4">
+        <!-- Account Section -->
+        <div class="collapse collapse-arrow bg-base-100 shadow-md">
+            <input type="checkbox" name="account" checked />
+            <div class="collapse-title text-xl font-medium">
+                <i class="fas fa-user mr-2"></i> Account Information
+            </div>
+            <div class="collapse-content">
+                <form method="post" action="{% url 'faculty_staff:update_account' %}" class="space-y-4 p-4">
+                    {% csrf_token %}
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text text-sm sm:text-base">First Name</span>
+                        </label>
+                        <input type="text" name="first_name" class="input input-bordered text-sm sm:text-base" value="{{ user_form.instance.first_name }}" required>
+                        {% if form_errors.first_name %}
+                        <span class="text-error text-xs sm:text-sm">{{ form_errors.first_name }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text text-sm sm:text-base">Last Name</span>
+                        </label>
+                        <input type="text" name="last_name" class="input input-bordered text-sm sm:text-base" value="{{ user_form.instance.last_name }}" required>
+                        {% if form_errors.last_name %}
+                        <span class="text-error text-xs sm:text-sm">{{ form_errors.last_name }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text text-sm sm:text-base">Email</span>
+                        </label>
+                        <input type="email" name="email" class="input input-bordered text-sm sm:text-base" value="{{ user_form.instance.email }}" required>
+                        {% if form_errors.email %}
+                        <span class="text-error text-xs sm:text-sm">{{ form_errors.email }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text text-sm sm:text-base">Contact No</span>
+                        </label>
+                        <input type="text" name="contact_no" class="input input-bordered text-sm sm:text-base" value="{{ contact_no|default_if_none:'' }}">
+                        {% if form_errors.contact_no %}
+                        <span class="text-error text-xs sm:text-sm">{{ form_errors.contact_no }}</span>
+                    </div>
+                    {% endif %}
+                    <button type="submit" style="margin-top:20px" class="btn btn-primary w-full sm:w-auto">Update Account</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Security Section -->
+        <div class="collapse collapse-arrow bg-base-100 shadow-md">
+            <input type="checkbox" name="security" />
+            <div class="collapse-title text-xl font-medium">
+                <i class="fas fa-lock mr-2"></i> Change Password
+            </div>
+            <div class="collapse-content">
+                <form method="post" action="{% url 'faculty_staff:change_password' %}" class="space-y-4 p-4">
+                    {% csrf_token %}
+                    <div class="space-y-4">
+                        {% for field in password_form %}
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text text-sm sm:text-base">{{ field.label }}</span>
+                            </label>
+                            {{ field }}
+                            {% if field.errors %}
+                            <span class="text-error text-xs sm:text-sm">{{ field.errors }}</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        <button type="submit" class="btn btn-primary w-full sm:w-auto">Change Password</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Status Section -->
+        <div class="collapse collapse-arrow bg-base-100 shadow-md">
+            <input type="checkbox" name="status" />
+            <div class="collapse-title text-xl font-medium">
+                <i class="fas fa-user-clock mr-2"></i> Update Status
+            </div>
+            <div class="collapse-content">
+                <form method="post" action="{% url 'faculty_staff:update_status' %}" class="space-y-4 p-4">
+                    {% csrf_token %}
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text text-sm sm:text-base">Current Status</span>
+                        </label>
+                        <select name="status" class="select select-bordered text-sm sm:text-base" required>
+                            <option value="">Select Status</option>
+                            {% for value, label in status %}
+                            <option value="{{ value }}" {% if teacher_details.status == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if form_errors.status %}
+                        <span class="text-error text-xs sm:text-sm">{{ form_errors.status }}</span>
+                        {% endif %}
+                    </div>
+                    <button type="submit" class="btn btn-primary w-full sm:w-auto">Update Status</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

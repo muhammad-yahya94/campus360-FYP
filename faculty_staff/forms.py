@@ -62,3 +62,27 @@ class TeacherForm(forms.ModelForm):
             teacher.save()
         return teacher
 
+
+
+
+from django import forms
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth import get_user_model
+from .models import Teacher, TeacherDetails
+
+User = get_user_model()
+
+class UserUpdateForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ['profile_picture', 'first_name', 'last_name', 'email', 'info']
+
+class TeacherUpdateForm(forms.ModelForm):
+    class Meta:
+        model = Teacher
+        fields = ['contact_no']
+
+class TeacherStatusForm(forms.ModelForm):
+    class Meta:
+        model = TeacherDetails
+        fields = ['status']

@@ -1,6 +1,6 @@
 # Standard library imports
 import os
-
+import logging
 # Django imports
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -29,6 +29,13 @@ import datetime
 from datetime import time
 CustomUser = get_user_model()
 
+
+
+
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 def login_view(request):
     # if request.user.is_authenticated:
@@ -1296,6 +1303,14 @@ def weekly_timetable(request):
     })
     
     
+import logging
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from django.db.models import Q
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 @login_required
 def my_timetable(request):
@@ -1306,13 +1321,17 @@ def my_timetable(request):
 
     teacher = request.user.teacher_profile
     department = teacher.department
-    # Get all active sessions for the filter
-    academic_sessions = AcademicSession.objects.filter(is_active=True).order_by('-start_year')
+    # Get all active sessions (relaxed filter to include sessions with inactive semesters)
+    academic_sessions = AcademicSession.objects.filter(is_active=True).distinct().order_by('-start_year')
+    logger.debug(f"All active academic sessions: {academic_sessions}")
     selected_session_id = request.GET.get('session_id')
 
     # Determine the current session
     if selected_session_id:
-        current_session = AcademicSession.objects.filter(id=selected_session_id, is_active=True).first()
+        current_session = AcademicSession.objects.filter(
+            id=selected_session_id,
+            is_active=True
+        ).first()  # Allow selection of any active session, even with inactive semesters
     else:
         current_session = AcademicSession.objects.filter(is_active=True).order_by('-start_year').first()
     
@@ -1320,9 +1339,21 @@ def my_timetable(request):
         return render(request, 'faculty_staff/error.html', {
             'message': 'No active academic session found.'
         }, status=404)
+    logger.debug(f"Selected current session: {current_session}, Semesters: {current_session.semesters.all()}")
 
-    # Get shift filter from GET parameter
+    # Debug: Log active and inactive semesters per program for the selected session
+    programs = Program.objects.filter(department=department).distinct()
+    for program in programs:
+        semesters = Semester.objects.filter(program=program, session=current_session)  # Updated to use 'session'
+        active_semesters = semesters.filter(is_active=True).count()
+        inactive_semesters = semesters.count() - active_semesters
+        logger.debug(f"Program: {program.name}, Active Semesters: {active_semesters}, Inactive Semesters: {inactive_semesters}")
+        for semester in semesters:
+            logger.debug(f"  Semester: {semester.name}, Is Active: {semester.is_active}")
+
+    # Get shift filter and include_inactive flag from GET parameters
     shift_filter = request.GET.get('shift', 'all').lower()
+    include_inactive = request.GET.get('include_inactive', '0') == '1'  # True if ?include_inactive=1
     valid_shifts = ['morning', 'evening', 'both', 'all']
     if shift_filter not in valid_shifts:
         shift_filter = 'all'
@@ -1334,6 +1365,15 @@ def my_timetable(request):
         course_offering__academic_session=current_session
     ).select_related('course_offering__course', 'course_offering__program', 'venue')
 
+    # Filter by semester activity unless include_inactive is True
+    if not include_inactive:
+        queryset = queryset.filter(course_offering__semester__is_active=True)
+        logger.debug(f"Filtering for active semesters only: {queryset}")
+    else:
+        logger.debug("Including slots from inactive semesters")
+    logger.debug(f"Raw queryset for slots: {queryset.query}")
+    logger.debug(f"Retrieved slots count: {queryset.count()}, Slots: {list(queryset)}")
+
     # Apply shift filter
     if shift_filter != 'all':
         if shift_filter == 'morning':
@@ -1344,6 +1384,7 @@ def my_timetable(request):
                                       (Q(course_offering__shift='both') & Q(start_time__gte='12:00:00')))
         else:  # both
             queryset = queryset.filter(course_offering__shift='both')
+    logger.debug(f"Filtered queryset by shift ({shift_filter}): {list(queryset)}")
 
     # Organize slots by day
     timetable_data = []
@@ -1373,6 +1414,21 @@ def my_timetable(request):
             'day_label': day_label,
             'slots': day_slots
         })
+    logger.debug(f"Final timetable data: {timetable_data}")
+
+    # Debug: Check offerings and their semester status
+    offerings = CourseOffering.objects.filter(
+        academic_session=current_session,
+        teacher=teacher,
+        department=department
+    )
+    active_offerings = offerings.filter(semester__is_active=True)
+    inactive_offerings = offerings.exclude(semester__is_active=True)
+    logger.debug(f"Total Offerings: {offerings.count()}")
+    logger.debug(f"Active Offerings: {active_offerings.count()}")
+    logger.debug(f"Inactive Offerings: {inactive_offerings.count()}")
+    for offering in offerings:
+        logger.debug(f"Offering: {offering.course.code} - {offering.course.name}, Semester: {offering.semester}, Is Active: {offering.semester.is_active if offering.semester else 'None'}")
 
     return render(request, 'faculty_staff/my_timetable.html', {
         'timetable_data': timetable_data,
@@ -1381,11 +1437,9 @@ def my_timetable(request):
         'shift_filter': shift_filter,
         'shift_options': [('all', 'All'), ('morning', 'Morning'), ('evening', 'Evening'), ('both', 'Both')],
         'teacher': teacher,
-        'academic_sessions': academic_sessions,  # Pass all active sessions for the filter
-    })
-    
-    
-    
+        'academic_sessions': academic_sessions,
+        'include_inactive': include_inactive,  # Pass to template for UI feedback
+    })    
     
 
 @login_required
@@ -2101,6 +2155,15 @@ def logout_view(request):
 
 
 
+import logging
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from django.core.paginator import Paginator
+from django.db.models import Q
+
+# Set up logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
 
 @login_required
 def semester_management(request):
@@ -2108,7 +2171,7 @@ def semester_management(request):
     View to display, search, and manage semesters for the Head of Department's department.
     """
     if not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
-        print(f'Unauthorized access attempt by user: {request.user}')
+        logger.warning(f'Unauthorized access attempt by user: {request.user} (ID: {request.user.id})')
         return render(request, 'faculty_staff/semester_management.html', {
             'error': 'You do not have permission to manage semesters.',
             'programs': [],
@@ -2117,8 +2180,8 @@ def semester_management(request):
         })
     
     hod_department = request.user.teacher_profile.department
-    print(f'Semester management page loaded for user: {request.user}, department: {hod_department}')
-    
+    logger.info(f'Semester management page loaded for user: {request.user} (ID: {request.user.id}), department: {hod_department}')
+
     # Get search and filter parameters
     search_query = request.GET.get('q', '')
     program_id = request.GET.get('program_id', '')
@@ -2134,13 +2197,29 @@ def semester_management(request):
     if program_id:
         semesters = semesters.filter(program__id=program_id, program__department=hod_department)
     
+    # Debug: Log total semesters and active/inactive breakdown
+    total_semesters = semesters.count()
+    active_semesters = semesters.filter(is_active=True).count()
+    inactive_semesters = total_semesters - active_semesters
+    logger.debug(f'Total semesters: {total_semesters}, Active: {active_semesters}, Inactive: {inactive_semesters}')
+    for semester in semesters:
+        logger.debug(f'Semester: {semester.name}, Program: {semester.program.name}, Is Active: {semester.is_active}')
+
     # Pagination
     paginator = Paginator(semesters, 10)  # 10 semesters per page
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    
+    # logger.debug(f'Paginated page: {page_number}, Items: {page_obj.object_list.count()}')
+
+    # Debug: Log programs and their active status
+    programs = Program.objects.filter(department=hod_department)
+    logger.debug(f'Total programs: {programs.count()}')
+    for program in programs:
+        active_semesters_in_program = Semester.objects.filter(program=program, is_active=True).count()
+        logger.debug(f'Program: {program.name}, Active Semesters: {active_semesters_in_program}, Total Semesters: {Semester.objects.filter(program=program).count()}')
+
     context = {
-        'programs': Program.objects.filter(department=hod_department),
+        'programs': programs,
         'semesters': page_obj,
         'search_query': search_query,
         'selected_program': program_id,

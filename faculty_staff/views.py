@@ -708,7 +708,7 @@ def save_course_offering(request):
 
     required_fields = {
         'course_id': 'Course',
-        'teacher_id': 'Teacher',
+        'teacher_id': 'Teacher',     
         'program_id': 'Program',
         'semester_id': 'Semester',
         'academic_session_id': 'Academic Session',
@@ -1233,16 +1233,27 @@ def weekly_timetable(request):
             'message': 'No active academic session found.'
         }, status=404)
 
+    # Debug: Log active and inactive semesters per program for the selected session
+    programs = Program.objects.filter(department=department).distinct()
+    for program in programs:
+        semesters = Semester.objects.filter(program=program, session=current_session)
+        active_semesters = semesters.filter(is_active=True).count()
+        inactive_semesters = semesters.count() - active_semesters
+        logger.debug(f"Program: {program.name}, Active Semesters: {active_semesters}, Inactive Semesters: {inactive_semesters}")
+        for semester in semesters:
+            logger.debug(f"  Semester: {semester.name}, Is Active: {semester.is_active}")
+
     # Get shift filter from GET parameter (default: all)
     shift_filter = request.GET.get('shift', 'all').lower()
     valid_shifts = ['morning', 'evening', 'both', 'all']
     if shift_filter not in valid_shifts:
         shift_filter = 'all'
 
-    # Fetch timetable slots
+    # Fetch timetable slots, filtering for active semesters
     queryset = TimetableSlot.objects.filter(
         course_offering__department=department,
-        course_offering__academic_session=current_session
+        course_offering__academic_session=current_session,
+        course_offering__semester__is_active=True  # Filter for active semesters only
     ).select_related('course_offering__course', 'course_offering__teacher', 'course_offering__program', 'venue')
 
     # Apply shift filter
@@ -1286,10 +1297,11 @@ def weekly_timetable(request):
             'slots': day_slots  
         })
 
-    # Fetch unique programs for the current session and department
+    # Fetch unique programs for the current session and department (only active semesters)
     programs = TimetableSlot.objects.filter(
         course_offering__department=department,
-        course_offering__academic_session=current_session
+        course_offering__academic_session=current_session,
+        course_offering__semester__is_active=True
     ).values('course_offering__program__name').distinct()
 
     return render(request, 'faculty_staff/weekly_timetable.html', {
@@ -1299,7 +1311,7 @@ def weekly_timetable(request):
         'shift_filter': shift_filter,
         'shift_options': [('all', 'All'), ('morning', 'Morning'), ('evening', 'Evening'), ('both', 'Both')],
         'academic_sessions': academic_sessions,
-        'programs': programs,  # Pass the list of programs
+        'programs': programs,  # Pass the list of programs with active semesters
     })
     
     
@@ -1319,7 +1331,7 @@ def my_timetable(request):
             'message': 'You do not have a teaching profile.'
         }, status=403)
 
-    teacher = request.user.teacher_profile
+    teacher = request.user.teacher_profile   
     department = teacher.department
     # Get all active sessions (relaxed filter to include sessions with inactive semesters)
     academic_sessions = AcademicSession.objects.filter(is_active=True).distinct().order_by('-start_year')

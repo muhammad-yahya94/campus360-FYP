@@ -68,7 +68,11 @@
                         <tbody>
                             {% for student in students %}
                             <tr>
-                                <td>{{ student.applicant.full_name }}</td>
+                                <td>
+                                    <a href="{% url 'faculty_staff:student_detail' student.pk %}" class="link link-primary">
+                                        {{ student.applicant.full_name }}
+                                    </a>
+                                </td>
                                 <td>{{ student.university_roll_no|default:"N/A" }}</td>
                                 <td>{{ student.college_roll_no|default:"N/A" }}</td>
                                 <td>{{ student.program.name }}</td>

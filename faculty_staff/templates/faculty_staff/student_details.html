@@ -1,0 +1,300 @@
+{% extends 'faculty_staff/base_dashboard.html' %}
+
+{% block title %}Student Details - {{ student.applicant.full_name }}{% endblock %}
+
+{% block content %}
+<div class="drawer-content flex flex-col min-h-screen">
+    <div class="container mx-auto px-4 py-6">
+        <!-- Header -->
+        <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-xl mb-6">
+            <div class="hero-content text-center py-8">
+                <div>
+                    <h1 class="text-4xl font-bold mb-2">Student Details: {{ student.applicant.full_name }}</h1>
+                    <p class="text-lg opacity-90">Detailed profile for {{ student.university_roll_no }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Student Details Card -->
+        <div class="card bg-base-100 shadow-xl mb-6">
+            <div class="card-body">
+                <h2 class="card-title text-2xl mb-4">
+                    <i class="fas fa-user"></i>
+                    Personal Information
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Student Image -->
+                    <div class="form-control col-span-1 md:col-span-2 flex justify-center mb-4">
+                        {% if student.applicant.applicant_photo %}
+                            <img src="{{ student.applicant.applicant_photo.url }}" alt="{{ student.applicant.full_name }}'s Photo" class="w-48 h-48 object-cover rounded-full border-4 border-primary">
+                        {% else %}
+                            <img src="data:image/jpeg;base64,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" alt="No Image Available" class="w-48 h-48 object-cover rounded-full border-4 border-gray-300">
+                        {% endif %}
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Full Name</span></label>
+                        <p>{{ student.applicant.full_name }}</p>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">University Roll No</span></label>
+                        <p>{{ student.university_roll_no|default:"N/A" }}</p>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">College Roll No</span></label>
+                        <p>{{ student.college_roll_no|default:"N/A" }}</p>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Program</span></label>
+                        <p>{{ student.program.name }}</p>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Enrollment Date</span></label>
+                        <p>{{ student.enrollment_date|date:"Y-m-d" }}</p>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Graduation Date</span></label>
+                        <p>{{ student.graduation_date|date:"Y-m-d"|default:"N/A" }}</p>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Current Status</span></label>
+                        <p>
+                            <span class="badge {% if student.current_status == 'active' %}badge-success{% elif student.current_status == 'graduated' %}badge-info{% else %}badge-error{% endif %}">
+                                {{ student.current_status|title }}
+                            </span>
+                        </p>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Emergency Contact</span></label>
+                        <p>{{ student.emergency_contact|default:"N/A" }}</p>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Emergency Phone</span></label>
+                        <p>{{ student.emergency_phone|default:"N/A" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Applicant Details Card -->
+        <div class="card bg-base-100 shadow-xl mb-6">
+            <div class="card-body">
+                <h2 class="card-title text-2xl mb-4">
+                    <i class="fas fa-address-card"></i>
+                    Applicant Information
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">CNIC</span></label>
+                        <p>{{ student.applicant.cnic }}</p>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Date of Birth</span></label>
+                        <p>{{ student.applicant.dob|date:"Y-m-d" }}</p>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Contact No</span></label>
+                        <p>{{ student.applicant.contact_no }}</p>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Religion</span></label>
+                        <p>{{ student.applicant.religion }}</p>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Caste</span></label>
+                        <p>{{ student.applicant.caste|default:"N/A" }}</p>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Permanent Address</span></label>
+                        <p>{{ student.applicant.permanent_address }}</p>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Father/Guardian Name</span></label>
+                        <p>{{ student.applicant.father_name }}</p>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Father/Guardian Occupation</span></label>
+                        <p>{{ student.applicant.father_occupation }}</p>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Father/Guardian CNIC</span></label>
+                        <p>{{ student.applicant.father_cnic|default:"N/A" }}</p>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Monthly Income</span></label>
+                        <p>{{ student.applicant.monthly_income|default:"N/A" }}</p>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Relationship</span></label>
+                        <p>{{ student.applicant.get_relationship_display }}</p>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Shift</span></label>
+                        <p>{{ student.applicant.shift|title }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Academic Qualifications Card -->
+        <div class="card bg-base-100 shadow-xl mb-6">
+            <div class="card-body">
+                <h2 class="card-title text-2xl mb-4">
+                    <i class="fas fa-graduation-cap"></i>
+                    Academic Qualifications
+                </h2>
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra w-full">
+                        <thead>
+                            <tr>
+                                <th>Exam Passed</th>
+                                <th>Passing Year</th>
+                                <th>Marks Obtained</th>
+                                <th>Total Marks</th>
+                                <th>Division</th>
+                                <th>Board</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for qual in academic_qualifications %}
+                            <tr>
+                                <td>{{ qual.exam_passed }}</td>
+                                <td>{{ qual.passing_year }}</td>
+                                <td>{{ qual.marks_obtained|default:"N/A" }}</td>
+                                <td>{{ qual.total_marks|default:"N/A" }}</td>
+                                <td>{{ qual.division|default:"N/A" }}</td>
+                                <td>{{ qual.board|default:"N/A" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center">No academic qualifications recorded.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Extra-Curricular Activities Card -->
+        <div class="card bg-base-100 shadow-xl mb-6">
+            <div class="card-body">
+                <h2 class="card-title text-2xl mb-4">
+                    <i class="fas fa-trophy"></i>
+                    Extra-Curricular Activities
+                </h2>
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra w-full">
+                        <thead>
+                            <tr>
+                                <th>Activity</th>
+                                <th>Position</th>
+                                <th>Achievement</th>
+                                <th>Year</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for activity in extra_curricular_activities %}
+                            <tr>
+                                <td>{{ activity.activity }}</td>
+                                <td>{{ activity.position|default:"N/A" }}</td>
+                                <td>{{ activity.achievement|default:"N/A" }}</td>
+                                <td>{{ activity.activity_year|default:"N/A" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center">No extra-curricular activities recorded.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Enrollment History Card -->
+        <div class="card bg-base-100 shadow-xl mb-6">
+            <div class="card-body">
+                <h2 class="card-title text-2xl mb-4">
+                    <i class="fas fa-history"></i>
+                    Enrollment History
+                </h2>
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra w-full">
+                        <thead>
+                            <tr>
+                                <th>Semester</th>
+                                <th>Enrollment Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for enrollment in semester_enrollments %}
+                            <tr>
+                                <td>{{ enrollment.semester }}</td>
+                                <td>{{ enrollment.enrollment_date|date:"Y-m-d H:i" }}</td>
+                                <td>
+                                    <span class="badge {% if enrollment.status == 'enrolled' %}badge-success{% elif enrollment.status == 'completed' %}badge-info{% else %}badge-error{% endif %}">
+                                        {{ enrollment.status|title }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <button class="btn btn-xs btn-warning edit-enrollment" data-enrollment-id="{{ enrollment.id }}">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center">No enrollment history recorded.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Enrollment Modal -->
+        <input type="checkbox" id="edit-enrollment-modal" class="modal-toggle" />
+        <div class="modal">
+            <div class="modal-box">
+                <h3 class="font-bold text-lg">Edit Enrollment Status</h3>
+                <form id="edit-enrollment-form" method="post" action="{% url 'faculty_staff:edit_enrollment_status' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="enrollment_id" id="edit_enrollment_id">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Status</span></label>
+                        <select name="status" id="edit_status" class="select select-bordered w-full" required>
+                            <option value="enrolled">Enrolled</option>
+                            <option value="completed">Completed</option>
+                            <option value="dropped">Dropped</option>
+                        </select>
+                    </div>
+                    <div class="modal-action">
+                        <button type="submit" class="btn btn-primary">Save</button>
+                        <label for="edit-enrollment-modal" class="btn btn-ghost">Cancel</label>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const editButtons = document.querySelectorAll('.edit-enrollment');
+    editButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const enrollmentId = this.getAttribute('data-enrollment-id');
+            const row = this.closest('tr');
+            const currentStatus = row.querySelector('td:nth-child(3) .badge').textContent.trim().toLowerCase();
+
+            document.getElementById('edit_enrollment_id').value = enrollmentId;
+            document.getElementById('edit_status').value = currentStatus;
+            document.getElementById('edit-enrollment-modal').checked = true;
+        });
+    });
+});
+</script>
+{% endblock %}

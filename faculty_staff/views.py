@@ -440,6 +440,62 @@ def session_students(request, session_id):
     }
     return render(request, 'faculty_staff/session_students.html', context)
 
+@hod_required
+def student_detail(request, student_id):
+    student = get_object_or_404(Student, pk=student_id)
+    hod_department = request.user.teacher_profile.department
+    if student.program.department != hod_department:
+        return redirect('faculty_staff:dashboard')
+
+    academic_qualifications = student.applicant.academic_qualifications.all()
+    extra_curricular_activities = student.applicant.extra_curricular_activities.all()
+    semester_enrollments = student.semester_enrollments.all().order_by('-enrollment_date')
+
+    context = {
+        'student': student,
+        'academic_qualifications': academic_qualifications,
+        'extra_curricular_activities': extra_curricular_activities,
+        'semester_enrollments': semester_enrollments,
+    }
+    return render(request, 'faculty_staff/student_details.html', context)
+
+
+@hod_required
+@require_POST
+def edit_enrollment_status(request):
+    enrollment_id = request.POST.get('enrollment_id')
+    new_status = request.POST.get('status')
+    
+    enrollment = get_object_or_404(StudentSemesterEnrollment, id=enrollment_id)
+    student = enrollment.student
+    hod_department = request.user.teacher_profile.department
+    if student.program.department != hod_department:
+        return redirect('faculty_staff:dashboard')
+
+    if new_status in dict(StudentSemesterEnrollment.STATUS_CHOICES).keys():
+        enrollment.status = new_status
+        enrollment.save()
+        # Update student's current semester based on the new status
+        if new_status in ['completed', 'dropped']:
+            latest_enrollment = StudentSemesterEnrollment.objects.filter(
+                student=student,
+                status='enrolled'
+            ).exclude(id=enrollment.id).order_by('-enrollment_date').first()
+            if latest_enrollment:
+                student.current_semester = latest_enrollment.semester
+            else:
+                first_semester = Semester.objects.filter(
+                    program=student.program,
+                    number=1
+                ).first()
+                student.current_semester = first_semester
+            student.save()
+        elif new_status == 'enrolled':
+            student.current_semester = enrollment.semester
+            student.save()
+
+    return redirect('faculty_staff:student_detail', student_id=student.pk)
+
 
 # Course Form Definition
 class CourseForm(forms.Form):
@@ -1764,7 +1820,7 @@ def search_course_offerings(request):
     course_offering_id = request.GET.get('id')
     page = int(request.GET.get('page', 1))
     results = []
-    
+     
     if course_offering_id:
         try:
             offering = CourseOffering.objects.get(id=course_offering_id, teacher__user=request.user)
@@ -2146,7 +2202,7 @@ def delete_exam_result(request):
 def teacher_course_list(request):
     course_offerings = CourseOffering.objects.filter(
         teacher__user_id=request.user.id
-    ).select_related('course', 'semester', 'academic_session')
+    ).select_related('course', 'semester', 'academic_session')   
 
     context = {
         'course_offerings': course_offerings,

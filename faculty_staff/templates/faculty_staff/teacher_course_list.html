@@ -3,154 +3,52 @@
 {% block title %}My Assigned Courses{% endblock %}
 
 {% block content %}
-<div class="max-w-full mx-auto px-2 sm:px-4 lg:px-6 py-4">
-  <!-- Hero -->
-  <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-xl shadow-lg mb-4">
+<div class="max-w-7xl mx-auto px-4 py-6">
+  <!-- Hero Section -->
+  <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-xl shadow-lg mb-6">
     <div class="text-center py-6">
-      <h1 class="text-3xl sm:text-4xl font-bold mb-2">Assigned Courses</h1>
-      <p class="text-base sm:text-lg opacity-90">Manage and track your courses</p>
+      <h1 class="text-4xl font-bold">Assigned Courses</h1>
+      <p class="text-lg text-white/80">Manage and track your assigned courses</p>
     </div>
   </div>
 
   {% if course_offerings %}
-    <!-- Table with Horizontal Bottom Slider -->
-    <div class="bg-white shadow-xl rounded-lg overflow-hidden">
-      <div class="overflow-x-auto" style="max-width: 100%;">
-        <table class="table w-full min-w-[800px]">
-          <thead>
-            <tr>
-              <th class="text-sm min-w-[80px] sticky top-0 bg-white z-10">Code</th>
-              <th class="text-sm min-w-[120px] sticky top-0 bg-white z-10">Course</th>
-              <th class="text-sm min-w-[100px] sticky top-0 bg-white z-10 hidden sm:table-cell">Dept</th>
-              <th class="text-sm min-w-[100px] sticky top-0 bg-white z-10 hidden sm:table-cell">Program</th>
-              <th class="text-sm min-w-[100px] sticky top-0 bg-white z-10">Sem</th>
-              <th class="text-sm min-w-[80px] sticky top-0 bg-white z-10 hidden lg:table-cell">Sem No.</th>
-              <th class="text-sm min-w-[100px] sticky top-0 bg-white z-10 hidden lg:table-cell">Session</th>
-              <th class="text-sm min-w-[80px] sticky top-0 bg-white z-10 hidden md:table-cell">Shift</th>
-              <th class="text-sm min-w-[120px] sticky top-0 bg-white z-10">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for offering in course_offerings %}
-              <tr class="hover">
-                <td class="text-sm">{{ offering.course.code }}</td>
-                <td class="text-sm">{{ offering.course.name }}</td>
-                <td class="text-sm hidden sm:table-cell">{{ offering.department.name }}</td>
-                <td class="text-sm hidden sm:table-cell">{{ offering.program.name }}</td>
-                <td class="text-sm">{{ offering.semester.name }}</td>
-                <td class="text-sm hidden lg:table-cell">{{ offering.semester.number }}</td>
-                <td class="text-sm hidden lg:table-cell">{{ offering.academic_session.name }}</td>
-                <td class="text-sm hidden md:table-cell">{{ offering.shift|capfirst }}</td>
-                <td>
-                  <!-- Desktop: Inline Buttons -->
-                  <div class="hidden sm:flex flex-wrap gap-2">
-                    <a href="{% url 'faculty_staff:exam_results' %}?course_offering_id={{ offering.id }}"
-                       class="btn btn-primary btn-sm text-sm">Results</a>
-                    <a href="{% url 'faculty_staff:attendance' %}?course_offering_id={{ offering.id }}"
-                       class="btn btn-info btn-sm text-sm">Attendance</a>
-                    <a href="{% url 'faculty_staff:study_materials' %}?course_offering_id={{ offering.id }}"
-                       class="btn btn-success btn-sm text-sm">Course content</a>
-                    <a href="{% url 'faculty_staff:assignments' %}?course_offering_id={{ offering.id }}"
-                       class="btn btn-warning btn-sm text-sm">Assignments</a>
-                    <a href="{% url 'faculty_staff:view_students' %}?course_offering_id={{ offering.id }}"
-                       class="btn btn-secondary btn-sm text-sm">View Students</a>
-                  </div>
-                  <!-- Mobile: Dropdown -->
-                  <div class="sm:hidden dropdown dropdown-end">
-                    <div tabindex="0" role="button" class="btn btn-ghost btn-sm">
-                      <i class="fas fa-ellipsis-v"></i>
-                    </div>
-                    <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-48">
-                      <li>
-                        <a href="{% url 'faculty_staff:exam_results' %}?course_offering_id={{ offering.id }}"
-                           class="text-sm">Results</a>
-                      </li>
-                      <li>
-                        <a href="{% url 'faculty_staff:attendance' %}?course_offering_id={{ offering.id }}"
-                           class="text-sm">Attendance</a>
-                      </li>
-                      <li>
-                        <a href="{% url 'faculty_staff:study_materials' %}?course_offering_id={{ offering.id }}"
-                           class="text-sm">Study Materials</a>
-                      </li>
-                      <li>
-                        <a href="{% url 'faculty_staff:assignments' %}?course_offering_id={{ offering.id }}"
-                           class="text-sm">Assignments</a>
-                      </li>
-                      <li>
-                        <a href="{% url 'faculty_staff:view_students' %}?course_offering_id={{ offering.id }}"
-                           class="text-sm">View Students</a>
-                      </li>
-                    </ul>
-                  </div>
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+  <!-- Responsive Cards Grid -->
+  <div class="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+    {% for offering in course_offerings %}
+    <div class="card bg-base-100 shadow-md hover:shadow-lg transition duration-300 border border-base-200">
+      <div class="card-body space-y-3">
+        <div>
+          <h2 class="card-title text-indigo-700">{{ offering.course.code }} — {{ offering.course.name }}</h2>
+          <p class="text-sm text-gray-500">{{ offering.program.name }} | {{ offering.department.name }}</p>
+        </div>
+
+        <ul class="text-sm text-gray-600 space-y-1">
+          <li><i class="fas fa-calendar-week mr-1 text-indigo-400"></i><strong>Semester:</strong> {{ offering.semester.name }} ({{ offering.semester.number }})</li>
+          <li><i class="fas fa-clock mr-1 text-indigo-400"></i><strong>Session:</strong> {{ offering.academic_session.name }}</li>
+          <li><i class="fas fa-exchange-alt mr-1 text-indigo-400"></i><strong>Shift:</strong> {{ offering.shift|capfirst }}</li>
+        </ul>
+
+        <div class="mt-4 grid grid-cols-2 gap-2 text-sm">
+          <a href="{% url 'faculty_staff:exam_results' %}?course_offering_id={{ offering.id }}"
+             class="btn btn-sm btn-primary w-full">Results</a>
+          <a href="{% url 'faculty_staff:attendance' %}?course_offering_id={{ offering.id }}"
+             class="btn btn-sm btn-info w-full">Attendance</a>
+          <a href="{% url 'faculty_staff:study_materials' %}?course_offering_id={{ offering.id }}"
+             class="btn btn-sm btn-success col-span-2">Course Content</a>
+          <a href="{% url 'faculty_staff:assignments' %}?course_offering_id={{ offering.id }}"
+             class="btn btn-sm btn-warning w-full">Assignments</a>
+          <a href="{% url 'faculty_staff:view_students' %}?course_offering_id={{ offering.id }}"
+             class="btn btn-sm btn-secondary w-full">Students</a>
+        </div>
       </div>
     </div>
+    {% endfor %}
+  </div>
   {% else %}
-    <div class="alert alert-info mt-4 text-center">
-      <i class="fas fa-info-circle mr-2"></i> No courses are currently assigned to you.
-    </div>
+  <div class="alert alert-info mt-6 text-center">
+    <i class="fas fa-info-circle mr-2"></i> No courses are currently assigned to you.
+  </div>
   {% endif %}
 </div>
-
-<style>
-  .table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  .table th,
-  .table td {
-    padding: 0.75rem;
-    vertical-align: middle;
-    white-space: normal; /* Allow text to wrap instead of truncate */
-    text-overflow: unset; /* Remove text overflow clipping */
-  }
-  .table th {
-    background-color: #f9fafb;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-  }
-  .overflow-x-auto {
-    overflow-x: auto; /* Enable horizontal scrolling */
-    -webkit-overflow-scrolling: touch; /* Smooth scrolling on mobile */
-  }
-  .overflow-x-auto::-webkit-scrollbar {
-    height: 8px;
-  }
-  .overflow-x-auto::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 4px;
-  }
-  .overflow-x-auto::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 4px;
-  }
-  .overflow-x-auto::-webkit-scrollbar-thumb:hover {
-    background: #555;
-  }
-  /* Add gradient effect for scrollable area */
-  .overflow-x-auto::before,
-  .overflow-x-auto::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 20px;
-    pointer-events: none;
-    z-index: 5;
-  }
-  .overflow-x-auto::before {
-    left: 0;
-    background: linear-gradient(to right, rgba(255, 255, 255, 0.8), transparent);
-  }
-  .overflow-x-auto::after {
-    right: 0;
-    background: linear-gradient(to left, rgba(255, 255, 255, 0.8), transparent);
-  }
-</style>
 {% endblock %}

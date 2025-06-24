@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_GET, require_POST
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db.models import Sum, Q
+from django.db.models import Sum, Q, Count, Max
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth import get_user_model
 from django.http import JsonResponse
@@ -2675,6 +2675,41 @@ def view_students(request):
         'course_offering': course_offering,
         'students': students,
     })
+    
+def student_performance(request, course_offering_id, student_id):
+    course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
+    enrollment = get_object_or_404(CourseEnrollment, course_offering=course_offering, student_semester_enrollment__student_id=student_id)
+    student = enrollment.student_semester_enrollment.student
+
+    # Fetch detailed attendance data
+    attendance_records = Attendance.objects.filter(student=student, course_offering=course_offering)
+    attendance_summary = attendance_records.values('status').annotate(count=Count('status'))
+    attendance_data = {item['status']: item['count'] for item in attendance_summary}
+    attendance_total = attendance_records.count()
+    attendance_present = attendance_data.get('present', 0)
+    attendance_absent = attendance_data.get('absent', 0)
+    attendance_leave = attendance_data.get('leave', 0)
+
+    # Fetch assignment submissions
+    assignments = AssignmentSubmission.objects.filter(
+        student=student,
+        assignment__course_offering=course_offering
+    ).values('assignment__title').annotate(
+        score=Sum('marks_obtained'),
+        max_score=Max('assignment__max_points')
+    ).order_by('assignment__title')
+
+    context = {
+        'course_offering': course_offering,
+        'student': student,
+        'attendance_total': attendance_total,
+        'attendance_present': attendance_present,
+        'attendance_absent': attendance_absent,
+        'attendance_leave': attendance_leave,
+        'attendance_percentage': (attendance_present / attendance_total * 100) if attendance_total > 0 else 0,
+        'assignments': assignments,
+    }
+    return render(request, 'faculty_staff/student_performance.html', context)
     
 @hod_or_professor_required
 def settings(request):

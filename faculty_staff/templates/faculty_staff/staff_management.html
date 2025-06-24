@@ -85,52 +85,62 @@
                             <th class="text-sm sm:text-base">Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {% for staff in staff_members %}
-                        {% with details=staff.details %}
-                        <tr>
-                            <td class="text-sm sm:text-base">{{ forloop.counter }}</td>
-                            <td class="text-sm sm:text-base">{{ staff.user.get_full_name }}</td>
-                            <td class="text-sm sm:text-base">{{ staff.department.name }}</td>
-                            <td class="text-sm sm:text-base">{{ staff.get_designation_display }}</td>
-                            <td class="text-sm sm:text-base">{{ staff.user.email }}</td>
-                            <td class="text-sm sm:text-base">
-                                <span class="badge {% if staff.is_active %}badge-success{% else %}badge-error{% endif %}">
-                                    {{ staff.is_active|yesno:"Active,Inactive" }}
-                                </span>
-                            </td>
-                            <td class="text-sm sm:text-base">{{ details.employment_type|default:"N/A" }}</td>
-                            <td class="text-sm sm:text-base">{{ details.salary_per_lecture|default:"N/A" }}</td>
-                            <td class="text-sm sm:text-base">{{ details.fixed_salary|default:"N/A" }}</td>
-                            <td class="text-sm sm:text-base">{{ details.status|default:"N/A" }}</td>
-                            <td class="text-sm sm:text-base">
-                                <div class="flex gap-2">
-                                    <!-- Trigger DaisyUI edit modal -->
-                                    <label for="editStaffModal{{ staff.id }}" class="btn btn-sm btn-outline-primary">
-                                        <i class="fas fa-edit"></i>
-                                    </label>
-                                    <label for="viewStaffModal{{ staff.id }}" class="btn btn-sm btn-outline-info">
-                                        <i class="fas fa-eye"></i>
-                                    </label>
-                                    <label for="deleteStaffModal{{ staff.id }}" class="btn btn-sm btn-outline-danger">
-                                        <i class="fas fa-trash"></i>
-                                    </label>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endwith %}
-                        {% empty %}
-                        <tr>
-                            <td colspan="11" class="text-center p-4 sm:p-8">
-                                <div class="text-center">
-                                    <i class="fas fa-users text-4xl sm:text-6xl text-base-content/20 mb-2 sm:mb-4"></i>
-                                    <h3 class="text-lg sm:text-xl font-semibold text-base-content/70 mb-1 sm:mb-2">No Staff Members Found</h3>
-                                    <p class="text-sm sm:text-base text-base-content/50">Use the search filters above to find staff members.</p>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
+<tbody>
+                    {% for staff in staff_members %}
+                    {% with details=staff.details %}
+                    <tr>
+                        <td class="text-sm sm:text-base">{{ forloop.counter }}</td>
+                        <td class="text-sm sm:text-base">{{ staff.user.get_full_name }}</td>
+                        <td class="text-sm sm:text-base">{{ staff.department.name }}</td>
+                        <td class="text-sm sm:text-base">{{ staff.get_designation_display }}</td>
+                        <td class="text-sm sm:text-base">{{ staff.user.email }}</td>
+                        <td class="text-sm sm:text-base">
+                            <span class="badge {% if staff.is_active %}badge-success{% else %}badge-error{% endif %}">
+                                {{ staff.is_active|yesno:"Active,Inactive" }}
+                            </span>
+                        </td>
+                        <td class="text-sm sm:text-base">{{ details.employment_type|default:"N/A" }}</td>
+                        <td class="text-sm sm:text-base">{{ details.salary_per_lecture|default:"N/A" }}</td>
+                        <td class="text-sm sm:text-base">{{ details.fixed_salary|default:"N/A" }}</td>
+                        <td class="text-sm sm:text-base">
+                            <span class="{% if details.status == 'on_break' %}text-red-500{% elif details.status == 'on_lecture' %}text-green-500{% elif details.status == 'on_leave' %}text-orange-500{% elif details.status == 'available' %}text-blue-500{% else %}text-gray-500{% endif %}">
+                                {{ details.status|default:"N/A" }}
+                                {% if details.status == 'on_break' %} 🛑
+                                {% elif details.status == 'on_lecture' %} 📢
+                                {% elif details.status == 'on_leave' %} 🌴
+                                {% elif details.status == 'available' %} ✅
+                                {% else %} 🤷
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td class="text-sm sm:text-base">
+                            <div class="flex gap-2">
+                                <!-- Trigger DaisyUI edit modal -->
+                                <label for="editStaffModal{{ staff.id }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-edit"></i>
+                                </label>
+                                <label for="viewStaffModal{{ staff.id }}" class="btn btn-sm btn-outline-info">
+                                    <i class="fas fa-eye"></i>
+                                </label>
+                                <label for="deleteStaffModal{{ staff.id }}" class="btn btn-sm btn-outline-danger">
+                                    <i class="fas fa-trash"></i>
+                                </label>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endwith %}
+                    {% empty %}
+                    <tr>
+                        <td colspan="11" class="text-center p-4 sm:p-8">
+                            <div class="text-center">
+                                <i class="fas fa-users text-4xl sm:text-6xl text-base-content/20 mb-2 sm:mb-4"></i>
+                                <h3 class="text-lg sm:text-xl font-semibold text-base-content/70 mb-1 sm:mb-2">No Staff Members Found</h3>
+                                <p class="text-sm sm:text-base text-base-content/50">Use the search filters above to find staff members.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
                 </table>
             </div>
 

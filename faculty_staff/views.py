@@ -1497,6 +1497,7 @@ def search_course_offerings(request):
             {
                 'id': offering.id,
                 'course_code': offering.course.code,
+                'course_name': offering.course.name,
                 'program_name': offering.program.name,
                 'semester_name': offering.semester.name,
                 'session_name': offering.academic_session.name
@@ -1770,6 +1771,7 @@ def search_course_offerings(request):
             results.append({
                 'id': offering.id,
                 'course_code': offering.course.code,
+                'course_name': offering.course.name,
                 'program_name': offering.program.name,
                 'semester_name': offering.semester.name,
                 'session_name': offering.academic_session.name
@@ -1784,6 +1786,7 @@ def search_course_offerings(request):
         results = [{
             'id': o.id,
             'course_code': o.course.code,
+            'course_name': o.course.name,
             'program_name': o.program.name,
             'semester_name': o.semester.name,
             'session_name': o.academic_session.name

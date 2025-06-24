@@ -292,7 +292,7 @@ $(document).ready(function() {
                     return {
                         results: data.results.map(item => ({
                             id: item.id,
-                            text: `${item.course_code} - ${item.program_name} (${item.semester_name}, ${item.session_name})`,
+                            text: `${item.course_code} - ${item.course_name} - ${item.program_name} (${item.semester_name}, ${item.session_name})`,
                             shift: item.shift
                         })),
                         pagination: { more: data.pagination.more }
@@ -581,7 +581,7 @@ $(document).ready(function() {
                 if (response.success && response.results.length > 0) {
                     const course = response.results[0];
                     $('#course-offering-text').text(
-                        `${course.course_code} - ${course.program_name} (${course.semester_name}, ${course.session_name})`
+                        `${course.course_code} - ${course.course_name} - ${course.program_name} (${course.semester_name}, ${course.session_name})`
                     );
                     $('#course-offering-id').val(courseOfferingId);
                     if ($('#course_offering_id').is('select')) {

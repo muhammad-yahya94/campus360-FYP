@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Faculty Dashboard{% endblock %}</title>
+    <title>{% block title %}Teacher Dashboard{% endblock %}</title>
     <!-- Tailwind CSS + DaisyUI -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.0/dist/full.min.css" rel="stylesheet" type="text/css" />
@@ -98,7 +98,7 @@
             </div>
         </div>
         <div class="navbar-center">
-            <span class="text-xl font-bold">Faculty Dashboard</span>
+            <span class="text-xl font-bold">Teacher Dashboard</span>
         </div>
         <div class="navbar-end flex items-center gap-2">
             <!-- Theme Selector Button -->
@@ -249,7 +249,7 @@
                         {% endif %}
                     </div>
                     <div>
-                        <h2 class="text-xl font-bold">Faculty Dashboard</h2>
+                        <h2 class="text-xl font-bold">Teacher Dashboard</h2>
                         <p class="text-sm text-base-content/70">
                             {{ teacher_full_name }}
                             <span class="{% if teacher_status == 'on_break' %}text-red-500{% elif teacher_status == 'on_lecture' %}text-green-500{% elif teacher_status == 'on_leave' %}text-orange-500{% elif teacher_status == 'available' %}text-blue-500{% else %}text-gray-500{% endif %}">

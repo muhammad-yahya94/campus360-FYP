@@ -211,7 +211,7 @@ class Notice(models.Model):
     is_active = models.BooleanField(default=True, help_text="Check if this notice is currently visible to students.")
 
     def __str__(self):
-        return f"{self.title} ({self.course_offering})"
+        return f"{self.title} by {self.created_by.user.get_full_name()}"
 
     class Meta:
         verbose_name = "Notice"
@@ -234,7 +234,7 @@ class ExamResult(models.Model):
     marks_obtained = models.PositiveIntegerField(help_text="Marks obtained by the student in this exam.")
     graded_by = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True, related_name='graded_results', help_text="The teacher who graded this exam.")
     graded_at = models.DateTimeField(auto_now_add=True, help_text="The date and time when the result was recorded.")
-    remarks = models.TextField(blank=True, help_text="Additional remarks or comments on the student's performance.")
+    remarks = models.TextField(blank=True,null=True, help_text="Additional remarks or comments on the student's performance.")
 
     def __str__(self):
         return f"{self.student} - {self.exam_type} ({self.course_offering})"

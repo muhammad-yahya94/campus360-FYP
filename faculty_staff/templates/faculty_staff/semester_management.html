@@ -157,46 +157,46 @@
             </div>
         </div>
 
-        <!-- Semesters Table -->
-        <div class="card bg-base-100 shadow-xl">
-            <div class="card-body">
-                <h2 class="card-title text-2xl mb-4">
-                    <i class="fas fa-table"></i>
+        {% load static %}
+        <div class="card bg-base-100 shadow-xl mx-auto max-w-full sm:max-w-7xl w-full">
+            <div class="card-body p-4 sm:p-6 md:p-8">
+                <h2 class="card-title text-xl sm:text-2xl mb-3 sm:mb-4 flex items-center">
+                    <i class="fas fa-table mr-2"></i>
                     Semesters
                 </h2>
                 <div class="overflow-x-auto">
-                    <table class="table table-zebra">
-                        <thead>
+                    <table class="table table-zebra w-full">
+                        <thead class="text-xs sm:text-sm">
                             <tr>
-                                <th>Program</th>
-                                <th>Session</th>
-                                <th>Semester Number</th>
-                                <th>Name</th>
-                                <th>Description</th>
-                                <th>Start Date</th>
-                                <th>End Date</th>
-                                <th>Active</th>
-                                <th>Actions</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Program</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Session</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Semester Number</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Description</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Start Date</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">End Date</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Active</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for semester in semesters %}
-                            <tr>
-                                <td>{{ semester.program.name }}</td>
-                                <td>{{ semester.session.name }}</td>
-                                <td>{{ semester.number }}</td>
-                                <td>{{ semester.name }}</td>
-                                <td>{{ semester.description|default:"N/A" }}</td>
-                                <td>{{ semester.start_time|date:"Y-m-d"|default:"N/A" }}</td>
-                                <td>{{ semester.end_time|date:"Y-m-d"|default:"N/A" }}</td>
-                                <td>
-                                    <span class="badge {% if semester.is_active %}badge-success{% else %}badge-error{% endif %}">
+                            <tr class="text-xs sm:text-sm">
+                                <td class="p-2 sm:p-3">{{ semester.program.name }}</td>
+                                <td class="p-2 sm:p-3">{{ semester.session.name }}</td>
+                                <td class="p-2 sm:p-3 hidden md:table-cell">{{ semester.number }}</td>
+                                <td class="p-2 sm:p-3">{{ semester.name }}</td>
+                                <td class="p-2 sm:p-3 hidden lg:table-cell">{{ semester.description|default:"N/A" }}</td>
+                                <td class="p-2 sm:p-3 hidden md:table-cell">{{ semester.start_time|date:"Y-m-d"|default:"N/A" }}</td>
+                                <td class="p-2 sm:p-3 hidden md:table-cell">{{ semester.end_time|date:"Y-m-d"|default:"N/A" }}</td>
+                                <td class="p-2 sm:p-3">
+                                    <span class="badge text-xs sm:text-sm {% if semester.is_active %}badge-success{% else %}badge-error{% endif %} px-2 py-1">
                                         {{ semester.is_active|yesno:"Active,Inactive" }}
                                     </span>
                                 </td>
-                                <td>
-                                    <div class="flex gap-2">
-                                        <button class="btn btn-sm btn-warning edit-semester" 
+                                <td class="p-2 sm:p-3">
+                                    <div class="flex gap-1 sm:gap-2 flex-col sm:flex-row">
+                                        <button class="btn btn-xs sm:btn-sm btn-warning edit-semester w-full sm:w-auto" 
                                                 data-semester-id="{{ semester.id }}"
                                                 data-program-id="{{ semester.program.id }}"
                                                 data-session-id="{{ semester.session.id }}"
@@ -206,23 +206,23 @@
                                                 data-start-time="{{ semester.start_time|date:'Y-m-d'|default:'' }}"
                                                 data-end-time="{{ semester.end_time|date:'Y-m-d'|default:'' }}"
                                                 data-is-active="{{ semester.is_active|yesno:'true,false' }}">
-                                            <i class="fas fa-edit"></i>
-                                            Edit
+                                            <i class="fas fa-edit mr-0 sm:mr-1"></i>
+                                            <span class="hidden sm:inline">Edit</span>
                                         </button>
-                                        <button class="btn btn-sm btn-error delete-semester" data-semester-id="{{ semester.id }}">
-                                            <i class="fas fa-trash"></i>
-                                            Delete
+                                        <button class="btn btn-xs sm:btn-sm btn-error delete-semester w-full sm:w-auto" data-semester-id="{{ semester.id }}">
+                                            <i class="fas fa-trash mr-0 sm:mr-1"></i>
+                                            <span class="hidden sm:inline">Delete</span>
                                         </button>
                                     </div>
                                 </td>
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="9" class="text-center p-8">
+                                <td colspan="9" class="text-center p-4 sm:p-8">
                                     <div class="text-center">
-                                        <i class="fas fa-calendar text-6xl text-base-content/20 mb-4"></i>
-                                        <h3 class="text-xl font-semibold text-base-content/70 mb-2">No Semesters Found</h3>
-                                        <p class="text-base-content/50">Use the form above to add new semesters.</p>
+                                        <i class="fas fa-calendar text-4xl sm:text-6xl text-base-content/20 mb-2 sm:mb-4"></i>
+                                        <h3 class="text-lg sm:text-xl font-semibold text-base-content/70 mb-1 sm:mb-2">No Semesters Found</h3>
+                                        <p class="text-sm sm:text-base text-base-content/50">Use the form above to add new semesters.</p>
                                     </div>
                                 </td>
                             </tr>
@@ -231,16 +231,18 @@
                     </table>
                 </div>
                 <!-- Pagination -->
-                <div class="join mt-4">
-                    {% if semesters.has_previous %}
-                    <a href="?page={{ semesters.previous_page_number }}&q={{ search_query }}&program_id={{ selected_program }}&session_id={{ selected_session }}" class="btn join-item">Previous</a>
-                    {% endif %}
-                    {% for num in semesters.paginator.page_range %}
-                    <a href="?page={{ num }}&q={{ search_query }}&program_id={{ selected_program }}&session_id={{ selected_session }}" class="btn join-item {% if semesters.number == num %}btn-active{% endif %}">{{ num }}</a>
-                    {% endfor %}
-                    {% if semesters.has_next %}
-                    <a href="?page={{ semesters.next_page_number }}&q={{ search_query }}&program_id={{ selected_program }}&session_id={{ selected_session }}" class="btn join-item">Next</a>
-                    {% endif %}
+                <div class="flex justify-center mt-3 sm:mt-4">
+                    <div class="join">
+                        {% if semesters.has_previous %}
+                        <a href="?page={{ semesters.previous_page_number }}&q={{ search_query }}&program_id={{ selected_program }}&session_id={{ selected_session }}" class="btn btn-xs sm:btn-sm join-item">Previous</a>
+                        {% endif %}
+                        {% for num in semesters.paginator.page_range %}
+                        <a href="?page={{ num }}&q={{ search_query }}&program_id={{ selected_program }}&session_id={{ selected_session }}" class="btn btn-xs sm:btn-sm join-item {% if semesters.number == num %}btn-active{% endif %}">{{ num }}</a>
+                        {% endfor %}
+                        {% if semesters.has_next %}
+                        <a href="?page={{ semesters.next_page_number }}&q={{ search_query }}&program_id={{ selected_program }}&session_id={{ selected_session }}" class="btn btn-xs sm:btn-sm join-item">Next</a>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>

@@ -2198,11 +2198,12 @@ def delete_exam_result(request):
 
 
 
-@hod_or_professor_required
 def teacher_course_list(request):
+    # Filter course offerings for the current teacher with active semesters
     course_offerings = CourseOffering.objects.filter(
-        teacher__user_id=request.user.id
-    ).select_related('course', 'semester', 'academic_session')   
+        teacher__user_id=request.user.id,
+        semester__is_active=True
+    ).select_related('course', 'semester', 'academic_session')
 
     context = {
         'course_offerings': course_offerings,
@@ -2258,7 +2259,7 @@ def semester_management(request):
         logger.debug(f'Semester: {semester.name}, Program: {semester.program.name}, Is Active: {semester.is_active}')
 
     # Pagination
-    paginator = Paginator(semesters, 10)  # 10 semesters per page
+    paginator = Paginator(semesters, 20)  # 10 semesters per page
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     # logger.debug(f'Paginated page: {page_number}, Items: {page_obj.object_list.count()}')
@@ -2271,7 +2272,7 @@ def semester_management(request):
         logger.debug(f'Program: {program.name}, Active Semesters: {active_semesters_in_program}, Total Semesters: {Semester.objects.filter(program=program).count()}')
 
     context = {
-        'programs': programs,
+        'programs': programs,   
         'semesters': page_obj,
         'search_query': search_query,
         'selected_program': program_id,

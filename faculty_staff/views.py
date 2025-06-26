@@ -25,6 +25,7 @@ from faculty_staff.models import Teacher, TeacherDetails
 from students.models import Student, StudentSemesterEnrollment, CourseEnrollment
 from .forms import UserUpdateForm, TeacherUpdateForm, TeacherStatusForm, PasswordChangeForm
 import datetime
+import pytz  # Added import for pytz
 # Custom user model
 from django.urls import reverse
 from datetime import time
@@ -110,10 +111,11 @@ def hod_dashboard(request):
 
 @hod_or_professor_required
 def professor_dashboard(request):
-    # Fetch courses assigned to the professor
-    course_offerings = CourseOffering.objects.filter(teacher=request.user.teacher_profile).select_related(
-        'course', 'semester', 'academic_session', 'program', 'department'
-    )
+    # Fetch courses assigned to the professor, filtered for active semesters
+    course_offerings = CourseOffering.objects.filter(
+        teacher=request.user.teacher_profile,
+        semester__is_active=True
+    ).select_related('course', 'semester', 'academic_session', 'program', 'department')
 
     context = {
         'course_offerings': course_offerings,
@@ -2208,7 +2210,7 @@ def teacher_course_list(request):
     context = {
         'course_offerings': course_offerings,
     }
-    return render(request, 'faculty_staff/teacher_course_list.html', context)
+    return render(request, 'faculty_staff/teacher_course_list.html', context)    
 
 @login_required
 def logout_view(request):
@@ -2453,29 +2455,97 @@ def delete_semester(request):
     
     
     
+
+
 @hod_or_professor_required
 def attendance(request):
     students = []
     course_offering_id = request.GET.get('course_offering_id')
     course_shift = None
+    is_active_slot = False
+    today_date = timezone.now().astimezone(pytz.timezone('Asia/Karachi')).date()
+    current_datetime = timezone.now().astimezone(pytz.timezone('Asia/Karachi'))
+    current_time = current_datetime.time()  # Should be ~10:29 AM PKT
+    current_day = today_date.strftime('%A').lower()  # 'thursday'
+
+    # Log UTC and PKT times for clarity
+    utc_datetime = timezone.now()
+    logger.info(
+        f"Processing attendance request. "
+        f"UTC: {utc_datetime} ({utc_datetime.tzinfo}), "
+        f"PKT: {current_datetime} ({current_datetime.tzinfo}), "
+        f"Timezone-aware: {timezone.is_aware(current_datetime)}, "
+        f"Current time (PKT): {current_time}, Day: {current_day}"
+    )
+
     if course_offering_id:
-        course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
-        course_shift = course_offering.shift
-        enrollments = StudentSemesterEnrollment.objects.filter(semester=course_offering.semester).select_related('student')
-        students = [
-            {
-                'id': enrollment.student.applicant.id,
-                'name': str(enrollment.student),
-                'college_roll_no': enrollment.student.college_roll_no,
-                'university_roll_no': enrollment.student.university_roll_no
-            } for enrollment in enrollments
-        ]
+        try:
+            course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
+            course_shift = course_offering.shift
+            logger.info(f"Course offering ID: {course_offering_id}, Shift: {course_shift}")
+
+            # Check for active timetable slot
+            timetable_slots = TimetableSlot.objects.filter(
+                course_offering=course_offering,
+                day=current_day,
+                start_time__lte=current_time,
+                end_time__gte=current_time
+            )
+            is_active_slot = timetable_slots.exists()
+
+            # Log timetable slot details
+            if is_active_slot:
+                for slot in timetable_slots:
+                    logger.info(
+                        f"Active timetable slot found: Course: {course_offering.course.code}, "
+                        f"Day: {slot.day}, Start: {slot.start_time}, End: {slot.end_time}"
+                    )
+            else:
+                # Log all slots for debugging
+                all_slots = TimetableSlot.objects.filter(course_offering=course_offering)
+                if all_slots.exists():
+                    logger.warning(
+                        f"No active timetable slot for Course Offering ID: {course_offering_id} "
+                        f"on {current_day} at {current_time}. Available slots:"
+                    )
+                    for slot in all_slots:
+                        logger.warning(
+                            f"Slot: Day: {slot.day}, Start: {slot.start_time}, End: {slot.end_time}"
+                        )
+                else:
+                    logger.warning(
+                        f"No timetable slots defined for Course Offering ID: {course_offering_id}"
+                    )
+
+            # Log is_active_slot flag status
+            logger.info(f"is_active_slot: {is_active_slot}")
+
+            enrollments = StudentSemesterEnrollment.objects.filter(
+                semester=course_offering.semester
+            ).select_related('student')
+            students = [
+                {
+                    'id': enrollment.student.applicant.id,
+                    'name': str(enrollment.student),
+                    'college_roll_no': enrollment.student.college_roll_no,
+                    'university_roll_no': enrollment.student.university_roll_no
+                } for enrollment in enrollments
+            ]
+            logger.info(f"Fetched {len(students)} students for semester: {course_offering.semester}")
+
+        except Exception as e:
+            logger.error(f"Error processing course offering ID {course_offering_id}: {str(e)}")
+            raise
+
+    else:
+        logger.info("No course_offering_id provided in request")
 
     context = {
         'students': students,
         'course_offering_id': course_offering_id,
         'course_shift': course_shift,
-        'today_date': timezone.now().date(),
+        'today_date': today_date,
+        'is_active_slot': is_active_slot,
     }
     return render(request, 'faculty_staff/attendance.html', context)
 

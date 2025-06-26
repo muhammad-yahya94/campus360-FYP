@@ -4,6 +4,7 @@
 
 {% block content %}
 <style>
+    /* Existing styles */
     .card {
         border-radius: 10px;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
@@ -40,6 +41,7 @@
 </style>
 
 <div class="container-fluid">
+    <!-- Hero Section -->
     <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-xl">
         <div class="hero-content text-center py-8">
             <div>
@@ -49,6 +51,8 @@
         </div>
     </div>
 
+                            
+    {% if is_active_slot %}
     <!-- Record Attendance Section -->
     <div class="card mb-4">
         <div class="card-body">
@@ -123,15 +127,15 @@
                                 <td>
                                     <div class="radio-group">
                                         <label>
-                                            <input type="radio" name="status_{{ student.id }}" value="present" checked required>
+                                            <input type="radio" name="status_{{ student.id }}" value="present" {% if is_active_slot %}checked{% else %}disabled{% endif %} required>
                                             Present
                                         </label>
                                         <label>
-                                            <input type="radio" name="status_{{ student.id }}" value="absent">
+                                            <input type="radio" name="status_{{ student.id }}" value="absent" {% if not is_active_slot %}disabled{% endif %}>
                                             Absent
                                         </label>
                                         <label>
-                                            <input type="radio" name="status_{{ student.id }}" value="leave">
+                                            <input type="radio" name="status_{{ student.id }}" value="leave" {% if not is_active_slot %}disabled{% endif %}>
                                             Leave
                                         </label>
                                     </div>
@@ -145,7 +149,7 @@
                         </tbody>
                     </table>
                     <div class="text-end mt-3">
-                        <button type="submit" class="btn btn-primary">Submit Attendance</button>
+                        <button type="submit" class="btn btn-primary" {% if not is_active_slot %}disabled{% endif %}>Submit Attendance</button>
                     </div>
                 </div>
             </form>
@@ -177,6 +181,22 @@
             </div>
         </div>
     </div>
+            {% else %}
+        <div class="flex items-center justify-center min-h-screen bg-base-200">
+          <div class="card w-full max-w-md shadow-xl bg-white border border-gray-200">       
+            <div class="card-body items-center text-center">
+                <h2 class="card-title text-error text-xl font-bold">No Lecture at the Moment</h2>
+                <p class="text-gray-600 mt-2">There is currently no active lecture slot for this course.</p>
+                <div class="mt-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636L5.636 18.364M6.343 6.343L17.657 17.657" />
+                    </svg>
+                </div>
+            </div>
+           </div>
+        </div>    
+        {% endif %}
+
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -185,9 +205,30 @@
 
 <script>
 $(document).ready(function() {
+    // Function to show message card
+    function showMessageCard(type, title, message) {
+        const card = $('#message-card');
+        card.removeClass('bg-success bg-error bg-warning text-success-content text-error-content text-warning-content');
+        if (type === 'success') {
+            card.addClass('bg-success text-success-content');
+        } else if (type === 'error') {
+            card.addClass('bg-error text-error-content');
+        } else if (type === 'warning') {
+            card.addClass('bg-warning text-warning-content');
+        }
+        card.find('.card-title').text(title);
+        card.find('p').text(message);
+        card.removeClass('hidden');
+    }
+
+    // Function to hide message card
+    function hideMessageCard() {
+        $('#message-card').addClass('hidden');
+    }
+
     // Initialize Select2 for course offering
     if ($('#course_offering_id').is('select')) {
-        $('#course_offering_id').select2({     
+        $('#course_offering_id').select2({
             ajax: {
                 url: "{% url 'faculty_staff:search_course_offerings' %}",
                 dataType: 'json',
@@ -197,13 +238,13 @@ $(document).ready(function() {
                 },
                 processResults: function(data, params) {
                     params.page = params.page || 1;
-                    return { 
+                    return {
                         results: data.results.map(item => ({
                             id: item.id,
                             text: `${item.course_code} - ${item.program_name} (${item.semester_name}, ${item.session_name})`,
                             shift: item.shift
                         })),
-                        pagination: { more: data.pagination.more } 
+                        pagination: { more: data.pagination.more }
                     };
                 },
                 cache: true
@@ -216,117 +257,137 @@ $(document).ready(function() {
 
     // Function to load students and check existing attendance
     function loadStudentsAndAttendance(courseOfferingId, shift = null) {
-        // Check existing attendance first
+        hideMessageCard();
         $.ajax({
             url: "{% url 'faculty_staff:load_attendance' %}",
             type: 'GET',
             data: { course_offering_id: courseOfferingId, date: '{{ today_date|date:"Y-m-d" }}', shift: shift },
             success: function(response) {
-                if (response.success && response.attendances.length > 0) {
-                    let tbody = $('#existing-attendance-record-body');
-                    tbody.empty();
-                    response.attendances.forEach((attendance, index) => {
-                        tbody.append(`
-                            <tr>
-                                <td>${index + 1}</td>
-                                <td>${attendance.student_name}</td>
-                                <td>${attendance.college_roll_no || 'N/A'}</td>
-                                <td>${attendance.university_roll_no || 'N/A'}</td>
-                                <td>${attendance.status === 'present' ? '<span class="status-check">✔</span>' : ''}</td>
-                                <td>${attendance.status === 'absent' ? '<span class="status-check">✔</span>' : ''}</td>
-                                <td>${attendance.status === 'leave' ? '<span class="status-check">✔</span>' : ''}</td>
-                            </tr>
-                        `);
-                    });
-                    $('#existing-attendance-record-container').show();
-                    $('#students-table-container').hide();
+                if (response.success) {
+                    if (response.is_active_slot) {
+                        showMessageCard('success', 'Lecture in Progress', 'You can record attendance for this course now.');
+                        $('#record-attendance-form').find('button[type="submit"]').prop('disabled', false);
+                    } else {
+                        showMessageCard('warning', 'No Active Lecture', 'Attendance cannot be recorded outside of scheduled lecture time.');
+                        $('#record-attendance-form').find('button[type="submit"]').prop('disabled', true);
+                    }
 
-                    // Update existing attendance table
-                    let existingTbody = $('#existing-attendance-body');
-                    existingTbody.empty();
-                    response.attendances.forEach((attendance, index) => {
-                        existingTbody.append(`
-                            <tr>
-                                <td>${index + 1}</td>
-                                <td>${attendance.student_name}</td>
-                                <td>${attendance.college_roll_no || 'N/A'}</td>
-                                <td>${attendance.university_roll_no || 'N/A'}</td>
-                                <td>${attendance.course_code}</td>
-                                <td>${attendance.shift ? attendance.shift.charAt(0).toUpperCase() + attendance.shift.slice(1) : 'N/A'}</td>
-                                <td>${attendance.status.charAt(0).toUpperCase() + attendance.status.slice(1)}</td>
-                                <td>${attendance.recorded_by}</td>
-                                <td>
-                                    <button class="btn btn-warning btn-sm edit-attendance" 
-                                            data-attendance-id="${attendance.id}" 
-                                            data-student-id="${attendance.student_id}"
-                                            data-status="${attendance.status}"
-                                            data-shift="${attendance.shift || ''}">Edit</button>
-                                </td>
-                            </tr>
-                        `);
-                    });
-                    $('#existing-attendance-container').show();
-                } else {
-                    $('#existing-attendance-record-container').hide();
-                    // Load students for new attendance
-                    $.ajax({
-                        url: "{% url 'faculty_staff:load_students_for_course' %}",
-                        type: 'GET',
-                        data: { course_offering_id: courseOfferingId, shift: shift },
-                        success: function(response) {
-                            if (response.success) {
-                                let tbody = $('#students-table-body');
-                                tbody.empty();
-                                if (response.students.length > 0) {
-                                    response.students.forEach((student, index) => {
-                                        tbody.append(`
-                                            <tr>
-                                                <td>${index + 1}</td>
-                                                <td>${student.name}</td>
-                                                <td>${student.college_roll_no || 'N/A'}</td>
-                                                <td>${student.university_roll_no || 'N/A'}</td>
-                                                <td>
-                                                    <div class="radio-group">
-                                                        <label>
-                                                            <input type="radio" name="status_${student.id}" value="present" checked required>
-                                                            Present
-                                                        </label>
-                                                        <label>
-                                                            <input type="radio" name="status_${student.id}" value="absent">
-                                                            Absent
-                                                        </label>
-                                                        <label>
-                                                            <input type="radio" name="status_${student.id}" value="leave">
-                                                            Leave
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        `);
-                                    });
-                                    $('#students-table-container').show();
-                                    $('#existing-attendance-container').hide();
+                    if (response.attendances.length > 0) {
+                        let tbody = $('#existing-attendance-record-body');
+                        tbody.empty();
+                        response.attendances.forEach((attendance, index) => {
+                            tbody.append(`
+                                <tr>
+                                    <td>${index + 1}</td>
+                                    <td>${attendance.student_name}</td>
+                                    <td>${attendance.college_roll_no || 'N/A'}</td>
+                                    <td>${attendance.university_roll_no || 'N/A'}</td>
+                                    <td>${attendance.status === 'present' ? '<span class="status-check">✔</span>' : ''}</td>
+                                    <td>${attendance.status === 'absent' ? '<span class="status-check">✔</span>' : ''}</td>
+                                    <td>${attendance.status === 'leave' ? '<span class="status-check">✔</span>' : ''}</td>
+                                </tr>
+                            `);
+                        });
+                        $('#existing-attendance-record-container').show();
+                        $('#students-table-container').hide();
+
+                        // Update existing attendance table
+                        let existingTbody = $('#existing-attendance-body');
+                        existingTbody.empty();
+                        response.attendances.forEach((attendance, index) => {
+                            existingTbody.append(`
+                                <tr>
+                                    <td>${index + 1}</td>
+                                    <td>${attendance.student_name}</td>
+                                    <td>${attendance.college_roll_no || 'N/A'}</td>
+                                    <td>${attendance.university_roll_no || 'N/A'}</td>
+                                    <td>${attendance.course_code}</td>
+                                    <td>${attendance.shift ? attendance.shift.charAt(0).toUpperCase() + attendance.shift.slice(1) : 'N/A'}</td>
+                                    <td>${attendance.status.charAt(0).toUpperCase() + attendance.status.slice(1)}</td>
+                                    <td>${attendance.recorded_by}</td>
+                                    <td>
+                                        <button class="btn btn-warning btn-sm edit-attendance"
+                                                data-attendance-id="${attendance.id}"
+                                                data-student-id="${attendance.student_id}"
+                                                data-status="${attendance.status}"
+                                                data-shift="${attendance.shift || ''}">Edit</button>
+                                    </td>
+                                </tr>
+                            `);
+                        });
+                        $('#existing-attendance-container').show();
+                    } else {
+                        $('#existing-attendance-record-container').hide();
+                        // Load students for new attendance
+                        $.ajax({
+                            url: "{% url 'faculty_staff:load_students_for_course' %}",
+                            type: 'GET',
+                            data: { course_offering_id: courseOfferingId, shift: shift },
+                            success: function(response) {
+                                if (response.success) {
+                                    let tbody = $('#students-table-body');
+                                    tbody.empty();
+                                    if (response.students.length > 0) {
+                                        response.students.forEach((student, index) => {
+                                            tbody.append(`
+                                                <tr>
+                                                    <td>${index + 1}</td>
+                                                    <td>${student.name}</td>
+                                                    <td>${student.college_roll_no || 'N/A'}</td>
+                                                    <td>${student.university_roll_no || 'N/A'}</td>
+                                                    <td>
+                                                        <div class="radio-group">
+                                                            <label>
+                                                                <input type="radio" name="status_${student.id}" value="present" checked required>
+                                                                Present
+                                                            </label>
+                                                            <label>
+                                                                <input type="radio" name="status_${student.id}" value="absent">
+                                                                Absent
+                                                            </label>
+                                                            <label>
+                                                                <input type="radio" name="status_${student.id}" value="leave">
+                                                                Leave
+                                                            </label>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            `);
+                                        });
+                                        $('#students-table-container').show();
+                                        $('#existing-attendance-container').hide();
+                                    } else {
+                                        tbody.append('<tr><td colspan="5" class="text-center">No students found for the selected course and shift.</td></tr>');
+                                        $('#students-table-container').show();
+                                        $('#existing-attendance-container').hide();
+                                    }
                                 } else {
-                                    tbody.append('<tr><td colspan="5" class="text-center">No students found for the selected course and shift.</td></tr>');
-                                    $('#students-table-container').show();
+                                    showMessageCard('error', 'Error', response.message);
+                                    $('#students-table-container').hide();
                                     $('#existing-attendance-container').hide();
                                 }
-                            } else {
-                                alert('Error: ' + response.message);
+                            },
+                            error: function(xhr, status, error) {
+                                showMessageCard('error', 'Error', 'An error occurred: ' + error);
                                 $('#students-table-container').hide();
                                 $('#existing-attendance-container').hide();
                             }
-                        },
-                        error: function(xhr, status, error) {
-                            alert('An error occurred: ' + error);
-                            $('#students-table-container').hide();
-                            $('#existing-attendance-container').hide();
-                        }
-                    });
+                        });
+                    }
+                } else {
+                    showMessageCard('error', 'Error', response.message);
+                    $('#existing-attendance-record-container').hide();
+                    $('#students-table-container').hide();
+                    $('#existing-attendance-container').hide();
                 }
             },
             error: function(xhr, status, error) {
-                alert('An error occurred while fetching attendance: ' + error);
+                if (xhr.status === 403) {
+                    showMessageCard('warning', 'No Active Lecture', 'Attendance cannot be recorded outside of scheduled lecture time.');
+                    $('#record-attendance-form').find('button[type="submit"]').prop('disabled', true);
+                } else {
+                    showMessageCard('error', 'Error', 'An error occurred while fetching attendance: ' + error);
+                }
                 $('#existing-attendance-record-container').hide();
                 $('#students-table-container').hide();
                 $('#existing-attendance-container').hide();
@@ -346,6 +407,7 @@ $(document).ready(function() {
                     $('#existing-attendance-record-container').hide();
                     $('#existing-attendance-container').hide();
                     $('#shift-error').text('Please select a shift.');
+                    showMessageCard('warning', 'Shift Required', 'Please select a shift to proceed.');
                 } else {
                     $('#shift-error').text('');
                     loadStudentsAndAttendance(courseOfferingId, shift);
@@ -354,6 +416,7 @@ $(document).ready(function() {
                 $('#students-table-container').hide();
                 $('#existing-attendance-record-container').hide();
                 $('#existing-attendance-container').hide();
+                hideMessageCard();
             }
         }
     });
@@ -370,6 +433,7 @@ $(document).ready(function() {
             $('#students-table-container').hide();
             $('#existing-attendance-record-container').hide();
             $('#existing-attendance-container').hide();
+            showMessageCard('warning', 'Shift Required', 'Please select a shift to proceed.');
         }
     });
 
@@ -391,16 +455,17 @@ $(document).ready(function() {
                         $('#shift').prop('required', true);
                         $('#shift').show();
                         $('#shift').parent().show();
+                        showMessageCard('warning', 'Shift Required', 'Please select a shift to proceed.');
                     } else {
                         loadStudentsAndAttendance(courseOfferingId, course.shift);
                     }
                 } else {
-                    alert('Error: Course offering not found.');
+                    showMessageCard('error', 'Error', 'Course offering not found.');
                     $('#course-offering-text').text('Course offering not found.');
                 }
             },
             error: function(xhr, status, error) {
-                alert('An error occurred while fetching course offering: ' + error);
+                showMessageCard('error', 'Error', 'An error occurred while fetching course offering: ' + error);
                 $('#course-offering-text').text('Error loading course offering.');
             }
         });
@@ -412,10 +477,12 @@ $(document).ready(function() {
         let formData = $(this).serialize();
         if (!$('#course_offering_id').val()) {
             $('#course-offering-error').text('Course offering is required.');
+            showMessageCard('error', 'Error', 'Please select a course offering.');
             return;
         }
         if ($('#shift').is(':visible') && !$('#shift').val()) {
             $('#shift-error').text('Shift is required.');
+            showMessageCard('error', 'Error', 'Please select a shift.');
             return;
         }
         $.ajax({
@@ -424,14 +491,18 @@ $(document).ready(function() {
             data: formData,
             success: function(response) {
                 if (response.success) {
-                    alert(response.message);
-                    location.reload();
+                    showMessageCard('success', 'Success', response.message);
+                    setTimeout(() => location.reload(), 1500);
                 } else {
-                    alert('Error: ' + response.message);
+                    showMessageCard('error', 'Error', response.message);
                 }
             },
             error: function(xhr, status, error) {
-                alert('An error occurred: ' + error);
+                if (xhr.status === 403) {
+                    showMessageCard('warning', 'No Active Lecture', 'Attendance cannot be recorded outside of scheduled lecture time.');
+                } else {
+                    showMessageCard('error', 'Error', 'An error occurred: ' + error);
+                }
             }
         });
     });
@@ -456,18 +527,18 @@ $(document).ready(function() {
                 },
                 success: function(response) {
                     if (response.success) {
-                        alert(response.message);
-                        location.reload();
+                        showMessageCard('success', 'Success', response.message);
+                        setTimeout(() => location.reload(), 1500);
                     } else {
-                        alert('Error: ' + response.message);
+                        showMessageCard('error', 'Error', response.message);
                     }
                 },
                 error: function(xhr, status, error) {
-                    alert('An error occurred: ' + error);
+                    showMessageCard('error', 'Error', 'An error occurred: ' + error);
                 }
             });
         } else if (newStatus) {
-            alert('Invalid status. Please enter "present", "absent", or "leave".');
+            showMessageCard('error', 'Error', 'Invalid status. Please enter "present", "absent", or "leave".');
         }
     });
 });

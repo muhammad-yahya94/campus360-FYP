@@ -448,57 +448,82 @@ def create_fake_academic_sessions(result_dict=None, key=None):
         sessions = []
     return sessions
 
-def create_fake_semesters(programs, sessions, result_dict=None, key=None):
+def create_fake_student_semester_enrollments(students, semesters, result_dict=None, key=None):
     worker_init()
-    existing_semesters = Semester.objects.count()
-    session_data = {
-        '2021-2025': 8, '2022-2026': 8, '2023-2027': 8, '2024-2028': 8,
-        '2023-2025': 4, '2024-2026': 4
-    }
-    expected_semesters = sum(session_data.get(s.name, 2) for s in sessions for p in programs)
-    if existing_semesters >= expected_semesters:
-        print(f"Skipping semester creation: {existing_semesters} semesters already exist")
-        result = list(Semester.objects.all())
+    existing_enrollments = StudentSemesterEnrollment.objects.count()
+    expected_enrollments = len(students) * 2  # Assume each student is enrolled in up to 2 semesters on average
+    if existing_enrollments >= expected_enrollments:
+        print(f"Skipping semester enrollment creation: {existing_enrollments} enrollments already exist")
+        result = list(StudentSemesterEnrollment.objects.all())
         if result_dict is not None and key is not None:
             result_dict[key] = result
         return result
-    semesters_created = 0
-    semesters = []
+    enrollments = []
+    objects_queue = queue.Queue()
+    lock = threading.Lock()
 
-    for program in programs:
-        available_sessions = [s for s in sessions if (
-            (program.degree_type == 'BS' and s.name in ['2021-2025', '2022-2026', '2023-2027', '2024-2028']) or
-            (program.degree_type == 'MS' and s.name in ['2023-2025', '2024-2026'])
-        )]
-        for session in available_sessions:
-            semester_count = session_data.get(session.name, 2)
-            session_start_year = int(session.name.split('-')[0])
-            for i in range(1, semester_count + 1):
-                if not Semester.objects.filter(program=program, session=session, number=i).exists():
-                    try:
-                        months_offset = (i - 1) * 6
-                        semester_start = date(session_start_year, 1, 1) + timedelta(days=int(months_offset * 30.42))
-                        semester_end = semester_start + timedelta(days=180)
-                        semester = Semester.objects.create(
-                            program=program,
-                            session=session,
-                            number=i,
-                            name=f"Semester {i}",
-                            start_time=semester_start,
-                            end_time=semester_end,
-                            is_active=(i == 1 and session.is_active),
-                            description=fake.text(max_nb_chars=200)
-                        )
-                        semesters_created += 1
-                        semesters.append(semester)
-                    except Exception as e:
-                        print(f"Error creating semester {i} for {program.name}: {e}")
-                        continue
+    for student in students:
+        try:
+            # Filter semesters for the student's program and session
+            program_semesters = [s for s in semesters if s.program == student.program and s.session == student.applicant.session]
+            if not program_semesters:
+                print(f"No valid semesters found for {student.applicant.full_name} in program {student.program.name}")
+                continue
+            # Determine how many semesters the student should be enrolled in
+            session_start_year = student.applicant.session.start_year
+            current_date = timezone.now().date()
+            years_elapsed = current_date.year - session_start_year
+            max_semesters = min(student.program.total_semesters, max(1, years_elapsed * 2))  # 2 semesters per year
+            num_semesters = random.randint(1, max_semesters)  # Randomly enroll in 1 to max_semesters
+            # Get existing semesters for this student to avoid duplicates
+            existing_semesters = set(StudentSemesterEnrollment.objects.filter(student=student).values_list('semester__number', flat=True))
+            # Select semesters up to num_semesters, starting from 1
+            available_semesters = sorted([s for s in program_semesters if s.number not in existing_semesters], key=lambda s: s.number)
+            selected_semesters = available_semesters[:num_semesters]
+            for semester in selected_semesters:
+                try:
+                    # Generate enrollment date within the semester's duration
+                    enrollment_date = fake.date_between(
+                        start_date=semester.start_time,
+                        end_date=min(current_date, semester.end_time)
+                    )
+                    enrollment_date = timezone.make_aware(datetime.combine(enrollment_date, time(random.randint(0, 23), random.randint(0, 59))))
+                    objects_queue.put({
+                        'student': student,
+                        'semester': semester,
+                        'enrollment_date': enrollment_date,
+                        'status': 'enrolled',
+                        'grade_point': round(random.uniform(2.0, 4.0), 2) if random.choice([True, False]) else None,
+                        'created_at': timezone.now(),
+                        'updated_at': timezone.now()
+                    })
+                except Exception as e:
+                    print(f"Error queuing semester enrollment for {student.applicant.full_name} in {semester.name}: {e}")
+                    continue
+        except Exception as e:
+            print(f"Error processing semester enrollments for {student.applicant.full_name}: {e}")
+            continue
 
-    print(f"Created {semesters_created} new semesters")
-    if result_dict is not None and key is not None:
-        result_dict[key] = semesters
-    return semesters
+    threads = []
+    try:
+        for _ in range(10):
+            t = threading.Thread(target=threaded_create, args=(StudentSemesterEnrollment, objects_queue, lock, 'semester enrollment'))
+            t.start()
+            threads.append(t)
+        for t in threads:
+            t.join()
+    except Exception as e:
+        print(f"Error in semester enrollment creation threads: {e}")
+
+    try:
+        enrollments = list(StudentSemesterEnrollment.objects.all())
+        print(f"Created {len(enrollments) - existing_enrollments} new semester enrollments")
+        if result_dict is not None and key is not None:
+            result_dict[key] = enrollments
+    except Exception as e:
+        print(f"Error retrieving semester enrollments: {e}")
+        enrollments = []
+    return enrollments
 
 def create_fake_admission_cycles(programs, sessions, result_dict=None, key=None):
     worker_init()
@@ -843,55 +868,77 @@ def create_fake_teachers(users, departments, result_dict=None, key=None):
         teachers = []
     return teachers
 
-def create_fake_courses(result_dict=None, key=None):
+def create_fake_course_enrollments(semester_enrollments, offerings, result_dict=None, key=None):
     worker_init()
-    existing_courses = Course.objects.count()
-    if existing_courses >= len(course_data):
-        print(f"Skipping course creation: {existing_courses} courses already exist")
-        result = list(Course.objects.all())
+    existing_enrollments = CourseEnrollment.objects.count()
+    expected_enrollments = sum(min(4, len([o for o in offerings if o.semester == e.semester])) for e in semester_enrollments)
+    if existing_enrollments >= expected_enrollments:
+        print(f"Skipping course enrollment creation: {existing_enrollments} course enrollments already exist")
+        result = list(CourseEnrollment.objects.all())
         if result_dict is not None and key is not None:
             result_dict[key] = result
         return result
-    courses = []
-    existing_codes = set(Course.objects.values_list('code', flat=True))
+    enrollments = []
     objects_queue = queue.Queue()
     lock = threading.Lock()
 
-    for code, name in course_data:
-        if code not in existing_codes:
-            try:
-                objects_queue.put({
-                    'code': code,
-                    'name': name,
-                    'credits': 3,
-                    'lab_work': 0,
-                    'is_active': True,
-                    'description': fake.text(max_nb_chars=300)
-                })
-            except Exception as e:
-                print(f"Error queuing course {code}: {e}")
+    for enrollment in semester_enrollments:
+        try:
+            # Filter course offerings for the student's semester and program
+            available_offerings = [
+                o for o in offerings
+                if o.semester == enrollment.semester and o.program == enrollment.student.program
+            ]
+            if not available_offerings:
+                print(f"No course offerings found for {enrollment.student.applicant.full_name} in {enrollment.semester.name}")
                 continue
+            # Avoid duplicate course enrollments
+            existing_offerings = set(CourseEnrollment.objects.filter(
+                student_semester_enrollment=enrollment).values_list('course_offering_id', flat=True))
+            available_offerings = [o for o in available_offerings if o.id not in existing_offerings]
+            selected_offerings = random.sample(available_offerings, min(4, len(available_offerings)))
+            for offering in selected_offerings:
+                try:
+                    enrollment_date = fake.date_between(
+                        start_date=enrollment.semester.start_time,
+                        end_date=min(timezone.now().date(), enrollment.semester.end_time)
+                    )
+                    enrollment_date = timezone.make_aware(datetime.combine(enrollment_date, time(random.randint(0, 23), random.randint(0, 59))))
+                    objects_queue.put({
+                        'student_semester_enrollment': enrollment,
+                        'course_offering': offering,
+                        'enrollment_date': enrollment_date,
+                        'status': 'enrolled',
+                        'created_at': timezone.now(),
+                        'updated_at': timezone.now()
+                    })
+                except Exception as e:
+                    print(f"Error queuing course enrollment for {enrollment.student.applicant.full_name} in {offering.course.code}: {e}")
+                    continue
+        except Exception as e:
+            print(f"Error processing course enrollments for {enrollment.student.applicant.full_name}: {e}")
+            continue
 
     threads = []
     try:
         for _ in range(10):
-            t = threading.Thread(target=threaded_create, args=(Course, objects_queue, lock, 'course'))
+            t = threading.Thread(target=threaded_create, args=(CourseEnrollment, objects_queue, lock, 'course enrollment'))
             t.start()
             threads.append(t)
         for t in threads:
             t.join()
     except Exception as e:
-        print(f"Error in course creation threads: {e}")
+        print(f"Error in course enrollment creation threads: {e}")
 
     try:
-        courses = list(Course.objects.all())
-        print(f"Created {len(courses) - existing_courses} new courses")
-        if result_dict is not None and key is not None:
-            result_dict[key] = courses
+        enrollments = list(CourseEnrollment.objects.all())
+        print(f"Created {len(enrollments) - existing_enrollments} new course enrollments")
+        if result_dict is not None and key is None:
+            result_dict[key] = enrollments
     except Exception as e:
-        print(f"Error retrieving courses: {e}")
-        courses = []
-    return courses
+        print(f"Error retrieving course enrollments: {e}")
+        enrollments = []
+    return enrollments
 
 venues = []
 for prefix, name, base_capacity in venue_types:
@@ -1720,7 +1767,7 @@ def main():
         (create_fake_users, (600, result_dict, 'users')),
         (create_fake_faculties, (result_dict, 'faculties')),
         (create_fake_academic_sessions, (result_dict, 'sessions')),
-        (create_fake_courses, (result_dict, 'courses')),
+        (create_fake_course_enrollments, (result_dict, 'courses')),
     ]
 
     # Run independent tasks in parallel
@@ -1730,12 +1777,12 @@ def main():
     users = result_dict.get('users', [])
     faculties = result_dict.get('faculties', [])
     sessions = result_dict.get('sessions', [])
-    courses = result_dict.get('courses', [])
+    courses = result_dict.get('courses', [])   
 
     # Sequential tasks with dependencies
     departments = create_fake_departments(faculties, result_dict, 'departments')
     programs = create_fake_programs(departments, result_dict, 'programs')
-    semesters = create_fake_semesters(programs, sessions, result_dict, 'semesters')
+    semesters = create_fake_student_semester_enrollments(programs, sessions, result_dict, 'semesters')
 
     # Parallelize tasks with dependencies
     dependent_tasks = [
@@ -1815,7 +1862,7 @@ def main():
     # print(f"Total assignments: {len(assignments)}")
     print(f"Total students: {len(students)}")
     # print(f"Total assignment submissions: {len(assignment_submissions)}")
-    print(f"Total notices: {len(notices)}")
+    print(f"Total notices: {len(notices)}")   
     print(f"Total exam results: {len(exam_results)}")
     print(f"Total attendance records: {len(attendance)}")
     print(f"Total semester enrollments: {len(semester_enrollments)}")

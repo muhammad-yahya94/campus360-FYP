@@ -1,55 +1,58 @@
 {% extends 'base_student.html' %}
 
-{% block title %}My Courses{% endblock %}
+{% block title %}My Courses Record - {{ student.applicant.full_name }}{% endblock %}
 
 {% block content %}
-<style>
-    .card {
-        border-radius: 10px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    }
-    .table th {
-        background-color: #e9ecef;
-        color: #343a40;
-    }
-    .table-hover tbody tr:hover {
-        background-color: #f8f9fa;
-    }
-</style>
-
-<div class="container-fluid">
-    <h2>My Courses - {{ current_session.name|default:"Current Session" }}</h2>
-    <div class="card">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Course Code</th>
-                            <th>Course Name</th>
-                            <th>Semester</th>
-                            <th>Instructor</th>
-                            <th>Credits</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for enrollment in enrollments %}
-                        <tr>
-                            <td>{{ enrollment.course_offering.course.code }}</td>
-                            <td>{{ enrollment.course_offering.course.name }}</td>
-                            <td>{{ enrollment.course_offering.semester.name }}</td>
-                            <td>{{ enrollment.course_offering.teacher.user.get_full_name }}</td>
-                            <td>{{ enrollment.course_offering.course.credits }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="5" class="text-center">No courses enrolled for this session.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <!-- Hero Section -->
+  <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-lg shadow-lg mb-6">
+    <div class="text-center py-6">
+      <h1 class="text-3xl sm:text-4xl font-bold mb-2">My Courses Record</h1>
+      <p class="text-base sm:text-lg opacity-90">Welcome, {{ student.applicant.full_name }}! Explore your courses for {{ current_session.name|default:"current session" }}.</p>
     </div>
-</div>
+  </div>
+
+  <!-- Semester Tabs -->
+  <div class="mb-6">
+    <div class="flex flex-wrap gap-2 border-b border-gray-200">
+      {% for semester_num in semester_numbers %}
+        <a href="?semester={{ semester_num }}"
+           class="px-4 py-2 text-sm font-medium {% if selected_semester_number|add:"0" == semester_num %}bg-indigo-600 text-white{% else %}text-gray-500 hover:text-gray-700{% endif %} rounded-t-lg">
+          Semester {{ semester_num }}
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Enrolled Courses -->
+  {% if enrollments %}
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden mb-6">
+      <div class="p-6">
+        <h2 class="text-2xl font-semibold text-gray-900 mb-4">Courses for Semester {{ selected_semester_number }}</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {% for enrollment in enrollments %}
+            <div class="bg-gray-50 p-4 rounded-lg shadow hover:shadow-md transition-shadow">
+              <h3 class="text-lg font-medium text-gray-900">{{ enrollment.course_offering.course.code }} - {{ enrollment.course_offering.course.name }}</h3>
+              <p class="text-sm text-gray-600">Semester: {{ enrollment.course_offering.semester.name }}</p>
+              <p class="text-sm text-gray-600">Instructor: {{ enrollment.course_offering.teacher.user.get_full_name }}</p>
+              <p class="text-sm text-gray-600">Type: {{ enrollment.course_offering.get_offering_type_display }}</p>
+              <div class="mt-4 flex flex-wrap gap-2">
+                <a href="{% url 'students:study_materials' %}?course_offering_id={{ enrollment.course_offering.id }}"
+                   class="btn btn-secondary btn-sm text-sm">View Materials</a>
+                <a href="{% url 'students:assignments' %}?course_offering_id={{ enrollment.course_offering.id }}"
+                   class="btn btn-info btn-sm text-sm">Assignments</a>
+                <a href="{% url 'students:attendance' %}?course_offering_id={{ enrollment.course_offering.id }}"
+                   class="btn btn-warning btn-sm text-sm">Attendance</a>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="alert alert-info text-center">
+      <i class="fas fa-info-circle mr-2"></i> You have no enrolled courses for Semester {{ selected_semester_number }}.
+    </div>
+  {% endif %}
+
 {% endblock %}

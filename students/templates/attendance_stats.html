@@ -12,117 +12,98 @@
     </div>
   </div>
 
-  <!-- Semester Tabs -->
-  {% if stats_by_semester %}
-    <div class="tabs tabs-boxed mb-6">
-      {% for sem_stats in stats_by_semester %}
-        <a class="tab tab-lifted {% if sem_stats.semester == active_semester %}tab-active{% endif %}" 
-           onclick="showSemester('sem-{{ sem_stats.semester.id }}')"
-           id="tab-sem-{{ sem_stats.semester.id }}">
-          {{ sem_stats.semester.name }} {% if sem_stats.semester == active_semester %}(Current){% endif %}
-        </a>
-      {% endfor %}
+  <!-- Semester Number Pagination -->
+  {% if stats_by_semester.paginator.num_pages > 1 %}
+    <div class="mb-6">
+      <div class="flex flex-wrap gap-2 border-b border-gray-200">
+        {% for num in stats_by_semester.paginator.page_range %}
+          <a href="?page={{ num }}"
+             class="px-4 py-2 text-sm font-medium {% if stats_by_semester.number == num %}bg-indigo-600 text-white{% else %}text-gray-500 hover:text-gray-700{% endif %} rounded-t-lg">
+            Semester {{ num }}
+          </a>
+        {% endfor %}
+      </div>
     </div>
+  {% endif %}
 
-    <!-- Attendance Tables -->
-    {% for sem_stats in stats_by_semester %}
-      <div id="sem-{{ sem_stats.semester.id }}" class="semester-section {% if sem_stats.semester != active_semester %}hidden{% endif %}">
-        <div class="bg-white shadow-lg rounded-lg overflow-hidden mb-6">
-          <div class="p-6">
-            <h2 class="text-2xl font-semibold text-gray-900 mb-4 flex items-center">
-              <i class="fas fa-calendar-check text-indigo-600 mr-2"></i> {{ sem_stats.semester.name }} {% if sem_stats.semester == active_semester %}(Current){% endif %}
-            </h2>
-            <!-- Semester Stats -->
-            <div class="bg-gray-50 p-4 rounded-lg mb-4">
-              <h3 class="text-lg font-medium text-gray-900 mb-2">Semester Summary</h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                <div class="form-control">
-                  <label class="label"><span class="label-text">Total Attendance</span></label>
-                  <p class="text-lg">{{ sem_stats.semester_stats.total_count }}</p>
-                </div>
-                <div class="form-control">
-                  <label class="label"><span class="label-text">Present</span></label>
-                  <p class="text-lg text-green-600">{{ sem_stats.semester_stats.present_count }}</p>
-                </div>
-                <div class="form-control">
-                  <label class="label"><span class="label-text">Absent</span></label>
-                  <p class="text-lg text-red-600">{{ sem_stats.semester_stats.absent_count }}</p>
-                </div>
-                <div class="form-control">
-                  <label class="label"><span class="label-text">Leave</span></label>
-                  <p class="text-lg text-yellow-600">{{ sem_stats.semester_stats.leave_count }}</p>
-                </div>
-                <div class="form-control">
-                  <label class="label"><span class="label-text">Percentage</span></label>
-                  <p class="text-lg font-bold text-indigo-600">{{ sem_stats.semester_stats.percentage|floatformat:2 }}%</p>
-                </div>
-              </div>
+  <!-- Attendance Tables -->
+  {% for sem_stats in stats_by_semester %}
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden mb-6">
+      <div class="p-6">
+        <h2 class="text-2xl font-semibold text-gray-900 mb-4 flex items-center">
+          <i class="fas fa-calendar-check text-indigo-600 mr-2"></i> {{ sem_stats.semester.name }} {% if sem_stats.semester == active_semester %}(Current){% endif %}
+        </h2>
+        <!-- Semester Stats -->
+        <div class="bg-gray-50 p-4 rounded-lg mb-4">
+          <h3 class="text-lg font-medium text-gray-900 mb-2">Semester Summary</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div class="form-control">
+              <label class="label"><span class="label-text">Total Attendance</span></label>
+              <p class="text-lg">{{ sem_stats.semester_stats.total_count }}</p>
             </div>
-            <!-- Course Stats -->
-            {% if sem_stats.course_stats %}
-              <div class="overflow-x-auto">
-                <table class="table table-zebra w-full">
-                  <thead>
-                    <tr>
-                      <th class="text-sm font-semibold text-gray-700">Course</th>
-                      <th class="text-sm font-semibold text-gray-700">Total</th>
-                      <th class="text-sm font-semibold text-gray-700">Present</th>
-                      <th class="text-sm font-semibold text-gray-700">Absent</th>
-                      <th class="text-sm font-semibold text-gray-700">Leave</th>
-                      <th class="text-sm font-semibold text-gray-700">Percentage</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {% for stat in sem_stats.course_stats %}
-                      <tr>
-                        <td class="text-sm">{{ stat.course.code }} - {{ stat.course.name }}</td>
-                        <td class="text-sm">{{ stat.total }}</td>
-                        <td class="text-sm">
-                          <span class="badge badge-success">{{ stat.present }}</span>
-                        </td>
-                        <td class="text-sm">
-                          <span class="badge badge-error">{{ stat.absent }}</span>
-                        </td>
-                        <td class="text-sm">
-                          <span class="badge badge-warning">{{ stat.leave }}</span>
-                        </td>
-                        <td class="text-sm font-bold text-indigo-600">{{ stat.percentage|floatformat:2 }}%</td>
-                      </tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
-              </div>
-            {% else %}
-              <div class="alert alert-info text-center">
-                <i class="fas fa-info-circle mr-2"></i> No course attendance stats available for {{ sem_stats.semester.name }}.
-              </div>
-            {% endif %}
+            <div class="form-control">
+              <label class="label"><span class="label-text">Present</span></label>
+              <p class="text-lg text-green-600">{{ sem_stats.semester_stats.present_count }}</p>
+            </div>
+            <div class="form-control">
+              <label class="label"><span class="label-text">Absent</span></label>
+              <p class="text-lg text-red-600">{{ sem_stats.semester_stats.absent_count }}</p>
+            </div>
+            <div class="form-control">
+              <label class="label"><span class="label-text">Leave</span></label>
+              <p class="text-lg text-yellow-600">{{ sem_stats.semester_stats.leave_count }}</p>
+            </div>
+            <div class="form-control">
+              <label class="label"><span class="label-text">Percentage</span></label>
+              <p class="text-lg font-bold text-indigo-600">{{ sem_stats.semester_stats.percentage|floatformat:2 }}%</p>
+            </div>
           </div>
         </div>
+        <!-- Course Stats -->
+        {% if sem_stats.course_stats %}
+          <div class="overflow-x-auto">
+            <table class="table table-zebra w-full">
+              <thead>
+                <tr>
+                  <th class="text-sm font-semibold text-gray-700">Course</th>
+                  <th class="text-sm font-semibold text-gray-700">Total</th>
+                  <th class="text-sm font-semibold text-gray-700">Present</th>
+                  <th class="text-sm font-semibold text-gray-700">Absent</th>
+                  <th class="text-sm font-semibold text-gray-700">Leave</th>
+                  <th class="text-sm font-semibold text-gray-700">Percentage</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for stat in sem_stats.course_stats %}
+                  <tr>
+                    <td class="text-sm">{{ stat.course.code }} - {{ stat.course.name }}</td>
+                    <td class="text-sm">{{ stat.total }}</td>
+                    <td class="text-sm">
+                      <span class="badge badge-success">{{ stat.present }}</span>
+                    </td>
+                    <td class="text-sm">
+                      <span class="badge badge-error">{{ stat.absent }}</span>
+                    </td>
+                    <td class="text-sm">
+                      <span class="badge badge-warning">{{ stat.leave }}</span>
+                    </td>
+                    <td class="text-sm font-bold text-indigo-600">{{ stat.percentage|floatformat:2 }}%</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="alert alert-info text-center">
+            <i class="fas fa-info-circle mr-2"></i> No course attendance stats available for {{ sem_stats.semester.name }}.
+          </div>
+        {% endif %}
       </div>
-    {% endfor %}
-  {% else %}
+    </div>
+  {% empty %}
     <div class="alert alert-info text-center">
       <i class="fas fa-info-circle mr-2"></i> No attendance statistics available.
     </div>
-  {% endif %}
+  {% endfor %}
 </div>
-
-<!-- Tab Switching JavaScript -->
-<script>
-  function showSemester(semesterId) {
-    // Hide all semester sections
-    document.querySelectorAll('.semester-section').forEach(section => {
-      section.classList.add('hidden');
-    });
-    // Remove active class from all tabs
-    document.querySelectorAll('.tab').forEach(tab => {
-      tab.classList.remove('tab-active');
-    });
-    // Show selected semester section
-    document.getElementById(semesterId).classList.remove('hidden');
-    // Add active class to selected tab
-    document.getElementById('tab-' + semesterId).classList.add('tab-active');
-  }
-</script>
 {% endblock %}

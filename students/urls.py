@@ -11,5 +11,10 @@ urlpatterns = [
     path('study-materials/', views.study_materials, name='study_materials'),
     path('notices/', views.notices, name='notices'),
     path('exam-results/', views.exam_results, name='exam_results'),
+    
+    path('timetable/', views.student_timetable, name='timetable'),
+    
+    path('attendance/', views.student_attendance, name='attendance'),
+    path('attendance-stats/', views.student_attendance_stats, name='attendance_stats'),
     path('logout/', views.logout_view, name='logout'),
 ]

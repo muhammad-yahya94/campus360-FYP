@@ -27,7 +27,6 @@ urlpatterns = [
     # path('user/' , include('users.urls')),
     path('faculty/' , include('faculty_staff.urls')),
     path('accounts/', include('django.contrib.auth.urls')),
-    path('learning-cycle/', include('learning_cycle.urls')),
     path('student/', include('students.urls')),
     path('payments/', include('payment.urls')),
     path('bgtask/', include('bgtask.urls')),

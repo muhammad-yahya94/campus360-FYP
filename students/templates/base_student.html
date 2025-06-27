@@ -1,161 +1,311 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Student Dashboard{% endblock %}</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>{% block title %}Student Dashboard{% endblock %}</title>    
+    <!-- Tailwind CSS + DaisyUI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.0/dist/full.min.css" rel="stylesheet" type="text/css" />
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .sidebar {
-            background-color: #2c3e50;
-            min-height: 100vh;
-            color: #ecf0f1;
-            transition: all 0.3s ease;
-            position: fixed;
-            width: 250px;
-            z-index: 1000;
+
+    <script>
+        // Theme management
+        function changeTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('selectedTheme', theme);
+            document.getElementById('theme-modal').checked = false;
         }
-        .sidebar .nav-link {
-            color: #ecf0f1;
-            padding: 12px 20px;
-            font-size: 1rem;
-            border-radius: 5px;
-            margin-bottom: 5px;
-            display: flex;
-            align-items: center;
-        }
-        .sidebar .nav-link:hover {
-            color: #ffffff;
-            background-color: #34495e;
-            text-decoration: none;
-        }
-        .sidebar .nav-link.active {
-            color: #ffffff;
-            background-color: #3498db;
-            font-weight: 500;
-        }
-        .sidebar .nav-link i {
-            margin-right: 10px;
-            width: 20px;
-            text-align: center;
-        }
-        .sidebar .dropdown-menu {
-            background-color: #2c3e50;
-            border: none;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
-        .sidebar .dropdown-item {
-            color: #ecf0f1;
-            padding: 8px 20px;
-            font-size: 0.95rem;
-        }
-        .sidebar .dropdown-item:hover {
-            background-color: #34495e;
-            color: #ffffff;
-        }
-        .sidebar .dropdown-item.disabled {
-            color: #7f8c8d;
-            cursor: not-allowed;
-        }
-        .main-content {
-            padding: 20px;
-            margin-left: 250px;
-            min-height: 100vh;
-            background-color: #f8f9fa;
-            transition: margin-left 0.3s ease;
-        }
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 100%;
-                height: auto;
-                position: relative;
-            }
-            .main-content {
-                margin-left: 0;
-                padding-top: 60px;
-            }
-            .sidebar .nav-link {
-                padding: 10px;
-            }
-        }
-        .sidebar h4 {
-            color: #ffffff;
-            font-size: 1.25rem;
-            padding: 15px 20px;
-            border-bottom: 1px solid #34495e;
-            margin-bottom: 20px;
-        }
-    </style>
+        
+        // Load saved theme on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('selectedTheme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        });
+    </script>
 </head>
-<body>
-    <div class="container-fluid">
-        {% if messages %}
-        {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        {% endfor %}
-        {% endif %}
-        <div class="row">
-            <!-- Sidebar -->
-            <div class="col-md-3 col-lg-2 px-0 sidebar">
-                <div class="p-3">
-                    <h4 class="text-center mb-4">Student Dashboard</h4>
-                    <nav class="nav flex-column">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'students:dashboard' %}">
-                            <i class="fas fa-tachometer-alt me-2"></i> Dashboard
-                        </a>
-                        <a class="nav-link {% if request.resolver_match.url_name == 'my_courses' %}active{% endif %}" href="{% url 'students:my_courses' %}">
-                            <i class="fas fa-book me-2"></i> My Courses
-                        </a>
-                        <div class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle {% if 'session_courses' in request.resolver_match.url_name %}active{% endif %}" href="#" id="sessionCoursesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="fas fa-graduation-cap me-2"></i> Session Courses
-                            </a>
-                            <ul class="dropdown-menu" aria-labelledby="sessionCoursesDropdown">
-                                {% for session in academic_sessions %}
-                                <li>
-                                    <a class="dropdown-item {% if request.resolver_match.url_name == 'session_courses' and request.resolver_match.kwargs.session_id == session.id %}active{% endif %}" href="{% url 'students:session_courses' session.id %}">
-                                        {{ session.name }}
-                                    </a>
-                                </li>
-                                {% empty %}
-                                <li><a class="dropdown-item disabled" href="#">No Sessions Available</a></li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                        <a class="nav-link {% if request.resolver_match.url_name == 'assignments' %}active{% endif %}" href="{% url 'students:assignments' %}">
-                            <i class="fas fa-tasks me-2"></i> Assignments
-                        </a>
-                        <a class="nav-link {% if request.resolver_match.url_name == 'study_materials' %}active{% endif %}" href="{% url 'students:study_materials' %}">
-                            <i class="fas fa-book-open me-2"></i> Study Materials
-                        </a>
-                        <a class="nav-link {% if request.resolver_match.url_name == 'notices' %}active{% endif %}" href="{% url 'students:notices' %}">
-                            <i class="fas fa-bell me-2"></i> Notices
-                        </a>
-                        <a class="nav-link {% if request.resolver_match.url_name == 'exam_results' %}active{% endif %}" href="{% url 'students:exam_results' %}">
-                            <i class="fas fa-clipboard-check me-2"></i> Exam Results
-                        </a>
-                        <a class="nav-link" href="{% url 'students:logout' %}">
-                            <i class="fas fa-sign-out-alt me-2"></i> Logout
-                        </a>
-                    </nav>
+<body class="bg-base-100">
+    <!-- Mobile menu button -->
+    <div class="navbar bg-base-100 lg:hidden border-b border-base-200 px-2">
+        <div class="navbar-start">
+            <div class="dropdown">
+                <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path>
+                    </svg>
                 </div>
+                <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-64 max-w-[90vw]">
+                    <li>
+                        <a href="{% url 'students:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %} text-base">
+                            <i class="fas fa-tachometer-alt text-lg w-6"></i> Dashboard
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'students:my_courses' %}" class="{% if request.resolver_match.url_name == 'my_courses' %}active{% endif %} text-base">
+                            <i class="fas fa-book text-lg w-6"></i> My Courses
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'students:timetable' %}" class="{% if request.resolver_match.url_name == 'timetable' %}active{% endif %} text-base">
+                            <i class="fas fa-calendar-week text-lg w-6"></i> Timetable
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'students:attendance_stats' %}" class="{% if request.resolver_match.url_name == 'attendance_stats' %}active{% endif %} text-base">
+                            <i class="fas fa-user-check text-lg w-6"></i> Attendance Record
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'students:assignments' %}" class="{% if request.resolver_match.url_name == 'assignments' %}active{% endif %} text-base">
+                            <i class="fas fa-tasks text-lg w-6"></i> Assignments
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'students:study_materials' %}" class="{% if request.resolver_match.url_name == 'study_materials' %}active{% endif %} text-base">
+                            <i class="fas fa-book-open text-lg w-6"></i> Study Materials
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'students:notices' %}" class="{% if request.resolver_match.url_name == 'notices' %}active{% endif %} text-base">
+                            <i class="fas fa-bell text-lg w-6"></i> Notices
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'students:exam_results' %}" class="{% if request.resolver_match.url_name == 'exam_results' %}active{% endif %} text-base">
+                            <i class="fas fa-clipboard-check text-lg w-6"></i> Exam Results
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'students:logout' %}" class="text-error hover:bg-error hover:text-error-content text-base">
+                            <i class="fas fa-sign-out-alt text-lg w-6"></i> Logout
+                        </a>
+                    </li>
+                </ul>
             </div>
-            <!-- Main Content -->
-            <div class="col-md-9 col-lg-10 p-4 main-content">
-                {% block content %}
-                {% endblock %}
+        </div>
+        <div class="navbar-center">
+            <span class="text-xl font-bold">Student Dashboard</span>
+        </div>
+        <div class="navbar-end flex items-center gap-2">
+            <!-- Theme Selector Button -->
+            <label for="theme-modal" class="btn btn-ghost btn-circle">
+                <i class="fas fa-palette text-lg"></i>
+            </label>
+            <!-- User Profile -->
+            <div class="dropdown dropdown-end">
+                <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
+                    {% if user.profile_picture %}
+                        <div class="w-8 h-8 rounded-full">
+                            <img src="{{ user.profile_picture.url }}" alt="User Avatar" class="w-full h-full object-cover rounded-full" />
+                        </div>
+                    {% else %}
+                        <div class="w-8 h-8 rounded-full bg-primary text-primary-content flex items-center justify-center">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    {% endif %}
+                </div>
+                <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-64 max-w-[80vw]">
+                    <li class="menu-title text-base">
+                        {{ student.applicant.full_name }}
+                        <span class="text-blue-500">Student</span>
+                    </li>
+                    {% comment %} <li>
+                        <a href="{% url 'students:settings' %}" class="{% if request.resolver_match.url_name == 'settings' %}active{% endif %} text-base">
+                            <i class="fas fa-cog"></i> Settings
+                        </a>
+                    </li> {% endcomment %}
+                    <li>
+                        <a href="{% url 'students:logout' %}" class="text-error hover:bg-error hover:text-error-content text-base">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </a>
+                    </li>
+                </ul>
             </div>
         </div>
     </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Theme Modal -->
+    <input type="checkbox" id="theme-modal" class="modal-toggle" />
+    <div class="modal" role="dialog">
+        <div class="modal-box w-11/12 max-w-2xl">
+            <h3 class="text-lg font-bold mb-4">Select Theme</h3>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <button onclick="changeTheme('light')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-sun text-yellow-500"></i> Light
+                </button>
+                <button onclick="changeTheme('dark')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-moon text-gray-300"></i> Dark
+                </button>
+                <button onclick="changeTheme('cupcake')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-heart text-pink-500"></i> Cupcake
+                </button>
+                <button onclick="changeTheme('corporate')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-briefcase text-blue-600"></i> Corporate
+                </button>
+                <button onclick="changeTheme('synthwave')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-music text-purple-500"></i> Synthwave
+                </button>
+                <button onclick="changeTheme('cyberpunk')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-robot text-green-400"></i> Cyberpunk
+                </button>
+                <button onclick="changeTheme('valentine')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-heart text-red-500"></i> Valentine
+                </button>
+                <button onclick="changeTheme('garden')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-leaf text-green-500"></i> Garden
+                </button>
+                <button onclick="changeTheme('forest')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-tree text-green-700"></i> Forest
+                </button>
+                <button onclick="changeTheme('luxury')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-gem text-yellow-600"></i> Luxury
+                </button>
+                <button onclick="changeTheme('dracula')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-bat text-purple-600"></i> Dracula
+                </button>
+                <button onclick="changeTheme('business')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-chart-line text-blue-500"></i> Business
+                </button>
+                <button onclick="changeTheme('autumn')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-maple-leaf text-orange-600"></i> Autumn
+                </button>
+                <button onclick="changeTheme('winter')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-snowflake text-blue-300"></i> Winter
+                </button>
+                <button onclick="changeTheme('night')" class="btn btn-outline flex items-center gap-2">
+                    <i class="fas fa-moon text-indigo-400"></i> Night
+                </button>
+            </div>
+            <div class="modal-action">
+                <label for="theme-modal" class="btn btn-ghost">Close</label>
+            </div>
+        </div>
+    </div>
+
+    <div class="drawer lg:drawer-open">
+        <input id="my-drawer-2" type="checkbox" class="drawer-toggle" />
+        
+        <!-- Page content -->
+        <div class="drawer-content flex flex-col min-h-screen">
+            <!-- Messages -->
+            {% if messages %}
+            <div class="p-4">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }} mb-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span>{{ message }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Main content -->
+            <main class="flex-1 p-4 lg:p-8">
+                {% block content %}
+                <!-- Placeholder content for testing -->
+                <div class="hero min-h-96 bg-base-200 rounded-lg">
+                    <div class="hero-content text-center">
+                        <div class="max-w-md">
+                            <h1 class="text-5xl font-bold">Welcome!</h1>
+                            <p class="py-6">This is the main content area for the student dashboard.</p>
+                            <button class="btn btn-primary">Get Started</button>
+                        </div>
+                    </div>
+                </div>
+                {% endblock %}
+            </main>
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="drawer-side">
+            <label for="my-drawer-2" aria-label="close sidebar" class="drawer-overlay"></label>
+            <aside class="min-h-full w-64 lg:w-80 bg-base-200 text-base-content">
+                <div class="p-4">
+                    <div class="flex items-center gap-3 mb-8 p-4 bg-base-100 rounded-lg shadow-sm">
+                        <div class="avatar">
+                            {% if user.profile_picture %}
+                                <div class="w-12 h-12 rounded-full">
+                                    <img src="{{ user.profile_picture.url }}" alt="Student Avatar" class="w-full h-full object-cover rounded-full" />
+                                </div>
+                            {% else %}
+                                <div class="w-12 rounded-full bg-primary text-primary-content flex items-center justify-center">
+                                    <i class="fas fa-user-graduate text-xl"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold">Student Dashboard</h2>
+                            <p class="text-sm text-base-content/70">
+                                 {{ student.applicant.full_name }}
+                                <span class="text-blue-500">Student</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Theme Selector Button in Sidebar -->
+                    <div class="mb-6">
+                        <label for="theme-modal" class="btn btn-outline w-full justify-start text-base">
+                            <i class="fas fa-palette"></i> Change Theme
+                            <i class="fas fa-chevron-up ml-auto"></i>
+                        </label>
+                    </div>
+                    
+                    <ul class="menu p-0 w-full text-base">
+                        <li>
+                            <a href="{% url 'students:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %} text-lg py-3">
+                                <i class="fas fa-tachometer-alt text-lg w-6"></i> Dashboard
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'students:my_courses' %}" class="{% if request.resolver_match.url_name == 'my_courses' %}active{% endif %} text-lg py-3">
+                                <i class="fas fa-book text-lg w-6"></i> My Courses
+                            </a>
+                        </li>
+                    <li>
+                        <a href="{% url 'students:timetable' %}" class="{% if request.resolver_match.url_name == 'timetable' %}active{% endif %} text-base">
+                            <i class="fas fa-calendar-week text-lg w-6"></i> Timetable
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'students:attendance_stats' %}" class="{% if request.resolver_match.url_name == 'attendance_stats' %}active{% endif %} text-base">
+                            <i class="fas fa-user-check text-lg w-6"></i> Attendance Record
+                        </a>
+                    </li>
+                        <li>
+                            <a href="{% url 'students:assignments' %}" class="{% if request.resolver_match.url_name == 'assignments' %}active{% endif %} text-lg py-3">
+                                <i class="fas fa-tasks text-lg w-6"></i> Assignments
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'students:study_materials' %}" class="{% if request.resolver_match.url_name == 'study_materials' %}active{% endif %} text-lg py-3">
+                                <i class="fas fa-book-open text-lg w-6"></i> Study Materials
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'students:notices' %}" class="{% if request.resolver_match.url_name == 'notices' %}active{% endif %} text-lg py-3">
+                                <i class="fas fa-bell text-lg w-6"></i> Notices
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'students:exam_results' %}" class="{% if request.resolver_match.url_name == 'exam_notices' %}active{% endif %} text-lg py-3">
+                                <i class="fas fa-clipboard-check text-lg w-6"></i> Exam Results
+                            </a>
+                        </li>
+                        <div class="divider"></div>
+                        <li>
+                            <a href="{% url 'students:logout' %}" class="text-error hover:bg-error hover:text-error-content text-lg py-3">
+                                <i class="fas fa-sign-out-alt text-lg w-6"></i> Logout
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </aside>
+        </div>
+    </div>    
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>

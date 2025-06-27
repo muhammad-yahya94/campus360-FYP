@@ -9,12 +9,12 @@ from django.core.files.base import ContentFile
 import uuid
 from PIL import Image
 import io
-import string
+import string  
 from multiprocessing import Pool, Manager
 import threading
 import queue
 from django.db import connections
-
+from django.contrib.auth.hashers import make_password
 # Set up Django environment
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'campus360FYP.settings')
 try:
@@ -203,7 +203,7 @@ def create_fake_users(count=600, result_dict=None, key=None):
             existing_emails.add(email)
             objects_queue.put({
                 'email': email,
-                'password': 'password123',
+                'password': make_password('0000pppp'),
                 'first_name': first_name,
                 'last_name': last_name,
                 'info': fake.text(max_nb_chars=200)
@@ -1411,7 +1411,7 @@ def create_fake_assignment_submissions(assignments, students, result_dict=None, 
                         'student': student,
                         'file': create_fake_image() if random.choice([True, False]) else None,
                         'submitted_at': submitted_at,
-                        'marks': random.randint(0, assignment.max_points) if random.choice([True, False]) else None,
+                        'marks_obtained': random.randint(0, assignment.max_points) if random.choice([True, False]) else None,
                         'feedback': fake.sentence(nb_words=15) if random.choice([True, False]) else None,
                         'graded_by': assignment.teacher if random.choice([True, False]) else None
                     })
@@ -1563,8 +1563,14 @@ def create_fake_exam_results(offerings, students, teachers, result_dict=None, ke
 def create_fake_attendance(offerings, students, teachers, result_dict=None, key=None):
     worker_init()
     existing_attendance = Attendance.objects.count()
-    expected_attendance = sum(20 * len([s for s in students if CourseEnrollment.objects.filter(
-        student_semester_enrollment__student=s, course_offering=o).exists()]) for o in offerings)
+    # Estimate expected attendance based on timetable slots
+    expected_attendance = sum(
+        len(TimetableSlot.objects.filter(course_offering=o)) * 20 * len([
+            s for s in students if CourseEnrollment.objects.filter(
+                student_semester_enrollment__student=s, course_offering=o
+            ).exists()
+        ]) for o in offerings
+    )
     if existing_attendance >= expected_attendance:
         print(f"Skipping attendance creation: {existing_attendance} attendance records already exist")
         result = list(Attendance.objects.all())
@@ -1578,23 +1584,53 @@ def create_fake_attendance(offerings, students, teachers, result_dict=None, key=
 
     for offering in offerings:
         try:
-            relevant_students = [s for s in students if CourseEnrollment.objects.filter(
-                student_semester_enrollment__student=s, course_offering=offering).exists()]
+            # Get students enrolled in this course offering
+            relevant_students = [
+                s for s in students if CourseEnrollment.objects.filter(
+                    student_semester_enrollment__student=s, course_offering=offering
+                ).exists()
+            ]
+            # Get timetable slots for this course offering
             timetable_slots = TimetableSlot.objects.filter(course_offering=offering)
-            semester_start = offering.semester.start_time
-            semester_end = offering.semester.end_time
+            if not timetable_slots:
+                print(f"No timetable slots found for {offering.course.code}")
+                continue
+
+            # Get allowed days from timetable slots
+            allowed_days = {slot.day.lower() for slot in timetable_slots}
+            semester_start = offering.semester.start_time  # DateField
+            semester_end = offering.semester.end_time      # DateField
+
             for student in relevant_students:
-                existing_count = Attendance.objects.filter(student=student, course_offering=offering).count()
+                existing_count = Attendance.objects.filter(
+                    student=student, course_offering=offering
+                ).count()
                 needed = 20 - existing_count
-                available_slots = []
-                for slot in timetable_slots:
-                    current_date = semester_start
-                    while current_date <= semester_end:
-                        if slot.day.lower() == current_date.strftime('%A').lower():
-                            available_slots.append((current_date, slot.start_time))
-                        current_date += timedelta(days=1)
-                available_slots = sorted(set(available_slots))[:needed]
-                for date, start_time in available_slots:
+                if needed <= 0:
+                    continue
+
+                # Generate a list of possible attendance dates based on allowed days
+                available_dates = []
+                current_date = semester_start
+                while current_date <= semester_end:
+                    if current_date.strftime('%A').lower() in allowed_days:
+                        # Find corresponding timetable slot for the day
+                        matching_slots = [
+                            slot for slot in timetable_slots
+                            if slot.day.lower() == current_date.strftime('%A').lower()
+                        ]
+                        for slot in matching_slots:
+                            available_dates.append((current_date, slot.start_time))
+                    current_date += timedelta(days=1)
+
+                # Select up to 'needed' unique dates for attendance
+                available_dates = sorted(set(available_dates), key=lambda x: x[0])
+                selected_dates = random.sample(
+                    available_dates,
+                    min(needed, len(available_dates))
+                )
+
+                for date, start_time in selected_dates:
                     try:
                         attendance_date = datetime.combine(date, start_time)
                         if not timezone.is_aware(attendance_date):
@@ -1622,7 +1658,10 @@ def create_fake_attendance(offerings, students, teachers, result_dict=None, key=
     threads = []
     try:
         for _ in range(10):
-            t = threading.Thread(target=threaded_create, args=(Attendance, objects_queue, lock, 'attendance record'))
+            t = threading.Thread(
+                target=threaded_create,
+                args=(Attendance, objects_queue, lock, 'attendance record')
+            )
             t.start()
             threads.append(t)
         for t in threads:

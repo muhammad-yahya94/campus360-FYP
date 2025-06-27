@@ -1,69 +1,56 @@
 {% extends 'base_student.html' %}
 
-{% block title %}Student Dashboard{% endblock %}
+{% block title %}Student Dashboard - {{ student.applicant.full_name }}{% endblock %}
 
 {% block content %}
-<style>
-    .card {
-        border-radius: 10px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    }
-    .table th {
-        background-color: #e9ecef;
-        color: #343a40;
-    }
-    .table-hover tbody tr:hover {
-        background-color: #f8f9fa;
-    }
-</style>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <!-- Hero Section -->
+  <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-lg shadow-lg mb-6">
+    <div class="text-center py-6">
+      <h1 class="text-3xl sm:text-4xl font-bold mb-2">Student Dashboard</h1>
+      <p class="text-base sm:text-lg opacity-90">Welcome, {{ student.applicant.full_name }}! Explore your courses for {{ active_semester.name|default:"current semester" }}.</p>
+    </div>
+  </div>
 
-<div class="container-fluid">
-    <h2>Welcome, {{ student.applicant.full_name }}</h2>
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <div class="card p-3">
-                <h5 class="card-title">Profile</h5>
-                <p><strong>Program:</strong> {{ student.program.name }}</p>
-                <p><strong>Department:</strong> {{ student.program.department.name }}</p>
-                <p><strong>Semester:</strong> {{ student.current_semester.name|default:"N/A" }}</p>
-                <p><strong>Roll No:</strong> {{ student.university_roll_no|default:"N/A" }}</p>
+  <!-- Enrolled Courses -->
+  {% if enrollments %}
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden mb-6">
+      <div class="p-6">
+        <h2 class="text-2xl font-semibold text-gray-900 mb-4">Enrolled Courses for {{ active_semester.name|default:"Current Semester" }}</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {% for enrollment in enrollments %}
+            <div class="bg-gray-50 p-4 rounded-lg shadow hover:shadow-md transition-shadow">
+              <h3 class="text-lg font-medium text-gray-900">{{ enrollment.course_offering.course.code }} - {{ enrollment.course_offering.course.name }}</h3>
+              <p class="text-sm text-gray-600">Semester: {{ enrollment.course_offering.semester.name }}</p>
+              <p class="text-sm text-gray-600">Instructor: {{ enrollment.course_offering.teacher.user.get_full_name }}</p>
+              <p class="text-sm text-gray-600">Type: {{ enrollment.course_offering.get_offering_type_display }}</p>
+              <div class="mt-4 flex flex-wrap gap-2">
+                <a href="{% url 'students:study_materials' %}?course_offering_id={{ enrollment.course_offering.id }}"
+                   class="btn btn-secondary btn-sm text-sm">View Materials</a>
+                <a href="{% url 'students:assignments' %}?course_offering_id={{ enrollment.course_offering.id }}"
+                   class="btn btn-info btn-sm text-sm">Assignments</a>
+                <a href="{% url 'students:attendance' %}?course_offering_id={{ enrollment.course_offering.id }}"
+                   class="btn btn-warning btn-sm text-sm">Attendance</a>
+              </div>
             </div>
+          {% endfor %}
         </div>
-        <div class="col-md-6">
-            <div class="card p-3">
-                <h5 class="card-title">Current Session: {{ current_session.name|default:"N/A" }}</h5>
-                <p><strong>Enrolled Courses:</strong> {{ enrollments.count }}</p>
-            </div>
-        </div>
+      </div>
     </div>
-    <div class="card">
-        <div class="card-body">
-            <h5 class="card-title">Enrolled Courses</h5>
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Course</th>
-                            <th>Semester</th>
-                            <th>Instructor</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for enrollment in enrollments %}
-                        <tr>
-                            <td>{{ enrollment.course_offering.course.name }}</td>
-                            <td>{{ enrollment.course_offering.semester.name }}</td>
-                            <td>{{ enrollment.course_offering.teacher.user.get_full_name }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="3" class="text-center">No courses enrolled for this session.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+  {% else %}
+    <div class="alert alert-info text-center">
+      <i class="fas fa-info-circle mr-2"></i> You have no enrolled courses for {{ active_semester.name|default:"the current semester" }}.
     </div>
+  {% endif %}
+
+  <!-- Quick Actions -->
+  <div class="bg-white shadow-lg rounded-lg p-6">
+    <h2 class="text-2xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <a href="#" class="btn btn-primary w-full">View Settings</a>
+      <a href="{% url 'students:my_courses' %}" class="btn btn-success w-full">My Courses</a>
+      <a href="{% url 'students:attendance_stats' %}" class="btn btn-accent w-full">Attendance Stats</a>
+    </div>
+  </div>
 </div>
 {% endblock %}

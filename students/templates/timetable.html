@@ -1,0 +1,96 @@
+{% extends 'base_student.html' %}
+
+{% block title %}My Timetable - {{ student.applicant.full_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <!-- Header -->
+  <div class="bg-gradient-to-r from-blue-600 to-teal-600 text-white rounded-xl shadow-lg mb-6">
+    <div class="text-center py-8">
+      <h1 class="text-4xl font-bold mb-2">My Timetable</h1>
+      <p class="text-lg opacity-90">{{ student.applicant.full_name }} - {{ student.program.department.name }} - {{ active_session.name|default:'No Active Session' }}</p>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  {% comment %} <div class="flex justify-start mb-6">
+    <a href="{% url 'students:course_enrollments' %}" class="inline-flex items-center px-4 py-2 border border-blue-500 text-blue-500 bg-white hover:bg-blue-50 rounded-lg shadow-sm">
+      <i class="fas fa-arrow-left mr-2"></i>
+      Back to Course Enrollments
+    </a>
+  </div> {% endcomment %}
+
+  <!-- Timetable -->
+  <div class="bg-white shadow-xl rounded-lg p-6">
+    <h2 class="text-2xl font-semibold mb-4">
+      <i class="fas fa-calendar-week mr-2"></i>
+      My Schedule
+    </h2>
+    {% if timetable_data %}
+      <div class="space-y-4">
+        {% for day in timetable_data %}
+          <div class="border border-gray-200 rounded-lg">
+            <button class="w-full flex justify-between items-center p-4 bg-gray-50 hover:bg-gray-100 transition duration-200" onclick="toggleDay('{{ day.day_value }}')">
+              <span class="text-lg font-semibold text-gray-800">{{ day.day_label }}</span>
+              <i id="toggle-icon-{{ day.day_value }}" class="fas fa-chevron-down text-gray-600"></i>
+            </button>
+            <div id="slots-{{ day.day_value }}" class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {% for slot in day.slots %}
+                <div class="relative p-4 rounded-lg shadow-md transition duration-200 {% if slot.shift == 'Morning' %}bg-blue-100 border-blue-300 hover:bg-blue-200{% elif slot.shift == 'Evening' %}bg-purple-100 border-purple-300 hover:bg-purple-200{% else %}bg-green-100 border-green-300 hover:bg-green-200{% endif %}" data-tooltip="Program: {{ slot.program }} - Semester: {{ slot.semester }}">
+                  <p class="font-semibold text-lg {% if slot.shift == 'Morning' %}text-blue-800{% elif slot.shift == 'Evening' %}text-purple-800{% else %}text-green-800{% endif %}">{{ slot.course_code }} - {{ slot.course_name }}</p>
+                  <p class="text-sm text-gray-600"><i class="fas fa-user-tie mr-1"></i>Teacher: {{ slot.teacher_name }}</p>
+                  <p class="text-sm text-gray-600"><i class="fas fa-map-marker-alt mr-1"></i>{{ slot.venue }}</p>
+                  <p class="text-sm text-gray-600"><i class="fas fa-clock mr-1"></i>{{ slot.start_time }}–{{ slot.end_time }}</p>
+                  <p class="text-sm italic {% if slot.shift == 'Morning' %}text-blue-600{% elif slot.shift == 'Evening' %}text-purple-600{% else %}text-green-600{% endif %}">{{ slot.shift }}</p>
+                </div>
+              {% empty %}
+                <p class="col-span-full text-center text-gray-500">No slots scheduled for {{ day.day_label }}.</p>
+              {% endfor %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="text-center p-8">
+        <i class="fas fa-calendar-alt text-6xl text-gray-300 mb-4"></i>
+        <h3 class="text-xl font-semibold text-gray-600 mb-2">No Timetable Slots Assigned</h3>
+        <p class="text-gray-500">You have no scheduled classes for this academic session.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+function toggleDay(dayId) {
+  const slots = document.getElementById(`slots-${dayId}`);
+  const icon = document.getElementById(`toggle-icon-${dayId}`);
+  if (slots.classList.contains('hidden')) {
+    slots.classList.remove('hidden');
+    icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+  } else {
+    slots.classList.add('hidden');
+    icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+  }
+}
+
+// Initialize all days as expanded
+document.querySelectorAll('[id^="slots-"]').forEach(el => el.classList.remove('hidden'));
+
+// Tooltip functionality
+document.querySelectorAll('[data-tooltip]').forEach(el => {
+  const tooltip = document.createElement('div');
+  tooltip.innerHTML = el.dataset.tooltip;
+  tooltip.className = 'absolute hidden group-hover:block bg-gray-800 text-white text-xs rounded p-2 -top-10 left-1/2 transform -translate-x-1/2 z-10';
+  el.classList.add('group', 'relative');
+  el.appendChild(tooltip);
+});
+</script>
+<style>
+/* Ensure Tailwind group-hover works */
+.group:hover .group-hover\:block {
+  display: block;
+}
+</style>
+{% endblock %}
+{% endblock %}

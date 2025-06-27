@@ -17,19 +17,19 @@ class StudentAdminForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for field in ['applicant', 'user', 'program', 'current_semester']:
+        for field in ['applicant', 'user', 'program']:
             self.fields[field].widget.can_add_related = False
         
-        if 'program' in self.data:
-            try:
-                program_id = int(self.data.get('program'))
-                self.fields['current_semester'].queryset = Semester.objects.filter(program_id=program_id).order_by('number')
-            except (ValueError, TypeError):
-                self.fields['current_semester'].queryset = Semester.objects.none()
-        elif self.instance.pk and self.instance.program:
-            self.fields['current_semester'].queryset = Semester.objects.filter(program=self.instance.program).order_by('number')
-        else:
-            self.fields['current_semester'].queryset = Semester.objects.none()
+        # if 'program' in self.data:
+        #     try:
+        #         program_id = int(self.data.get('program'))
+        #         self.fields['current_semester'].queryset = Semester.objects.filter(program_id=program_id).order_by('number')
+        #     except (ValueError, TypeError):
+        #         self.fields['current_semester'].queryset = Semester.objects.none()
+        # elif self.instance.pk and self.instance.program:
+        #     self.fields['current_semester'].queryset = Semester.objects.filter(program=self.instance.program).order_by('number')
+        # else:
+        #     self.fields['current_semester'].queryset = Semester.objects.none()
 
     def clean(self):
         cleaned_data = super().clean()

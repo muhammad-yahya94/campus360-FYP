@@ -1,63 +1,48 @@
 {% extends 'base_student.html' %}
 
-{% block title %}Study Materials{% endblock %}
+{% block title %}Study Materials - {{ student.applicant.full_name }}{% endblock %}
 
 {% block content %}
-<style>
-    .card {
-        border-radius: 10px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    }
-    .table th {
-        background-color: #e9ecef;
-        color: #343a40;
-    }
-    .table-hover tbody tr:hover {
-        background-color: #f8f9fa;
-    }
-</style>
-
-<div class="container-fluid">
-    <h2>Study Materials - {{ current_session.name|default:"Current Session" }}</h2>
-    <div class="card">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Course</th>
-                            <th>Title</th>
-                            <th>Description</th>
-                            <th>Uploaded At</th>
-                            <th>Download</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for material in materials %}
-                        <tr>
-                            <td>{{ material.course_offering.course.name }}</td>
-                            <td>{{ material.title }}</td>
-                            <td>{{ material.description|default:"N/A" }}</td>
-                            <td>{{ material.uploaded_at|date:"Y-m-d" }}</td>
-                            <td>
-                                {% if material.file %}
-                                <a href="{{ material.file.url }}" class="btn btn-sm btn-primary" download>
-                                    <i class="fas fa-download"></i> Download
-                                </a>
-                                {% else %}
-                                N/A
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="5" class="text-center">No study materials available.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <!-- Hero Section -->
+  <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-lg shadow-lg mb-6">
+    <div class="text-center py-6">
+      <h1 class="text-3xl sm:text-4xl font-bold mb-2">Study Materials</h1>
+      <p class="text-base sm:text-lg opacity-90">Access materials for your courses in {{ active_semester.name|default:"current semester" }}.</p>
     </div>
+  </div>
+
+  <!-- Study Materials -->
+  {% if materials %}
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden mb-6">
+      <div class="p-6">
+        <h2 class="text-2xl font-semibold text-gray-900 mb-4">Study Materials for {{ active_semester.name|default:"Current Semester" }}</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {% for material in materials %}
+            <div class="bg-gray-50 p-4 rounded-lg shadow hover:shadow-md transition-shadow">
+              <h3 class="text-lg font-medium text-gray-900">{{ material.title }}</h3>
+              <p class="text-sm text-gray-600">Course: {{ material.course_offering.course.code }} - {{ material.course_offering.course.name }}</p>
+              <p class="text-sm text-gray-600">Instructor: {{ material.course_offering.teacher.user.get_full_name }}</p>
+              <p class="text-sm text-gray-600">Uploaded: {{ material.uploaded_at|date:"Y-m-d" }}</p>
+              <p class="text-sm text-gray-600">Description: {{ material.description|default:"N/A" }}</p>
+              <div class="mt-4 flex flex-wrap gap-2">
+                {% if material.file %}
+                  <a href="{{ material.file.url }}" class="btn btn-primary btn-sm text-sm" download>
+                    <i class="fas fa-download mr-2"></i>Download
+                  </a>
+                {% else %}
+                  <span class="text-sm text-gray-500">No file available</span>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="alert alert-info text-center">
+      <i class="fas fa-info-circle mr-2"></i> No study materials available for {{ active_semester.name|default:"the current semester" }}.
+    </div>
+  {% endif %}
 </div>
 {% endblock %}

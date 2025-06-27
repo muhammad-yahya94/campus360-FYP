@@ -35,6 +35,10 @@
                         <label class="label"><span class="label-text">Full Name</span></label>
                         <p>{{ student.applicant.full_name }}</p>
                     </div>
+                        <div class="form-control">
+                        <label class="label"><span class="label-text">Email</span></label>
+                        <p>{{ student.applicant.user.email }}</p>
+                    </div>
                     <div class="form-control">
                         <label class="label"><span class="label-text">University Roll No</span></label>
                         <p>{{ student.university_roll_no|default:"N/A" }}</p>

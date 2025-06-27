@@ -1,53 +1,71 @@
 {% extends 'base_student.html' %}
 
-{% block title %}Notices{% endblock %}
+{% block title %}Notices - {{ student.applicant.full_name }}{% endblock %}
 
 {% block content %}
-<style>
-    .card {
-        border-radius: 10px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    }
-    .table th {
-        background-color: #e9ecef;
-        color: #343a40;
-    }
-    .table-hover tbody tr:hover {
-        background-color: #f8f9fa;
-    }
-</style>
-
-<div class="container-fluid">
-    <h2>Notices</h2>
-    <div class="card">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Course</th>
-                            <th>Title</th>
-                            <th>Content</th>
-                            <th>Posted At</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for notice in notices %}
-                        <tr>
-                            <td>{{ notice.course_offering.course.name }}</td>
-                            <td>{{ notice.title }}</td>
-                            <td>{{ notice.content|truncatewords:20 }}</td>
-                            <td>{{ notice.created_at|date:"Y-m-d" }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="4" class="text-center">No notices available.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <!-- Hero Section -->
+  <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-lg shadow-lg mb-6">
+    <div class="text-center py-6">
+      <h1 class="text-3xl sm:text-4xl font-bold mb-2">Notices</h1>
+      <p class="text-base sm:text-lg opacity-90">View notices for your courses in {{ active_semester.name|default:"current semester" }}.</p>
     </div>
+  </div>
+
+  <!-- Notices -->
+  {% if notices %}
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden mb-6">
+      <div class="p-6">
+        <h2 class="text-2xl font-semibold text-gray-900 mb-4">Notices for {{ active_semester.name|default:"Current Semester" }}</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {% for notice in notices %}
+            <div class="bg-gray-50 p-4 rounded-lg shadow hover:shadow-md transition-shadow">
+              <h3 class="text-lg font-medium text-gray-900">{{ notice.title }}</h3>
+              <p class="text-sm text-gray-600">Course: {{ notice.course_offering.course.code }} - {{ notice.course_offering.course.name }}</p>
+              <p class="text-sm text-gray-600">Posted by: {{ notice.created_by.user.get_full_name|default:"N/A" }}</p>
+              <p class="text-sm text-gray-600">Posted on: {{ notice.created_at|date:"Y-m-d" }}</p>
+              <p class="text-sm text-gray-600">Content: {{ notice.content|truncatewords:20 }}</p>
+              <div class="mt-4 flex flex-wrap gap-2">
+                <button class="btn btn-primary btn-sm text-sm" onclick="openNoticeModal('{{ notice.title }}', '{{ notice.content|escapejs }}', '{{ notice.created_by.user.get_full_name|default:"N/A"|escapejs }}', '{{ notice.created_at|date:"Y-m-d" }}', '{{ notice.course_offering.course.code }} - {{ notice.course_offering.course.name|escapejs }}')">
+                  <i class="fas fa-eye mr-2"></i>View Details
+                </button>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="alert alert-info text-center">
+      <i class="fas fa-info-circle mr-2"></i> No notices available for {{ active_semester.name|default:"the current semester" }}.
+    </div>
+  {% endif %}
+
+  <!-- Notice Modal -->
+  <input type="checkbox" id="notice-modal" class="modal-toggle" />
+  <div class="modal" role="dialog">
+    <div class="modal-box w-11/12 max-w-2xl">
+      <h3 class="text-lg font-bold" id="modal-title"></h3>
+      <p class="text-sm text-gray-600 mt-2" id="modal-course"></p>
+      <p class="text-sm text-gray-600" id="modal-posted-by"></p>
+      <p class="text-sm text-gray-600" id="modal-posted-on"></p>
+      <p class="mt-4" id="modal-content"></p>
+      <div class="modal-action">
+        <label for="notice-modal" class="btn btn-ghost">Close</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal JavaScript -->
+  <script>
+    function openNoticeModal(title, content, postedBy, postedOn, course) {
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-course').textContent = 'Course: ' + course;
+      document.getElementById('modal-posted-by').textContent = 'Posted by: ' + postedBy;
+      document.getElementById('modal-posted-on').textContent = 'Posted on: ' + postedOn;
+      document.getElementById('modal-content').textContent = content;
+      document.getElementById('notice-modal').checked = true;
+    }
+  </script>
 </div>
 {% endblock %}

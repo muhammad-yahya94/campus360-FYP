@@ -1,0 +1,123 @@
+{% extends 'base_student.html' %}
+
+{% block title %}Attendance - {{ student.applicant.full_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <!-- Hero Section -->
+  <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-lg shadow-lg mb-6">
+    <div class="text-center py-6">
+      <h1 class="text-3xl sm:text-4xl font-bold mb-2">Attendance</h1>
+      <p class="text-base sm:text-lg opacity-90">View your attendance for {{ active_semester.name|default:"current semester" }}{% if course_offering_id %} - {{ attendances.first.course_offering.course.code }} {{ attendances.first.course_offering.course.name }}{% endif %}.</p>
+    </div>
+  </div>
+
+  <!-- Attendance Statistics -->
+  {% if course_stats %}
+    <!-- Attendance Card -->
+  <div class="bg-white shadow-lg rounded-lg p-6 mb-6">
+    <h2 class="text-2xl font-semibold mb-4 flex items-center">
+      <i class="fas fa-calendar-check text-indigo-600 mr-2"></i> Attendance
+    </h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {% for stat in course_stats %}
+      <div class="form-control">
+        <label class="label"><span class="label-text">Total Attendance</span></label>
+        <p class="text-lg">{{ stat.total }}</p>
+      </div>
+      <div class="form-control">
+        <label class="label"><span class="label-text">Present</span></label>
+        <p class="text-lg text-green-600">{{ stat.present }}</p>
+      </div>
+      <div class="form-control">
+        <label class="label"><span class="label-text">Absent</span></label>
+        <p class="text-lg text-red-600">{{ stat.absent }}</p>
+      </div>
+      <div class="form-control">
+        <label class="label"><span class="label-text">Leave</span></label>
+        <p class="text-lg text-yellow-600">{{ stat.leave }}</p>
+      </div>
+      <div class="form-control md:col-span-2 lg:col-span-4">
+        <label class="label"><span class="label-text">Attendance Percentage</span></label>
+        <p class="text-lg font-bold text-indigo-600">{{ stat.percentage|floatformat:2 }}%</p>
+      </div>
+          {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Attendance Records -->
+  {% if attendances %}
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden mb-6">
+      <div class="p-6">
+        <h2 class="text-2xl font-semibold text-gray-900 mb-4">Attendance Records for {{ active_semester.name|default:"Current Semester" }}</h2>
+        <div class="overflow-x-auto">
+          <table class="table table-zebra w-full">
+            <thead>
+              <tr>
+                <th class="text-sm font-semibold text-gray-700">Sr</th>
+                <th class="text-sm font-semibold text-gray-700">Course</th>
+                <th class="text-sm font-semibold text-gray-700">Date</th>
+                <th class="text-sm font-semibold text-gray-700">Status</th>
+                <th class="text-sm font-semibold text-gray-700">Shift</th>
+                <th class="text-sm font-semibold text-gray-700">Recorded By</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for attendance in attendances %}
+                <tr>
+                  <td class="text-sm">{{ forloop.counter }}</td>
+                  <td class="text-sm">{{ attendance.course_offering.course.code }} - {{ attendance.course_offering.course.name }}</td>
+                  <td class="text-sm">{{ attendance.date|date:"Y-m-d" }}</td>
+                  <td>
+                    <span class="badge {% if attendance.status == 'present' %}badge-success{% elif attendance.status == 'absent' %}badge-error{% else %}badge-warning{% endif %}">
+                      {{ attendance.get_status_display }}
+                    </span>
+                  </td>
+                  <td class="text-sm">{{ attendance.shift|default:"N/A" }}</td>
+                  <td class="text-sm">{{ attendance.recorded_by.user.get_full_name|default:"N/A" }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="alert alert-info text-center">
+      <i class="fas fa-info-circle mr-2"></i> No attendance records available for {{ active_semester.name|default:"the current semester" }}{% if course_offering_id %} - {{ attendances.first.course_offering.course.code }} {{ attendances.first.course_offering.course.name }}{% endif %}.
+    </div>
+  {% endif %}
+</div>
+
+<!-- Chart.js Script -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
+<script>
+  {% for stat in course_stats %}
+    new Chart(document.getElementById('chart-{{ stat.course.id }}'), {
+      type: 'bar',
+      data: {
+        labels: ['Present', 'Absent', 'Leave'],
+        datasets: [{
+          label: 'Attendance',
+          data: [{{ stat.present }}, {{ stat.absent }}, {{ stat.leave }}],
+          backgroundColor: ['#22c55e', '#ef4444', '#eab308'],
+          borderColor: ['#16a34a', '#dc2626', '#ca8a04'],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          title: { display: true, text: 'Attendance Breakdown' }
+        },
+        scales: {
+          y: { beginAtZero: true, ticks: { stepSize: 1 } }
+        }
+      }
+    });
+  {% endfor %}
+</script>
+{% endblock %}

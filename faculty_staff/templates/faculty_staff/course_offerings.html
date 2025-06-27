@@ -721,36 +721,35 @@ $(document).ready(function() {
     });
   }
 
- 
-// Initialize Select2 for semester
-function initSelect2Semester(selector, academicSessionSelector) {
-  $(selector).select2({
-    ajax: {
-      url: "{% url 'faculty_staff:search_semesters' %}",
-      dataType: 'json',
-      delay: 250,
-      data: function(params) {
-        return {
-          q: params.term,
-          page: params.page || 1,
-          program_id: $('#program_id').val() || $('#edit_program_id').val(),
-          academic_session_id: $(academicSessionSelector).val() || ''
-        };
+  // Initialize Select2 for semester
+  function initSelect2Semester(selector, academicSessionSelector) {
+    $(selector).select2({
+      ajax: {
+        url: "{% url 'faculty_staff:search_semesters' %}",
+        dataType: 'json',
+        delay: 250,
+        data: function(params) {
+          return {
+            q: params.term,
+            page: params.page || 1,
+            program_id: $('#program_id').val() || $('#edit_program_id').val(),
+            academic_session_id: $(academicSessionSelector).val() || ''
+          };
+        },
+        processResults: function(data, params) {
+          params.page = params.page || 1;
+          return {
+            results: data.results,
+            pagination: { more: data.more }
+          };
+        },
+        cache: true
       },
-      processResults: function(data, params) {
-        params.page = params.page || 1;
-        return {
-          results: data.results,
-          pagination: { more: data.more }
-        };
-      },
-      cache: true
-    },
-    placeholder: "Search for a semester...",
-    minimumInputLength: 1,
-    allowClear: true
-  });
-}
+      placeholder: "Search for a semester...",
+      minimumInputLength: 1,
+      allowClear: true
+    });
+  }
 
   // Initialize Select2 for offering type
   function initSelect2OfferingType(selector) {
@@ -1114,11 +1113,28 @@ function initSelect2Semester(selector, academicSessionSelector) {
       if (!$(this).val()) {
         const fieldName = $(this).attr('name');
         $(`#edit-${fieldName}-error`).text('This field is required.');
+        $(`#edit_${fieldName}`).addClass('border-red-500');
         isValid = false;
       }
     });
+
+    // Validate time inputs
+    const startTime = $('#edit_start_time').val();
+    const endTime = $('#edit_end_time').val();
+    if (startTime && endTime && startTime >= endTime) {
+      $('#edit-start_time-error').text('End time must be after start time.');
+      $('#edit_start_time, #edit_end_time').addClass('border-red-500');
+      isValid = false;
+    }
     
     if (!isValid) {
+      const errorAlert = `
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+          Please correct the errors in the form.
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      `;
+      $('.assignment-form').prepend(errorAlert);
       submitBtn.prop('disabled', false);
       submitBtn.html('<i class="fas fa-save mr-2"></i> Save Changes');
       isSubmitting = false;
@@ -1151,12 +1167,17 @@ function initSelect2Semester(selector, academicSessionSelector) {
             </div>
           `;
           $('.assignment-form').prepend(errorAlert);
+          if (response.message.includes('Timetable slot already exists')) {
+            $('#edit-day-error').text(response.message);
+            $('#edit_day, #edit_start_time, #edit_end_time, #edit_venue_id').addClass('border-red-500');
+          }
         }
       },
       error: function(xhr, status, error) {
+        const errorMessage = xhr.responseJSON?.message || 'An error occurred while updating the timetable slot. Please try again.';
         const errorAlert = `
           <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            An error occurred: ${error}
+            ${errorMessage}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
           </div>
         `;

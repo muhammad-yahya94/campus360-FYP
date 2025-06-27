@@ -30,7 +30,7 @@ import pytz  # Added import for pytz
 from django.urls import reverse
 from datetime import time
 CustomUser = get_user_model()
-
+from django.db.utils import IntegrityError
 
 from .decorators import hod_or_professor_required, hod_required
 
@@ -1030,31 +1030,49 @@ def save_venue(request):
 @hod_required
 @transaction.atomic
 def save_timetable_slot(request):
+    logger.info("Starting save_timetable_slot view for user: %s", request.user)
+    
+    # Check request method and permissions
     if request.method != "POST" or not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
+        logger.warning("Invalid request method or insufficient permissions for user: %s", request.user)
         return JsonResponse({
             'success': False,
             'message': 'Invalid request method or insufficient permissions.'
-        })
+        }, status=403)
 
+    # Validate course offering ID
     course_offering_id = request.POST.get('course_offering_id')
     if not course_offering_id:
+        logger.error("Course Offering ID is required")
         return JsonResponse({
             'success': False,
-            'message': 'Course Offering ID is required.'
-        })
+            'message': 'Course Offering ID is required.',
+            'error_field': 'course_offering_id'
+        }, status=400)
 
+    # Retrieve course offering
     try:
-        course_offering = CourseOffering.objects.get(id=course_offering_id, department=request.user.teacher_profile.department)
+        course_offering = CourseOffering.objects.get(
+            id=course_offering_id,
+            department=request.user.teacher_profile.department
+        )
+        logger.debug("Found course offering: %s (ID: %s)", course_offering.course.code, course_offering_id)
     except CourseOffering.DoesNotExist:
+        logger.error("Course offering ID %s does not exist for department %s", 
+                     course_offering_id, request.user.teacher_profile.department)
         return JsonResponse({
             'success': False,
-            'message': 'Selected course offering does not exist.'
-        })
+            'message': 'Selected course offering does not exist.',
+            'error_field': 'course_offering_id'
+        }, status=404)
 
     shift = course_offering.shift
+    logger.debug("Course offering shift: %s", shift)
 
     def validate_and_convert_time(start_time_str, end_time_str, shift_type):
+        logger.debug("Validating %s times: start=%s, end=%s", shift_type, start_time_str, end_time_str)
         if not start_time_str or not end_time_str:
+            logger.warning("%s start and end times are required", shift_type.capitalize())
             return False, None, None, f"{shift_type.capitalize()} start and end times are required."
         try:
             start_h, start_m = map(int, start_time_str.split(':'))
@@ -1062,9 +1080,12 @@ def save_timetable_slot(request):
             start_t = time(start_h, start_m)
             end_t = time(end_h, end_m)
             if start_t >= end_t:
+                logger.warning("%s end time must be after start time", shift_type.capitalize())
                 return False, None, None, f"{shift_type.capitalize()} end time must be after start time."
+            logger.debug("%s times validated: %s to %s", shift_type, start_t, end_t)
             return True, start_t, end_t, None
-        except (ValueError, IndexError):
+        except (ValueError, IndexError) as e:
+            logger.error("Invalid %s time format: %s", shift_type, str(e))
             return False, None, None, f"Invalid {shift_type} time format."
 
     try:
@@ -1078,6 +1099,11 @@ def save_timetable_slot(request):
             evening_end_time = request.POST.get('evening_end_time')
             evening_venue_id = request.POST.get('evening_venue_id')
 
+            logger.debug("Morning shift data: days=%s, start=%s, end=%s, venue_id=%s", 
+                         morning_days, morning_start_time, morning_end_time, morning_venue_id)
+            logger.debug("Evening shift data: days=%s, start=%s, end=%s, venue_id=%s", 
+                         evening_days, evening_start_time, evening_end_time, evening_venue_id)
+
             required_fields = {
                 'morning_day': morning_days,
                 'morning_start_time': morning_start_time,
@@ -1090,54 +1116,135 @@ def save_timetable_slot(request):
             }
             missing_fields = [key for key, value in required_fields.items() if not value]
             if missing_fields:
+                logger.error("Missing required fields for shift 'both': %s", ", ".join(missing_fields))
                 return JsonResponse({
                     'success': False,
-                    'message': f'Missing required fields: {", ".join(missing_fields)}'
-                })
+                    'message': f'Missing required fields: {", ".join(missing_fields)}',
+                    'error_field': missing_fields[0]
+                }, status=400)
 
-            morning_valid, morning_start_t, morning_end_t, morning_error = validate_and_convert_time(morning_start_time, morning_end_time, 'morning')
-            evening_valid, evening_start_t, evening_end_t, evening_error = validate_and_convert_time(evening_start_time, evening_end_time, 'evening')
+            morning_valid, morning_start_t, morning_end_t, morning_error = validate_and_convert_time(
+                morning_start_time, morning_end_time, 'morning')
+            evening_valid, evening_start_t, evening_end_t, evening_error = validate_and_convert_time(
+                evening_start_time, evening_end_time, 'evening')
             if not morning_valid:
-                return JsonResponse({'success': False, 'message': morning_error})
+                logger.error("Morning time validation failed: %s", morning_error)
+                return JsonResponse({
+                    'success': False,
+                    'message': morning_error,
+                    'error_field': 'morning_start_time'
+                }, status=400)
             if not evening_valid:
-                return JsonResponse({'success': False, 'message': evening_error})
+                logger.error("Evening time validation failed: %s", evening_error)
+                return JsonResponse({
+                    'success': False,
+                    'message': evening_error,
+                    'error_field': 'evening_start_time'
+                }, status=400)
 
-            morning_venue = Venue.objects.get(id=morning_venue_id, department=request.user.teacher_profile.department, is_active=True)
-            evening_venue = Venue.objects.get(id=evening_venue_id, department=request.user.teacher_profile.department, is_active=True)
+            try:
+                morning_venue = Venue.objects.get(
+                    id=morning_venue_id, 
+                    department=request.user.teacher_profile.department, 
+                    is_active=True
+                )
+                logger.debug("Morning venue found: %s (ID: %s)", morning_venue.name, morning_venue_id)
+            except Venue.DoesNotExist:
+                logger.error("Morning venue ID %s does not exist or is not active", morning_venue_id)
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Selected morning venue does not exist or is not active.',
+                    'error_field': 'morning_venue_id'
+                }, status=404)
+
+            try:
+                evening_venue = Venue.objects.get(
+                    id=evening_venue_id, 
+                    department=request.user.teacher_profile.department, 
+                    is_active=True
+                )
+                logger.debug("Evening venue found: %s (ID: %s)", evening_venue.name, evening_venue_id)
+            except Venue.DoesNotExist:
+                logger.error("Evening venue ID %s does not exist or is not active", evening_venue_id)
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Selected evening venue does not exist or is not active.',
+                    'error_field': 'evening_venue_id'
+                }, status=404)
 
             saved_slots = []
             for day in morning_days:
+                logger.debug("Creating morning slot for %s on %s", course_offering.course.code, day)
                 slot = TimetableSlot(
                     course_offering=course_offering,
                     day=day,
-                    start_time=morning_start_t,  # datetime.time object
-                    end_time=morning_end_t,      # datetime.time object
+                    start_time=morning_start_t,
+                    end_time=morning_end_t,
                     venue=morning_venue
                 )
-                slot.clean()
-                slot.save()
-                saved_slots.append(f"{dict(TimetableSlot.DAYS_OF_WEEK)[day]} (Morning)")
+                try:
+                    slot.clean()
+                    slot.save()
+                    saved_slots.append(f"{dict(TimetableSlot.DAYS_OF_WEEK)[day]} (Morning)")
+                    logger.info("Saved morning slot for %s on %s", course_offering.course.code, day)
+                except ValidationError as e:
+                    logger.error("Validation error for morning slot on %s: %s", day, str(e))
+                    return JsonResponse({
+                        'success': False,
+                        'message': f"Failed to schedule morning slot on {dict(TimetableSlot.DAYS_OF_WEEK)[day]}: {str(e)}",
+                        'error_field': 'morning_day'
+                    }, status=400)
+                except IntegrityError as e:
+                    logger.error("Integrity error for morning slot on %s: %s", day, str(e))
+                    return JsonResponse({
+                        'success': False,
+                        'message': f"A timetable slot for {course_offering.course.code} on {dict(TimetableSlot.DAYS_OF_WEEK)[day]} at {morning_start_t.strftime('%H:%M')}–{morning_end_t.strftime('%H:%M')} in {morning_venue.name} already exists.",
+                        'error_field': 'morning_day'
+                    }, status=400)
             for day in evening_days:
+                logger.debug("Creating evening slot for %s on %s", course_offering.course.code, day)
                 slot = TimetableSlot(
                     course_offering=course_offering,
                     day=day,
-                    start_time=evening_start_t,  # datetime.time object
-                    end_time=evening_end_t,      # datetime.time object
+                    start_time=evening_start_t,
+                    end_time=evening_end_t,
                     venue=evening_venue
                 )
-                slot.clean()
-                slot.save()
-                saved_slots.append(f"{dict(TimetableSlot.DAYS_OF_WEEK)[day]} (Evening)")
+                try:
+                    slot.clean()
+                    slot.save()
+                    saved_slots.append(f"{dict(TimetableSlot.DAYS_OF_WEEK)[day]} (Evening)")
+                    logger.info("Saved evening slot for %s on %s", course_offering.course.code, day)
+                except ValidationError as e:
+                    logger.error("Validation error for evening slot on %s: %s", day, str(e))
+                    return JsonResponse({
+                        'success': False,
+                        'message': f"Failed to schedule evening slot on {dict(TimetableSlot.DAYS_OF_WEEK)[day]}: {str(e)}",
+                        'error_field': 'evening_day'
+                    }, status=400)
+                except IntegrityError as e:
+                    logger.error("Integrity error for evening slot on %s: %s", day, str(e))
+                    return JsonResponse({
+                        'success': False,
+                        'message': f"A timetable slot for {course_offering.course.code} on {dict(TimetableSlot.DAYS_OF_WEEK)[day]} at {evening_start_t.strftime('%H:%M')}–{evening_end_t.strftime('%H:%M')} in {evening_venue.name} already exists.",
+                        'error_field': 'evening_day'
+                    }, status=400)
 
+            logger.info("Successfully scheduled %d timetable slots for %s: %s", 
+                        len(saved_slots), course_offering.course.code, ", ".join(saved_slots))
             return JsonResponse({
                 'success': True,
                 'message': f'Timetable slots scheduled for {course_offering.course.code} on {", ".join(saved_slots)}.'
-            })
+            }, status=200)
+
         else:
             days = request.POST.getlist('day[]')
             start_time = request.POST.get('start_time')
             end_time = request.POST.get('end_time')
             venue_id = request.POST.get('venue_id')
+
+            logger.debug("Single shift data: days=%s, start=%s, end=%s, venue_id=%s", 
+                         days, start_time, end_time, venue_id)
 
             required_fields = {
                 'day': days,
@@ -1145,45 +1252,177 @@ def save_timetable_slot(request):
                 'end_time': end_time,
                 'venue_id': venue_id
             }
-            missing_fields = [field_name for field_name, field_label in required_fields.items() if not field_label]
+            missing_fields = [key for key, value in required_fields.items() if not value]
             if missing_fields:
+                logger.error("Missing required fields for shift '%s': %s", shift, ", ".join(missing_fields))
                 return JsonResponse({
                     'success': False,
-                    'message': f'Missing required fields: {", ".join([field_name for field_name in missing_fields])}'
-                })
+                    'message': f'Missing required fields: {", ".join(missing_fields)}',
+                    'error_field': missing_fields[0]
+                }, status=400)
 
-            venue = Venue.objects.get(id=venue_id, department=request.user.teacher_profile.department, is_active=True)
+            try:
+                venue = Venue.objects.get(
+                    id=venue_id, 
+                    department=request.user.teacher_profile.department, 
+                    is_active=True
+                )
+                logger.debug("Venue found: %s (ID: %s)", venue.name, venue_id)
+            except Venue.DoesNotExist:
+                logger.error("Venue ID %s does not exist or is not active", venue_id)
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Selected venue does not exist or is not active.',
+                    'error_field': 'venue_id'
+                }, status=404)
 
             valid_time, start_t, end_t, error_msg = validate_and_convert_time(start_time, end_time, shift)
             if not valid_time:
+                logger.error("Time validation failed for shift '%s': %s", shift, error_msg)
                 return JsonResponse({
                     'success': False,
-                    'message': error_msg
-                })
+                    'message': error_msg,
+                    'error_field': 'start_time'
+                }, status=400)
 
             saved_days = []
             for day in days:
+                logger.debug("Creating slot for %s on %s", course_offering.course.code, day)
                 slot = TimetableSlot(
                     course_offering=course_offering,
                     day=day,
-                    start_time=start_t,  # datetime.time object
-                    end_time=end_t,      # datetime.time object
+                    start_time=start_t,
+                    end_time=end_t,
                     venue=venue
                 )
-                slot.clean()
-                slot.save()
-                saved_days.append(dict(TimetableSlot.DAYS_OF_WEEK)[day])
+                try:
+                    slot.clean()
+                    slot.save()
+                    saved_days.append(dict(TimetableSlot.DAYS_OF_WEEK)[day])
+                    logger.info("Saved slot for %s on %s", course_offering.course.code, day)
+                except ValidationError as e:
+                    logger.error("Validation error for slot on %s: %s", day, str(e))
+                    return JsonResponse({
+                        'success': False,
+                        'message': f"Failed to schedule slot on {dict(TimetableSlot.DAYS_OF_WEEK)[day]}: {str(e)}",
+                        'error_field': 'day'
+                    }, status=400)
+                except IntegrityError as e:
+                    logger.error("Integrity error for slot on %s: %s", day, str(e))
+                    return JsonResponse({
+                        'success': False,
+                        'message': f"A timetable slot for {course_offering.course.code} on {dict(TimetableSlot.DAYS_OF_WEEK)[day]} at {start_t.strftime('%H:%M')}–{end_t.strftime('%H:%M')} in {venue.name} already exists.",
+                        'error_field': 'day'
+                    }, status=400)
 
+            logger.info("Successfully scheduled %d timetable slots for %s: %s", 
+                        len(saved_days), course_offering.course.code, ", ".join(saved_days))
             return JsonResponse({
                 'success': True,
                 'message': f'Timetable slot(s) scheduled for {course_offering.course.code} on {", ".join(saved_days)}.'
-            })
-    except (Venue.DoesNotExist, ValueError) as e:
+            }, status=200)
+
+    except ValueError as e:
+        logger.error("ValueError in save_timetable_slot for %s: %s", course_offering.course.code, str(e))
         return JsonResponse({
             'success': False,
-            'message': f'Error scheduling timetable: {str(e)}'
-        })
+            'message': str(e),
+            'error_field': 'general'
+        }, status=400)
+    except Exception as e:
+        logger.exception("Unexpected error in save_timetable_slot for %s: %s", course_offering.course.code, str(e))
+        return JsonResponse({
+            'success': False,
+            'message': 'An unexpected error occurred while scheduling the timetable. Please try again.',
+            'error_field': 'general'
+        }, status=500)   
         
+        
+@hod_required
+def search_timetable_slots(request):
+    course_offering_id = request.GET.get('course_offering_id')
+    days = request.GET.getlist('day[]')  # Can be empty
+    start_time = request.GET.get('start_time')
+    end_time = request.GET.get('end_time')
+    venue_id = request.GET.get('venue_id')
+
+    logger.debug("Searching timetable slots: course_offering_id=%s, days=%s, start_time=%s, end_time=%s, venue_id=%s",
+                 course_offering_id, days, start_time, end_time, venue_id)
+
+    # Validate required parameters, allowing days to be optional
+    if not all([course_offering_id, start_time, end_time, venue_id]):
+        logger.error("Missing required parameters: course_offering_id=%s, start_time=%s, end_time=%s, venue_id=%s",
+                     course_offering_id, start_time, end_time, venue_id)
+        return JsonResponse({
+            'success': False,
+            'message': 'Required parameters (course_offering_id, start_time, end_time, venue_id) are required.'
+        }, status=400)
+
+    # Retrieve course offering
+    try:
+        course_offering = CourseOffering.objects.get(
+            id=course_offering_id,
+            department=request.user.teacher_profile.department
+        )
+    except CourseOffering.DoesNotExist:
+        logger.error("Course offering ID %s does not exist for department %s",
+                     course_offering_id, request.user.teacher_profile.department)
+        return JsonResponse({
+            'success': False,
+            'message': 'Selected course offering does not exist.'
+        }, status=404)
+
+    # Retrieve venue
+    try:
+        venue = Venue.objects.get(
+            id=venue_id,
+            department=request.user.teacher_profile.department,
+            is_active=True
+        )
+    except Venue.DoesNotExist:
+        logger.error("Venue ID %s does not exist or is not active", venue_id)
+        return JsonResponse({
+            'success': False,
+            'message': 'Selected venue does not exist or is not active.'
+        }, status=404)
+
+    # Parse start and end times
+    try:
+        start_h, start_m = map(int, start_time.split(':'))
+        end_h, end_m = map(int, end_time.split(':'))
+        start_t = time(start_h, start_m)
+        end_t = time(end_h, end_m)
+        if start_t >= end_t:
+            logger.error("Invalid time range: start_time=%s, end_time=%s", start_time, end_time)
+            return JsonResponse({
+                'success': False,
+                'message': 'End time must be after start time.'
+            }, status=400)
+    except (ValueError, IndexError):
+        logger.error("Invalid time format: start_time=%s, end_time=%s", start_time, end_time)
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid start or end time format.'
+        }, status=400)
+
+    # Check for overlapping slots
+    query = TimetableSlot.objects.filter(
+        course_offering=course_offering,
+        venue=venue,
+        start_time__lt=end_t,  # Existing slot starts before new slot ends
+        end_time__gt=start_t   # Existing slot ends after new slot starts
+    )
+    if days:  # Only filter by days if provided
+        query = query.filter(day__in=days)
+
+    slots = query.values('day', 'start_time', 'end_time', 'venue__name')
+
+    logger.debug("Found %d overlapping slots: %s", len(slots), list(slots))
+
+    return JsonResponse({
+        'success': True,
+        'slots': list(slots)
+    }, status=200)      
         
         
 @hod_required
@@ -1251,17 +1490,115 @@ def get_timetable_slot(request):
 @hod_required
 @require_POST
 def edit_timetable_slot(request):
-    slot_id = request.POST.get('slot_id')  
+    slot_id = request.POST.get('slot_id')
+    day = request.POST.get('day')
+    start_time = request.POST.get('start_time')
+    end_time = request.POST.get('end_time')
+    venue_id = request.POST.get('venue_id')
+
+    logger.debug("Editing timetable slot: slot_id=%s, day=%s, start_time=%s, end_time=%s, venue_id=%s",
+                 slot_id, day, start_time, end_time, venue_id)
+
+    # Validate required parameters
+    if not all([slot_id, day, start_time, end_time, venue_id]):
+        missing_params = [param for param, value in [
+            ('slot_id', slot_id),
+            ('day', day),
+            ('start_time', start_time),
+            ('end_time', end_time),
+            ('venue_id', venue_id)
+        ] if not value]
+        logger.error("Missing required parameters: %s", ", ".join(missing_params))
+        return JsonResponse({
+            'success': False,
+            'message': f'Missing required parameters: {", ".join(missing_params)}.'
+        }, status=400)
+
+    # Retrieve the slot
     try:
-        slot = TimetableSlot.objects.get(id=slot_id)
-        slot.day = request.POST.get('day')
-        slot.start_time = request.POST.get('start_time')
-        slot.end_time = request.POST.get('end_time')
-        slot.venue = get_object_or_404(Venue, id=request.POST.get('venue_id'))
+        slot = TimetableSlot.objects.get(
+            id=slot_id,
+            course_offering__department=request.user.teacher_profile.department
+        )
+    except TimetableSlot.DoesNotExist:
+        logger.error("Timetable slot ID %s does not exist or is not accessible", slot_id)
+        return JsonResponse({
+            'success': False,
+            'message': 'Timetable slot does not exist or is not accessible.'
+        }, status=404)
+
+    # Retrieve venue
+    try:
+        venue = Venue.objects.get(
+            id=venue_id,
+            department=request.user.teacher_profile.department,
+            is_active=True
+        )
+    except Venue.DoesNotExist:
+        logger.error("Venue ID %s does not exist or is not active", venue_id)
+        return JsonResponse({
+            'success': False,
+            'message': 'Selected venue does not exist or is not active.'
+        }, status=404)
+
+    # Parse start and end times
+    try:
+        start_h, start_m = map(int, start_time.split(':'))
+        end_h, end_m = map(int, end_time.split(':'))
+        start_t = time(start_h, start_m)
+        end_t = time(end_h, end_m)
+        if start_t >= end_t:
+            logger.error("Invalid time range: start_time=%s, end_time=%s", start_time, end_time)
+            return JsonResponse({
+                'success': False,
+                'message': 'End time must be after start time.'
+            }, status=400)
+    except (ValueError, IndexError):
+        logger.error("Invalid time format: start_time=%s, end_time=%s", start_time, end_time)
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid start or end time format.'
+        }, status=400)
+
+    # Check for overlapping slots (excluding the current slot)
+    overlapping_slots = TimetableSlot.objects.filter(
+        course_offering=slot.course_offering,
+        venue=venue,
+        day=day,
+        start_time__lt=end_t,  # Existing slot starts before new slot ends
+        end_time__gt=start_t   # Existing slot ends after new slot starts
+    ).exclude(id=slot_id)
+
+    if overlapping_slots.exists():
+        conflicting_slots = overlapping_slots.values('day', 'start_time', 'end_time')
+        conflict_details = ", ".join([
+            f"{slot['day'].capitalize()} ({slot['start_time']}–{slot['end_time']})"
+            for slot in conflicting_slots
+        ])
+        logger.error("Overlapping slots found: %s", conflict_details)
+        return JsonResponse({
+            'success': False,
+            'message': f'Timetable slot already exists for {conflict_details}.'
+        }, status=400)
+
+    # Update the slot
+    try:
+        slot.day = day
+        slot.start_time = start_t
+        slot.end_time = end_t
+        slot.venue = venue
         slot.save()
-        return JsonResponse({'success': True, 'message': 'Timetable slot updated successfully'})
+        logger.info("Timetable slot ID %s updated successfully", slot_id)
+        return JsonResponse({
+            'success': True,
+            'message': 'Timetable slot updated successfully.'
+        }, status=200)
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)})
+        logger.error("Error updating timetable slot ID %s: %s", slot_id, str(e))
+        return JsonResponse({
+            'success': False,
+            'message': f'Error updating timetable slot: {str(e)}'
+        }, status=500)
 
 @hod_required
 def delete_timetable_slot(request):

@@ -81,7 +81,7 @@ class CourseOffering(models.Model):
 
 
 class Venue(models.Model):
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100, help_text="Enter the name of the venue (e.g., Room , Lab A).")
     department = models.ForeignKey(Department, on_delete=models.CASCADE)
     capacity = models.PositiveIntegerField()
     is_active = models.BooleanField(default=True)

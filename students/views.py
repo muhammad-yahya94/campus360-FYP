@@ -182,11 +182,7 @@ def my_courses(request):
         else:
             enrollments = CourseEnrollment.objects.none()  # No enrollments if no semesters exist
 
-    # # Get unique semester numbers for the current session
-    # semester_numbers = CourseOffering.objects.filter(
-    #     academic_session=current_session
-    # ).values_list('semester__number', flat=True).distinct().order_by('semester__number')
-    # print(f'this is semester number -- {semester_numbers}')
+
 
     semester_numbers = Semester.objects.filter(
     program=student.program,
@@ -594,6 +590,7 @@ def student_timetable(request):
                 'course_name': slot.course_offering.course.name,
                 'teacher_name': f"{slot.course_offering.teacher.user.first_name} {slot.course_offering.teacher.user.last_name}",
                 'venue': slot.venue.name,
+                'room_no': slot.venue.capacity,
                 'start_time': slot.start_time.strftime('%H:%M'),
                 'end_time': slot.end_time.strftime('%H:%M'),
                 'shift': slot.course_offering.get_shift_display(),

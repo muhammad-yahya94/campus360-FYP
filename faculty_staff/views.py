@@ -2693,7 +2693,7 @@ def add_semester(request):
     
 
 
-@login_required
+@login_required   
 def edit_semester(request):
     """
     AJAX view to edit an existing semester in the Head of Department's department.

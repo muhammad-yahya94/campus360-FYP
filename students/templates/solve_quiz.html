@@ -289,22 +289,9 @@ $('#solve-quiz-form').on('submit', function(e) {
     questions[currentQuestionIndex].selected_option = selected ? parseInt(selected) : null;
     console.log('Submitting quiz with answers:', questions);
 
-    let isValid = true;
-    questions.forEach((q, index) => {
-        if (!q.selected_option) {
-            $(`#question-${index}-error`).text('Please select an option.');
-            isValid = false;
-        } else {
-            $(`#question-${index}-error`).text('');
-        }
-    });
 
-    if (!isValid) {
-        console.error('Form validation failed: Missing answers');
-        alert('Please answer all questions.');
-        $('.modal-body').animate({ scrollTop: $('.error-text:not(:empty)').first().offset().top - $('.modal-body').offset().top + $('.modal-body').scrollTop() }, 300);
-        return;
-    }
+
+ 
 
     let formData = new FormData(this);
     questions.forEach((q, index) => {
@@ -336,4 +323,4 @@ $('#solve-quiz-form').on('submit', function(e) {
     });
 });
 </script>
-{% endblock %}
+{% endblock %}   

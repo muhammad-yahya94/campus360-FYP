@@ -19,7 +19,7 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.files.storage import default_storage
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Sum, Q, Count, Max
+from django.db.models import Sum, Q, Count, Max, Subquery, OuterRef
 from django.db.utils import IntegrityError
 from django.forms.models import inlineformset_factory
 from django.http import JsonResponse
@@ -3161,7 +3161,8 @@ def view_students(request):
         'course_offering': course_offering,
         'students': students,
     })
-    
+
+@hod_or_professor_required    
 def student_performance(request, course_offering_id, student_id):
     course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
     enrollment = get_object_or_404(CourseEnrollment, course_offering=course_offering, student_semester_enrollment__student_id=student_id)
@@ -3185,6 +3186,20 @@ def student_performance(request, course_offering_id, student_id):
         max_score=Max('assignment__max_points')
     ).order_by('assignment__title')
 
+    # Fetch quiz submissions, ensuring one row per quiz
+    quizzes = QuizSubmission.objects.filter(
+        student=student,
+        quiz__course_offering=course_offering,
+        quiz__publish_flag=True
+    ).values('quiz__id', 'quiz__title').annotate(
+        score=Max('score'),  # Use Max to handle multiple submissions, if any
+        max_score=Subquery(
+            Question.objects.filter(quiz=OuterRef('quiz')).values('quiz').annotate(
+                total=Sum('marks')
+            ).values('total')[:1]
+        )
+    ).order_by('quiz__title')
+
     context = {
         'course_offering': course_offering,
         'student': student,
@@ -3194,7 +3209,9 @@ def student_performance(request, course_offering_id, student_id):
         'attendance_leave': attendance_leave,
         'attendance_percentage': (attendance_present / attendance_total * 100) if attendance_total > 0 else 0,
         'assignments': assignments,
+        'quizzes': quizzes,
     }
+    logger.info(f"Fetched performance data for student {student.applicant.full_name} in course offering {course_offering_id}")
     return render(request, 'faculty_staff/student_performance.html', context)
     
 @hod_or_professor_required
@@ -3448,3 +3465,5 @@ def get_quiz(request, quiz_id):
         'timer_seconds': quiz.timer_seconds,
         'questions': questions
     })
+    
+    

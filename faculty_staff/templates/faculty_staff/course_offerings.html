@@ -79,14 +79,12 @@
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
   <!-- Header -->
-  <header class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-2xl shadow-md">
-    <div class="hero-content text-center py-8">
-      <div>
-        <h1 class="text-4xl font-bold mb-3">Course Offerings</h1>
-        <p class="text-xl opacity-80">Manage courses and timetables for {{ department.name }}</p>
-      </div>
+    <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-xl shadow-lg mb-6">
+        <div class="text-center py-6">
+            <h1 class="text-4xl font-bold">Course Offerings</h1>
+            <p class="text-lg text-white/80">Manage courses and timetables for {{ department.name }}{{ course_offering.course.code }} - {{ course_offering.course.name }}</p>
+        </div>
     </div>
-  </header>
 
   <!-- Course Offering Form -->
   <section class="card bg-base-100 shadow-xl assignment-form">

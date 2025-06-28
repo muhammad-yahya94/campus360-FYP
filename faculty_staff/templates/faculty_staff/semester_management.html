@@ -6,14 +6,12 @@
 <div class="drawer-content flex flex-col min-h-screen">
     <div class="container mx-auto px-4 py-6 semester-form">
         <!-- Header -->
-        <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-xl mb-6">
-            <div class="hero-content text-center py-8">
-                <div>
-                    <h1 class="text-4xl font-bold mb-2">Semester Management</h1>
-                    <p class="text-lg opacity-90">Manage semesters for {{ request.user.teacher_profile.department.name }}</p>
-                </div>
-            </div>
+    <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-xl shadow-lg mb-6">
+        <div class="text-center py-6">
+            <h1 class="text-4xl font-bold">Semester Management</h1>
+            <p class="text-lg text-white/80">Manage semesters for {{ request.user.teacher_profile.department.name }}</p>
         </div>
+    </div>
 
         <!-- Error Message -->
         {% if error %}
@@ -112,50 +110,62 @@
         </div>
 
         <!-- Search and Filter Form -->
-        <div class="card bg-base-100 shadow-xl">
-            <div class="card-body">
-                <h2 class="card-title text-2xl mb-4">
-                    <i class="fas fa-search"></i>
-                    Search Semesters
-                </h2>
-                <form id="search-form" method="get" action="{% url 'faculty_staff:semester_management' %}" class="space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="form-control">
-                            <label class="label">
-                                <span class="label-text">Search</span>
-                            </label>
-                            <input type="text" name="q" id="q" class="input input-bordered" value="{{ search_query }}" placeholder="Search by name, description, program, or session...">
-                        </div>
-                        <div class="form-control">
-                            <label class="label">
-                                <span class="label-text">Filter by Program</span>
-                            </label>
-                            <select name="program_id" id="program_id_filter" class="select select-bordered select2">
-                                <option value="">All Programs in {{ request.user.teacher_profile.department.name }}</option>
-                                {% for program in programs %}
-                                <option value="{{ program.id }}" {% if selected_program == program.id|stringformat:'s' %}selected{% endif %}>{{ program.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="form-control">
-                            <label class="label">
-                                <span class="label-text">Filter by Session</span>
-                            </label>
-                            <select name="session_id" id="session_id_filter" class="select select-bordered select2">
-                                <option value="">All Sessions</option>
-                                {% for session in academic_sessions %}
-                                <option value="{{ session.id }}" {% if selected_session == session.id|stringformat:'s' %}selected{% endif %}>{{ session.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-full">
-                        <i class="fas fa-filter"></i>
-                        Search
-                    </button>
-                </form>
+<div class="card bg-base-100 shadow-xl">
+    <div class="card-body">
+        <h2 class="card-title text-2xl mb-4">
+            <i class="fas fa-search"></i>
+            Search Semesters
+        </h2>
+        <form id="search-form" method="get" action="{% url 'faculty_staff:semester_management' %}" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                <!-- Search Query -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Search</span>
+                    </label>
+                    <input type="text" name="q" id="q" class="input input-bordered" value="{{ search_query }}" placeholder="Search by name, description, program...">
+                </div>
+
+                <!-- Filter by Program -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Filter by Program</span>
+                    </label>
+                    <select name="program_id" id="program_id_filter" class="select select-bordered select2">
+                        <option value="">All Programs in {{ request.user.teacher_profile.department.name }}</option>
+                        {% for program in programs %}
+                            <option value="{{ program.id }}" {% if selected_program == program.id|stringformat:'s' %}selected{% endif %}>
+                                {{ program.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Filter by Session -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Filter by Session</span>
+                    </label>
+                    <select name="session_id" id="session_id_filter" class="select select-bordered select2">
+                        <option value="">All Sessions</option>
+                        {% for session in academic_sessions %}
+                            <option value="{{ session.id }}" {% if selected_session == session.id|stringformat:'s' %}selected{% endif %}>
+                                {{ session.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
-        </div>
+
+            <button type="submit" class="btn btn-primary w-full mt-4">
+                <i class="fas fa-filter"></i>
+                Search
+            </button>
+        </form>
+    </div>
+</div>
+
 
         {% load static %}
         <div class="card bg-base-100 shadow-xl mx-auto max-w-full sm:max-w-7xl w-full">

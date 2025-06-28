@@ -1,38 +1,60 @@
-# Standard library imports
+# Standard Library Imports
 import os
 import logging
-# Django imports
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_GET, require_POST
-from django.contrib import messages
-from django.core.paginator import Paginator
-from django.db.models import Sum, Q, Count, Max
-from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
-from django.contrib.auth import get_user_model
-from django.http import JsonResponse
+import datetime
+from datetime import time
+
+# Third-party Imports
+import pytz
+
+# Django Core Imports
 from django import forms
-from django.core.exceptions import ObjectDoesNotExist
-from django.core.exceptions import ValidationError
-from django.utils import timezone
-from django.db import transaction
+from django.contrib import messages
+from django.contrib.auth import (
+    authenticate, login, logout,
+    update_session_auth_hash, get_user_model
+)
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.files.storage import default_storage
-# Local app imports
+from django.core.paginator import Paginator
+from django.db import transaction
+from django.db.models import Sum, Q, Count, Max
+from django.db.utils import IntegrityError
+from django.forms.models import inlineformset_factory
+from django.http import JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.http import require_GET, require_POST
+
+# Custom User Model
+CustomUser = get_user_model()
+
+# App Imports (Local Apps)
 from academics.models import Department, Program, Semester
-from admissions.models import AcademicSession, AdmissionCycle, Applicant, AcademicQualification
-from courses.models import Course, CourseOffering, ExamResult, StudyMaterial, Assignment, AssignmentSubmission, Notice, Attendance, Venue, TimetableSlot
+from admissions.models import (
+    AcademicSession, AdmissionCycle,
+    Applicant, AcademicQualification
+)
+from courses.models import (
+    Course, CourseOffering, ExamResult, StudyMaterial,
+    Assignment, AssignmentSubmission, Notice,
+    Attendance, Venue, TimetableSlot,
+    Quiz, Question, QuizSubmission, Option
+)
 from faculty_staff.models import Teacher, TeacherDetails
 from students.models import Student, StudentSemesterEnrollment, CourseEnrollment
-from .forms import UserUpdateForm, TeacherUpdateForm, TeacherStatusForm, PasswordChangeForm
-import datetime
-import pytz  # Added import for pytz
-# Custom user model
-from django.urls import reverse
-from datetime import time
-CustomUser = get_user_model()
-from django.db.utils import IntegrityError
 
+# Forms
+from .forms import (
+    UserUpdateForm, TeacherUpdateForm, TeacherStatusForm,
+    PasswordChangeForm, QuestionForm, QuizForm
+)
+
+# Decorators
 from .decorators import hod_or_professor_required, hod_required
+
 
 
 # Set up logging
@@ -2579,18 +2601,21 @@ def semester_management(request):
     # Get search and filter parameters
     search_query = request.GET.get('q', '')
     program_id = request.GET.get('program_id', '')
-    
+    session_id = request.GET.get('session_id', '')
+    print(f'Semester management search query: {search_query}, program_id: {program_id}, session_id: {session_id}')
     # Filter semesters by department
     semesters = Semester.objects.filter(program__department=hod_department).order_by('program', 'number')
     if search_query:
         semesters = semesters.filter(
             Q(name__icontains=search_query) |
             Q(description__icontains=search_query) |
-            Q(program__name__icontains=search_query)
+            Q(program__name__icontains=search_query) |
+            Q(session=search_query)
         )
     if program_id:
         semesters = semesters.filter(program__id=program_id, program__department=hod_department)
-    
+    if session_id:
+        session = semesters.filter(session__id=session_id)
     # Debug: Log total semesters and active/inactive breakdown
     total_semesters = semesters.count()
     active_semesters = semesters.filter(is_active=True).count()
@@ -2617,6 +2642,7 @@ def semester_management(request):
         'semesters': page_obj,
         'search_query': search_query,
         'selected_program': program_id,
+        'selected_session': session_id,
         'academic_sessions': AcademicSession.objects.all().order_by('-start_year'),  # Add all sessions
     }
     return render(request, 'faculty_staff/semester_management.html', context)
@@ -3248,3 +3274,177 @@ def update_status(request):
         else:
             messages.error(request, 'Teacher details not found.')
     return redirect('faculty_staff:settings')
+
+
+
+
+@hod_or_professor_required
+def create_quiz(request, course_offering_id):
+    course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
+    quizzes = Quiz.objects.filter(course_offering=course_offering)
+
+    if request.method == 'POST':
+        logger.debug("Received POST request: %s", request.POST)
+
+        quiz_id = request.POST.get('quiz_id')
+        title = request.POST.get('title')
+        publish_flag = request.POST.get('publish_flag') == 'on'
+        timer_seconds = int(request.POST.get('timer_seconds', 30))
+
+        # Validate title
+        if not title:
+            logger.error("Validation failed: Quiz title is required.")
+            return JsonResponse({'success': False, 'message': 'Quiz title is required.', 'errors': {'title': 'This field is required.'}})
+
+        # Create or update quiz
+        if quiz_id:
+            quiz = get_object_or_404(Quiz, id=quiz_id, course_offering=course_offering)
+            quiz.title = title
+            quiz.publish_flag = publish_flag
+            quiz.timer_seconds = timer_seconds
+            quiz.questions.all().delete()  # Clear existing questions
+            logger.info("Editing quiz ID %s: %s", quiz_id, title)
+        else:
+            quiz = Quiz.objects.create(
+                course_offering=course_offering,
+                title=title,
+                publish_flag=publish_flag,
+                timer_seconds=timer_seconds
+            )
+            logger.info("Created new quiz: %s", title)
+
+        # Process questions
+        question_indices = [key.split('[')[1].split(']')[0] for key in request.POST if key.startswith('questions[') and '[text]' in key]
+        question_indices = sorted(set(question_indices), key=int)
+
+        if not question_indices:
+            logger.error("Validation failed: At least one question is required.")
+            return JsonResponse({
+                'success': False,
+                'message': 'At least one question is required.',
+                'errors': {'questions': 'At least one question is required.'}
+            })
+
+        for i in question_indices:
+            text = request.POST.get(f'questions[{i}][text]')
+            marks = request.POST.get(f'questions[{i}][marks]', '1')
+
+            if not text:
+                logger.error("Validation failed: Question %s text is missing.", i)
+                return JsonResponse({
+                    'success': False,
+                    'message': 'All questions must have text.',
+                    'errors': {f'questions[{i}][text]': 'This field is required.'}
+                })
+
+            try:
+                marks = int(marks)
+                if marks < 1:
+                    raise ValueError
+            except ValueError:
+                logger.error("Validation failed: Invalid marks for question %s: %s", i, marks)
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Invalid marks value.',
+                    'errors': {f'questions[{i}][marks]': 'Marks must be a positive integer.'}
+                })
+
+            question = Question.objects.create(quiz=quiz, text=text, marks=marks)
+            logger.debug("Created question %s for quiz %s", text, quiz.id)
+
+            # Process options
+            option_indices = [key.split('[')[3].split(']')[0] for key in request.POST if key.startswith(f'questions[{i}][options][') and '[text]' in key]
+            option_indices = sorted(set(option_indices), key=int)
+
+            if not option_indices:
+                question.delete()
+                logger.error("Validation failed: Question %s has no options.", i)
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Each question must have at least one option.',
+                    'errors': {f'questions[{i}][options]': 'At least one option is required.'}
+                })
+
+            has_correct_option = False
+            for j in option_indices:
+                option_text = request.POST.get(f'questions[{i}][options][{j}][text]')
+                is_correct = request.POST.get(f'questions[{i}][options][{j}][is_correct]') == 'on'
+
+                if not option_text:
+                    question.delete()
+                    logger.error("Validation failed: Option %s for question %s is missing text.", j, i)
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'All options must have text.',
+                        'errors': {f'questions[{i}][options][${j}][text]': 'This field is required.'}
+                    })
+
+                Option.objects.create(question=question, text=option_text, is_correct=is_correct)
+                logger.debug("Created option %s for question %s", option_text, question.id)
+                if is_correct:
+                    has_correct_option = True
+
+            if not has_correct_option:
+                question.delete()
+                logger.error("Validation failed: Question %s has no correct option.", i)
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Each question must have at least one correct option.',
+                    'errors': {f'questions[{i}][options]': 'At least one option must be marked as correct.'}
+                })
+
+        if 'publish' in request.POST:
+            quiz.publish_flag = True
+            quiz.save()
+            logger.info("Published quiz %s", quiz.id)
+
+        logger.info("Quiz %s saved successfully.", quiz.id)
+        return JsonResponse({'success': True, 'message': 'Quiz saved successfully.'})
+
+    context = {
+        'course_offering': course_offering,
+        'quizzes': quizzes,
+        'today_date': timezone.now()
+    }
+    return render(request, 'faculty_staff/create_quiz.html', context)
+
+@hod_or_professor_required
+def get_quiz(request, quiz_id):
+    quiz = get_object_or_404(Quiz, id=quiz_id)
+    questions = [
+        {
+            'text': question.text,
+            'marks': question.marks,
+            'options': [
+                {'text': option.text, 'is_correct': option.is_correct}
+                for option in question.options.all()
+            ]
+        }
+        for question in quiz.questions.all()
+    ]
+
+    # Validate quiz data
+    for i, question in enumerate(questions):
+        if not question['options']:
+            logger.error("Invalid quiz %s: Question %s has no options.", quiz_id, i)
+            return JsonResponse({
+                'success': False,
+                'message': 'Each question must have at least one option.',
+                'errors': {f'questions[{i}][options]': 'At least one option is required.'}
+            })
+        if not any(option['is_correct'] for option in question['options']):
+            logger.error("Invalid quiz %s: Question %s has no correct option.", quiz_id, i)
+            return JsonResponse({
+                'success': False,
+                'message': 'Each question must have at least one correct option.',
+                'errors': {f'questions[{i}][options]': 'At least one option must be marked as correct.'}
+            })
+
+    logger.info("Fetched quiz %s successfully.", quiz_id)
+    return JsonResponse({
+        'id': quiz.id,
+        'title': quiz.title,
+        'publish_flag': quiz.publish_flag,
+        'timer_seconds': quiz.timer_seconds,
+        'questions': questions
+    })

@@ -82,8 +82,8 @@
     <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-xl mb-5">
         <div class="hero-content text-center py-8">
             <div>
-                <h1 class="text-4xl font-bold mb-2">Study Material</h1>
-                <p class="text-lg opacity-90">Manage and track study material</p>
+                <h1 class="text-4xl font-bold mb-2">Course Content</h1>
+                <p class="text-lg opacity-90">Manage and track Course Content</p>
             </div>
         </div>
     </div>
@@ -91,7 +91,7 @@
     <!-- Course Selection and Material Form -->
     <div class="card bg-white shadow-lg rounded-lg mb-6 mt-5">
         <div class="card-body p-6">
-            <h5 class="card-title text-xl font-semibold mb-4">Manage Study Materials ({{ today_date|date:"F d, Y" }})</h5>
+            <h5 class="card-title text-xl font-semibold mb-4">Manage Course Content ({{ today_date|date:"F d, Y" }})</h5>
             <form id="course-selection-form">
                 <div class="mb-4">
                     <label for="course_offering_id" class="label text-sm font-medium text-gray-700">Course Offering</label>
@@ -109,7 +109,7 @@
 
             <!-- Add Material Button -->
             <div class="flex justify-end mb-4" id="add-material-button" style="display: none;">
-                <button type="button" class="btn btn-primary hover:scale-105 transition-transform" id="open-material-modal" data-action="create">Add Material</button>
+                <button type="button" class="btn btn-primary hover:scale-105 transition-transform" id="open-material-modal" data-action="create">Add Course Content</button>
             </div>
 
             <!-- Materials List -->

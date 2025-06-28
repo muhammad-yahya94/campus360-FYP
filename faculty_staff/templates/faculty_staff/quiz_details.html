@@ -1,0 +1,54 @@
+{% extends 'faculty_staff/base_dashboard.html' %}
+
+{% block title %}Quiz Details - {{ quiz.title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+  <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-xl shadow-lg mb-6">
+    <div class="text-center py-6">
+      <h1 class="text-4xl font-bold">Quiz Details</h1>
+      <p class="text-lg text-white/80">For {{ course_offering.course.code }} - {{ course_offering.course.name }}</p>
+    </div>
+  </div>
+
+  <div class="bg-white shadow-lg rounded-lg p-6 mb-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">{{ quiz.title }}</h2>
+    <p><strong>Timer:</strong> {{ quiz.timer_seconds|time:"i:s" }}</p>
+    <p><strong>Published:</strong> {{ quiz.publish_flag|yesno:"Yes,No" }}</p>
+    <form method="post" class="mt-4">
+      {% csrf_token %}
+      <button type="submit" name="publish" class="btn btn-secondary">Toggle Publish</button>
+    </form>
+    <a href="{% url 'faculty_staff:create_quiz' course_offering_id=course_offering.id %}" class="btn btn-primary mt-4">Edit Quiz</a>
+  </div>
+
+  <div class="bg-white shadow-lg rounded-lg p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">Previous Quiz Papers</h2>
+    <div class="overflow-x-auto">
+      <table class="table w-full">
+        <thead>
+          <tr>
+            <th class="text-sm font-semibold text-gray-700">Title</th>
+            <th class="text-sm font-semibold text-gray-700">Created At</th>
+            <th class="text-sm font-semibold text-gray-700">Published</th>
+            <th class="text-sm font-semibold text-gray-700">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for q in course_offering.quizzes.all %}
+            <tr>
+              <td class="text-sm">{{ q.title }}</td>
+              <td class="text-sm">{{ q.created_at|date:"F d, Y" }}</td>
+              <td class="text-sm">{{ q.publish_flag|yesno:"Yes,No" }}</td>
+              <td class="text-sm">
+                <a href="{% url 'faculty_staff:quiz_details' course_offering_id=course_offering.id quiz_id=q.id %}" class="btn btn-sm btn-info">View</a>
+                <a href="{% url 'faculty_staff:create_quiz' course_offering_id=course_offering.id %}" class="btn btn-sm btn-warning">Edit</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

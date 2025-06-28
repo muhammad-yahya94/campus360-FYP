@@ -46,4 +46,5 @@ urlpatterns = [
 
     # Faculty detail page
     path('faculties/<slug:slug>/', views.faculty_detail_view, name='faculty_detail'),
+    path('accounts/logout/', views.logout_view, name='logout')
 ]

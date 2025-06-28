@@ -25,13 +25,19 @@ SECRET_KEY = 'django-insecure-*8m_21!ps4x3$^h72ccd%5js4i_^y+swwkx%qqk(y1^504m9*8
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['60f2-2404-3100-1ca5-5ce6-b564-87b9-ff3-6e7f.ngrok-free.app', 'localhost', '127.0.0.1']
-CSRF_TRUSTED_ORIGINS = ['https://60f2-2404-3100-1ca5-5ce6-b564-87b9-ff3-6e7f.ngrok-free.app']
+ALLOWED_HOSTS = ['.trycloudflare.com', 'localhost', '127.0.0.1']
+
+
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://characters-persons-la-ln.trycloudflare.com',
+]
+
 
 STRIPE_PUBLIC_KEY = 'pk_test_51RVc14DCFgsH63aPMLiGzlXEuqSGbyxbqTXyWsnqFbx6IXnTjDF0crV3RB3Avil0rAeRU7KVQsrA369EZdzQWmUx00numghDOP'
 STRIPE_SECRET_KEY = 'sk_test_51RVc14DCFgsH63aPcCG3IteORSTlv0oPziVNNsLZkB3cx9Wtb9q7InvToT8CRHZf5wJ1pqsJGGdGe9LjOuzVAZ1P00STSNm7U3'
 STRIPE_ENDPOINT_SECRET = 'whsec_etRtmwacOWudfKX2BIHNHgBgn6jb4djo'
-SITE_URL = 'https://60f2-2404-3100-1ca5-5ce6-b564-87b9-ff3-6e7f.ngrok-free.app'
+SITE_URL = 'https://characters-persons-la-ln.trycloudflare.com'
 PAYMENT_SUCCESS_URL = f'{SITE_URL}/payments/success/?session_id={{CHECKOUT_SESSION_ID}}'
 PAYMENT_CANCEL_URL = f'{SITE_URL}/payments/cancel/?session_id={{CHECKOUT_SESSION_ID}}'
 
@@ -96,6 +102,7 @@ TEMPLATES = [
                 'core.context_processors.offices_context',
                 'faculty_staff.context_processors.academic_sessions_processor', 
                 'faculty_staff.context_processors.teacher_details_status',
+                'students.context_processors.student_full_name',
             ],
         },
     },

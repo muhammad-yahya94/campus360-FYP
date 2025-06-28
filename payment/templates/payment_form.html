@@ -206,7 +206,7 @@
                             <div class="application-select">
                                 <label for="applicant_id" class="form-label">Select Application to Pay For:</label>
                                 <select name="applicant_id" id="applicant_id" class="form-select" required>
-                                    <option value="">-- Select an Application --</option>
+                                    {% comment %} <option value="">-- Select an Application --</option> {% endcomment %}
                                     {% for app in applicants %}
                                         <option value="{{ app.id }}">{{ app.program.name }} {{ app.shift }} (Applied: {{ app.applied_at|date:"d M Y" }})</option>
                                     {% endfor %}

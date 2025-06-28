@@ -1,34 +1,47 @@
-# Standard library imports
+# Standard Library Imports
 import os
+import json
 import logging
-# Django imports
+import datetime
+from datetime import time
+import random
+
+# Third-Party Imports
+import pytz
+
+# Django Imports
+from django import forms
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.urls import reverse
+from django.utils import timezone
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.core.files.storage import default_storage
 from django.views.decorators.http import require_GET, require_POST
 from django.contrib import messages
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.db.models import Sum, Q, Count, Max
-from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
-from django.contrib.auth import get_user_model
-from django.http import JsonResponse
-from django import forms
-from django.core.exceptions import ObjectDoesNotExist
-from django.core.exceptions import ValidationError
-from django.utils import timezone
 from django.db import transaction
-from django.core.files.storage import default_storage
-# Local app imports
+from django.db.models import Sum, Q, Count, Max
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.contrib.auth import (
+    authenticate, login, logout, update_session_auth_hash,
+    get_user_model
+)
+from django.contrib.auth.decorators import login_required
+
+# Local App Imports
 from academics.models import Department, Program, Semester
-from admissions.models import AcademicSession, AdmissionCycle, Applicant, AcademicQualification
-from courses.models import Course, CourseOffering, ExamResult, StudyMaterial, Assignment, AssignmentSubmission, Notice, Attendance, Venue, TimetableSlot
+from admissions.models import (
+    AcademicSession, AdmissionCycle, Applicant, AcademicQualification
+)
+from courses.models import (
+    Course, CourseOffering, ExamResult, StudyMaterial, Assignment,
+    AssignmentSubmission, Notice, Attendance, Venue, TimetableSlot,
+    Quiz, Question, Option, QuizSubmission
+)
 from faculty_staff.models import Teacher, TeacherDetails
 from students.models import Student, StudentSemesterEnrollment, CourseEnrollment
-import datetime
-import pytz  # Added import for pytz
-# Custom user model
-from django.urls import reverse
-from datetime import time
-CustomUser = get_user_model()
+
+
 
 
 
@@ -48,7 +61,7 @@ def student_login(request):
         password = request.POST.get('password')
         user = authenticate(request, username=email, password=password)
         if user is not None:
-            try:
+            try:  
                 student = Student.objects.get(user=user)
                 login(request, user)
                 messages.success(request, 'Login successful!')
@@ -548,7 +561,7 @@ def student_timetable(request):
 
     if not active_enrollment:
         logger.warning("No active semester enrollment found for student: %s", student.applicant.full_name)
-        return render(request, 'students/timetable.html', {
+        return render(request, 'timetable.html', {
             'student': student,
             'timetable_data': [],
             'active_session': None,
@@ -614,4 +627,207 @@ def student_timetable(request):
         'timetable_data': timetable_data,
         'active_session': active_session,
     }
-    return render(request, 'timetable.html', context)
+    return render(request, 'timetable.html', context)   
+
+
+
+
+@login_required
+def solve_quiz(request, course_offering_id):
+    try:
+        student = Student.objects.get(user=request.user)
+        course_offering = CourseOffering.objects.get(id=course_offering_id)
+        quizzes = list(Quiz.objects.filter(course_offering=course_offering, publish_flag=True))
+        random.shuffle(quizzes)
+        # Check if student has taken each quiz
+        quiz_data = []
+        for quiz in quizzes:
+            has_taken = QuizSubmission.objects.filter(student=student, quiz=quiz).exists()
+            quiz_data.append({'quiz': quiz, 'has_taken': has_taken})
+        context = {
+            'course_offering': course_offering,
+            'quizzes': quiz_data,
+            'today_date': request.GET.get('today_date', None),
+            'student_full_name': student.applicant.full_name
+        }
+        logger.info(f"Fetched {len(quizzes)} randomized quizzes for course offering {course_offering_id} for user {student.applicant.full_name}")
+        return render(request, 'solve_quiz.html', context)
+    except ObjectDoesNotExist as e:
+        if isinstance(e, CourseOffering.DoesNotExist):
+            logger.error(f"CourseOffering {course_offering_id} not found")
+            return JsonResponse({'success': False, 'message': 'Course offering not found'}, status=404)
+        elif isinstance(e, Student.DoesNotExist):
+            logger.error(f"User {request.user.first_name} has no associated Student profile")
+            return JsonResponse({'success': False, 'message': 'Student profile not found'}, status=400)
+
+@require_GET
+@login_required
+def get_quiz(request, quiz_id):
+    try:
+        quiz = Quiz.objects.get(id=quiz_id, publish_flag=True)
+        questions = quiz.questions.all()
+        if not questions:
+            logger.error(f"No questions found for quiz {quiz_id}")
+            return JsonResponse({'success': False, 'message': 'No questions available'}, status=400)
+        response_data = {
+            'id': quiz.id,
+            'title': quiz.title,
+            'timer_seconds': quiz.timer_seconds,
+            'questions': [
+                {
+                    'id': q.id,
+                    'text': q.text,
+                    'marks': q.marks,
+                    'options': [
+                        {'id': o.id, 'text': o.text, 'is_correct': o.is_correct}
+                        for o in q.options.all()
+                    ]
+                }
+                for q in questions
+            ]
+        }
+        logger.info(f"Fetched quiz {quiz_id} for student")
+        return JsonResponse(response_data)
+    except ObjectDoesNotExist:
+        logger.error(f"Quiz {quiz_id} not found or not published")
+        return JsonResponse({'success': False, 'message': 'Quiz not found or not published'}, status=404)
+
+@login_required
+def submit_quiz(request, quiz_id):
+    try:
+        student = Student.objects.get(user=request.user)
+        quiz = Quiz.objects.get(id=quiz_id, publish_flag=True)
+        if request.method == 'GET':
+            # View existing result
+            try:
+                result = QuizSubmission.objects.get(student=student, quiz=quiz)
+                # Reconstruct answers for quiz_result.html
+                answers = []
+                for question in quiz.questions.all():
+                    selected_option_id = result.answers.get(str(question.id))
+                    answer = {
+                        'question': {
+                            'id': question.id,
+                            'text': question.text,
+                            'marks': question.marks
+                        },
+                        'marks_awarded': 0
+                    }
+                    correct_option = question.options.filter(is_correct=True).first()
+                    answer['correct_option'] = {'id': correct_option.id, 'text': correct_option.text}
+                    if selected_option_id:
+                        try:
+                            selected_option = Option.objects.get(id=selected_option_id, question=question)
+                            answer['selected_option'] = {'id': selected_option.id, 'text': selected_option.text}
+                            answer['is_correct'] = selected_option.is_correct
+                            if selected_option.is_correct:
+                                answer['marks_awarded'] = question.marks
+                        except ObjectDoesNotExist:
+                            answer['selected_option'] = None
+                            answer['is_correct'] = False
+                    else:
+                        answer['selected_option'] = None
+                        answer['is_correct'] = False
+                    answers.append(answer)
+                context = {
+                    'quiz': quiz,
+                    'result': {
+                        'score': result.score,
+                        # 'max_score': result.score,
+                        'answers': answers
+                    },
+                    'today_date': timezone.now().date(),
+                    'student_full_name': student.applicant.full_name
+                }
+                logger.info(f"Displayed result for quiz {quiz_id} for user {student.applicant.full_name}")
+                return render(request, 'quiz_result.html', context)
+            except ObjectDoesNotExist:
+                logger.error(f"No result found for quiz {quiz_id} for user {student.applicant.full_name}")
+                return JsonResponse({'success': False, 'message': 'No result found for this quiz'}, status=404)
+
+        elif request.method == 'POST':
+            # Check if quiz already taken
+            if QuizSubmission.objects.filter(student=student, quiz=quiz).exists():
+                logger.info(f"User {student.applicant.full_name} attempted to retake quiz {quiz_id}")
+                return JsonResponse({'success': False, 'message': 'Quiz already taken'}, status=400)
+
+            # Process new submission
+            data = request.POST
+            answers = {}
+            score = 0
+            max_score = 0
+            logger.info(f"Received quiz submission for quiz {quiz_id}: {data}")
+
+            for question in quiz.questions.all():
+                max_score += question.marks
+                answer_key = f"answers[{question.id}]"
+                selected_option_id = data.get(answer_key)
+                if selected_option_id:
+                    answers[str(question.id)] = selected_option_id
+                    try:
+                        selected_option = Option.objects.get(id=selected_option_id, question=question)
+                        if selected_option.is_correct:
+                            score += question.marks
+                    except ObjectDoesNotExist:
+                        pass  # Invalid option ID, treat as incorrect
+
+            # Save result
+            result = QuizSubmission.objects.create(
+                student=student,
+                quiz=quiz,
+                score=score,
+                # score=score,
+                answers=answers
+            )
+            logger.info(f"Quiz {quiz_id} submitted by user {student.applicant.full_name}. Score: {score}")
+
+            # Prepare context for quiz_result.html
+            answers_list = []
+            for question in quiz.questions.all():
+                answer = {
+                    'question': {
+                        'id': question.id,
+                        'text': question.text,
+                        'marks': question.marks
+                    },
+                    'marks_awarded': 0
+                }
+                selected_option_id = answers.get(str(question.id))  
+                correct_option = question.options.filter(is_correct=True).first()
+                answer['correct_option'] = {'id': correct_option.id, 'text': correct_option.text}
+                if selected_option_id:
+                    try:
+                        selected_option = Option.objects.get(id=selected_option_id, question=question)
+                        answer['selected_option'] = {'id': selected_option.id, 'text': selected_option.text}
+                        answer['is_correct'] = selected_option.is_correct
+                        if selected_option.is_correct:
+                            answer['marks_awarded'] = question.marks
+                    except ObjectDoesNotExist:
+                        answer['selected_option'] = None
+                        answer['is_correct'] = False
+                else:
+                    answer['selected_option'] = None
+                    answer['is_correct'] = False
+                answers_list.append(answer)
+
+            context = {
+                'quiz': quiz,
+                'result': {
+                    'score': score,
+                    # 'max_score': max_score,
+                    'answers': answers_list
+                },
+                'today_date': timezone.now().date(),
+                'student_full_name': student.applicant.full_name
+            }
+            return render(request, 'quiz_result.html', context)
+    except ObjectDoesNotExist as e:
+        if isinstance(e, Quiz.DoesNotExist):
+            logger.error(f"Quiz {quiz_id} not found or not published")
+            return JsonResponse({'success': False, 'message': 'Quiz not found or not published'}, status=404)
+        elif isinstance(e, Student.DoesNotExist):
+            logger.error(f"User {request.user.first_name} has no associated Student profile")
+            return JsonResponse({'success': False, 'message': 'Student profile not found'}, status=400)
+    except Exception as e:
+        logger.error(f"Error processing quiz submission {quiz_id}: {str(e)}")
+        return JsonResponse({'success': False, 'message': f'Error: {str(e)}'}, status=500)

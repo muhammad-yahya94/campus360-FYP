@@ -31,6 +31,8 @@
                    class="btn btn-info btn-sm text-sm">Assignments</a>
                 <a href="{% url 'students:attendance' %}?course_offering_id={{ enrollment.course_offering.id }}"
                    class="btn btn-warning btn-sm text-sm">Attendance</a>
+                <a href="{% url 'students:solve_quiz' enrollment.course_offering.id %}"
+                   class="btn btn-primary btn-sm text-sm">Quizzes</a>
               </div>
             </div>
           {% endfor %}

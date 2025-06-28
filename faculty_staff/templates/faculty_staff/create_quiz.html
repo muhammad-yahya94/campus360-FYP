@@ -1,0 +1,645 @@
+{% extends 'faculty_staff/base_dashboard.html' %}
+
+{% block title %}Create Quiz - {{ course_offering.course.name }}{% endblock %}
+
+{% block content %}
+<style>
+    .select2-container {
+        width: 100% !important;
+    }
+    .question-details {
+        display: none;
+    }
+    .question-block {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        position: relative;
+        transition: all 0.3s ease;
+    }
+    .question-block.entering {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    .question-block.exiting {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    .remove-block {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        z-index: 10;
+    }
+    .modal {
+        transition: opacity 0.3s ease, transform 0.3s ease;
+        transform: translateY(-50px);
+        opacity: 0;
+        visibility: hidden;
+    }
+    .modal.modal-open {
+        transform: translateY(0);
+        opacity: 1;
+        visibility: visible;
+    }
+    .modal-dialog {
+        @apply max-w-2xl w-[95%] sm:w-full mx-auto my-6;
+    }
+    .modal-content {
+        transition: all 0.3s ease;
+        max-height: 95vh;
+        @apply flex flex-col;
+    }
+    .modal-body {
+        overflow-y: auto;
+        max-height: calc(95vh - 140px);
+        @apply flex-grow p-6;
+    }
+    .modal-footer {
+        @apply sticky bottom-0 bg-white pt-4 border-t border-gray-200;
+    }
+    .input-error {
+        @apply border-error ring-error;
+    }
+    .error-text {
+        @apply text-error text-sm mt-1;
+    }
+    .table th, .table td {
+        @apply px-4 py-3 text-sm;
+    }
+</style>
+
+<div class="container mx-auto px-4 py-6">
+    <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-xl shadow-lg mb-6">
+        <div class="text-center py-6">
+            <h1 class="text-4xl font-bold">Create Quiz</h1>
+            <p class="text-lg text-white/80">For {{ course_offering.course.code }} - {{ course_offering.course.name }}</p>
+        </div>
+    </div>
+
+    <div class="card bg-white shadow-lg rounded-lg mb-6 mt-5">
+        <div class="card-body p-6">
+            <h5 class="card-title text-xl font-semibold mb-4">Create Quiz ({{ today_date|date:"F d, Y" }})</h5>
+            <form id="course-selection-form">
+                <div class="mb-4">
+                    <label for="course_offering_id" class="label text-sm font-medium text-gray-700">Course Offering</label>
+                    <p id="course-offering-text" class="text-gray-600">{{ course_offering.course.code }} - {{ course_offering.course.name }} - {{ course_offering.program.name }} ({{ course_offering.semester.name }}, {{ course_offering.academic_session.name }})</p>
+                    <input type="hidden" name="course_offering_id" id="course_offering_id" value="{{ course_offering.id }}">
+                    <span id="course-offering-error" class="error-text"></span>
+                </div>
+            </form>
+
+            <!-- Quizzes Table -->
+            {% if quizzes %}
+            <div class="mt-6">
+                <h6 class="text-lg font-semibold mb-3">Existing Quizzes</h6>
+                <div class="overflow-x-auto">
+                    <table class="table table-auto w-full bg-white border border-gray-200 rounded-lg">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th>Title</th>
+                                <th>Publish Status</th>
+                                <th>Timer (Seconds)</th>
+                                <th>Questions</th>
+                                <th>Created at</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for quiz in quizzes %}
+                            <tr class="hover:bg-gray-50">
+                                <td>{{ quiz.title }}</td>
+                                <td>{{ quiz.publish_flag|yesno:"Yes,No" }}</td>
+                                <td>{{ quiz.timer_seconds }}</td>
+                                <td>{{ quiz.questions.count }}</td>
+                                <td>{{ quiz.created_at }}</td>
+                                <td>
+                                    <button type="button" class="btn btn-primary btn-sm edit-quiz hover:scale-105 transition-transform" data-quiz-id="{{ quiz.id }}">Edit</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% else %}
+            <p class="text-gray-600 mt-4">No quizzes available for this course offering.</p>
+            {% endif %}
+
+            <div class="flex justify-end mt-4">
+                <button type="button" class="btn btn-primary hover:scale-105 transition-transform" id="open-quiz-modal">Add Quiz</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quiz Modal -->
+<div class="modal" id="quizModal" tabindex="-1" aria-labelledby="quizModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-white rounded-lg shadow-xl">
+            <div class="modal-header flex justify-between items-center p-4 border-b border-gray-200">
+                <h5 class="modal-title text-xl font-semibold text-gray-800" id="quizModalLabel">Add Quiz</h5>
+                <button type="button" class="btn-close hover:text-error transition-colors" id="modal-close" aria-label="Close modal">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="quiz-form" method="post" action="{% url 'faculty_staff:create_quiz' course_offering.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" id="course-offering-id" name="course_offering_id" value="{{ course_offering.id }}">
+                    <input type="hidden" id="quiz-id" name="quiz_id" value="">
+                    <div class="form-control mb-6">
+                        <label for="title" class="label text-sm font-medium text-gray-700">Quiz Title <span class="text-error">*</span></label>
+                        <input type="text" class="input input-bordered w-full focus:ring-2 focus:ring-primary" id="title" name="title" placeholder="Enter quiz title" required aria-describedby="title-error">
+                        <span id="title-error" class="error-text"></span>
+                    </div>
+                    <div class="form-control mb-6">
+                        <label for="publish_flag" class="label text-sm font-medium text-gray-700">Publish</label>
+                        <input type="checkbox" id="publish_flag" name="publish_flag" class="checkbox">
+                    </div>
+                    <div class="form-control mb-6">
+                        <label for="timer_seconds" class="label text-sm font-medium text-gray-700">Timer (per question)</label>
+                        <select id="timer_seconds" name="timer_seconds" class="select select-bordered w-full focus:ring-2 focus:ring-primary">
+                            <option value="15">15 seconds</option>
+                            <option value="30" selected>30 seconds</option>
+                            <option value="45">45 seconds</option>
+                            <option value="60">1 minute</option>
+                        </select>
+                    </div>
+                    <div id="question-blocks">
+                        <div class="question-block bg-gray-50" data-index="0">
+                            <button type="button" class="btn btn-error btn-sm remove-block hidden hover:scale-105 transition-transform" aria-label="Remove question block">Remove</button>
+                            <div class="form-control mb-4">
+                                <label class="label text-sm font-medium text-gray-700">Question Text <span class="text-error">*</span></label>
+                                <input type="text" class="input input-bordered w-full focus:ring-2 focus:ring-primary" name="questions[0][text]" placeholder="Enter question text" required aria-describedby="question-text-0-error">
+                                <span id="question-text-0-error" class="error-text"></span>
+                            </div>
+                            <div class="form-control mb-4">
+                                <label class="label text-sm font-medium text-gray-700">Marks <span class="text-error">*</span></label>
+                                <input type="number" class="input input-bordered w-full focus:ring-2 focus:ring-primary" name="questions[0][marks]" value="1" min="1" required aria-describedby="marks-0-error">
+                                <span id="marks-0-error" class="error-text"></span>
+                            </div>
+                            <div class="form-control mb-4">
+                                <label class="label text-sm font-medium text-gray-700">Options (At least 1, select at least one correct)</label>
+                                <div class="options-container">
+                                    {% for i in "0123" %}
+                                    <div class="flex items-center mb-2 option-row">
+                                        <input type="text" class="input input-bordered w-full mr-2 focus:ring-2 focus:ring-primary" name="questions[0][options][{{ forloop.counter0 }}][text]" placeholder="Option {{ forloop.counter0|add:'65'|make_list|join:'' }}" required aria-describedby="option-0-{{ forloop.counter0 }}-error">
+                                        <input type="checkbox" name="questions[0][options][{{ forloop.counter0 }}][is_correct]" value="on" class="checkbox correct-option">
+                                        <span class="ml-1 text-sm text-gray-700">Correct</span>
+                                        <button type="button" class="btn btn-error btn-sm remove-option ml-2 hover:scale-105 transition-transform" aria-label="Remove option">Remove</button>
+                                        <span id="option-0-{{ forloop.counter0 }}-error" class="error-text"></span>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                <button type="button" class="btn btn-secondary btn-sm add-option mt-2 hover:scale-105 transition-transform">Add Option</button>
+                                <span id="options-0-error" class="error-text"></span>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer px-4 pb-4 sm:px-6">
+                <div class="flex justify-between">
+                    <div class="space-x-2">
+                        <button type="button" class="btn btn-secondary hover:scale-105 transition-transform" id="add-more">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            Add More Questions
+                        </button>
+                    </div>
+                    <div class="space-x-2">
+                        <button type="submit" form="quiz-form" name="save" class="btn btn-primary hover:scale-105 transition-transform">Save Quiz</button>
+                        <button type="submit" form="quiz-form" name="publish" class="btn btn-secondary hover:scale-105 transition-transform" id="publish-quiz">Publish Quiz</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+// XSS protection
+function escapeHtml(str) {
+    return String(str).replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>').replace(/"/g, '"').replace(/'/g, '');
+}
+
+// Modal handling
+const modal = document.getElementById('quizModal');
+const modalClose = document.getElementById('modal-close');
+const openQuizBtn = document.getElementById('open-quiz-modal');
+
+function openModal() {
+    modal.classList.add('modal-open');
+}
+function closeModal() {
+    modal.classList.remove('modal-open');
+}
+
+modalClose.addEventListener('click', closeModal);
+
+// Open modal for adding a new quiz
+openQuizBtn.addEventListener('click', () => {
+    console.log('Opening modal for new quiz');
+    openModal();
+    $('#quiz-form')[0].reset();
+    $('#question-blocks').html(`
+        <div class="question-block bg-gray-50" data-index="0">
+            <button type="button" class="btn btn-error btn-sm remove-block hidden hover:scale-105 transition-transform" aria-label="Remove question block">Remove</button>
+            <div class="form-control mb-4">
+                <label class="label text-sm font-medium text-gray-700">Question Text <span class="text-error">*</span></label>
+                <input type="text" class="input input-bordered w-full focus:ring-2 focus:ring-primary" name="questions[0][text]" placeholder="Enter question text" required aria-describedby="question-text-0-error">
+                <span id="question-text-0-error" class="error-text"></span>
+            </div>
+            <div class="form-control mb-4">
+                <label class="label text-sm font-medium text-gray-700">Marks <span class="text-error">*</span></label>
+                <input type="number" class="input input-bordered w-full focus:ring-2 focus:ring-primary" name="questions[0][marks]" value="1" min="1" required aria-describedby="marks-0-error">
+                <span id="marks-0-error" class="error-text"></span>
+            </div>
+            <div class="form-control mb-4">
+                <label class="label text-sm font-medium text-gray-700">Options (At least 1, select at least one correct)</label>
+                <div class="options-container">
+                    ${[0, 1, 2, 3].map(j => `
+                        <div class="flex items-center mb-2 option-row">
+                            <input type="text" class="input input-bordered w-full mr-2 focus:ring-2 focus:ring-primary" name="questions[0][options][${j}][text]" placeholder="Option ${String.fromCharCode(65 + j)}" required aria-describedby="option-0-${j}-error">
+                            <input type="checkbox" name="questions[0][options][${j}][is_correct]" value="on" class="checkbox correct-option">
+                            <span class="ml-1 text-sm text-gray-700">Correct</span>
+                            <button type="button" class="btn btn-error btn-sm remove-option ml-2 hover:scale-105 transition-transform" aria-label="Remove option">Remove</button>
+                            <span id="option-0-${j}-error" class="error-text"></span>
+                        </div>
+                    `).join('')}
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm add-option mt-2 hover:scale-105 transition-transform">Add Option</button>
+                <span id="options-0-error" class="error-text"></span>
+            </div>
+        </div>
+    `);
+    $('#title').val('');
+    $('#publish_flag').prop('checked', false);
+    $('#timer_seconds').val('30');
+    $('#quiz-id').val('');
+    $('#quizModalLabel').text('Add Quiz');
+    $('#quiz-form').attr('action', '{% url 'faculty_staff:create_quiz' course_offering.id %}');
+    $('#course-offering-id').val($('#course_offering_id').val());
+    bindBlockEvents();
+    validateForm();
+});
+
+// Edit quiz functionality
+$(document).on('click', '.edit-quiz', function() {
+    const quizId = $(this).data('quiz-id');
+    console.log('Fetching quiz data for ID:', quizId);
+    $.ajax({
+        url: `/faculty/get-quiz/${quizId}/`,
+        type: 'GET',
+        success: function(response) {
+            console.log('Quiz data received:', response);
+            if (!response.questions || response.questions.some(q => !q.options)) {
+                console.error('Invalid quiz data: Questions or options missing.');
+                alert('Invalid quiz data: Each question must have at least one option.');
+                return;
+            }
+            if (response.questions.some(q => !q.options.some(o => o.is_correct))) {
+                console.error('Invalid quiz data: At least one correct option required per question.');
+                alert('Invalid quiz data: Each question must have at least one correct option.');
+                return;
+            }
+            openModal();
+            $('#quiz-form')[0].reset();
+            $('#quiz-id').val(quizId);
+            $('#title').val(escapeHtml(response.title));
+            $('#publish_flag').prop('checked', response.publish_flag);
+            $('#timer_seconds').val(response.timer_seconds);
+            $('#quizModalLabel').text('Edit Quiz');
+            $('#quiz-form').attr('action', '{% url 'faculty_staff:create_quiz' course_offering.id %}');
+            $('#course-offering-id').val($('#course_offering_id').val());
+
+            // Populate question blocks
+            $('#question-blocks').empty();
+            response.questions.forEach((question, index) => {
+                const block = $(`
+                    <div class="question-block bg-gray-50" data-index="${index}">
+                        <button type="button" class="btn btn-error btn-sm remove-block hover:scale-105 transition-transform" aria-label="Remove question block">Remove</button>
+                        <div class="form-control mb-4">
+                            <label class="label text-sm font-medium text-gray-700">Question Text <span class="text-error">*</span></label>
+                            <input type="text" class="input input-bordered w-full focus:ring-2 focus:ring-primary" name="questions[${index}][text]" value="${escapeHtml(question.text)}" placeholder="Enter question text" required aria-describedby="question-text-${index}-error">
+                            <span id="question-text-${index}-error" class="error-text"></span>
+                        </div>
+                        <div class="form-control mb-4">
+                            <label class="label text-sm font-medium text-gray-700">Marks <span class="text-error">*</span></label>
+                            <input type="number" class="input input-bordered w-full focus:ring-2 focus:ring-primary" name="questions[${index}][marks]" value="${question.marks}" min="1" required aria-describedby="marks-${index}-error">
+                            <span id="marks-${index}-error" class="error-text"></span>
+                        </div>
+                        <div class="form-control mb-4">
+                            <label class="label text-sm font-medium text-gray-700">Options (At least 1, select at least one correct)</label>
+                            <div class="options-container">
+                                ${question.options.map((option, j) => `
+                                    <div class="flex items-center mb-2 option-row">
+                                        <input type="text" class="input input-bordered w-full mr-2 focus:ring-2 focus:ring-primary" name="questions[${index}][options][${j}][text]" value="${escapeHtml(option.text)}" placeholder="Option ${String.fromCharCode(65 + j)}" required aria-describedby="option-${index}-${j}-error">
+                                        <input type="checkbox" name="questions[${index}][options][${j}][is_correct]" value="on" class="checkbox correct-option" ${option.is_correct ? 'checked' : ''}>
+                                        <span class="ml-1 text-sm text-gray-700">Correct</span>
+                                        <button type="button" class="btn btn-error btn-sm remove-option ml-2 hover:scale-105 transition-transform" aria-label="Remove option">Remove</button>
+                                        <span id="option-${index}-${j}-error" class="error-text"></span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <button type="button" class="btn btn-secondary btn-sm add-option mt-2 hover:scale-105 transition-transform">Add Option</button>
+                            <span id="options-${index}-error" class="error-text"></span>
+                        </div>
+                    </div>
+                `);
+                $('#question-blocks').append(block);
+            });
+
+            if (response.questions.length > 1) {
+                $('.remove-block').removeClass('hidden');
+            }
+            bindBlockEvents();
+            validateForm();
+            $('.modal-body').animate({ scrollTop: 0 }, 300);
+        },
+        error: function(xhr, status, error) {
+            console.error('Error fetching quiz:', xhr.responseText, status, error);
+            alert('Failed to load quiz data: ' + (xhr.responseJSON?.message || error));
+        }
+    });
+});
+
+$(document).ready(function() {
+    // Add more question blocks
+    $('#add-more').on('click', function() {
+        console.log('Adding new question block');
+        const blocks = $('#question-blocks .question-block');
+        const index = blocks.length;
+        const newBlock = $(`
+            <div class="question-block bg-gray-50 entering" data-index="${index}">
+                <button type="button" class="btn btn-error btn-sm remove-block hover:scale-105 transition-transform" aria-label="Remove question block">Remove</button>
+                <div class="form-control mb-4">
+                    <label class="label text-sm font-medium text-gray-700">Question Text <span class="text-error">*</span></label>
+                    <input type="text" class="input input-bordered w-full focus:ring-2 focus:ring-primary" name="questions[${index}][text]" placeholder="Enter question text" required aria-describedby="question-text-${index}-error">
+                    <span id="question-text-${index}-error" class="error-text"></span>
+                </div>
+                <div class="form-control mb-4">
+                    <label class="label text-sm font-medium text-gray-700">Marks <span class="text-error">*</span></label>
+                    <input type="number" class="input input-bordered w-full focus:ring-2 focus:ring-primary" name="questions[${index}][marks]" value="1" min="1" required aria-describedby="marks-${index}-error">
+                    <span id="marks-${index}-error" class="error-text"></span>
+                </div>
+                <div class="form-control mb-4">
+                    <label class="label text-sm font-medium text-gray-700">Options (At least 1, select at least one correct)</label>
+                    <div class="options-container">
+                        ${[0, 1].map(j => `
+                            <div class="flex items-center mb-2 option-row">
+                                <input type="text" class="input input-bordered w-full mr-2 focus:ring-2 focus:ring-primary" name="questions[${index}][options][${j}][text]" placeholder="Option ${String.fromCharCode(65 + j)}" required aria-describedby="option-${index}-${j}-error">
+                                <input type="checkbox" name="questions[${index}][options][${j}][is_correct]" value="on" class="checkbox correct-option">
+                                <span class="ml-1 text-sm text-gray-700">Correct</span>
+                                <button type="button" class="btn btn-error btn-sm remove-option ml-2 hover:scale-105 transition-transform" aria-label="Remove option">Remove</button>
+                                <span id="option-${index}-${j}-error" class="error-text"></span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-sm add-option mt-2 hover:scale-105 transition-transform">Add Option</button>
+                    <span id="options-${index}-error" class="error-text"></span>
+                </div>
+            </div>
+        `);
+        $('#question-blocks').append(newBlock);
+        setTimeout(() => newBlock.removeClass('entering'), 300);
+        bindBlockEvents();
+        validateForm();
+        $('.modal-body').animate({ scrollTop: $('.modal-body')[0].scrollHeight }, 300);
+    });
+
+    // Add new option
+    $(document).on('click', '.add-option', function() {
+        console.log('Adding new option');
+        const block = $(this).closest('.question-block');
+        const index = block.data('index');
+        const optionsContainer = block.find('.options-container');
+        const optionIndex = optionsContainer.find('.option-row').length;
+        const newOption = $(`
+            <div class="flex items-center mb-2 option-row">
+                <input type="text" class="input input-bordered w-full mr-2 focus:ring-2 focus:ring-primary" name="questions[${index}][options][${optionIndex}][text]" placeholder="Option ${String.fromCharCode(65 + optionIndex)}" required aria-describedby="option-${index}-${optionIndex}-error">
+                <input type="checkbox" name="questions[${index}][options][${optionIndex}][is_correct]" value="on" class="checkbox correct-option">
+                <span class="ml-1 text-sm text-gray-700">Correct</span>
+                <button type="button" class="btn btn-error btn-sm remove-option ml-2 hover:scale-105 transition-transform" aria-label="Remove option">Remove</button>
+                <span id="option-${index}-${optionIndex}-error" class="error-text"></span>
+            </div>
+        `);
+        optionsContainer.append(newOption);
+        bindBlockEvents();
+        validateForm();
+    });
+
+    // Remove option
+    $(document).on('click', '.remove-option', function() {
+        console.log('Removing option');
+        const optionRow = $(this).closest('.option-row');
+        const block = $(this).closest('.question-block');
+        const index = block.data('index');
+        optionRow.remove();
+        // Reindex options
+        block.find('.option-row').each(function(j) {
+            $(this).find('input[name$="[text]"]').attr('name', `questions[${index}][options][${j}][text]`)
+                .attr('aria-describedby', `option-${index}-${j}-error`);
+            $(this).find('input[name$="[is_correct]"]').attr('name', `questions[${index}][options][${j}][is_correct]`);
+            $(this).find('.error-text').attr('id', `option-${index}-${j}-error`);
+        });
+        validateForm();
+    });
+
+    // Ensure publish field is included when Publish button is clicked
+    let isPublishClicked = false;
+    $('#publish-quiz').on('click', function() {
+        console.log('Publish button clicked, setting publish_flag to true');
+        $('#publish_flag').prop('checked', true);
+        isPublishClicked = true;
+    });
+
+    $('#quiz-form').on('submit', function(e) {
+        e.preventDefault();
+        console.log('Submitting quiz form');
+        let isValid = true;
+        $('#quiz-form input[required]').each(function() {
+            const errorId = $(this).attr('aria-describedby');
+            if (!$(this).val().trim()) {
+                $(this).addClass('input-error');
+                $(`#${errorId}`).text('This field is required.');
+                isValid = false;
+            } else {
+                $(this).removeClass('input-error');
+                $(`#${errorId}`).text('');
+            }
+        });
+
+        // Validate at least one question
+        if ($('#question-blocks .question-block').length === 0) {
+            alert('At least one question is required.');
+            isValid = false;
+        }
+
+        // Validate at least one option and one correct option per question
+        $('#question-blocks .question-block').each(function() {
+            const index = $(this).data('index');
+            const options = $(this).find('.option-row');
+            const hasCorrect = $(this).find('.correct-option:checked').length > 0;
+            const optionsError = $(`#options-${index}-error`);
+            if (options.length === 0) {
+                optionsError.text('At least one option is required.');
+                isValid = false;
+            } else if (!hasCorrect) {
+                optionsError.text('At least one option must be marked as correct.');
+                isValid = false;
+            } else {
+                optionsError.text('');
+            }
+        });
+
+        if (!isValid) {
+            console.error('Form validation failed');
+            alert('Please fill all required fields, ensure at least one question, and at least one correct option per question.');
+            $('.modal-body').animate({ scrollTop: $('.input-error, .error-text:not(:empty)').first().offset().top - $('.modal-body').offset().top + $('.modal-body').scrollTop() }, 300);
+            return;
+        }
+
+        let formData = new FormData(this);
+        if (isPublishClicked) {
+            formData.append('publish', 'true');
+            console.log('Added publish=true to form data');
+        }
+        let actionUrl = $(this).attr('action');
+        $.ajax({
+            url: actionUrl,
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                console.log('Quiz form submission response:', response);
+                if (response.success) {
+                    closeModal();
+                    $('#quiz-form')[0].reset();
+                    $('#quizModalLabel').text('Add Quiz');
+                    isPublishClicked = false; // Reset flag
+                    alert(response.message);
+                    window.location.reload();
+                } else {
+                    console.error('Form submission error:', response.message, response.errors);
+                    alert('Error: ' + response.message);
+                    if (response.errors) {
+                        Object.keys(response.errors).forEach(key => {
+                            if (key === 'title') {
+                                $('#title').addClass('input-error');
+                                $('#title-error').text(response.errors[key]);
+                            } else if (key === 'questions') {
+                                alert(response.errors[key]);
+                            } else {
+                                const match = key.match(/questions\[(\d+)\]\[(\w+)\]/) || key.match(/questions\[(\d+)\]\[options\]\[(\d+)\]\[(\w+)\]/) || key.match(/questions\[(\d+)\]\[options\]/);
+                                if (match) {
+                                    if (match.length === 3) {
+                                        const [_, index, field] = match;
+                                        $(`#${field}-${index}-error`).text(response.errors[key]);
+                                        $(`[name="questions[${index}][${field}]"]`).addClass('input-error');
+                                    } else if (match.length === 4) {
+                                        const [_, qIndex, oIndex, field] = match;
+                                        $(`#option-${qIndex}-${oIndex}-error`).text(response.errors[key]);
+                                        $(`[name="questions[${qIndex}][options][${oIndex}][${field}]"]`).addClass('input-error');
+                                    } else {
+                                        const [_, qIndex] = match;
+                                        $(`#options-${qIndex}-error`).text(response.errors[key]);
+                                    }
+                                }
+                            }
+                        });
+                        $('.modal-body').animate({ scrollTop: $('.input-error, .error-text:not(:empty)').first().offset().top - $('.modal-body').offset().top + $('.modal-body').scrollTop() }, 300);
+                    }
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX error:', status, error, xhr.responseText);
+                alert('An error occurred: ' + (xhr.responseJSON?.message || error));
+            }
+        });
+    });
+
+    function bindBlockEvents() {
+        $('.remove-block').off('click').on('click', function() {
+            console.log('Removing question block');
+            const block = $(this).closest('.question-block');
+            block.addClass('exiting');
+            setTimeout(() => {
+                block.remove();
+                $('#question-blocks .question-block').each(function(i) {
+                    $(this).attr('data-index', i);
+                    $(this).find('input, select').each(function() {
+                        const name = $(this).attr('name');
+                        if (name) {
+                            $(this).attr('name', name.replace(/questions\[\d+\]/, `questions[${i}]`));
+                        }
+                        const id = $(this).attr('aria-describedby');
+                        if (id) {
+                            $(this).attr('aria-describedby', id.replace(/-\d+-/, `-${i}-`));
+                        }
+                    });
+                    $(this).find('.error-text').each(function() {
+                        const id = $(this).attr('id');
+                        if (id) {
+                            $(this).attr('id', id.replace(/-\d+-/, `-${i}-`));
+                        }
+                    });
+                    $(this).find('.options-container .option-row').each(function(j) {
+                        $(this).find('input[name$="[text]"]').attr('name', `questions[${i}][options][${j}][text]`)
+                            .attr('aria-describedby', `option-${i}-${j}-error`);
+                        $(this).find('input[name$="[is_correct]"]').attr('name', `questions[${i}][options][${j}][is_correct]`);
+                        $(this).find('.error-text').attr('id', `option-${i}-${j}-error`);
+                    });
+                    $(this).find('.add-option').attr('data-question-index', i);
+                    $(this).find('.options-error').attr('id', `options-${i}-error`);
+                });
+                if ($('#question-blocks .question-block').length === 1) {
+                    $('#question-blocks .remove-block').addClass('hidden');
+                }
+                validateForm();
+            }, 300);
+        });
+        if ($('#question-blocks .question-block').length > 1) {
+            $('.remove-block').removeClass('hidden');
+        }
+    }
+
+    function validateForm() {
+        $('#quiz-form input[required]').off('input').on('input', function() {
+            const errorId = $(this).attr('aria-describedby');
+            if ($(this).val().trim()) {
+                $(this).removeClass('input-error');
+                $(`#${errorId}`).text('');
+            } else {
+                $(this).addClass('input-error');
+                $(`#${errorId}`).text('This field is required.');
+            }
+        });
+
+        // Validate at least one correct option per question
+        $('#question-blocks').on('change input', '.correct-option, input[name$="[text]"]', function() {
+            const block = $(this).closest('.question-block');
+            const index = block.data('index');
+            const options = block.find('.option-row');
+            const hasCorrect = block.find('.correct-option:checked').length > 0;
+            const optionsError = $(`#options-${index}-error`);
+            if (options.length === 0) {
+                optionsError.text('At least one option is required.');
+            } else if (!hasCorrect) {
+                optionsError.text('At least one option must be marked as correct.');
+            } else {
+                optionsError.text('');
+            }
+        });
+    }
+
+    bindBlockEvents();
+    validateForm();
+});
+</script>
+{% endblock %}

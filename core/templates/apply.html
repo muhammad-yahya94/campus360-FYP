@@ -95,6 +95,7 @@
 </style>
 
 <!-- Navbar Start -->
+<!-- Navbar Start -->
 <nav class="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0">
     <div class="d-flex align-items-center me-auto px-4">
         <i class="fa fa-user fa-lg me-2 text-primary"></i>
@@ -107,11 +108,12 @@
         <div class="navbar-nav ms-auto">
             <a href="{% url 'my_applications' %}" class="nav-item nav-link {% if request.path == '/apply/my-applications/' %}active{% endif %}">My Applications</a>
             <a href="{% url 'apply' %}" class="nav-item nav-link {% if request.path == '/apply/' %}active{% endif %}">Application Form</a>
-            <a href="{% url 'home' %}" class="btn btn-primary py-4 px-lg-5 d-none d-lg-block">Go Back<i class="fa fa-arrow-right ms-3"></i></a>
-            <a href="{% url 'home' %}" class="nav-item nav-link d-lg-none">Go Back</a>
+            <a href="{% url 'logout' %}" class="btn btn-primary py-4 px-lg-5 d-none d-lg-block">Logout<i class="fa fa-sign-out-alt ms-3"></i></a>
+            <a href="{% url 'logout' %}" class="nav-item nav-link d-lg-none">Logout</a>
         </div>
     </div>
 </nav>
+<!-- Navbar End -->
 
 <div class="container py-5">
     <div class="row justify-content-center">
@@ -353,7 +355,7 @@
                                             <div class="row g-3 mt-3">
                                                 <div class="col-md-3">
                                                     <label for="academic_grade_0" class="form-label text-dark">Grade/Division/CGPA</label>
-                                                    <input type="text" class="form-control form-control-lg" id="academic_grade_0" name="academic_grade[]" required>
+                                                    <input type="text" class="form-control form-control-lg" id="academic_grade_0"  name="academic_grade[]" required>
                                                 </div>
                                                 <div class="col-md-3">
                                                     <label for="academic_major_0" class="form-label text-dark">Major Subject</label>

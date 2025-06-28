@@ -40,6 +40,8 @@
              class="btn btn-sm btn-warning w-full">Assignments</a>
           <a href="{% url 'faculty_staff:view_students' %}?course_offering_id={{ offering.id }}"
              class="btn btn-sm btn-secondary w-full">Students</a>
+          <a href="{% url 'faculty_staff:create_quiz' course_offering_id=offering.id %}"
+             class="btn btn-sm btn-accent w-full">Quiz</a>
         </div>
       </div>
     </div>

@@ -1,69 +1,55 @@
- {% load static %}
- <!-- Footer Start -->
- <div
- class="container-fluid bg-dark text-light footer pt-5 wow fadeIn"
- data-wow-delay="0.1s"
->
- <div class="container py-5">
-   <div class="row g-5">
-     <!-- Quick Links Column -->
-     <div class="col-lg-4 col-md-6">
-       <div class="footer-column h-100 d-flex flex-column">
-         <h4 class="text-white mb-3">Quick Links</h4>
-         <div class="d-flex flex-column flex-grow-1">
-           <a class="btn btn-link text-start px-0 mb-2" href=""
-             >About Us</a
-           >
-           <a class="btn btn-link text-start px-0 mb-2" href=""
-             >Contact Us</a
-           >
-           <a class="btn btn-link text-start px-0 mb-2" href=""
-             >Privacy Policy</a
-           >
-           <a class="btn btn-link text-start px-0 mb-2" href=""
-             >Terms & Condition</a
-           >
-           <a class="btn btn-link text-start px-0 mb-2" href=""
-             >FAQs & Help</a
-           >
-         </div>
-       </div>
-     </div>
+{% load static %}
+<!-- Footer Start -->
+<div class="container-fluid bg-dark text-light footer pt-5 wow fadeIn" data-wow-delay="0.1s">
+  <div class="container py-5">
+    <div class="row g-5">
+      
+      <!-- Quick Links Column -->
+      <div class="col-lg-3 col-md-6">
+        <div class="footer-column h-100 d-flex flex-column">
+          <h4 class="text-white mb-3">Quick Links</h4>
+          <div class="d-flex flex-column flex-grow-1">
+            <a class="btn btn-link text-start px-0 mb-2" href="#">About Us</a>
+            <a class="btn btn-link text-start px-0 mb-2" href="#">Contact Us</a>
+            <a class="btn btn-link text-start px-0 mb-2" href="#">Privacy Policy</a>
+            <a class="btn btn-link text-start px-0 mb-2" href="#">Terms & Condition</a>
+            <a class="btn btn-link text-start px-0 mb-2" href="#">FAQs & Help</a>
+          </div>
+        </div>
+      </div>
 
-     <!-- Contact Column -->
-     <div class="col-lg-4 col-md-6">
-       <div class="footer-column h-100 d-flex flex-column">
-         <h4 class="text-white mb-3">Contact</h4>
-         <div class="d-flex flex-column flex-grow-1">
-           <p class="mb-2">
-             <i class="fa fa-map-marker-alt me-3"></i>78R8+P3 Jhang Sadar, Pakistan
-           </p>
-           <p class="mb-2">
-             <i class="fa fa-phone-alt me-3"></i>0479200342
-           </p>
-           <p class="mb-2">
-             <i class="fa fa-envelope me-3"></i>muhammadyahya6272@gmail.com
-           </p>
-           <div class="d-flex pt-2 mt-auto">
-             <a class="btn btn-outline-light btn-social me-2" href=""
-               ><i class="fab fa-twitter"></i
-             ></a>
-             <a class="btn btn-outline-light btn-social me-2" href=""
-               ><i class="fab fa-facebook-f"></i
-             ></a>
-             <a class="btn btn-outline-light btn-social me-2" href=""
-               ><i class="fab fa-youtube"></i
-             ></a>
-             <a class="btn btn-outline-light btn-social" href=""
-               ><i class="fab fa-linkedin-in"></i
-             ></a>
-           </div>
-         </div>
-       </div>
-     </div>
+      <!-- Contact Column -->
+      <div class="col-lg-3 col-md-6">
+        <div class="footer-column h-100 d-flex flex-column">
+          <h4 class="text-white mb-3">Contact</h4>
+          <div class="d-flex flex-column flex-grow-1">
+            <p class="mb-2"><i class="fa fa-map-marker-alt me-3"></i>78R8+P3 Jhang Sadar, Pakistan</p>
+            <p class="mb-2"><i class="fa fa-phone-alt me-3"></i>0479200342</p>
+            <p class="mb-2"><i class="fa fa-envelope me-3"></i>muhammadyahya6272@gmail.com</p>
+            <div class="d-flex pt-2 mt-auto">
+              <a class="btn btn-outline-light btn-social me-2" href="#"><i class="fab fa-twitter"></i></a>
+              <a class="btn btn-outline-light btn-social me-2" href="#"><i class="fab fa-facebook-f"></i></a>
+              <a class="btn btn-outline-light btn-social me-2" href="#"><i class="fab fa-youtube"></i></a>
+              <a class="btn btn-outline-light btn-social" href="#"><i class="fab fa-linkedin-in"></i></a>
+            </div>
+          </div>
+        </div>
+      </div>
 
-     <!-- Map Column -->
-     <div class="col-lg-4 col-md-12 wow fadeInUp" data-wow-delay="0.3s">
+      <!-- Portals Column -->
+      <div class="col-lg-3 col-md-6">
+        <div class="footer-column h-100 d-flex flex-column">
+          <h4 class="text-white mb-3">Portals</h4>
+          <div class="d-flex flex-column flex-grow-1">
+            <a class="btn btn-link text-start px-0 mb-2" href="{% url 'admin:index' %}">Administration</a>
+            <a class="btn btn-link text-start px-0 mb-2" href="{% url 'faculty_staff:login' %}">Faculty & Staff</a>
+            <a class="btn btn-link text-start px-0 mb-2" href="{% url 'students:login' %}">Student</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Map Column -->
+     <div class="col-lg-3 col-md-12 wow fadeInUp" data-wow-delay="0.3s">
        <div class="footer-column h-100 d-flex flex-column p-0">
          <iframe
            class="rounded w-100 h-100"
@@ -76,42 +62,38 @@
          ></iframe>
        </div>
      </div>
-   </div>
- </div>
 
- <style>
-   /* Footer styling */
-   .footer-column {
-     padding: 20px;
-     /*    background: rgba(255, 255, 255, 0.05); */
-     border-radius: 8px;
-     height: 100%;
-   }
+    </div>
+  </div>
 
-   /* Remove padding for map container */
-   .footer-column.p-0 {
-     padding: 0 !important;
-     background: transparent;
-   }
+  <style>
+    .footer-column {
+      padding: 20px;
+      border-radius: 8px;
+      height: 100%;
+    }
 
-   /* Responsive adjustments */
-   @media (max-width: 992px) {
-     .footer-column {
-       margin-bottom: 20px;
-     }
-   }
+    .footer-column.p-0 {
+      padding: 0 !important;
+      background: transparent;
+    }
 
-   /* Button link styling */
-   .btn-link {
-     color: #000000;
-     text-decoration: none;
-     transition: all 0.3s;
-   }
+    @media (max-width: 992px) {
+      .footer-column {
+        margin-bottom: 20px;
+      }
+    }
 
-   .btn-link:hover {
-     color: #d27328;
-     padding-left: 5px !important;
-   }
- </style>
+    .btn-link {
+      color: #ffffff;
+      text-decoration: none;
+      transition: all 0.3s;
+    }
+
+    .btn-link:hover {
+      color: #d27328;
+      padding-left: 5px !important;
+    }
+  </style>
 </div>
 <!-- Footer End -->

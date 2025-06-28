@@ -103,5 +103,10 @@ urlpatterns = [
     path('update_account/', views.update_account, name='update_account'),
     path('change_password/', views.change_password, name='change_password'),
     path('update_status/', views.update_status, name='update_status'),
+    
+    # ========== 17. Quizs ==========
+    path('create-quiz/<int:course_offering_id>/', views.create_quiz, name='create_quiz'),
+    path('get-quiz/<int:quiz_id>/', views.get_quiz, name='get_quiz'),
+
 
 ]

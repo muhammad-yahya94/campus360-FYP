@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, HttpResponseRedirect
 from django.views.decorators.http import require_GET, require_POST
 from django.contrib.auth.decorators import login_required
 from announcements.models import Event, News
@@ -21,6 +21,7 @@ from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.conf import settings
+from django.urls import reverse
 
 logger = logging.getLogger(__name__)
 
@@ -350,10 +351,10 @@ def submit_application(request):
         # Fetch the session object
         session = AcademicSession.objects.get(id=session_id)
         
-        # Check if an applicant already exists for this user and session (due to OneToOneField)
-        existing_applicant = Applicant.objects.filter(user=request.user, session=session).first()
-        if existing_applicant:
-            raise ValueError("You have already submitted an application for this session.")
+        # # Check if an applicant already exists for this user and session (due to OneToOneField)
+        # existing_applicant = Applicant.objects.filter(user=request.user, session=session).first()
+        # if existing_applicant:
+        #     raise ValueError("You have already submitted an application for this session.")
 
         # Create Applicant
         applicant = Applicant.objects.create(
@@ -554,3 +555,15 @@ def verify_email_view(request, uidb64, token):
 # Add the email verification success view
 def email_verification_success(request):
     return render(request, 'email_verification_success.html')
+
+
+
+@login_required
+def logout_view(request):
+    """
+    Logs out the current user and redirects to the home page.
+    """
+    user = request.user
+    logger.info(f'User logout: user={user.first_name}, id={user.id}')
+    logout(request)
+    return HttpResponseRedirect(reverse('home'))

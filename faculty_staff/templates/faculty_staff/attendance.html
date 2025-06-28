@@ -41,15 +41,13 @@
 </style>
 
 <div class="container-fluid">
-    <!-- Hero Section -->
-    <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-xl">
-        <div class="hero-content text-center py-8">
-            <div>
-                <h1 class="text-4xl font-bold mb-2">Attendance</h1>
-                <p class="text-lg opacity-90">Manage and track attendance</p>
-            </div>
-        </div>
+
+<div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-xl shadow-lg mb-6">
+    <div class="text-center py-6">
+      <h1 class="text-4xl font-bold">Attendance</h1>
+      <p class="text-lg text-white/80">Manage and track attendance</p>
     </div>
+  </div>
 
                             
     {% if is_active_slot %}
@@ -182,7 +180,7 @@
         </div>
     </div>
             {% else %}
-        <div class="flex items-center justify-center min-h-screen bg-base-200">
+        <div class="flex items-center justify-center min-h-screen">
           <div class="card w-full max-w-md shadow-xl bg-white border border-gray-200">       
             <div class="card-body items-center text-center">
                 <h2 class="card-title text-error text-xl font-bold">No Lecture at the Moment</h2>

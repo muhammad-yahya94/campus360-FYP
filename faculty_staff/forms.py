@@ -99,3 +99,18 @@ class TeacherStatusForm(forms.ModelForm):
     class Meta:
         model = TeacherDetails
         fields = ['status']
+        
+        
+        
+from django import forms
+from courses.models import Quiz, Question
+
+class QuizForm(forms.ModelForm):
+    class Meta:
+        model = Quiz
+        fields = ['title', 'publish_flag', 'timer_seconds']
+
+class QuestionForm(forms.ModelForm):
+    class Meta:
+        model = Question
+        fields = ['text', 'marks']        

@@ -107,7 +107,7 @@
                 </div>
                 <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-64 max-w-[80vw]">
                     <li class="menu-title text-base">
-                        {{ student.applicant.full_name }}
+                        {{ student_full_name }}
                         <span class="text-blue-500">Student</span>
                     </li>
                     {% comment %} <li>
@@ -239,7 +239,7 @@
                         <div>
                             <h2 class="text-xl font-bold">Student Dashboard</h2>
                             <p class="text-sm text-base-content/70">
-                                 {{ student.applicant.full_name }}
+                                 {{ student_full_name }}
                                 <span class="text-blue-500">Student</span>
                             </p>
                         </div>

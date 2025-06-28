@@ -276,3 +276,51 @@ class Attendance(models.Model):
 
     def __str__(self):
         return f"{self.student.applicant.full_name} - {self.course_offering.course.code} - {self.date} - {self.status} - {self.shift or 'N/A'}"        
+
+
+class Quiz(models.Model):
+    course_offering = models.ForeignKey(CourseOffering, on_delete=models.CASCADE, related_name='quizzes')
+    title = models.CharField(max_length=255, help_text="Topic name for the quiz")
+    publish_flag = models.BooleanField(default=False, help_text="Check to make this quiz visible to students.")
+    timer_seconds = models.PositiveIntegerField(
+        choices=[
+            (15, '15 seconds'),
+            (30, '30 seconds'),
+            (45, '45 seconds'),
+            (60, '1 minute')
+        ],
+        default=30,
+        help_text="Duration per question for all questions."
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.title} ({self.course_offering})"
+
+class Question(models.Model):
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='questions')
+    text = models.TextField()
+    marks = models.PositiveIntegerField(default=1, help_text="Marks for this question.")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.text[:50]}... (MCQ)"
+
+class Option(models.Model):
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='options')
+    text = models.CharField(max_length=255)
+    is_correct = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.text} (Correct: {self.is_correct})"
+
+class QuizSubmission(models.Model):
+    student = models.ForeignKey('students.Student', on_delete=models.CASCADE, related_name='quiz_submissions')
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='submissions')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    score = models.PositiveIntegerField(default=0)
+    answers = models.JSONField(default=dict)  # Store {question_id: selected_option_id}
+
+    def __str__(self):
+        return f"{self.student} - {self.quiz} (Score: {self.score})"

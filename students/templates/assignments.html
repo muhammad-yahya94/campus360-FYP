@@ -1,63 +1,235 @@
 {% extends 'base_student.html' %}
 
-{% block title %}Assignments{% endblock %}
+{% block title %}Assignments - {{ selected_course_offering.course.name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .prose {
+    max-width: 100%;
+    word-wrap: break-word;
+  }
+  .prose img {
+    max-width: 100%;
+    height: auto;
+    margin: 1rem 0;
+    border-radius: 0.5rem;
+  }
+  .prose p {
+    margin: 0.5rem 0;
+  }
+  .prose ul, .prose ol {
+    margin: 0.5rem 0 0.5rem 1.5rem;
+  }
+  .modal-box {
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+</style>
+{% endblock %}
 
 {% block content %}
-<style>
-    .card {
-        border-radius: 10px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    }
-    .table th {
-        background-color: #e9ecef;
-        color: #343a40;
-    }
-    .table-hover tbody tr:hover {
-        background-color: #f8f9fa;
-    }
-</style>
-
-<div class="container-fluid">
-    <h2>Assignments - {{ current_session.name|default:"Current Session" }}</h2>
-    <div class="card">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Course</th>
-                            <th>Title</th>
-                            <th>Due Date</th>
-                            <th>Marks</th>
-                            <th>Status</th>
-                            <th>Feedback</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for submission in submissions %}
-                        <tr>
-                            <td>{{ submission.assignment.course_offering.course.name }}</td>
-                            <td>{{ submission.assignment.title }}</td>
-                            <td>{{ submission.assignment.due_date|date:"Y-m-d" }}</td>
-                            <td>{{ submission.marks_obtained|default:"N/A" }} / {{ submission.assignment.total_marks }}</td>
-                            <td>
-                                {% if submission.submitted_at %}
-                                    <span class="badge bg-success">Submitted</span>
-                                {% else %}
-                                    <span class="badge bg-warning">Pending</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ submission.feedback|default:"N/A" }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="6" class="text-center">No assignments found.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <!-- Header Section -->
+  <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-lg shadow-lg mb-8">
+    <div class="text-center py-8">
+      <h1 class="text-3xl sm:text-4xl font-bold mb-2">Assignments</h1>
+      <p class="text-base sm:text-lg opacity-90">
+        {{ selected_course_offering.course.name }} ({{ selected_course_offering.course.code }})
+      </p>
     </div>
+  </div>
+
+  <!-- All Assignments Table -->
+  <div>
+    <h3 class="text-2xl font-semibold text-base-content mb-4">All Assignments</h3>
+    <div class="card bg-base-100 shadow-xl">
+      <div class="card-body p-0">
+        <div class="overflow-x-auto">
+          <table class="table w-full">
+            <thead>
+              <tr class="bg-base-200">
+                <th class="px-4 py-3 text-left text-xs font-medium text-base-content/70 uppercase tracking-wider">Title</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-base-content/70 uppercase tracking-wider">Resources File</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-base-content/70 uppercase tracking-wider">Due Date</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-base-content/70 uppercase tracking-wider">Marks</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-base-content/70 uppercase tracking-wider">Status</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-base-content/70 uppercase tracking-wider">Submission</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-base-content/70 uppercase tracking-wider">Feedback/Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in all_assignments %}
+              <tr class="{% if item.is_pending %}bg-primary/10{% else %}hover:bg-base-200/50{% endif %}">
+                <td class="px-4 py-4 text-sm text-base-content">
+                  {% if item.status == "Submitted" %}
+                    {{ item.assignment_data.assignment.title }}
+                  {% else %}
+                    {{ item.assignment_data.submission.assignment.title }}
+                  {% endif %}
+                </td>
+                <td class="px-4 py-4 text-sm text-base-content">
+                  {% if item.status == "Submitted" %}
+                    {% if item.assignment_data.assignment.resource_file %}
+                      <a href="{{ item.assignment_data.assignment.resource_file.url }}" class="link link-primary" target="_blank">View Resource</a>
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  {% else %}
+                    {% if item.assignment_data.submission.assignment.resource_file %}
+                      <a href="{{ item.assignment_data.submission.assignment.resource_file.url }}" class="link link-primary" target="_blank">View Resource</a>
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  {% endif %}
+                </td>
+                <td class="px-4 py-4 text-sm text-base-content">
+                  {% if item.status == "Submitted" %}
+                    {{ item.assignment_data.assignment.due_date|date:"Y-m-d H:i" }}
+                  {% else %}
+                    {{ item.assignment_data.submission.assignment.due_date|date:"Y-m-d H:i" }}
+                  {% endif %}
+                </td>
+                <td class="px-4 py-4 text-sm text-base-content">
+                  {% if item.status == "Submitted" %}
+                    {{ item.assignment_data.marks_obtained|default:"N/A" }} / {{ item.assignment_data.assignment.max_points }}
+                  {% else %}
+                    {{ item.assignment_data.submission.marks_obtained|default:"N/A" }} / {{ item.assignment_data.submission.assignment.max_points }}
+                  {% endif %}
+                </td>
+                <td class="px-4 py-4">
+                  {% if item.status == "Submitted" %}
+                    <span class="badge badge-success badge-sm">Submitted</span>
+                  {% elif item.status == "Pending" %}
+                    <span class="badge badge-warning badge-sm">Pending</span>
+                  {% else %}
+                    <span class="badge badge-error badge-sm">Overdue</span>
+                  {% endif %}
+                </td>
+                <td class="px-4 py-4 text-sm text-base-content">
+                  {% if item.status == "Submitted" %}
+                    <button onclick="viewSubmission('{{ item.assignment_data.content|escapejs }}', '{% if item.assignment_data.file and item.assignment_data.file.url %}{{ item.assignment_data.file.url }}{% else %}{% endif %}')" class="btn btn-ghost btn-xs">
+                      View Submission
+                    </button>
+                  {% else %}
+                    <span class="text-gray-400">Not submitted</span>
+                  {% endif %}
+                </td>
+                <td class="px-4 py-4 text-sm text-base-content">
+                  {% if item.status == "Submitted" %}
+                    {{ item.assignment_data.feedback|default:"No feedback yet" }}
+                  {% elif item.status == "Pending" %}
+                    <a href="{% url 'students:submit_assignment' assignment_id=item.assignment_data.submission.assignment.id %}" class="btn btn-primary btn-xs">Submit</a>
+                  {% else %}
+                    <span class="text-error">Overdue</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="7" class="px-4 py-4 text-sm text-base-content/70 text-center">No assignments found.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
+
+<!-- Submission Content Modal -->
+<dialog id="submissionModal" class="modal">
+  <div class="modal-box max-w-4xl">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-bold text-lg">Your Submission</h3>
+      <button onclick="document.getElementById('submissionModal').close()" class="btn btn-sm btn-circle">
+        &times;
+      </button>
+    </div>
+    
+    <!-- Tabs -->
+    <div class="tabs tabs-boxed bg-base-200 p-1 mb-4">
+      <button class="tab tab-active" id="contentTab" onclick="switchTab('content')">Content</button>
+      <button class="tab" id="fileTab" onclick="switchTab('file')">File Submission</button>
+    </div>
+    
+    <!-- Content Tab -->
+    <div id="contentTabContent">
+      <div id="submissionContent" class="prose max-w-none">
+        <!-- Rich text content will be inserted here -->
+      </div>
+    </div>
+    
+    <!-- File Tab -->
+    <div id="fileTabContent" class="hidden">
+      <div id="fileSubmissionContent" class="space-y-4">
+        <!-- File submission content will be inserted here -->
+      </div>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
+
+<script>
+  function viewSubmission(content, fileUrl = null) {
+    const modal = document.getElementById('submissionModal');
+    const contentDiv = document.getElementById('submissionContent');
+    const fileDiv = document.getElementById('fileSubmissionContent');
+    
+    // Set content tab
+    if (!content || content.trim() === '') {
+      contentDiv.innerHTML = '<p class="text-gray-500 italic">No text content available for this submission.</p>';
+    } else {
+      contentDiv.innerHTML = content;
+    }
+    
+    // Set file tab
+    if (!fileUrl) {
+      fileDiv.innerHTML = '<p class="text-gray-500 italic">No file was submitted with this assignment.</p>';
+    } else {
+      fileDiv.innerHTML = `
+        <div class="flex items-center space-x-4 p-4 bg-base-200 rounded-lg">
+          <div class="flex-shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-900 truncate">Submitted File</p>
+            <p class="text-sm text-gray-500 truncate">Click to download</p>
+          </div>
+          <div class="flex-shrink-0">
+            <a href="${fileUrl}" download class="btn btn-sm btn-primary" target="_blank">Download</a>
+          </div>
+        </div>
+      `;
+    }
+    
+    // Show the modal and reset to content tab
+    modal.showModal();
+    switchTab('content');
+  }
+  
+  // Switch between tabs
+  function switchTab(tabName) {
+    // Update active tab
+    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('tab-active'));
+    document.getElementById(`${tabName}Tab`).classList.add('tab-active');
+    
+    // Show active content
+    document.querySelectorAll('[id$="TabContent"]').forEach(content => {
+      content.classList.add('hidden');
+    });
+    document.getElementById(`${tabName}TabContent`).classList.remove('hidden');
+  }
+
+  // Close modal when clicking outside
+  document.getElementById('submissionModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      this.close();
+    }
+  });
+</script>
 {% endblock %}

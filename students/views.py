@@ -16,7 +16,7 @@ from django.http import JsonResponse
 from django.urls import reverse
 from django.utils import timezone
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.core.files.storage import default_storage
+from django.core.files.storage import default_storage, FileSystemStorage
 from django.views.decorators.http import require_GET, require_POST
 from django.contrib import messages
 from django.db import transaction
@@ -212,51 +212,149 @@ def my_courses(request):
     return render(request, 'my_courses.html', context)
 
 
+
 @login_required
-def session_courses(request, session_id):
+def assignments(request, course_offering_id):
     user = request.user
     try:
         student = Student.objects.get(user=user)
     except Student.DoesNotExist:
+        logger.error(f"User {user} is not authorized as a student.")
         messages.error(request, 'You are not authorized as a student.')
         return redirect('students:login')
 
-    session = get_object_or_404(AcademicSession, id=session_id)
-    enrollments = CourseEnrollment.objects.filter(
-        student_semester_enrollment__student=student,
-        course_offering__academic_session=session
-    ).select_related('course_offering__course', 'course_offering__semester', 'course_offering__teacher__user')
-    academic_sessions = AcademicSession.objects.all().order_by('-start_year')
-
-    context = {
-        'enrollments': enrollments,
-        'session': session,
-        'academic_sessions': academic_sessions,
-    }
-    return render(request, 'session_courses.html', context)
-
-@login_required
-def assignments(request):
-    user = request.user
     try:
-        student = Student.objects.get(user=user)
-    except Student.DoesNotExist:
-        messages.error(request, 'You are not authorized as a student.')
-        return redirect('students:login')
+        course_offering = CourseOffering.objects.get(
+            id=course_offering_id,
+            enrollments__student_semester_enrollment__student=student
+        )
+        assignments = Assignment.objects.filter(course_offering=course_offering).select_related('course_offering__course')
+        course_offerings = [course_offering]
+        logger.info(f"Found course offering: {course_offering}, assignments: {list(assignments)}")
+    except CourseOffering.DoesNotExist:
+        logger.error(f"Course offering {course_offering_id} not found or unauthorized for student: {student}")
+        messages.error(request, 'Invalid or unauthorized course offering.')
+        return redirect('students:my_courses')
 
-    current_session = AcademicSession.objects.filter(is_active=True).first()
+    # Get submissions for the student, ordered by submission date (newest first)
     submissions = AssignmentSubmission.objects.filter(
         student=student,
-        assignment__course_offering__academic_session=current_session
-    ).select_related('assignment__course_offering__course')
-    academic_sessions = AcademicSession.objects.all().order_by('-start_year')
+        assignment__in=assignments
+    ).select_related('assignment__course_offering__course').order_by('-submitted_at')
+    logger.info(f"Found submissions: {list(submissions)}")
+
+    # Combine all assignments with status
+    all_assignments = []
+    now = timezone.now()
+
+    for assignment in assignments:
+        submission = submissions.filter(assignment=assignment).first()
+        if submission and submission.submitted_at:
+            status = "Submitted"
+            can_submit = False
+            assignment_data = submission
+        else:
+            submission = submission or AssignmentSubmission(student=student, assignment=assignment)
+            can_submit = assignment.due_date is None or assignment.due_date > now
+            status = "Pending" if can_submit else "Overdue"
+            assignment_data = {'submission': submission, 'can_submit': can_submit}
+
+        all_assignments.append({
+            'assignment_data': assignment_data,
+            'status': status,
+            'is_pending': status == "Pending"
+        })
+        logger.debug(f"Assignment: {assignment.title}, status: {status}, can_submit: {can_submit}")
+
+    # Sort assignments: First by status (Pending > Submitted > Overdue), then by creation date (newest first)
+    all_assignments.sort(key=lambda x: (
+        not x['is_pending'],  # Pending first
+        x['status'] != "Submitted",  # Then Submitted
+        # Finally by due date (or max date if none) for same status items
+        (x['assignment_data']['submission'].assignment.due_date if isinstance(x['assignment_data'], dict)
+         else x['assignment_data'].assignment.due_date) or timezone.datetime.max,
+        # Add creation date for sorting (newest first)
+        -((x['assignment_data']['submission'].assignment.created_at.timestamp() if isinstance(x['assignment_data'], dict)
+           else x['assignment_data'].assignment.created_at.timestamp()) or 0)
+    ))
+
+    logger.info(f"Total assignments: {len(all_assignments)}, Pending: {sum(1 for a in all_assignments if a['status'] == 'Pending')}, Submitted: {sum(1 for a in all_assignments if a['status'] == 'Submitted')}, Overdue: {sum(1 for a in all_assignments if a['status'] == 'Overdue')}")
 
     context = {
-        'submissions': submissions,
-        'academic_sessions': academic_sessions,
-        'current_session': current_session,
+        'all_assignments': all_assignments,
+        'selected_course_offering': course_offering,
+        'now': now,
     }
     return render(request, 'assignments.html', context)
+
+@login_required
+def submit_assignment(request, assignment_id):
+    user = request.user
+    try:
+        student = Student.objects.get(user=user)
+    except Student.DoesNotExist:
+        logger.error(f"User {user} is not authorized as a student.")
+        messages.error(request, 'You are not authorized as a student.')
+        return redirect('students:login')
+
+    try:
+        assignment = Assignment.objects.get(
+            id=assignment_id,
+            course_offering__enrollments__student_semester_enrollment__student=student
+        )
+        submission = AssignmentSubmission.objects.get(student=student, assignment=assignment)
+    except Assignment.DoesNotExist:
+        logger.error(f"Assignment {assignment_id} not found or unauthorized for student: {student}")
+        messages.error(request, 'Invalid assignment.')
+        return redirect('students:my_courses')
+    except AssignmentSubmission.DoesNotExist:
+        submission = AssignmentSubmission.objects.create(
+            student=student,
+            assignment=assignment
+        )
+
+    has_submitted = submission.submitted_at is not None
+
+    if request.method == 'POST':
+        if assignment.due_date and assignment.due_date < timezone.now():
+            logger.error(f"Submission deadline passed for assignment {assignment_id}")
+            messages.error(request, 'Submission deadline has passed.')
+            return redirect('students:assignments', course_offering_id=assignment.course_offering.id)
+
+        content = request.POST.get('content')
+        file = request.FILES.get('files')
+
+        submission.content = content
+        submission.submitted_at = timezone.now()
+
+        if file:
+            fs = FileSystemStorage()
+            filename = fs.save(file.name, file)
+            submission.file = filename
+
+        submission.save()
+        logger.info(f"Assignment {assignment_id} submitted successfully by student: {student}")
+        messages.success(request, 'Assignment submitted successfully!')
+        return redirect('students:assignments', course_offering_id=assignment.course_offering.id)
+
+    context = {
+        'assignment': assignment,
+        'submission': submission,
+        'has_submitted': has_submitted,
+    }
+    return render(request, 'submit_assignment.html', context)
+
+@login_required
+def upload_image(request):
+    if request.method == 'POST' and request.FILES.get('file'):
+        file = request.FILES['file']
+        fs = FileSystemStorage()
+        filename = fs.save(file.name, file)
+        logger.info(f"Image uploaded: {filename}")
+        return JsonResponse({'url': fs.url(filename)})
+    logger.error("Invalid request for image upload")
+    return JsonResponse({'error': 'Invalid request'}, status=400)
+
 
 @login_required
 def study_materials(request):

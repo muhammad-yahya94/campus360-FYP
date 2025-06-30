@@ -13,10 +13,12 @@ urlpatterns = [
 
     # ========== 3. Courses ==========
     path('my-courses/', views.my_courses, name='my_courses'),  # 3.1 My Courses
-    path('session-courses/<int:session_id>/', views.session_courses, name='session_courses'),  # 3.2 Session Courses
+
 
     # ========== 4. Assignments & Study Material ==========
-    path('assignments/', views.assignments, name='assignments'),  # 4.1 Assignments
+    path('assignments/<int:course_offering_id>/', views.assignments, name='assignments'),
+    path('submit_assignment/<int:assignment_id>/', views.submit_assignment, name='submit_assignment'),
+    path('upload_image/', views.upload_image, name='upload_image'),
     path('study-materials/', views.study_materials, name='study_materials'),  # 4.2 Study Materials
 
     # ========== 5. Notices & Results ==========

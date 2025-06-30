@@ -2219,22 +2219,30 @@ def search_course_offerings(request):
 
 
 @hod_or_professor_required
-def assignments(request):
-    if not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
-        return render(request, 'faculty_staff/assignments.html', {'error': 'Unauthorized access.'})
-    
+def assignments(request):    
     course_offering_id = request.GET.get('course_offering_id')
     if course_offering_id:
-        assignments = Assignment.objects.filter(
-            course_offering_id=course_offering_id,
-            course_offering__teacher=request.user.teacher_profile
-        ).select_related('course_offering').order_by('-created_at')
-        course_offering = get_object_or_404(CourseOffering, id=course_offering_id, teacher=request.user.teacher_profile)
+        try:
+            course_offering = get_object_or_404(CourseOffering, id=course_offering_id, teacher=request.user.teacher_profile)
+            assignments = Assignment.objects.filter(
+                course_offering_id=course_offering_id,
+                course_offering__teacher=request.user.teacher_profile
+            ).select_related('course_offering').order_by('-created_at')
+            logger.info(f"Retrieved assignments for course offering {course_offering_id}: {list(assignments)}")
+        except ValueError:
+            logger.error(f"Invalid course offering ID: {course_offering_id}")
+            return render(request, 'faculty_staff/assignments.html', {
+                'assignments': [],
+                'course_offering': None,
+                'course_offering_id': None,
+                'error': 'Invalid course offering ID.'
+            })
     else:
         assignments = Assignment.objects.filter(
             course_offering__teacher=request.user.teacher_profile
         ).select_related('course_offering').order_by('-created_at')
         course_offering = None
+        logger.info(f"Retrieved all assignments for teacher {request.user.teacher_profile}: {list(assignments)}")
     
     return render(request, 'faculty_staff/assignments.html', {
         'assignments': assignments,
@@ -2244,94 +2252,175 @@ def assignments(request):
 
 @hod_or_professor_required
 def create_assignment(request):
-    if request.method == "POST" and hasattr(request.user, 'teacher_profile') and request.user.teacher_profile.designation == 'head_of_department':
-        course_offering_id = request.POST.get('course_offering_id')
-        title = request.POST.get('title')
-        description = request.POST.get('description', '')
-        due_date = request.POST.get('due_date')
-        max_points = request.POST.get('max_points')
-        resource_file = request.FILES.get('resource_file')
+    if request.method != 'POST':
+        logger.error(f"Invalid request method for create_assignment: {request.method}")
+        return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
-        if not all([course_offering_id, title, due_date, max_points]):
-            return JsonResponse({'success': False, 'message': 'All required fields must be filled.'})
+    course_offering_id = request.POST.get('course_offering_id')
+    title = request.POST.get('title')
+    description = request.POST.get('description', '')
+    due_date = request.POST.get('due_date')
+    max_points = request.POST.get('max_points')
+    resource_file = request.FILES.get('resource_file')
 
-        try:
-            max_points = int(max_points)
-            if max_points < 1:
-                return JsonResponse({'success': False, 'message': 'Max points must be at least 1.'})
-        except ValueError:
-            return JsonResponse({'success': False, 'message': 'Invalid max points value.'})
+    # Validate inputs
+    if not course_offering_id:
+        logger.error("Missing course offering ID")
+        return JsonResponse({'success': False, 'message': 'Course offering ID is required.'})
+    
+    try:
+        course_offering_id = int(course_offering_id)
+    except ValueError:
+        logger.error(f"Invalid course offering ID: {course_offering_id}")
+        return JsonResponse({'success': False, 'message': 'Invalid course offering ID.'})
 
-        course_offering = get_object_or_404(
-            CourseOffering,
-            id=course_offering_id,
-            teacher=request.user.teacher_profile
-        )
-        Assignment.objects.create(
-            course_offering=course_offering,
-            teacher=request.user.teacher_profile,
-            title=title,
-            description=description,
-            due_date=due_date,
-            max_points=max_points,
-            resource_file=resource_file
-        )
-        return JsonResponse({'success': True, 'message': 'Assignment created successfully.'})
-    return JsonResponse({'success': False, 'message': 'Invalid request or unauthorized access.'})
+    try:
+        max_points = int(max_points)
+        if max_points < 1:
+            logger.error(f"Invalid max points: {max_points}")
+            return JsonResponse({'success': False, 'message': 'Max points must be at least 1.'})
+    except ValueError:
+        logger.error(f"Invalid max points value: {max_points}")
+        return JsonResponse({'success': False, 'message': 'Invalid max points value.'})
+
+    if not title:
+        logger.error("Missing title")
+        return JsonResponse({'success': False, 'message': 'Title is required.'})
+    if not due_date:
+        logger.error("Missing due date")
+        return JsonResponse({'success': False, 'message': 'Due date is required.'})
+
+    course_offering = get_object_or_404(
+        CourseOffering,
+        id=course_offering_id,
+        teacher=request.user.teacher_profile
+    )
+    assignment = Assignment.objects.create(
+        course_offering=course_offering,
+        teacher=request.user.teacher_profile,
+        title=title,
+        description=description,
+        due_date=due_date,
+        max_points=max_points,
+        resource_file=resource_file
+    )
+    logger.info(f"Assignment '{title}' created for course offering {course_offering_id} by {request.user}")
+    return JsonResponse({'success': True, 'message': 'Assignment created successfully.'})
+
+@hod_or_professor_required
+def edit_assignment(request):
+    if request.method != 'POST':
+        logger.error(f"Invalid request method for edit_assignment: {request.method}")
+        return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+
+    assignment_id = request.POST.get('assignment_id')
+    title = request.POST.get('title')
+    description = request.POST.get('description', '')
+    due_date = request.POST.get('due_date')
+    max_points = request.POST.get('max_points')
+    resource_file = request.FILES.get('resource_file')
+
+    # Validate inputs
+    if not assignment_id:
+        logger.error("Missing assignment ID")
+        return JsonResponse({'success': False, 'message': 'Assignment ID is required.'})
+
+    try:
+        assignment_id = int(assignment_id)
+    except ValueError:
+        logger.error(f"Invalid assignment ID: {assignment_id}")
+        return JsonResponse({'success': False, 'message': 'Invalid assignment ID.'})
+
+    try:
+        max_points = int(max_points)
+        if max_points < 1:
+            logger.error(f"Invalid max points: {max_points}")
+            return JsonResponse({'success': False, 'message': 'Max points must be at least 1.'})
+    except ValueError:
+        logger.error(f"Invalid max points value: {max_points}")
+        return JsonResponse({'success': False, 'message': 'Invalid max points value.'})
+
+    if not title:
+        logger.error("Missing title")
+        return JsonResponse({'success': False, 'message': 'Title is required.'})
+    if not due_date:
+        logger.error("Missing due date")
+        return JsonResponse({'success': False, 'message': 'Due date is required.'})
+
+    assignment = get_object_or_404(
+        Assignment,
+        id=assignment_id,
+        course_offering__teacher=request.user.teacher_profile
+    )
+
+    # Update assignment fields
+    assignment.title = title
+    assignment.description = description
+    assignment.due_date = due_date
+    assignment.max_points = max_points
+    if resource_file:
+        # Delete old file if it exists
+        if assignment.resource_file and os.path.isfile(assignment.resource_file.path):
+            os.remove(assignment.resource_file.path)
+        assignment.resource_file = resource_file
+    assignment.save()
+    logger.info(f"Assignment '{title}' (ID: {assignment_id}) updated by {request.user}")
+    return JsonResponse({'success': True, 'message': 'Assignment updated successfully.'})
 
 @hod_or_professor_required
 def delete_assignment(request):
-    if request.method == "POST" and hasattr(request.user, 'teacher_profile') and request.user.teacher_profile.designation == 'head_of_department':
-        assignment_id = request.POST.get('assignment_id')
-        if assignment_id:
-            assignment = get_object_or_404(
-                Assignment,
-                id=assignment_id,
-                course_offering__teacher=request.user.teacher_profile
-            )
-            if assignment.resource_file and os.path.isfile(assignment.resource_file.path):
-                os.remove(assignment.resource_file.path)
-            assignment.delete()
-            return JsonResponse({'success': True, 'message': 'Assignment deleted successfully.'})
-        return JsonResponse({'success': False, 'message': 'Assignment ID is required.'})
-    return JsonResponse({'success': False, 'message': 'Invalid request or unauthorized access.'})
-
-
-
-def assignment_submissions(request, assignment_id):
-    if request.user.teacher_profile.designation == 'head_of_department':
+    assignment_id = request.POST.get('assignment_id')
+    if assignment_id:
         assignment = get_object_or_404(
             Assignment,
             id=assignment_id,
             course_offering__teacher=request.user.teacher_profile
         )
-        submissions = AssignmentSubmission.objects.filter(assignment=assignment).order_by('-submitted_at')
-        return render(request, 'faculty_staff/assignment_submissions.html', {'assignment': assignment, 'submissions': submissions})
-    return JsonResponse({'success': False, 'message': 'Unauthorized access.'})
+        if assignment.resource_file and os.path.isfile(assignment.resource_file.path):
+            os.remove(assignment.resource_file.path)
+        assignment.delete()
+        logger.info(f"Assignment ID {assignment_id} deleted by {request.user}")
+        return JsonResponse({'success': True, 'message': 'Assignment deleted successfully.'})
+    logger.error("Missing assignment ID for deletion")
+    return JsonResponse({'success': False, 'message': 'Assignment ID is required.'})
 
+@hod_or_professor_required
+def assignment_submissions(request, assignment_id):
+    assignment = get_object_or_404(
+        Assignment,
+        id=assignment_id,
+        course_offering__teacher=request.user.teacher_profile
+    )
+    submissions = AssignmentSubmission.objects.filter(assignment=assignment).order_by('-submitted_at')
+    logger.info(f"Retrieved submissions for assignment ID {assignment_id}: {list(submissions)}")
+    return render(request, 'faculty_staff/assignment_submissions.html', {'assignment': assignment, 'submissions': submissions})
 
 @hod_or_professor_required
 def grade_submission(request):
-    if request.method == "POST" and request.user.teacher_profile.designation == 'head_of_department':
-        submission_id = request.POST.get('submission_id')
-        marks_obtained = request.POST.get('marks_obtained')
-        feedback = request.POST.get('feedback')
+    submission_id = request.POST.get('submission_id')
+    marks_obtained = request.POST.get('marks_obtained')
+    feedback = request.POST.get('feedback')
 
-        if not submission_id or marks_obtained is None:
-            return JsonResponse({'success': False, 'message': 'Submission ID and marks are required.'})
+    if not submission_id or marks_obtained is None:
+        logger.error(f"Missing submission ID or marks: submission_id={submission_id}, marks_obtained={marks_obtained}")
+        return JsonResponse({'success': False, 'message': 'Submission ID and marks are required.'})
 
-        submission = get_object_or_404(
-            AssignmentSubmission,
-            id=submission_id,
-            assignment__course_offering__teacher=request.user.teacher_profile
-        )
+    submission = get_object_or_404(
+        AssignmentSubmission,
+        id=submission_id,
+        assignment__course_offering__teacher=request.user.teacher_profile
+    )
+    try:
         submission.marks_obtained = int(marks_obtained)
-        submission.feedback = feedback
-        submission.graded_by = request.user.teacher_profile
-        submission.graded_at = timezone.now()
-        submission.save()
-        return JsonResponse({'success': True, 'message': 'Submission graded successfully.'})
-    return JsonResponse({'success': False, 'message': 'Invalid request.'})
+    except ValueError:
+        logger.error(f"Invalid marks_obtained value: {marks_obtained}")
+        return JsonResponse({'success': False, 'message': 'Invalid marks value.'})
+    submission.feedback = feedback
+    submission.graded_by = request.user.teacher_profile
+    submission.graded_at = timezone.now()
+    submission.save()
+    logger.info(f"Submission ID {submission_id} graded by {request.user}")
+    return JsonResponse({'success': True, 'message': 'Submission graded successfully.'})
 
 
 def notices(request):
@@ -3203,7 +3292,7 @@ def student_performance(request, course_offering_id, student_id):
     context = {
         'course_offering': course_offering,
         'student': student,
-        'attendance_total': attendance_total,
+        'attendance_total': attendance_total,    
         'attendance_present': attendance_present,
         'attendance_absent': attendance_absent,
         'attendance_leave': attendance_leave,

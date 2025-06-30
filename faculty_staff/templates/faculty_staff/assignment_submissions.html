@@ -1,64 +1,98 @@
 {% extends 'faculty_staff/base_dashboard.html' %}
 
-{% block title %}Assignment Submissions{% endblock %}
+{% block title %}Assignment Submissions - {{ assignment.title }}{% endblock %}
 
 {% block content %}
 <style>
-    .card {
-        border-radius: 10px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    }
-    .table th {
-        background-color: #e9ecef;
-        color: #343a40;
-    }
-    .table-hover tbody tr:hover {
-        background-color: #f8f9fa;
-    }
-    .error {
-        color: red;
-    }
+ p > img {
+    width: 200px;
+    height: auto;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+p > img:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
 </style>
-
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Submissions for {{ assignment.title }}</h2>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Make images clickable to open in new tab
+    document.querySelectorAll('.ql-editor img').forEach(img => {
+        img.style.cursor = 'pointer';
+        img.addEventListener('click', function() {
+            window.open(this.src, '_blank');
+        });
+    });
+});
+</script>
+<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- Header -->
+    <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-xl mb-6">
+        <div class="hero-content text-center py-8">
+            <h2 class="text-2xl sm:text-3xl font-semibold">Submissions for {{ assignment.title }}</h2>
+        </div>
     </div>
 
-    <div class="card">
+    <!-- Submissions Table -->
+    <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
+            <div class="overflow-x-auto">
+                <table class="table table-zebra">
                     <thead>
                         <tr>
-                            <th>Student</th>
-                            <th>Submitted At</th>
-                            <th>Marks Obtained</th>
-                            <th>Feedback</th>
-                            <th>Graded By</th>
-                            <th>Graded At</th>
-                            <th>Actions</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-base-content/70 uppercase tracking-wider">Student</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-base-content/70 uppercase tracking-wider">Content</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-base-content/70 uppercase tracking-wider">Submitted At</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-base-content/70 uppercase tracking-wider">Marks Obtained</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-base-content/70 uppercase tracking-wider">Feedback</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-base-content/70 uppercase tracking-wider">Graded By</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-base-content/70 uppercase tracking-wider">Graded At</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-base-content/70 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for submission in submissions %}
-                        <tr>
-                            <td>{{ submission.student }}</td>
-                            <td>{{ submission.submitted_at|date:'Y-m-d H:i' }}</td>
-                            <td>{{ submission.marks_obtained|default:"Not graded" }}</td>
-                            <td>{{ submission.feedback|default:"Not provided" }}</td>
-                            <td>{{ submission.graded_by.user.get_full_name|default:"Not graded" }}</td>
-                            <td>{{ submission.graded_at|date:'Y-m-d H:i'|default:"Not graded" }}</td>
-                            <td>
-                                <a href="{{ submission.file.url }}" class="btn btn-info btn-sm" target="_blank">View</a>
+                        <tr class="hover:bg-base-200/50">
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-base-content">{{ submission.student }}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-base-content">
+                                {% if submission.content %}
+                                <label for="content-modal-{{ submission.id }}" class="btn btn-sm btn-outline">
+                                    <i class="fas fa-eye"></i> View Content
+                                </label>
+                                {% else %}
+                                <span class="text-base-content/50">No written content</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-base-content">{{ submission.submitted_at|date:"Y-m-d H:i" }}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-base-content">{{ submission.marks_obtained|default:"Not graded" }}</td>
+                            <td class="px-4 py-4 text-sm text-base-content">{{ submission.feedback|default:"Not provided" }}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-base-content">{{ submission.graded_by.user.get_full_name|default:"Not graded" }}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-base-content">{{ submission.graded_at|date:"Y-m-d H:i"|default:"Not graded" }}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-base-content space-x-2">
+                                {% if submission.file %}
+                                <a href="{{ submission.file.url }}" class="btn btn-sm btn-info" target="_blank">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                                {% else %}
+                                <span class="text-base-content/50">No file submitted</span>
+                                {% endif %}
                                 {% if not submission.marks_obtained %}
-                                <button class="btn btn-warning btn-sm grade-submission" data-submission-id="{{ submission.id }}">Grade</button>
+                                <button class="btn btn-sm btn-warning open-modal" data-submission-id="{{ submission.id }}">
+                                    <i class="fas fa-pen"></i> Grade
+                                </button>
                                 {% endif %}
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="7" class="text-center">No submissions found.</td>
+                            <td colspan="8" class="px-4 py-8 text-center text-sm text-base-content/70">
+                                <div class="text-center">
+                                    <i class="fas fa-tasks text-6xl text-base-content/20 mb-4"></i>
+                                    <h3 class="text-xl font-semibold text-base-content/70 mb-2">No Submissions Found</h3>
+                                    <p class="text-base-content/50">No students have submitted this assignment yet.</p>
+                                </div>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -66,44 +100,146 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal for Grading -->
+    <input type="checkbox" id="grade-modal" class="modal-toggle" />
+    <div class="modal" role="dialog">
+        <div class="modal-box w-11/12 max-w-md">
+            <h3 class="text-lg font-bold text-base-content mb-4">Grade Submission</h3>
+            <form id="gradeForm" method="POST" action="{% url 'faculty_staff:grade_submission' %}" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="submission_id" id="submissionId">
+                <div class="form-control">
+                    <label for="marks" class="label">
+                        <span class="label-text">Marks Obtained (0-{{ assignment.max_points }})</span>
+                    </label>
+                    <input type="number" id="marks" name="marks_obtained" min="0" max="{{ assignment.max_points }}" required class="input input-bordered">
+                </div>
+                <div class="form-control">
+                    <label for="feedback" class="label">
+                        <span class="label-text">Feedback (Optional)</span>
+                    </label>
+                    <textarea id="feedback" name="feedback" rows="4" class="textarea textarea-bordered"></textarea>
+                </div>
+                <div class="modal-action">
+                    <label for="grade-modal" class="btn btn-ghost">Cancel</label>
+                    <button type="submit" class="btn btn-primary">Submit Grade</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
+<!-- Content Modal -->
+{% for submission in submissions %}
+{% if submission.content %}
+<input type="checkbox" id="content-modal-{{ submission.id }}" class="modal-toggle" />
+<div class="modal" role="dialog">
+    <div class="modal-box w-11/12 max-w-4xl max-h-[90vh] flex flex-col">
+        <h3 class="text-lg font-bold text-base-content mb-4">Submission Content</h3>
+        <div class="flex-1 overflow-y-auto prose max-w-none border rounded-lg p-4 bg-base-100">
+            <div class="ql-editor">
+                {{ submission.content|safe }}
+            </div>
+        </div>
+        <div class="modal-action mt-4">
+            <label for="content-modal-{{ submission.id }}" class="btn">Close</label>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- Add Quill styles -->
+<style>
+.ql-editor {
+    min-height: 200px;
+    font-size: 16px;
+    line-height: 1.6;
+}
+.ql-editor h1, .ql-editor h2, .ql-editor h3, .ql-editor h4, .ql-editor h5, .ql-editor h6 {
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+    font-weight: bold;
+}
+.ql-editor p {
+    margin-bottom: 1em;
+}
+.ql-editor img {
+    max-width: 100%;
+    height: auto;
+    margin: 1em 0;
+    border-radius: 4px;
+}
+.ql-editor ul, .ql-editor ol {
+    padding-left: 1.5em;
+    margin-bottom: 1em;
+}
+.ql-editor a {
+    color: #3b82f6;
+    text-decoration: underline;
+}
+.ql-editor a:hover {
+    text-decoration: none;
+}
+</style>
 
 <script>
-$(document).ready(function() {
-    // Handle grade submission with AJAX
-    $('.grade-submission').on('click', function() {
-        let submissionId = $(this).data('submission-id');
-        let marks = prompt("Enter marks obtained (0-100):");
-        let feedback = prompt("Enter feedback (optional):");
+document.addEventListener('DOMContentLoaded', function () {
+    const modal = document.getElementById('grade-modal');
+    const openModalButtons = document.querySelectorAll('.open-modal');
+    const closeModalButtons = document.querySelectorAll('.modal-action .btn-ghost');
+    const gradeForm = document.getElementById('gradeForm');
+    const submissionIdInput = document.getElementById('submissionId');
 
-        if (marks !== null && !isNaN(marks) && marks >= 0 && marks <= 100) {
-            $.ajax({
-                url: "{% url 'faculty_staff:grade_submission' %}",
-                type: 'POST',
-                data: {
-                    submission_id: submissionId,
-                    marks_obtained: marks,
-                    feedback: feedback,
-                    csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
-                },
-                success: function(response) {
-                    if (response.success) {
-                        alert(response.message);
-                        location.reload();
-                    } else {
-                        alert('Error: ' + response.message);
-                    }
-                },
-                error: function(xhr, status, error) {
-                    alert('An error occurred: ' + error);
-                }
-            });
-        } else {
-            alert('Please enter a valid mark between 0 and 100.');
+    // Open modal and set submission ID
+    openModalButtons.forEach(button => {
+        button.addEventListener('click', function () {
+            const submissionId = this.getAttribute('data-submission-id');
+            submissionIdInput.value = submissionId;
+            modal.checked = true;
+        });
+    });
+
+    // Close modal
+    closeModalButtons.forEach(button => {
+        button.addEventListener('click', function () {
+            modal.checked = false;
+            gradeForm.reset();
+        });
+    });
+
+    // Close modal when clicking outside
+    modal.addEventListener('click', function (e) {
+        if (e.target === modal) {
+            modal.checked = false;
+            gradeForm.reset();
         }
+    });
+
+    // Handle form submission with AJAX
+    gradeForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const formData = new FormData(gradeForm);
+        fetch(gradeForm.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('An error occurred: ' + error);
+        });
     });
 });
 </script>

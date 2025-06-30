@@ -67,6 +67,7 @@ urlpatterns = [
     # ========== 10. Assignments ==========
     path('assignments/', views.assignments, name='assignments'),
     path('create-assignment/', views.create_assignment, name='create_assignment'),
+    path('edit-assignment/', views.edit_assignment, name='edit_assignment'),
     path('delete-assignment/', views.delete_assignment, name='delete_assignment'),
     path('assignment-submissions/<int:assignment_id>/', views.assignment_submissions, name='assignment_submissions'),
     path('grade-submission/', views.grade_submission, name='grade_submission'),

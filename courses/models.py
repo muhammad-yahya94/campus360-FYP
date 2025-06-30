@@ -181,6 +181,7 @@ class Assignment(models.Model):
 
     class Meta:
         verbose_name_plural = 'assignments'
+        ordering = ['-created_at']
 
 
 
@@ -190,7 +191,8 @@ class Assignment(models.Model):
 class AssignmentSubmission(models.Model):
     assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name='submissions', help_text="The assignment this submission is for.")
     student = models.ForeignKey('students.Student', on_delete=models.CASCADE, related_name='submissions', help_text="The student who submitted this assignment.")
-    file = models.FileField(upload_to='submissions/', help_text="The file submitted by the student.")
+    content = models.TextField(blank=True, help_text="Rich text content of the submission.")
+    file = models.FileField(upload_to='submissions/', blank=True, null=True, help_text="The file submitted by the student.")
     submitted_at = models.DateTimeField(auto_now_add=True, help_text="The date and time when the submission was made.")
     marks_obtained = models.PositiveIntegerField(null=True, blank=True, help_text="Marks obtained by the student for this submission.")
     feedback = models.TextField(blank=True, help_text="Feedback from the teacher on this submission.")

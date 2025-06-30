@@ -1,400 +1,135 @@
 from django.contrib import admin
-from django import forms
-from django.forms import ModelChoiceField
-from .models import (
-    Course,
-    CourseOffering,
-    StudyMaterial,
-    Assignment,
-    AssignmentSubmission,
-    Notice,
-    ExamResult,
-    Attendance,
-)
-from academics.models import Program, Department, Semester
-from admissions.models import AcademicSession
-from faculty_staff.models import Teacher
-from students.models import Student
-from django.contrib.admin.views.autocomplete import AutocompleteJsonView
-from django.urls import path
-from django.db.models import Q
+from .models import Course, CourseOffering, Venue, TimetableSlot, StudyMaterial, Assignment, AssignmentSubmission, Notice, ExamResult, Attendance, Quiz, Question, Option, QuizSubmission
 
-# ===== Custom Forms =====
+# Inline for Options in Question
+class OptionInline(admin.TabularInline):
+    model = Option
+    extra = 4  # Allows adding up to 4 options by default
+    fields = ('text', 'is_correct')
 
-class CourseOfferingAdminForm(forms.ModelForm):
-    class Meta:
-        model = CourseOffering
-        fields = '__all__'
+# Inline for Questions in Quiz
+class QuestionInline(admin.TabularInline):
+    model = Question
+    extra = 2  # Allows adding up to 2 questions by default
+    fields = ('text', 'marks')
+    inlines = [OptionInline]
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for field in ['course', 'teacher', 'department', 'program', 'semester', 'academic_session']:
-            self.fields[field].widget.can_add_related = False
-
-class StudyMaterialAdminForm(forms.ModelForm):
-    class Meta:
-        model = StudyMaterial
-        fields = '__all__'
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for field in ['course_offering', 'teacher']:
-            self.fields[field].widget.can_add_related = False
-
-class AssignmentAdminForm(forms.ModelForm):
-    class Meta:
-        model = Assignment
-        fields = '__all__'
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Lazy-load Teacher queryset to avoid model loading error
-        self.fields['teacher'] = ModelChoiceField(
-            queryset=Teacher.objects.all(),
-            required=True,
-            widget=self.fields['teacher'].widget
-        )
-        self.fields['course_offering'].widget.can_add_related = False
-        self.fields['teacher'].widget.can_add_related = False
-
-class AssignmentSubmissionAdminForm(forms.ModelForm):
-    class Meta:
-        model = AssignmentSubmission
-        fields = '__all__'
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for field in ['assignment', 'student', 'graded_by']:
-            self.fields[field].widget.can_add_related = False
-
-class NoticeAdminForm(forms.ModelForm):
-    class Meta:
-        model = Notice
-        fields = '__all__'
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for field in ['created_by']:
-            self.fields[field].widget.can_add_related = False
-
-class ExamResultAdminForm(forms.ModelForm):
-    class Meta:
-        model = ExamResult
-        fields = '__all__'
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for field in ['course_offering', 'student', 'graded_by']:
-            self.fields[field].widget.can_add_related = False
-
-class AttendanceAdminForm(forms.ModelForm):
-    class Meta:
-        model = Attendance
-        fields = '__all__'
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for field in ['student', 'course_offering', 'recorded_by']:
-            self.fields[field].widget.can_add_related = False
-
-# ===== Custom Autocomplete Views =====
-
-class CourseAutocompleteView(AutocompleteJsonView):
-    def get_queryset(self):
-        qs = Course.objects.all()
-        if self.q:
-            qs = qs.filter(Q(code__icontains=self.q) | Q(name__icontains=self.q))
-        return qs.distinct()[:20]
-
-class TeacherAutocompleteView(AutocompleteJsonView):
-    def get_queryset(self):
-        qs = Teacher.objects.all()
-        if self.q:
-            qs = qs.filter(Q(user__first_name__icontains=self.q) | Q(user__last_name__icontains=self.q))
-        return qs.distinct()[:20]
-
-class DepartmentAutocompleteView(AutocompleteJsonView):
-    def get_queryset(self):
-        qs = Department.objects.all()
-        if self.q:
-            qs = qs.filter(name__icontains=self.q)
-        return qs.distinct()[:20]
-
-class ProgramAutocompleteView(AutocompleteJsonView):
-    def get_queryset(self):
-        qs = Program.objects.all()
-        if self.q:
-            qs = qs.filter(name__icontains=self.q)
-        return qs.distinct()[:20]
-
-class SemesterAutocompleteView(AutocompleteJsonView):
-    def get_queryset(self):
-        qs = Semester.objects.all()
-        if self.q:
-            qs = qs.filter(Q(name__icontains=self.q) | Q(number__icontains=self.q))
-        return qs.distinct()[:20]
-
-class AcademicSessionAutocompleteView(AutocompleteJsonView):
-    def get_queryset(self):
-        qs = AcademicSession.objects.all()
-        if self.q:
-            qs = qs.filter(name__icontains=self.q)
-        return qs.distinct()[:20]
-
-class CourseOfferingAutocompleteView(AutocompleteJsonView):
-    def get_queryset(self):
-        qs = CourseOffering.objects.all()
-        if self.q:
-            qs = qs.filter(Q(course__code__icontains=self.q) | Q(course__name__icontains=self.q) | Q(semester__name__icontains=self.q))
-        return qs.distinct()[:20]
-
-class AssignmentAutocompleteView(AutocompleteJsonView):
-    def get_queryset(self):
-        qs = Assignment.objects.all()
-        if self.q:
-            qs = qs.filter(Q(title__icontains=self.q) | Q(course_offering__course__name__icontains=self.q))
-        return qs.distinct()[:20]
-
-class StudentAutocompleteView(AutocompleteJsonView):
-    def get_queryset(self):
-        qs = Student.objects.all()
-        if self.q:
-            qs = qs.filter(applicant__full_name__icontains=self.q)
-        return qs.distinct()[:20]
-
-# ===== Admin Classes =====
-
+# Admin for Course
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
-    list_display = ('code', 'name', 'credits', 'is_active')
+    list_display = ('code', 'name', 'credits', 'lab_work', 'is_active')
     list_filter = ('is_active',)
-    search_fields = ('code', 'name', 'description')
-    ordering = ('code',)
+    search_fields = ('code', 'name')
     filter_horizontal = ('prerequisites',)
-    
-    fieldsets = (
-        ('Basic Information', {
-            'fields': ('code', 'name', 'credits', 'is_active')
-        }),
-        ('Course Details', {
-            'fields': ('description', 'prerequisites')
-        }),
-    )
 
+# Admin for CourseOffering
 @admin.register(CourseOffering)
 class CourseOfferingAdmin(admin.ModelAdmin):
-    form = CourseOfferingAdminForm
-    list_display = ('course', 'semester', 'teacher', 'offering_type', 'is_active')
-    list_filter = ('is_active', 'semester__program', 'offering_type', 'department')
-    search_fields = ('course__code', 'course__name', 'teacher__user__first_name', 'semester__name')
-    ordering = ('semester__program', 'semester__number', 'course__code')
-    autocomplete_fields = ('course', 'teacher', 'department', 'program', 'semester', 'academic_session')
-    list_editable = ('is_active',)
-    
-    fieldsets = (
-        ('Course Information', {
-            'fields': ('course', 'teacher', 'offering_type')
-        }),
-        ('Program & Department', {
-            'fields': ('program', 'department')
-        }),
-        ('Semester & Session', {
-            'fields': ('semester', 'academic_session')
-        }),
-        ('Enrollment Settings', {
-            'fields': ('current_enrollment', 'is_active', 'shift')
-        }),
-    )
-    
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related(
-            'course', 'teacher', 'department', 'program', 'semester', 'academic_session'
-        )
+    list_display = ('course', 'teacher', 'academic_session', 'semester', 'shift', 'offering_type', 'is_active')
+    list_filter = ('is_active', 'shift', 'offering_type', 'academic_session', 'semester')
+    search_fields = ('course__code', 'course__name', 'teacher__user__first_name', 'teacher__user__last_name')
+    raw_id_fields = ('course', 'teacher', 'department', 'program')
 
-    def get_urls(self):
-        urls = super().get_urls()
-        urls += [
-            path('course-autocomplete/', self.admin_site.admin_view(CourseAutocompleteView.as_view()), name='course_autocomplete'),
-            path('teacher-autocomplete/', self.admin_site.admin_view(TeacherAutocompleteView.as_view()), name='teacher_autocomplete'),
-            path('department-autocomplete/', self.admin_site.admin_view(DepartmentAutocompleteView.as_view()), name='department_autocomplete'),
-            path('program-autocomplete/', self.admin_site.admin_view(ProgramAutocompleteView.as_view()), name='program_autocomplete'),
-            path('semester-autocomplete/', self.admin_site.admin_view(SemesterAutocompleteView.as_view()), name='semester_autocomplete'),
-            path('academicsession-autocomplete/', self.admin_site.admin_view(AcademicSessionAutocompleteView.as_view()), name='academicsession_autocomplete'),
-        ]
-        return urls
+# Admin for Venue
+@admin.register(Venue)
+class VenueAdmin(admin.ModelAdmin):
+    list_display = ('name', 'department', 'capacity', 'is_active')
+    list_filter = ('is_active', 'department')
+    search_fields = ('name', 'department__name')
 
+# Admin for TimetableSlot
+@admin.register(TimetableSlot)
+class TimetableSlotAdmin(admin.ModelAdmin):
+    list_display = ('course_offering', 'day', 'start_time', 'end_time', 'venue')
+    list_filter = ('day', 'course_offering__academic_session', 'course_offering__semester')
+    search_fields = ('course_offering__course__code', 'course_offering__course__name', 'venue__name')
+    raw_id_fields = ('course_offering', 'venue')
+
+# Admin for StudyMaterial
 @admin.register(StudyMaterial)
 class StudyMaterialAdmin(admin.ModelAdmin):
-    form = StudyMaterialAdminForm
-    list_display = ('title', 'topic', 'course_offering', 'teacher', 'created_at', 'updated_at')
-    list_filter = ('course_offering__semester__program', 'teacher')
-    search_fields = ('title', 'topic', 'description', 'course_offering__course__name', 'teacher__user__first_name')
-    autocomplete_fields = ('course_offering', 'teacher')
-    readonly_fields = ('created_at', 'updated_at')
-    
-    fieldsets = (
-        ('Material Information', {
-            'fields': ('course_offering', 'teacher', 'topic', 'title', 'description', 'useful_links', 'video_link', 'image')
-        }),
-        ('Timestamps', {
-            'fields': ('created_at', 'updated_at')
-        }),
-    )
-    
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related('course_offering', 'teacher')
+    list_display = ('title', 'course_offering', 'teacher', 'topic', 'created_at')
+    list_filter = ('course_offering__academic_session', 'course_offering__semester', 'created_at')
+    search_fields = ('title', 'topic', 'course_offering__course__name')
+    date_hierarchy = 'created_at'
+    raw_id_fields = ('course_offering', 'teacher')
 
-    def get_urls(self):
-        urls = super().get_urls()
-        urls += [
-            path('courseoffering-autocomplete/', self.admin_site.admin_view(CourseOfferingAutocompleteView.as_view()), name='courseoffering_autocomplete'),
-            path('teacher-autocomplete/', self.admin_site.admin_view(TeacherAutocompleteView.as_view()), name='teacher_autocomplete'),
-        ]
-        return urls
-
+# Admin for Assignment
 @admin.register(Assignment)
 class AssignmentAdmin(admin.ModelAdmin):
-    form = AssignmentAdminForm
-    list_display = ('title', 'course_offering', 'teacher', 'due_date', 'max_points', 'created_at', 'updated_at')
-    list_filter = ('course_offering__teacher', 'teacher')
-    search_fields = ('title', 'description', 'course_offering__course__name', 'teacher__user__first_name')
-    autocomplete_fields = ('course_offering', 'teacher')
-    readonly_fields = ('created_at', 'updated_at')
-    
-    fieldsets = (
-        ('Assignment Information', {
-            'fields': ('course_offering', 'teacher', 'title', 'description', 'due_date', 'max_points', 'resource_file')
-        }),
-        ('Timestamps', {
-            'fields': ('created_at', 'updated_at')
-        }),
-    )
-    
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related('course_offering', 'teacher')
+    list_display = ('title', 'course_offering', 'teacher', 'due_date', 'max_points', 'created_at')
+    list_filter = ('course_offering__academic_session', 'course_offering__semester', 'due_date')
+    search_fields = ('title', 'course_offering__course__name')
+    date_hierarchy = 'created_at'
+    raw_id_fields = ('course_offering', 'teacher')
 
-    def get_urls(self):
-        urls = super().get_urls()
-        urls += [
-            path('courseoffering-autocomplete/', self.admin_site.admin_view(CourseOfferingAutocompleteView.as_view()), name='courseoffering_autocomplete'),
-            path('teacher-autocomplete/', self.admin_site.admin_view(TeacherAutocompleteView.as_view()), name='teacher_autocomplete'),
-        ]
-        return urls
-
+# Admin for AssignmentSubmission
 @admin.register(AssignmentSubmission)
 class AssignmentSubmissionAdmin(admin.ModelAdmin):
-    form = AssignmentSubmissionAdminForm
-    list_display = ('assignment', 'student', 'submitted_at', 'marks_obtained', 'graded_by', 'graded_at')
-    list_filter = ('assignment__course_offering__semester__program', 'student', 'graded_by')
-    search_fields = ('student__applicant__full_name', 'assignment__title', 'graded_by__user__first_name')
-    autocomplete_fields = ('assignment', 'student', 'graded_by')
-    readonly_fields = ('submitted_at', 'graded_at')
-    
-    fieldsets = (
-        ('Submission Details', {
-            'fields': ('assignment', 'student', 'file', 'submitted_at')
-        }),
-        ('Grading Information', {
-            'fields': ('marks_obtained', 'feedback', 'graded_by', 'graded_at')
-        }),
-    )
-    
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related('assignment', 'student', 'graded_by')
+    list_display = ('assignment', 'student', 'submitted_at', 'marks_obtained', 'graded_by')
+    list_filter = ('assignment__course_offering__academic_session', 'assignment__course_offering__semester', 'submitted_at', 'graded_at')
+    search_fields = ('student__applicant__full_name', 'assignment__title')
+    raw_id_fields = ('assignment', 'student', 'graded_by')
+    date_hierarchy = 'submitted_at'
 
-    def get_urls(self):
-        urls = super().get_urls()
-        urls += [
-            path('assignment-autocomplete/', self.admin_site.admin_view(AssignmentAutocompleteView.as_view()), name='assignment_autocomplete'),
-            path('student-autocomplete/', self.admin_site.admin_view(StudentAutocompleteView.as_view()), name='student_autocomplete'),
-            path('teacher-autocomplete/', self.admin_site.admin_view(TeacherAutocompleteView.as_view()), name='teacher_autocomplete'),
-        ]
-        return urls
-
+# Admin for Notice
 @admin.register(Notice)
 class NoticeAdmin(admin.ModelAdmin):
-    form = NoticeAdminForm
     list_display = ('title', 'created_by', 'created_at', 'is_active')
-    list_filter = ('is_active', 'created_by')
-    search_fields = ('title', 'content', 'created_by__user__first_name')
-    autocomplete_fields = ('created_by',)
-    readonly_fields = ('created_at',)
-    
-    fieldsets = (
-        ('Notice Information', {
-            'fields': ('title', 'content', 'is_active')
-        }),
-        ('Creation Details', {
-            'fields': ('created_by', 'created_at')
-        }),
-    )
-    
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related('created_by')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('title', 'content', 'created_by__user__first_name', 'created_by__user__last_name')
+    date_hierarchy = 'created_at'
+    raw_id_fields = ('created_by',)
 
-    def get_urls(self):
-        urls = super().get_urls()
-        urls += [
-            path('teacher-autocomplete/', self.admin_site.admin_view(TeacherAutocompleteView.as_view()), name='teacher_autocomplete'),
-        ]
-        return urls
-
+# Admin for ExamResult
 @admin.register(ExamResult)
 class ExamResultAdmin(admin.ModelAdmin):
-    form = ExamResultAdminForm
-    list_display = ('course_offering', 'student', 'exam_type', 'total_marks', 'marks_obtained', 'graded_by', 'graded_at')
-    list_filter = ('exam_type', 'course_offering__semester__program', 'student', 'graded_by')
-    search_fields = ('student__applicant__full_name', 'course_offering__course__name', 'graded_by__user__first_name')
-    autocomplete_fields = ('course_offering', 'student', 'graded_by')
-    readonly_fields = ('graded_at',)
-    
-    fieldsets = (
-        ('Result Information', {
-            'fields': ('course_offering', 'student', 'exam_type', 'total_marks', 'marks_obtained', 'remarks')
-        }),
-        ('Grading Details', {
-            'fields': ('graded_by', 'graded_at')
-        }),
-    )
-    
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related('course_offering', 'student', 'graded_by')
+    list_display = ('course_offering', 'student', 'exam_type', 'marks_obtained', 'total_marks', 'graded_by', 'graded_at')
+    list_filter = ('exam_type', 'course_offering__academic_session', 'course_offering__semester', 'graded_at')
+    search_fields = ('student__applicant__full_name', 'course_offering__course__name')
+    raw_id_fields = ('course_offering', 'student', 'graded_by')
+    date_hierarchy = 'graded_at'
 
-    def get_urls(self):
-        urls = super().get_urls()
-        urls += [
-            path('courseoffering-autocomplete/', self.admin_site.admin_view(CourseOfferingAutocompleteView.as_view()), name='courseoffering_autocomplete'),
-            path('student-autocomplete/', self.admin_site.admin_view(StudentAutocompleteView.as_view()), name='student_autocomplete'),
-            path('teacher-autocomplete/', self.admin_site.admin_view(TeacherAutocompleteView.as_view()), name='teacher_autocomplete'),
-        ]
-        return urls
-
+# Admin for Attendance
 @admin.register(Attendance)
 class AttendanceAdmin(admin.ModelAdmin):
-    form = AttendanceAdminForm
-    list_display = ('student', 'course_offering', 'date', 'status', 'shift', 'recorded_by', 'recorded_at')
-    list_filter = ('status', 'shift', 'course_offering__semester__program', 'recorded_by')
-    search_fields = ('student__applicant__full_name', 'course_offering__course__name', 'recorded_by__user__first_name')
-    autocomplete_fields = ('student', 'course_offering', 'recorded_by')
-    readonly_fields = ('recorded_at',)
-    
-    fieldsets = (
-        ('Attendance Information', {
-            'fields': ('student', 'course_offering', 'date', 'status', 'shift')
-        }),
-        ('Recording Details', {
-            'fields': ('recorded_by', 'recorded_at')
-        }),
-    )
-    
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related('student', 'course_offering', 'recorded_by')
+    list_display = ('student', 'course_offering', 'date', 'status', 'shift', 'recorded_at')
+    list_filter = ('status', 'course_offering__academic_session', 'course_offering__semester', 'date', 'shift')
+    search_fields = ('student__applicant__full_name', 'course_offering__course__name')
+    date_hierarchy = 'date'
+    raw_id_fields = ('student', 'course_offering', 'recorded_by')
 
-    def get_urls(self):
-        urls = super().get_urls()
-        urls += [
-            path('student-autocomplete/', self.admin_site.admin_view(StudentAutocompleteView.as_view()), name='student_autocomplete'),
-            path('courseoffering-autocomplete/', self.admin_site.admin_view(CourseOfferingAutocompleteView.as_view()), name='courseoffering_autocomplete'),
-            path('teacher-autocomplete/', self.admin_site.admin_view(TeacherAutocompleteView.as_view()), name='teacher_autocomplete'),
-        ]
-        return urls
+# Admin for Quiz
+@admin.register(Quiz)
+class QuizAdmin(admin.ModelAdmin):
+    list_display = ('title', 'course_offering', 'publish_flag', 'timer_seconds', 'created_at')
+    list_filter = ('publish_flag', 'course_offering__academic_session', 'course_offering__semester', 'created_at')
+    search_fields = ('title', 'course_offering__course__name')
+    date_hierarchy = 'created_at'
+    inlines = [QuestionInline]
+    raw_id_fields = ('course_offering',)
+
+# Admin for Question
+@admin.register(Question)
+class QuestionAdmin(admin.ModelAdmin):
+    list_display = ('quiz', 'text', 'marks', 'created_at')
+    list_filter = ('quiz__course_offering__academic_session', 'quiz__course_offering__semester', 'created_at')
+    search_fields = ('text', 'quiz__title')
+    date_hierarchy = 'created_at'
+    inlines = [OptionInline]
+
+# Admin for Option
+@admin.register(Option)
+class OptionAdmin(admin.ModelAdmin):
+    list_display = ('question', 'text', 'is_correct')
+    list_filter = ('is_correct', 'question__quiz__course_offering__academic_session')
+    search_fields = ('text', 'question__text')
+
+# Admin for QuizSubmission
+@admin.register(QuizSubmission)
+class QuizSubmissionAdmin(admin.ModelAdmin):
+    list_display = ('student', 'quiz', 'submitted_at', 'score')
+    list_filter = ('quiz__course_offering__academic_session', 'quiz__course_offering__semester', 'submitted_at')
+    search_fields = ('student__applicant__full_name', 'quiz__title')
+    date_hierarchy = 'submitted_at'
+    raw_id_fields = ('student', 'quiz')

@@ -31,20 +31,22 @@
         <h2 class="text-2xl font-semibold text-gray-900 mb-4">Courses for Semester {{ selected_semester_number }}</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {% for enrollment in enrollments %}
-            <div class="bg-gray-50 p-4 rounded-lg shadow hover:shadow-md transition-shadow">
-              <h3 class="text-lg font-medium text-gray-900">{{ enrollment.course_offering.course.code }} - {{ enrollment.course_offering.course.name }}</h3>
-              <p class="text-sm text-gray-600">Semester: {{ enrollment.course_offering.semester.name }}</p>
-              <p class="text-sm text-gray-600">Instructor: {{ enrollment.course_offering.teacher.user.get_full_name }}</p>
-              <p class="text-sm text-gray-600">Type: {{ enrollment.course_offering.get_offering_type_display }}</p>
-              <div class="mt-4 flex flex-wrap gap-2">
-                <a href="{% url 'students:study_materials' %}?course_offering_id={{ enrollment.course_offering.id }}"
-                   class="btn btn-secondary btn-sm text-sm">Course Content</a>
-                <a href="{% url 'students:assignments' %}?course_offering_id={{ enrollment.course_offering.id }}"
-                   class="btn btn-info btn-sm text-sm">Assignments</a>
-                <a href="{% url 'students:attendance' %}?course_offering_id={{ enrollment.course_offering.id }}"
-                   class="btn btn-warning btn-sm text-sm">Attendance</a>
-              </div>
+          <div class="bg-gray-50 p-4 rounded-lg shadow hover:shadow-md transition-shadow">
+            <h3 class="text-lg font-medium text-gray-900">{{ enrollment.course_offering.course.code }} - {{ enrollment.course_offering.course.name }}</h3>
+            <p class="text-sm text-gray-600">Semester: {{ enrollment.course_offering.semester.name }}</p>
+            <p class="text-sm text-gray-600">Instructor: {{ enrollment.course_offering.teacher.user.get_full_name }}</p>
+            <p class="text-sm text-gray-600">Type: {{ enrollment.course_offering.get_offering_type_display }}</p>
+            <div class="mt-4 flex flex-wrap gap-2">
+              <a href="{% url 'students:study_materials' %}?course_offering_id={{ enrollment.course_offering.id }}"
+                 class="inline-flex items-center px-3 py-1 bg-gray-500 text-white text-sm font-medium rounded-md hover:bg-gray-600">Course Content</a>
+              <a href="{% url 'students:assignments' enrollment.course_offering.id %}"
+                 class="inline-flex items-center px-3 py-1 bg-blue-500 text-white text-sm font-medium rounded-md hover:bg-blue-600">Assignments</a>
+              <a href="{% url 'students:attendance' %}?course_offering_id={{ enrollment.course_offering.id }}"
+                 class="inline-flex items-center px-3 py-1 bg-yellow-500 text-white text-sm font-medium rounded-md hover:bg-yellow-600">Attendance</a>
+              <a href="{% url 'students:solve_quiz' enrollment.course_offering.id %}"
+                 class="inline-flex items-center px-3 py-1 bg-indigo-500 text-white text-sm font-medium rounded-md hover:bg-indigo-600">Quizzes</a>
             </div>
+          </div>
           {% endfor %}
         </div>
       </div>

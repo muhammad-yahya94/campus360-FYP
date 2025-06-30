@@ -45,12 +45,7 @@
                         <a href="{% url 'students:timetable' %}" class="{% if request.resolver_match.url_name == 'timetable' %}active{% endif %} text-base">
                             <i class="fas fa-calendar-week text-lg w-6"></i> Timetable
                         </a>
-                    </li>
-                    <li>
-                        <a href="{% url 'students:assignments' %}" class="{% if request.resolver_match.url_name == 'assignments' %}active{% endif %} text-base">
-                            <i class="fas fa-tasks text-lg w-6"></i> Assignments
-                        </a>
-                    </li>
+                    </li>  
                     <li>
                         <a href="{% url 'students:study_materials' %}" class="{% if request.resolver_match.url_name == 'study_materials' %}active{% endif %} text-base">
                             <i class="fas fa-book-open text-lg w-6"></i> Study Materials
@@ -264,12 +259,6 @@
                             <i class="fas fa-calendar-week text-lg w-6"></i> Timetable
                         </a>
                     </li>      
-
-                        <li>
-                            <a href="{% url 'students:assignments' %}" class="{% if request.resolver_match.url_name == 'assignments' %}active{% endif %} text-lg py-3">
-                                <i class="fas fa-tasks text-lg w-6"></i> Assignments
-                            </a>
-                        </li>
                         <li>
                             <a href="{% url 'students:study_materials' %}" class="{% if request.resolver_match.url_name == 'study_materials' %}active{% endif %} text-lg py-3">
                                 <i class="fas fa-book-open text-lg w-6"></i> Study Materials

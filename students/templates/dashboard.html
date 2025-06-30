@@ -26,13 +26,13 @@
               <p class="text-sm text-gray-600">Type: {{ enrollment.course_offering.get_offering_type_display }}</p>
               <div class="mt-4 flex flex-wrap gap-2">
                 <a href="{% url 'students:study_materials' %}?course_offering_id={{ enrollment.course_offering.id }}"
-                   class="btn btn-secondary btn-sm text-sm">Course Content</a>
-                <a href="{% url 'students:assignments' %}?course_offering_id={{ enrollment.course_offering.id }}"
-                   class="btn btn-info btn-sm text-sm">Assignments</a>
+                   class="inline-flex items-center px-3 py-1 bg-gray-500 text-white text-sm font-medium rounded-md hover:bg-gray-600">Course Content</a>
+                <a href="{% url 'students:assignments' enrollment.course_offering.id %}"
+                   class="inline-flex items-center px-3 py-1 bg-blue-500 text-white text-sm font-medium rounded-md hover:bg-blue-600">Assignments</a>
                 <a href="{% url 'students:attendance' %}?course_offering_id={{ enrollment.course_offering.id }}"
-                   class="btn btn-warning btn-sm text-sm">Attendance</a>
+                   class="inline-flex items-center px-3 py-1 bg-yellow-500 text-white text-sm font-medium rounded-md hover:bg-yellow-600">Attendance</a>
                 <a href="{% url 'students:solve_quiz' enrollment.course_offering.id %}"
-                   class="btn btn-primary btn-sm text-sm">Quizzes</a>
+                   class="inline-flex items-center px-3 py-1 bg-indigo-500 text-white text-sm font-medium rounded-md hover:bg-indigo-600">Quizzes</a>
               </div>
             </div>
           {% endfor %}
@@ -40,7 +40,7 @@
       </div>
     </div>
   {% else %}
-    <div class="alert alert-info text-center">
+    <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 text-center" role="alert">
       <i class="fas fa-info-circle mr-2"></i> You have no enrolled courses for {{ active_semester.name|default:"the current semester" }}.
     </div>
   {% endif %}
@@ -49,9 +49,9 @@
   <div class="bg-white shadow-lg rounded-lg p-6">
     <h2 class="text-2xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <a href="#" class="btn btn-primary w-full">View Settings</a>
-      <a href="{% url 'students:my_courses' %}" class="btn btn-success w-full">My Courses</a>
-      <a href="{% url 'students:attendance_stats' %}" class="btn btn-accent w-full">Attendance Stats</a>
+      <a href="#" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700">View Settings</a>
+      <a href="{% url 'students:my_courses' %}" class="inline-flex items-center justify-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700">My Courses</a>
+      <a href="{% url 'students:attendance_stats' %}" class="inline-flex items-center justify-center px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700">Attendance Stats</a>
     </div>
   </div>
 </div>

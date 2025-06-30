@@ -357,51 +357,80 @@ def upload_image(request):
 
 
 @login_required
-def study_materials(request):
+def study_materials(request, course_offering_id):
+    logger.info(f"Study materials requested for course_offering_id: {course_offering_id} by user: {request.user}")
+    
     try:
+        logger.debug("Attempting to fetch student and course offering...")
         student = Student.objects.get(user=request.user)
+        course_offering = CourseOffering.objects.get(
+            id=course_offering_id,
+            enrollments__student_semester_enrollment__student=student,
+            is_active=True,
+            course__is_active=True
+        )
+        logger.info(f"Found course offering: {course_offering}")
     except Student.DoesNotExist:
-        messages.error(request, 'You are not authorized as a student.')
-        return redirect('students:login')
+        logger.error(f"Student not found for user: {request.user}")
+        messages.error(request, 'You are not authorized to view these materials or the course does not exist.')
+        return redirect('students:my_courses')
+    except CourseOffering.DoesNotExist:
+        logger.error(f"Course offering not found or access denied - ID: {course_offering_id}, User: {request.user}")
+        messages.error(request, 'You are not authorized to view these materials or the course does not exist.')
+        return redirect('students:my_courses')
+    except Exception as e:
+        logger.exception(f"Unexpected error in study_materials view: {str(e)}")
+        messages.error(request, 'An error occurred while loading study materials.')
+        return redirect('students:my_courses')
 
     # Get current date in PKT
     current_date = timezone.now().astimezone(pytz.timezone('Asia/Karachi')).date()
+    logger.debug(f"Current date in PKT: {current_date}")
 
-    # Get the active semester
-    active_semester = Semester.objects.filter(
-        is_active=True,
-        program=student.program,
-        start_time__lte=current_date,
-        end_time__gte=current_date
-    ).first()
-
-    # Initialize materials
-    materials = []
-
-    # Fetch study materials for the active semester's courses
-    if active_semester:
-        semester_enrollment = StudentSemesterEnrollment.objects.filter(
-            student=student,
-            semester=active_semester,
-            status='enrolled'
-        ).first()
-        if semester_enrollment:
-            materials = StudyMaterial.objects.filter(
-                course_offering__enrollments__student_semester_enrollment=semester_enrollment,
-                course_offering__is_active=True,
-                course_offering__course__is_active=True
-            ).select_related(
-                'course_offering__course',
-                'course_offering__semester',
-                'course_offering__teacher__user'
-            ).order_by('-uploaded_at')
-
-    context = {
-        'student': student,
-        'active_semester': active_semester,
-        'materials': materials,
-    }
-    return render(request, 'study_materials.html', context)
+    try:
+        # Get all materials for this course offering
+        logger.debug("Fetching study materials from database...")
+        materials = StudyMaterial.objects.filter(
+            course_offering=course_offering
+        ).select_related(
+            'course_offering__course',
+            'course_offering__semester',
+            'course_offering__teacher__user',
+            'teacher__user'
+        ).order_by('-created_at')
+        
+        logger.info(f"Found {materials.count()} study materials for course offering {course_offering_id}")
+        
+        # Pagination
+        paginator = Paginator(materials, 10)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+        
+        # Group materials by topic (for context compatibility)
+        materials_by_topic = {}
+        for material in materials:
+            if material.topic not in materials_by_topic:
+                materials_by_topic[material.topic] = []
+            materials_by_topic[material.topic].append(material)
+        
+        logger.debug(f"Grouped materials into {len(materials_by_topic)} topics")
+        
+        context = {
+            'student': student,
+            'course_offering': course_offering,
+            'materials': materials,
+            'page_obj': page_obj,
+            'materials_by_topic': materials_by_topic,
+            'topics': sorted(materials_by_topic.keys()) if materials_by_topic else []
+        }
+        
+        logger.debug("Rendering study materials template")
+        return render(request, 'study_materials.html', context)
+        
+    except Exception as e:
+        logger.exception(f"Error processing study materials: {str(e)}")
+        messages.error(request, 'An error occurred while processing study materials.')
+        return redirect('students:my_courses')
 
 @login_required
 def notices(request):

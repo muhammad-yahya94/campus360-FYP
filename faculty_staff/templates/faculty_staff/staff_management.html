@@ -3,57 +3,56 @@
 {% block title %}Staff Management{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto space-y-6 px-2 sm:px-4">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
     <!-- Header -->
-    <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-xl">
-        <div class="hero-content text-center py-6 sm:py-8">
-            <div>
+    <div class="hero bg-primary text-primary-content rounded-lg shadow-lg mb-6">
+        <div class="hero-content text-center py-6">
+            <div class="max-w-md">
                 <h1 class="text-3xl sm:text-4xl font-bold mb-2">Staff Management</h1>
-                <p class="text-base sm:text-lg opacity-90">Manage your department's staff members</p>
+                <p class="text-base sm:text-lg text-primary-content/90">Manage your department's staff members</p>
             </div>
         </div>
     </div>
 
     <!-- Search and Filter -->
     <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <div class="card bg-base-100 shadow-xl">
+        <div class="card bg-base-100 shadow-lg">
             <div class="card-body">
-                <h2 class="card-title text-xl sm:text-2xl mb-4">
-                    <i class="fas fa-search"></i>
+                <h2 class="card-title text-xl text-base-content mb-4">
+                    <i class="fas fa-search mr-2"></i>
                     Search & Filter
                 </h2>
                 <form method="get" class="space-y-4">
                     <div class="form-control">
                         <div class="input-group">
-                            <input type="text" name="search" placeholder="Search by name or email..." class="input input-bordered w-full" value="{{ request.GET.search }}">
-                            <button class="btn btn-square sm:btn-sm">
+                            <input type="text" name="search" placeholder="Search by name or email..." class="input input-bordered w-full text-base-content" value="{{ request.GET.search }}">
+                            <button class="btn btn-square btn-sm btn-primary">
                                 <i class="fas fa-search"></i>
                             </button>
                         </div>
                     </div>
                     <div class="form-control">
-                        <select name="status" class="select select-bordered w-full">
+                        <select name="status" class="select select-bordered w-full text-base-content">
                             <option value="">All Status</option>
                             <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
                             <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>
                         </select>
                     </div>
-                    <button type="submit" class="btn btn-primary w-full sm:w-auto">
-                        <i class="fas fa-filter"></i>
+                    <button type="submit" class="btn btn-sm btn-primary w-full sm:w-auto">
+                        <i class="fas fa-filter mr-2"></i>
                         Filter
                     </button>
                 </form>
             </div>
         </div>
-        <div class="card bg-base-100 shadow-xl">
+        <div class="card bg-base-100 shadow-lg">
             <div class="card-body">
-                <h2 class="card-title text-xl sm:text-2xl mb-4">
-                    <i class="fas fa-user-plus"></i>
+                <h2 class="card-title text-xl text-base-content mb-4">
+                    <i class="fas fa-user-plus mr-2"></i>
                     Quick Actions
                 </h2>
-                <!-- Trigger DaisyUI modal -->
-                <label for="addStaffModal" class="btn btn-primary w-full sm:w-auto justify-start">
-                    <i class="fas fa-user-plus"></i>
+                <label for="addStaffModal" class="btn btn-sm btn-primary w-full sm:w-auto justify-start">
+                    <i class="fas fa-user-plus mr-2"></i>
                     Add New Staff
                     <div class="badge badge-neutral ml-auto">New</div>
                 </label>
@@ -62,99 +61,149 @@
     </div>
 
     <!-- Staff Table -->
-    <div class="card bg-base-100 shadow-xl">
+    <div class="card bg-base-100 shadow-lg">
         <div class="card-body">
-            <h2 class="card-title text-xl sm:text-2xl mb-4">
-                <i class="fas fa-users"></i>
+            <h2 class="card-title text-xl text-base-content mb-4">
+                <i class="fas fa-users mr-2"></i>
                 Staff Members
             </h2>
-            <div class="overflow-x-auto">
-                <table class="table table-zebra w-full">
-                    <thead>
-                        <tr>
-                            <th class="text-sm sm:text-base">Sr</th>
-                            <th class="text-sm sm:text-base">Name</th>
-                            <th class="text-sm sm:text-base">Department</th>
-                            <th class="text-sm sm:text-base">Designation</th>
-                            <th class="text-sm sm:text-base">Email</th>
-                            <th class="text-sm sm:text-base">Status</th>
-                            <th class="text-sm sm:text-base">Employment Type</th>
-                            <th class="text-sm sm:text-base">Salary/Lecture</th>
-                            <th class="text-sm sm:text-base">Fix Salary</th>
-                            <th class="text-sm sm:text-base">Current Status</th>
-                            <th class="text-sm sm:text-base">Actions</th>
-                        </tr>
-                    </thead>
-<tbody>
+            {% if staff_members %}
+                <!-- Table for sm and above -->
+                <div class="overflow-x-auto hidden sm:block">
+                    <table class="table table-sm w-full">
+                        <thead class="bg-base-200">
+                            <tr>
+                                <th class="text-xs text-base-content/80">Sr</th>
+                                <th class="text-xs text-base-content/80">Name</th>
+                                <th class="text-xs text-base-content/80 hidden md:table-cell">Department</th>
+                                <th class="text-xs text-base-content/80 hidden md:table-cell">Designation</th>
+                                <th class="text-xs text-base-content/80">Email</th>
+                                <th class="text-xs text-base-content/80">Status</th>
+                                <th class="text-xs text-base-content/80 hidden lg:table-cell">Employment Type</th>
+                                <th class="text-xs text-base-content/80 hidden lg:table-cell">Salary/Lecture</th>
+                                <th class="text-xs text-base-content/80 hidden lg:table-cell">Fix Salary</th>
+                                <th class="text-xs text-base-content/80 hidden md:table-cell">Current Status</th>
+                                <th class="text-xs text-base-content/80">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for staff in staff_members %}
+                            {% with details=staff.details %}
+                            <tr class="hover:bg-base-200/50">
+                                <td class="text-xs text-base-content">{{ forloop.counter }}</td>
+                                <td class="text-xs text-base-content">{{ staff.user.get_full_name }}</td>
+                                <td class="text-xs text-base-content hidden md:table-cell">{{ staff.department.name }}</td>
+                                <td class="text-xs text-base-content hidden md:table-cell">{{ staff.get_designation_display }}</td>
+                                <td class="text-xs text-base-content truncate max-w-[150px]">{{ staff.user.email }}</td>
+                                <td class="text-xs text-base-content">
+                                    <span class="badge badge-xs {% if staff.is_active %}badge-success{% else %}badge-error{% endif %}">
+                                        {{ staff.is_active|yesno:"Active,Inactive" }}
+                                    </span>
+                                </td>
+                                <td class="text-xs text-base-content hidden lg:table-cell">{{ details.employment_type|default:"N/A" }}</td>
+                                <td class="text-xs text-base-content hidden lg:table-cell">{{ details.salary_per_lecture|default:"N/A" }}</td>
+                                <td class="text-xs text-base-content hidden lg:table-cell">{{ details.fixed_salary|default:"N/A" }}</td>
+                                <td class="text-xs text-base-content hidden md:table-cell">
+                                    <span class="{% if details.status == 'on_break' %}text-error{% elif details.status == 'on_lecture' %}text-success{% elif details.status == 'on_leave' %}text-warning{% elif details.status == 'available' %}text-info{% else %}text-base-content/50{% endif %}">
+                                        {{ details.status|default:"N/A" }}
+                                        {% if details.status == 'on_break' %} 🛑
+                                        {% elif details.status == 'on_lecture' %} 📢
+                                        {% elif details.status == 'on_leave' %} 🌴
+                                        {% elif details.status == 'available' %} ✅
+                                        {% else %} 🤷
+                                        {% endif %}
+                                    </span>
+                                </td>
+                                <td class="text-xs text-base-content">
+                                    <div class="flex gap-1">
+                                        <label for="editStaffModal{{ staff.id }}" class="btn btn-xs btn-outline btn-primary">
+                                            <i class="fas fa-edit"></i>
+                                        </label>
+                                        <label for="viewStaffModal{{ staff.id }}" class="btn btn-xs btn-outline btn-info">
+                                            <i class="fas fa-eye"></i>
+                                        </label>
+                                        <label for="deleteStaffModal{{ staff.id }}" class="btn btn-xs btn-outline btn-error">
+                                            <i class="fas fa-trash"></i>
+                                        </label>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endwith %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Cards for mobile -->
+                <div class="block sm:hidden space-y-4">
                     {% for staff in staff_members %}
                     {% with details=staff.details %}
-                    <tr>
-                        <td class="text-sm sm:text-base">{{ forloop.counter }}</td>
-                        <td class="text-sm sm:text-base">{{ staff.user.get_full_name }}</td>
-                        <td class="text-sm sm:text-base">{{ staff.department.name }}</td>
-                        <td class="text-sm sm:text-base">{{ staff.get_designation_display }}</td>
-                        <td class="text-sm sm:text-base">{{ staff.user.email }}</td>
-                        <td class="text-sm sm:text-base">
-                            <span class="badge {% if staff.is_active %}badge-success{% else %}badge-error{% endif %}">
-                                {{ staff.is_active|yesno:"Active,Inactive" }}
-                            </span>
-                        </td>
-                        <td class="text-sm sm:text-base">{{ details.employment_type|default:"N/A" }}</td>
-                        <td class="text-sm sm:text-base">{{ details.salary_per_lecture|default:"N/A" }}</td>
-                        <td class="text-sm sm:text-base">{{ details.fixed_salary|default:"N/A" }}</td>
-                        <td class="text-sm sm:text-base">
-                            <span class="{% if details.status == 'on_break' %}text-red-500{% elif details.status == 'on_lecture' %}text-green-500{% elif details.status == 'on_leave' %}text-orange-500{% elif details.status == 'available' %}text-blue-500{% else %}text-gray-500{% endif %}">
-                                {{ details.status|default:"N/A" }}
-                                {% if details.status == 'on_break' %} 🛑
-                                {% elif details.status == 'on_lecture' %} 📢
-                                {% elif details.status == 'on_leave' %} 🌴
-                                {% elif details.status == 'available' %} ✅
-                                {% else %} 🤷
-                                {% endif %}
-                            </span>
-                        </td>
-                        <td class="text-sm sm:text-base">
-                            <div class="flex gap-2">
-                                <!-- Trigger DaisyUI edit modal -->
-                                <label for="editStaffModal{{ staff.id }}" class="btn btn-sm btn-outline-primary">
+                    <div class="card bg-base-100 shadow-md">
+                        <div class="card-body p-4">
+                            <div class="flex justify-between items-center">
+                                <h3 class="text-sm font-semibold text-base-content">{{ staff.user.get_full_name }}</h3>
+                                <span class="badge badge-xs {% if staff.is_active %}badge-success{% else %}badge-error{% endif %}">
+                                    {{ staff.is_active|yesno:"Active,Inactive" }}
+                                </span>
+                            </div>
+                            <p class="text-xs text-base-content truncate">Email: {{ staff.user.email }}</p>
+                            <div class="collapse collapse-arrow">
+                                <input type="checkbox" />
+                                <div class="collapse-title text-xs text-base-content/70">More Details</div>
+                                <div class="collapse-content text-xs text-base-content space-y-1">
+                                    <p><strong>Department:</strong> {{ staff.department.name }}</p>
+                                    <p><strong>Designation:</strong> {{ staff.get_designation_display }}</p>
+                                    <p><strong>Employment Type:</strong> {{ details.employment_type|default:"N/A" }}</p>
+                                    <p><strong>Salary/Lecture:</strong> {{ details.salary_per_lecture|default:"N/A" }}</p>
+                                    <p><strong>Fix Salary:</strong> {{ details.fixed_salary|default:"N/A" }}</p>
+                                    <p><strong>Current Status:</strong> {{ details.status|default:"N/A" }}
+                                        {% if details.status == 'on_break' %} 🛑
+                                        {% elif details.status == 'on_lecture' %} 📢
+                                        {% elif details.status == 'on_leave' %} 🌴
+                                        {% elif details.status == 'available' %} ✅
+                                        {% else %} 🤷
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="flex gap-1 mt-2">
+                                <label for="editStaffModal{{ staff.id }}" class="btn btn-xs btn-outline btn-primary">
                                     <i class="fas fa-edit"></i>
                                 </label>
-                                <label for="viewStaffModal{{ staff.id }}" class="btn btn-sm btn-outline-info">
+                                <label for="viewStaffModal{{ staff.id }}" class="btn btn-xs btn-outline btn-info">
                                     <i class="fas fa-eye"></i>
                                 </label>
-                                <label for="deleteStaffModal{{ staff.id }}" class="btn btn-sm btn-outline-danger">
+                                <label for="deleteStaffModal{{ staff.id }}" class="btn btn-xs btn-outline btn-error">
                                     <i class="fas fa-trash"></i>
                                 </label>
                             </div>
-                        </td>
-                    </tr>
+                        </div>
+                    </div>
                     {% endwith %}
-                    {% empty %}
-                    <tr>
-                        <td colspan="11" class="text-center p-4 sm:p-8">
-                            <div class="text-center">
-                                <i class="fas fa-users text-4xl sm:text-6xl text-base-content/20 mb-2 sm:mb-4"></i>
-                                <h3 class="text-lg sm:text-xl font-semibold text-base-content/70 mb-1 sm:mb-2">No Staff Members Found</h3>
-                                <p class="text-sm sm:text-base text-base-content/50">Use the search filters above to find staff members.</p>
-                            </div>
-                        </td>
-                    </tr>
                     {% endfor %}
-                </tbody>
-                </table>
-            </div>
+                </div>
+            {% else %}
+                <div class="alert alert-info shadow-sm mt-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div class="text-center">
+                        <h3 class="text-lg font-semibold text-base-content/70 mb-2">No Staff Members Found</h3>
+                        <p class="text-base-content/50">Use the search filters above to find staff members.</p>
+                    </div>
+                </div>
+            {% endif %}
 
             <!-- Pagination -->
             {% if staff_members.has_other_pages %}
             <div class="join mt-4 flex justify-center">
                 {% if staff_members.has_previous %}
-                <a href="?page={{ staff_members.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="btn join-item btn-sm sm:btn-md">Previous</a>
+                <a href="?page={{ staff_members.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="btn btn-sm btn-outline join-item">Previous</a>
                 {% endif %}
                 {% for num in staff_members.paginator.page_range %}
-                <a href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="btn join-item btn-sm sm:btn-md {% if staff_members.number == num %}btn-active{% endif %}">{{ num }}</a>
+                <a href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="btn btn-sm btn-outline join-item {% if staff_members.number == num %}btn-active{% endif %}">{{ num }}</a>
                 {% endfor %}
                 {% if staff_members.has_next %}
-                <a href="?page={{ staff_members.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="btn join-item btn-sm sm:btn-md">Next</a>
+                <a href="?page={{ staff_members.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="btn btn-sm btn-outline join-item">Next</a>
                 {% endif %}
             </div>
             {% endif %}
@@ -162,113 +211,113 @@
     </div>
 </div>
 
-<!-- Add Staff Modal (DaisyUI) -->
+<!-- Add Staff Modal -->
 <input type="checkbox" id="addStaffModal" class="modal-toggle" />
 <div class="modal" role="dialog">
     <div class="modal-box w-full max-w-3xl sm:w-11/12">
-        <h3 class="text-xl sm:text-2xl font-bold mb-4">Add New Staff Member</h3>
+        <h3 class="text-xl font-bold text-base-content mb-4">Add New Staff Member</h3>
         <form method="post" action="{% url 'faculty_staff:add_staff' %}">
             {% csrf_token %}
             <div class="space-y-4">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="form-control">
                         <label class="label">
-                            <span class="label-text text-sm sm:text-base">First Name</span>
+                            <span class="label-text text-sm text-base-content">First Name</span>
                         </label>
-                        <input type="text" name="first_name" class="input input-bordered text-sm sm:text-base" required>
+                        <input type="text" name="first_name" class="input input-bordered text-sm text-base-content" required>
                         {% if form_errors.first_name %}
-                        <span class="text-error text-xs sm:text-sm">First name is required.</span>
+                        <span class="text-error text-xs">First name is required.</span>
                         {% endif %}
                     </div>
                     <div class="form-control">
                         <label class="label">
-                            <span class="label-text text-sm sm:text-base">Last Name</span>
+                            <span class="label-text text-sm text-base-content">Last Name</span>
                         </label>
-                        <input type="text" name="last_name" class="input input-bordered text-sm sm:text-base" required>
+                        <input type="text" name="last_name" class="input input-bordered text-sm text-base-content" required>
                         {% if form_errors.last_name %}
-                        <span class="text-error text-xs sm:text-sm">Last name is required.</span>
+                        <span class="text-error text-xs">Last name is required.</span>
                         {% endif %}
                     </div>
                 </div>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm sm:text-base">Email</span>
+                        <span class="label-text text-sm text-base-content">Email</span>
                     </label>
-                    <input type="email" name="email" class="input input-bordered text-sm sm:text-base" required>
+                    <input type="email" name="email" class="input input-bordered text-sm text-base-content" required>
                     {% if form_errors.email %}
-                    <span class="text-error text-xs sm:text-sm">
+                    <span class="text-error text-xs">
                         {% if form_errors.email == 'exists' %}Email is already taken.{% else %}Email is required.{% endif %}
                     </span>
                     {% endif %}
                 </div>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm sm:text-base">Designation</span>
+                        <span class="label-text text-sm text-base-content">Designation</span>
                     </label>
-                    <select name="designation" class="select select-bordered text-sm sm:text-base" required>
+                    <select name="designation" class="select select-bordered text-sm text-base-content" required>
                         {% for value, label in designation_choices %}
                         <option value="{{ value }}">{{ label }}</option>
                         {% endfor %}
                     </select>
                     {% if form_errors.designation %}
-                    <span class="text-error text-xs sm:text-sm">Invalid designation selected.</span>
+                    <span class="text-error text-xs">Invalid designation selected.</span>
                     {% endif %}
                 </div>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm sm:text-base">Contact No</span>
+                        <span class="label-text text-sm text-base-content">Contact No</span>
                     </label>
-                    <input type="text" name="contact_no" class="input input-bordered text-sm sm:text-base">
+                    <input type="text" name="contact_no" class="input input-bordered text-sm text-base-content">
                 </div>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm sm:text-base">Qualification</span>
+                        <span class="label-text text-sm text-base-content">Qualification</span>
                     </label>
-                    <textarea name="qualification" class="textarea textarea-bordered text-sm sm:text-base" rows="3"></textarea>
+                    <textarea name="qualification" class="textarea textarea-bordered text-sm text-base-content" rows="3"></textarea>
                 </div>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm sm:text-base">Hire Date</span>
+                        <span class="label-text text-sm text-base-content">Hire Date</span>
                     </label>
-                    <input type="date" name="hire_date" class="input input-bordered text-sm sm:text-base">
+                    <input type="date" name="hire_date" class="input input-bordered text-sm text-base-content">
                 </div>
                 <div class="form-control">
                     <label class="cursor-pointer label">
-                        <span class="label-text text-sm sm:text-base">Is Active</span>
+                        <span class="label-text text-sm text-base-content">Is Active</span>
                         <input type="checkbox" name="is_active" class="checkbox checkbox-primary" checked>
                     </label>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="form-control">
                         <label class="label">
-                            <span class="label-text text-sm sm:text-base">LinkedIn URL</span>
+                            <span class="label-text text-sm text-base-content">LinkedIn URL</span>
                         </label>
-                        <input type="url" name="linkedin_url" class="input input-bordered text-sm sm:text-base">
+                        <input type="url" name="linkedin_url" class="input input-bordered text-sm text-base-content">
                     </div>
                     <div class="form-control">
                         <label class="label">
-                            <span class="label-text text-sm sm:text-base">Twitter URL</span>
+                            <span class="label-text text-sm text-base-content">Twitter URL</span>
                         </label>
-                        <input type="url" name="twitter_url" class="input input-bordered text-sm sm:text-base">
+                        <input type="url" name="twitter_url" class="input input-bordered text-sm text-base-content">
                     </div>
                 </div>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm sm:text-base">Personal Website</span>
+                        <span class="label-text text-sm text-base-content">Personal Website</span>
                     </label>
-                    <input type="url" name="personal_website" class="input input-bordered text-sm sm:text-base">
+                    <input type="url" name="personal_website" class="input input-bordered text-sm text-base-content">
                 </div>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm sm:text-base">Experience</span>
+                        <span class="label-text text-sm text-base-content">Experience</span>
                     </label>
-                    <textarea name="experience" class="textarea textarea-bordered text-sm sm:text-base" rows="4"></textarea>
+                    <textarea name="experience" class="textarea textarea-bordered text-sm text-base-content" rows="4"></textarea>
                 </div>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm sm:text-base">Employment Type</span>
+                        <span class="label-text text-sm text-base-content">Employment Type</span>
                     </label>
-                    <select name="employment_type" class="select select-bordered text-sm sm:text-base">
+                    <select name="employment_type" class="select select-bordered text-sm text-base-content">
                         <option value="">Select Employment Type</option>
                         {% for value, label in employment_type_choices %}
                         <option value="{{ value }}">{{ label }}</option>
@@ -277,21 +326,21 @@
                 </div>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm sm:text-base">Salary per Lecture</span>
+                        <span class="label-text text-sm text-base-content">Salary per Lecture</span>
                     </label>
-                    <input type="number" step="0.01" name="salary_per_lecture" class="input input-bordered text-sm sm:text-base" placeholder="e.g., 500.00">
+                    <input type="number" step="0.01" name="salary_per_lecture" class="input input-bordered text-sm text-base-content" placeholder="e.g., 500.00">
                 </div>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm sm:text-base">Fixed Salary</span>
+                        <span class="label-text text-sm text-base-content">Fixed Salary</span>
                     </label>
-                    <input type="number" step="0.01" name="fixed_salary" class="input input-bordered text-sm sm:text-base" placeholder="e.g., 500.00">
+                    <input type="number" step="0.01" name="fixed_salary" class="input input-bordered text-sm text-base-content" placeholder="e.g., 500.00">
                 </div>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm sm:text-base">Current Status</span>
+                        <span class="label-text text-sm text-base-content">Current Status</span>
                     </label>
-                    <select name="status" class="select select-bordered text-sm sm:text-base">
+                    <select name="status" class="select select-bordered text-sm text-base-content">
                         <option value="">Select Status</option>
                         {% for value, label in status_choices %}
                         <option value="{{ value }}">{{ label }}</option>
@@ -300,128 +349,128 @@
                 </div>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm sm:text-base">Department</span>
+                        <span class="label-text text-sm text-base-content">Department</span>
                     </label>
-                    <input type="text" class="input input-bordered text-sm sm:text-base" value="{{ department.name }}" readonly>
+                    <input type="text" class="input input-bordered text-sm text-base-content" value="{{ department.name }}" readonly>
                 </div>
             </div>
             <div class="modal-action">
-                <label for="addStaffModal" class="btn btn-secondary btn-sm sm:btn-md">Close</label>
-                <button type="submit" class="btn btn-primary btn-sm sm:btn-md">Add Staff</button>
+                <label for="addStaffModal" class="btn btn-sm btn-secondary">Close</label>
+                <button type="submit" class="btn btn-sm btn-primary">Add Staff</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Edit Staff Modal (DaisyUI) -->
+<!-- Edit Staff Modal -->
 {% for staff in staff_members %}
 {% with details=staff.details %}
 <input type="checkbox" id="editStaffModal{{ staff.id }}" class="modal-toggle" />
 <div class="modal" role="dialog">
     <div class="modal-box w-full max-w-3xl sm:w-11/12">
-        <h3 class="text-xl sm:text-2xl font-bold mb-4">Edit Staff Member</h3>
+        <h3 class="text-xl font-bold text-base-content mb-4">Edit Staff Member</h3>
         <form method="post" action="{% url 'faculty_staff:edit_staff' staff.id %}">
             {% csrf_token %}
             <div class="space-y-4">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="form-control">
                         <label class="label">
-                            <span class="label-text text-sm sm:text-base">First Name</span>
+                            <span class="label-text text-sm text-base-content">First Name</span>
                         </label>
-                        <input type="text" name="first_name" class="input input-bordered text-sm sm:text-base" value="{{ staff.user.first_name }}" required>
+                        <input type="text" name="first_name" class="input input-bordered text-sm text-base-content" value="{{ staff.user.first_name }}" required>
                         {% if form_errors.first_name %}
-                        <span class="text-error text-xs sm:text-sm">First name is required.</span>
+                        <span class="text-error text-xs">First name is required.</span>
                         {% endif %}
                     </div>
                     <div class="form-control">
                         <label class="label">
-                            <span class="label-text text-sm sm:text-base">Last Name</span>
+                            <span class="label-text text-sm text-base-content">Last Name</span>
                         </label>
-                        <input type="text" name="last_name" class="input input-bordered text-sm sm:text-base" value="{{ staff.user.last_name }}" required>
+                        <input type="text" name="last_name" class="input input-bordered text-sm text-base-content" value="{{ staff.user.last_name }}" required>
                         {% if form_errors.last_name %}
-                        <span class="text-error text-xs sm:text-sm">Last name is required.</span>
+                        <span class="text-error text-xs">Last name is required.</span>
                         {% endif %}
                     </div>
                 </div>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm sm:text-base">Email</span>
+                        <span class="label-text text-sm text-base-content">Email</span>
                     </label>
-                    <input type="email" name="email" class="input input-bordered text-sm sm:text-base" value="{{ staff.user.email }}" required>
+                    <input type="email" name="email" class="input input-bordered text-sm text-base-content" value="{{ staff.user.email }}" required>
                     {% if form_errors.email %}
-                    <span class="text-error text-xs sm:text-sm">
+                    <span class="text-error text-xs">
                         {% if form_errors.email == 'exists' %}Email is already taken.{% else %}Email is required.{% endif %}
                     </span>
                     {% endif %}
                 </div>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm sm:text-base">Designation</span>
+                        <span class="label-text text-sm text-base-content">Designation</span>
                     </label>
-                    <select name="designation" class="select select-bordered text-sm sm:text-base" required>
+                    <select name="designation" class="select select-bordered text-sm text-base-content" required>
                         {% for value, label in designation_choices %}
                         <option value="{{ value }}" {% if staff.designation == value %}selected{% endif %}>{{ label }}</option>
                         {% endfor %}
                     </select>
                     {% if form_errors.designation %}
-                    <span class="text-error text-xs sm:text-sm">Invalid designation selected.</span>
+                    <span class="text-error text-xs">Invalid designation selected.</span>
                     {% endif %}
                 </div>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm sm:text-base">Contact No</span>
+                        <span class="label-text text-sm text-base-content">Contact No</span>
                     </label>
-                    <input type="text" name="contact_no" class="input input-bordered text-sm sm:text-base" value="{{ staff.contact_no|default_if_none:'' }}">
+                    <input type="text" name="contact_no" class="input input-bordered text-sm text-base-content" value="{{ staff.contact_no|default_if_none:'' }}">
                 </div>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm sm:text-base">Qualification</span>
+                        <span class="label-text text-sm text-base-content">Qualification</span>
                     </label>
-                    <textarea name="qualification" class="textarea textarea-bordered text-sm sm:text-base" rows="3">{{ staff.qualification|default_if_none:'' }}</textarea>
+                    <textarea name="qualification" class="textarea textarea-bordered text-sm text-base-content" rows="3">{{ staff.qualification|default_if_none:'' }}</textarea>
                 </div>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm sm:text-base">Hire Date</span>
+                        <span class="label-text text-sm text-base-content">Hire Date</span>
                     </label>
-                    <input type="date" name="hire_date" class="input input-bordered text-sm sm:text-base" value="{{ staff.hire_date|date:'Y-m-d'|default_if_none:'' }}">
+                    <input type="date" name="hire_date" class="input input-bordered text-sm text-base-content" value="{{ staff.hire_date|date:'Y-m-d'|default_if_none:'' }}">
                 </div>
                 <div class="form-control">
                     <label class="cursor-pointer label">
-                        <span class="label-text text-sm sm:text-base">Is Active</span>
+                        <span class="label-text text-sm text-base-content">Is Active</span>
                         <input type="checkbox" name="is_active" class="checkbox checkbox-primary" {% if staff.is_active %}checked{% endif %}>
                     </label>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="form-control">
                         <label class="label">
-                            <span class="label-text text-sm sm:text-base">LinkedIn URL</span>
+                            <span class="label-text text-sm text-base-content">LinkedIn URL</span>
                         </label>
-                        <input type="url" name="linkedin_url" class="input input-bordered text-sm sm:text-base" value="{{ staff.linkedin_url|default_if_none:'' }}">
+                        <input type="url" name="linkedin_url" class="input input-bordered text-sm text-base-content" value="{{ staff.linkedin_url|default_if_none:'' }}">
                     </div>
                     <div class="form-control">
                         <label class="label">
-                            <span class="label-text text-sm sm:text-base">Twitter URL</span>
+                            <span class="label-text text-sm text-base-content">Twitter URL</span>
                         </label>
-                        <input type="url" name="twitter_url" class="input input-bordered text-sm sm:text-base" value="{{ staff.twitter_url|default_if_none:'' }}">
+                        <input type="url" name="twitter_url" class="input input-bordered text-sm text-base-content" value="{{ staff.twitter_url|default_if_none:'' }}">
                     </div>
                 </div>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm sm:text-base">Personal Website</span>
+                        <span class="label-text text-sm text-base-content">Personal Website</span>
                     </label>
-                    <input type="url" name="personal_website" class="input input-bordered text-sm sm:text-base" value="{{ staff.personal_website|default_if_none:'' }}">
+                    <input type="url" name="personal_website" class="input input-bordered text-sm text-base-content" value="{{ staff.personal_website|default_if_none:'' }}">
                 </div>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm sm:text-base">Experience</span>
+                        <span class="label-text text-sm text-base-content">Experience</span>
                     </label>
-                    <textarea name="experience" class="textarea textarea-bordered text-sm sm:text-base" rows="4">{{ staff.experience|default_if_none:'' }}</textarea>
+                    <textarea name="experience" class="textarea textarea-bordered text-sm text-base-content" rows="4">{{ staff.experience|default_if_none:'' }}</textarea>
                 </div>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm sm:text-base">Employment Type</span>
+                        <span class="label-text text-sm text-base-content">Employment Type</span>
                     </label>
-                    <select name="employment_type" class="select select-bordered text-sm sm:text-base">
+                    <select name="employment_type" class="select select-bordered text-sm text-base-content">
                         <option value="">Select Employment Type</option>
                         {% for value, label in employment_type_choices %}
                         <option value="{{ value }}" {% if details.employment_type == value %}selected{% endif %}>{{ label }}</option>
@@ -430,21 +479,21 @@
                 </div>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm sm:text-base">Salary per Lecture</span>
+                        <span class="label-text text-sm text-base-content">Salary per Lecture</span>
                     </label>
-                    <input type="number" step="0.01" name="salary_per_lecture" class="input input-bordered text-sm sm:text-base" value="{{ details.salary_per_lecture|default_if_none:'' }}" placeholder="e.g., 500.00">
+                    <input type="number" step="0.01" name="salary_per_lecture" class="input input-bordered text-sm text-base-content" value="{{ details.salary_per_lecture|default_if_none:'' }}" placeholder="e.g., 500.00">
                 </div>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm sm:text-base">Fix Salary</span>
+                        <span class="label-text text-sm text-base-content">Fixed Salary</span>
                     </label>
-                    <input type="number" step="0.01" name="fixed_salary" class="input input-bordered text-sm sm:text-base" value="{{ details.fixed_salary|default_if_none:'' }}" placeholder="e.g., 500.00">
+                    <input type="number" step="0.01" name="fixed_salary" class="input input-bordered text-sm text-base-content" value="{{ details.fixed_salary|default_if_none:'' }}" placeholder="e.g., 500.00">
                 </div>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm sm:text-base">Current Status</span>
+                        <span class="label-text text-sm text-base-content">Current Status</span>
                     </label>
-                    <select name="status" class="select select-bordered text-sm sm:text-base">
+                    <select name="status" class="select select-bordered text-sm text-base-content">
                         <option value="">Select Status</option>
                         {% for value, label in status_choices %}
                         <option value="{{ value }}" {% if details.status == value %}selected{% endif %}>{{ label }}</option>
@@ -453,14 +502,14 @@
                 </div>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm sm:text-base">Department</span>
+                        <span class="label-text text-sm text-base-content">Department</span>
                     </label>
-                    <input type="text" class="input input-bordered text-sm sm:text-base" value="{{ staff.department.name }}" readonly>
+                    <input type="text" class="input input-bordered text-sm text-base-content" value="{{ staff.department.name }}" readonly>
                 </div>
             </div>
             <div class="modal-action">
-                <label for="editStaffModal{{ staff.id }}" class="btn btn-secondary btn-sm sm:btn-md">Close</label>
-                <button type="submit" class="btn btn-primary btn-sm sm:btn-md">Save Changes</button>
+                <label for="editStaffModal{{ staff.id }}" class="btn btn-sm btn-secondary">Close</label>
+                <button type="submit" class="btn btn-sm btn-primary">Save Changes</button>
             </div>
         </form>
     </div>
@@ -468,14 +517,14 @@
 {% endwith %}
 {% endfor %}
 
-<!-- View Staff Modal (DaisyUI) -->
+<!-- View Staff Modal -->
 {% for staff in staff_members %}
 {% with details=staff.details %}
 <input type="checkbox" id="viewStaffModal{{ staff.id }}" class="modal-toggle" />
 <div class="modal" role="dialog">
     <div class="modal-box w-full max-w-3xl sm:w-11/12">
-        <h3 class="text-xl sm:text-2xl font-bold mb-4">View Staff Member</h3>
-        <div class="space-y-2 text-sm sm:text-base">
+        <h3 class="text-xl font-bold text-base-content mb-4">View Staff Member</h3>
+        <div class="space-y-2 text-sm text-base-content">
             <p><strong>Name:</strong> {{ staff.user.get_full_name }}</p>
             <p><strong>Email:</strong> {{ staff.user.email }}</p>
             <p><strong>Department:</strong> {{ staff.department.name }}</p>
@@ -486,7 +535,7 @@
             <p><strong>Status:</strong> {{ staff.is_active|yesno:"Active,Inactive" }}</p>
             <p><strong>Employment Type:</strong> {{ details.employment_type|default:"N/A" }}</p>
             <p><strong>Salary per Lecture:</strong> {{ details.salary_per_lecture|default:"N/A" }}</p>
-            <p><strong>Fix Salary:</strong> {{ details.fixed_salary|default:"N/A" }}</p>
+            <p><strong>Fixed Salary:</strong> {{ details.fixed_salary|default:"N/A" }}</p>
             <p><strong>Current Status:</strong> {{ details.status|default:"N/A" }}</p>
             <p><strong>LinkedIn:</strong> {% if staff.linkedin_url %}<a href="{{ staff.linkedin_url }}" target="_blank" class="link link-primary">Link</a>{% else %}N/A{% endif %}</p>
             <p><strong>Twitter:</strong> {% if staff.twitter_url %}<a href="{{ staff.twitter_url }}" target="_blank" class="link link-primary">Link</a>{% else %}N/A{% endif %}</p>
@@ -494,26 +543,26 @@
             <p><strong>Experience:</strong> {{ staff.experience|default:"N/A" }}</p>
         </div>
         <div class="modal-action">
-            <label for="viewStaffModal{{ staff.id }}" class="btn btn-secondary btn-sm sm:btn-md">Close</label>
+            <label for="viewStaffModal{{ staff.id }}" class="btn btn-sm btn-secondary">Close</label>
         </div>
     </div>
 </div>
 {% endwith %}
 {% endfor %}
 
-<!-- Delete Staff Modal (DaisyUI) -->
+<!-- Delete Staff Modal -->
 {% for staff in staff_members %}
 <input type="checkbox" id="deleteStaffModal{{ staff.id }}" class="modal-toggle" />
 <div class="modal" role="dialog">
     <div class="modal-box">
-        <h3 class="text-xl sm:text-2xl font-bold mb-4">Delete Staff Member</h3>
-        <p class="text-sm sm:text-base">Are you sure you want to delete <strong>{{ staff.user.get_full_name }}</strong>?</p>
-        <p class="text-sm sm:text-base">This action cannot be undone.</p>
+        <h3 class="text-xl font-bold text-base-content mb-4">Delete Staff Member</h3>
+        <p class="text-sm text-base-content">Are you sure you want to delete <strong>{{ staff.user.get_full_name }}</strong>?</p>
+        <p class="text-sm text-base-content">This action cannot be undone.</p>
         <div class="modal-action">
-            <label for="deleteStaffModal{{ staff.id }}" class="btn btn-secondary btn-sm sm:btn-md">Cancel</label>
+            <label for="deleteStaffModal{{ staff.id }}" class="btn btn-sm btn-secondary">Cancel</label>
             <form method="post" action="{% url 'faculty_staff:delete_staff' staff.id %}">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-error btn-sm sm:btn-md">Delete</button>
+                <button type="submit" class="btn btn-sm btn-error">Delete</button>
             </form>
         </div>
     </div>

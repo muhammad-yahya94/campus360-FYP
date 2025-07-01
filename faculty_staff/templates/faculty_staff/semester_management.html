@@ -3,106 +3,196 @@
 {% block title %}Semester Management{% endblock %}
 
 {% block content %}
+<style>
+    /* Select2 Styling for DaisyUI */
+    .select2-container .select2-selection--single {
+        height: 2.25rem;
+        border: 1px solid hsl(var(--bc) / 0.2);
+        border-radius: var(--rounded-btn, 0.5rem);
+        background-color: hsl(var(--b1));
+        padding: 0 2rem 0 0.75rem;
+        font-size: 0.875rem;
+        line-height: 2.25rem;
+        transition: all 0.2s ease;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: hsl(var(--nc));
+        line-height: 2.25rem;
+    }
+    .select2-container .select2-selection--single .select2-selection__arrow {
+        height: 2.25rem;
+        right: 0.5rem;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow b {
+        border-color: hsl(var(--bc) / 0.5) transparent transparent transparent;
+    }
+    .select2-container--open .select2-selection--single .select2-selection__arrow b {
+        border-color: transparent transparent hsl(var(--bc) / 0.5) transparent;
+    }
+    .select2-dropdown {
+        background-color: hsl(var(--b1));
+        border: 1px solid hsl(var(--bc) / 0.2);
+        border-radius: var(--rounded-box, 0.5rem);
+        box-shadow: 0 2px 4px hsl(var(--bc) / 0.1);
+        z-index: 10000;
+    }
+    .select2-results__option {
+        padding: 0.5rem 0.75rem;
+        color: hsl(var(--nc));
+        font-size: 0.875rem;
+    }
+    .select2-results__option--highlighted {
+        background-color: hsl(var(--pf) / 0.1);
+        color: hsl(var(--pc));
+    }
+    .select2-container--default .select2-selection--single .select2-selection__placeholder {
+        color: hsl(var(--bc) / 0.5);
+    }
+    .select2-container--default .select2-selection--single:focus {
+        outline: none;
+        border-color: hsl(var(--p));
+        box-shadow: 0 0 0 2px hsl(var(--p) / 0.2);
+    }
+    .select2-container--default .select2-search__field {
+        z-index: 10001;
+        padding: 0.5rem;
+        border-radius: var(--rounded-btn, 0.5rem);
+    }
+    .select2-container--open {
+        z-index: 10000;
+    }
+    .modal-box {
+        z-index: 9000;
+        max-height: 85vh;
+        overflow-y: auto;
+        padding: 1rem;
+    }
+    /* Card and Form Responsiveness */
+    @media (max-width: 640px) {
+        .grid-cols-1.sm\:grid-cols-2, .grid-cols-1.md\:grid-cols-3 {
+            grid-template-columns: 1fr;
+        }
+        .select2-container, .btn.w-full.sm\:w-auto {
+            width: 100% !important;
+        }
+        .semester-card {
+            padding: 1rem;
+        }
+        .truncate-description {
+            display: none;
+        }
+    }
+    @media (min-width: 640px) {
+        .truncate-description {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 200px;
+        }
+    }
+</style>
+
 <div class="drawer-content flex flex-col min-h-screen">
-    <div class="container mx-auto px-4 py-6 semester-form">
+    <div class="container mx-auto px-4 py-4 sm:py-6 semester-form">
         <!-- Header -->
-    <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-xl shadow-lg mb-6">
-        <div class="text-center py-6">
-            <h1 class="text-4xl font-bold">Semester Management</h1>
-            <p class="text-lg text-white/80">Manage semesters for {{ request.user.teacher_profile.department.name }}</p>
+        <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-lg shadow-md mb-6">
+            <div class="text-center py-4">
+                <h1 class="text-2xl sm:text-3xl font-bold">Semester Management</h1>
+                <p class="text-sm sm:text-base text-white/80 mt-1">Manage semesters for {{ request.user.teacher_profile.department.name }}</p>
+            </div>
         </div>
-    </div>
 
         <!-- Error Message -->
         {% if error %}
-        <div class="alert alert-error">
-            {{ error }}
-            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
+        <div class="alert alert-error shadow-md mb-4 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 mr-2 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            <span class="flex-1">{{ error }}</span>
+            <button type="button" class="btn btn-xs btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
         </div>
         {% endif %}
 
         <!-- Add Semester Form -->
-        <div class="card bg-base-100 shadow-xl">
-            <div class="card-body">
-                <h2 class="card-title text-2xl mb-4">
-                    <i class="fas fa-plus"></i>
+        <div class="card bg-base-100 shadow-md mb-6">
+            <div class="card-body p-4 sm:p-6">
+                <h2 class="card-title text-lg sm:text-xl mb-3">
+                    <i class="fas fa-plus mr-2"></i>
                     Add New Semester
                 </h2>
                 <form id="add-semester-form" method="post" action="{% url 'faculty_staff:add_semester' %}" class="space-y-4">
                     {% csrf_token %}
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="form-control">
                             <label class="label">
-                                <span class="label-text">Program</span>
+                                <span class="label-text font-medium">Program</span>
                             </label>
-                            <select name="program_id" id="add_program_id" class="select select-bordered select2 w-full max-w-xs" required>
+                            <select name="program_id" id="add_program_id" class="select select-bordered select2 w-full" required>
                                 <option value="">Select a program...</option>
                                 {% for program in programs %}
                                 <option value="{{ program.id }}">{{ program.name }}</option>
                                 {% endfor %}
                             </select>
-                            <span id="add-program-error" class="text-error"></span>
+                            <span id="add-program-error" class="text-error text-xs mt-1"></span>
                         </div>
                         <div class="form-control">
                             <label class="label">
-                                <span class="label-text">Session</span>
+                                <span class="label-text font-medium">Session</span>
                             </label>
-                            <select name="session_id" id="add_session_id" class="select select-bordered select2 w-full max-w-xs" required>
+                            <select name="session_id" id="add_session_id" class="select select-bordered select2 w-full" required>
                                 <option value="">Select a session...</option>
                                 {% for session in academic_sessions %}
                                 <option value="{{ session.id }}">{{ session.name }}</option>
                                 {% endfor %}
                             </select>
-                            <span id="add-session-error" class="text-error"></span>
-                        </div>
-                                                <div class="form-control">
-                            <label class="label">
-                                <span class="label-text">Semes Name</span>
-                            </label>
-                            <input type="text" name="name" id="add_name" class="input input-bordered" required>
-                            <span id="add-name-error" class="text-error"></span>
+                            <span id="add-session-error" class="text-error text-xs mt-1"></span>
                         </div>
                         <div class="form-control">
                             <label class="label">
-                                <span class="label-text">Semes Number</span>
+                                <span class="label-text font-medium">Semester Name</span>
                             </label>
-                            <input type="number" name="number" id="add_number" class="input input-bordered" required min="1">
-                            <span id="add-number-error" class="text-error"></span>
+                            <input type="text" name="name" id="add_name" class="input input-bordered w-full" required>
+                            <span id="add-name-error" class="text-error text-xs mt-1"></span>
                         </div>
                         <div class="form-control">
                             <label class="label">
-                                <span class="label-text">Description</span>
+                                <span class="label-text font-medium">Semester Number</span>
                             </label>
-                            <textarea name="description" id="add_description" class="textarea textarea-bordered"></textarea>
-                            <span id="add-description-error" class="text-error"></span>
+                            <input type="number" name="number" id="add_number" class="input input-bordered w-full" required min="1">
+                            <span id="add-number-error" class="text-error text-xs mt-1"></span>
                         </div>
                         <div class="form-control">
                             <label class="label">
-                                <span class="label-text">Start Date</span>
+                                <span class="label-text font-medium">Description</span>
                             </label>
-                            <input type="date" name="start_time" id="add_start_time" class="input input-bordered">
-                            <span id="add-start-time-error" class="text-error"></span>
+                            <textarea name="description" id="add_description" class="textarea textarea-bordered w-full" rows="3"></textarea>
+                            <span id="add-description-error" class="text-error text-xs mt-1"></span>
                         </div>
                         <div class="form-control">
                             <label class="label">
-                                <span class="label-text">End Date</span>
+                                <span class="label-text font-medium">Start Date</span>
                             </label>
-                            <input type="date" name="end_time" id="add_end_time" class="input input-bordered">
-                            <span id="add-end-time-error" class="text-error"></span>
+                            <input type="date" name="start_time" id="add_start_time" class="input input-bordered w-full">
+                            <span id="add-start-time-error" class="text-error text-xs mt-1"></span>
                         </div>
                         <div class="form-control">
                             <label class="label">
-                                <span class="label-text">Active</span>
+                                <span class="label-text font-medium">End Date</span>
                             </label>
-                            <select name="is_active" id="add_is_active" class="select select-bordered">
+                            <input type="date" name="end_time" id="add_end_time" class="input input-bordered w-full">
+                            <span id="add-end-time-error" class="text-error text-xs mt-1"></span>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">Active</span>
+                            </label>
+                            <select name="is_active" id="add_is_active" class="select select-bordered w-full">
                                 <option value="true">Yes</option>
                                 <option value="false" selected>No</option>
                             </select>
-                            <span id="add-is-active-error" class="text-error"></span>
+                            <span id="add-is-active-error" class="text-error text-xs mt-1"></span>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary w-full">
-                        <i class="fas fa-plus"></i>
+                    <button type="submit" class="btn btn-primary w-full mt-3">
+                        <i class="fas fa-plus mr-2"></i>
                         Add Semester
                     </button>
                 </form>
@@ -110,520 +200,321 @@
         </div>
 
         <!-- Search and Filter Form -->
-<div class="card bg-base-100 shadow-xl">
-    <div class="card-body">
-        <h2 class="card-title text-2xl mb-4">
-            <i class="fas fa-search"></i>
-            Search Semesters
-        </h2>
-        <form id="search-form" method="get" action="{% url 'faculty_staff:semester_management' %}" class="space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-                <!-- Search Query -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text">Search</span>
-                    </label>
-                    <input type="text" name="q" id="q" class="input input-bordered" value="{{ search_query }}" placeholder="Search by name, description, program...">
-                </div>
-
-                <!-- Filter by Program -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text">Filter by Program</span>
-                    </label>
-                    <select name="program_id" id="program_id_filter" class="select select-bordered select2">
-                        <option value="">All Programs in {{ request.user.teacher_profile.department.name }}</option>
-                        {% for program in programs %}
-                            <option value="{{ program.id }}" {% if selected_program == program.id|stringformat:'s' %}selected{% endif %}>
-                                {{ program.name }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <!-- Filter by Session -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text">Filter by Session</span>
-                    </label>
-                    <select name="session_id" id="session_id_filter" class="select select-bordered select2">
-                        <option value="">All Sessions</option>
-                        {% for session in academic_sessions %}
-                            <option value="{{ session.id }}" {% if selected_session == session.id|stringformat:'s' %}selected{% endif %}>
-                                {{ session.name }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-
-            <button type="submit" class="btn btn-primary w-full mt-4">
-                <i class="fas fa-filter"></i>
-                Search
-            </button>
-        </form>
-    </div>
-</div>
-
-
-        {% load static %}
-        <div class="card bg-base-100 shadow-xl mx-auto max-w-full sm:max-w-7xl w-full">
-            <div class="card-body p-4 sm:p-6 md:p-8">
-                <h2 class="card-title text-xl sm:text-2xl mb-3 sm:mb-4 flex items-center">
-                    <i class="fas fa-table mr-2"></i>
-                    Semesters
+        <div class="card bg-base-100 shadow-md mb-6">
+            <div class="card-body p-4 sm:p-6">
+                <h2 class="card-title text-lg sm:text-xl mb-3">
+                    <i class="fas fa-search mr-2"></i>
+                    Search Semesters
                 </h2>
-                <div class="overflow-x-auto">
-                    <table class="table table-zebra w-full">
-                        <thead class="text-xs sm:text-sm">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Program</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Session</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Semester Number</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Description</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Start Date</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">End Date</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Active</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for semester in semesters %}
-                            <tr class="text-xs sm:text-sm">
-                                <td class="p-2 sm:p-3">{{ semester.program.name }}</td>
-                                <td class="p-2 sm:p-3">{{ semester.session.name }}</td>
-                                <td class="p-2 sm:p-3 hidden md:table-cell">{{ semester.number }}</td>
-                                <td class="p-2 sm:p-3">{{ semester.name }}</td>
-                                <td class="p-2 sm:p-3 hidden lg:table-cell">{{ semester.description|default:"N/A" }}</td>
-                                <td class="p-2 sm:p-3 hidden md:table-cell">{{ semester.start_time|date:"Y-m-d"|default:"N/A" }}</td>
-                                <td class="p-2 sm:p-3 hidden md:table-cell">{{ semester.end_time|date:"Y-m-d"|default:"N/A" }}</td>
-                                <td class="p-2 sm:p-3">
-                                    <span class="badge text-xs sm:text-sm {% if semester.is_active %}badge-success{% else %}badge-error{% endif %} px-2 py-1">
-                                        {{ semester.is_active|yesno:"Active,Inactive" }}
-                                    </span>
-                                </td>
-                                <td class="p-2 sm:p-3">
-                                    <div class="flex gap-1 sm:gap-2 flex-col sm:flex-row">
-                                        <button class="btn btn-xs sm:btn-sm btn-warning edit-semester w-full sm:w-auto" 
-                                                data-semester-id="{{ semester.id }}"
-                                                data-program-id="{{ semester.program.id }}"
-                                                data-session-id="{{ semester.session.id }}"
-                                                data-number="{{ semester.number }}"
-                                                data-name="{{ semester.name }}"
-                                                data-description="{{ semester.description|default:'' }}"
-                                                data-start-time="{{ semester.start_time|date:'Y-m-d'|default:'' }}"
-                                                data-end-time="{{ semester.end_time|date:'Y-m-d'|default:'' }}"
-                                                data-is-active="{{ semester.is_active|yesno:'true,false' }}">
-                                            <i class="fas fa-edit mr-0 sm:mr-1"></i>
-                                            <span class="hidden sm:inline">Edit</span>
-                                        </button>
-                                        <button class="btn btn-xs sm:btn-sm btn-error delete-semester w-full sm:w-auto" data-semester-id="{{ semester.id }}">
-                                            <i class="fas fa-trash mr-0 sm:mr-1"></i>
-                                            <span class="hidden sm:inline">Delete</span>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="9" class="text-center p-4 sm:p-8">
-                                    <div class="text-center">
-                                        <i class="fas fa-calendar text-4xl sm:text-6xl text-base-content/20 mb-2 sm:mb-4"></i>
-                                        <h3 class="text-lg sm:text-xl font-semibold text-base-content/70 mb-1 sm:mb-2">No Semesters Found</h3>
-                                        <p class="text-sm sm:text-base text-base-content/50">Use the form above to add new semesters.</p>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                <!-- Pagination -->
-                <div class="flex justify-center mt-3 sm:mt-4">
-                    <div class="join">
-                        {% if semesters.has_previous %}
-                        <a href="?page={{ semesters.previous_page_number }}&q={{ search_query }}&program_id={{ selected_program }}&session_id={{ selected_session }}" class="btn btn-xs sm:btn-sm join-item">Previous</a>
-                        {% endif %}
-                        {% for num in semesters.paginator.page_range %}
-                        <a href="?page={{ num }}&q={{ search_query }}&program_id={{ selected_program }}&session_id={{ selected_session }}" class="btn btn-xs sm:btn-sm join-item {% if semesters.number == num %}btn-active{% endif %}">{{ num }}</a>
-                        {% endfor %}
-                        {% if semesters.has_next %}
-                        <a href="?page={{ semesters.next_page_number }}&q={{ search_query }}&program_id={{ selected_program }}&session_id={{ selected_session }}" class="btn btn-xs sm:btn-sm join-item">Next</a>
-                        {% endif %}
+                <form id="search-form" method="get" action="{% url 'faculty_staff:semester_management' %}" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">Search</span>
+                            </label>
+                            <input type="text" name="q" id="q" class="input input-bordered w-full" value="{{ search_query }}" placeholder="Search by name, description, program...">
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">Filter by Program</span>
+                            </label>
+                            <select name="program_id" id="program_id_filter" class="select select-bordered select2 w-full">
+                                <option value="">All Programs in {{ request.user.teacher_profile.department.name }}</option>
+                                {% for program in programs %}
+                                <option value="{{ program.id }}" {% if selected_program == program.id|stringformat:'s' %}selected{% endif %}>
+                                    {{ program.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">Filter by Session</span>
+                            </label>
+                            <select name="session_id" id="session_id_filter" class="select select-bordered select2 w-full">
+                                <option value="">All Sessions</option>
+                                {% for session in academic_sessions %}
+                                <option value="{{ session.id }}" {% if selected_session == session.id|stringformat:'s' %}selected{% endif %}>
+                                    {{ session.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-full mt-3">
+                        <i class="fas fa-filter mr-2"></i>
+                        Search
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Semesters Card List -->
+        {% load static %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for semester in semesters %}
+            <div class="card bg-base-100 shadow-md semester-card">
+                <div class="card-body p-4">
+                    <h3 class="font-semibold text-base sm:text-lg">{{ semester.name }}</h3>
+                    <div class="text-sm text-base-content/70 space-y-1">
+                        <p><strong>Program:</strong> {{ semester.program.name }}</p>
+                        <p><strong>Session:</strong> {{ semester.session.name }}</p>
+                        <p><strong>Semester No:</strong> {{ semester.number }}</p>
+                        <p class="truncate-description"><strong>Description:</strong> {{ semester.description|default:"N/A" }}</p>
+                        <p><strong>Start:</strong> {{ semester.start_time|date:"Y-m-d"|default:"N/A" }}</p>
+                        <p><strong>End:</strong> {{ semester.end_time|date:"Y-m-d"|default:"N/A" }}</p>
+                        <p>
+                            <strong>Active:</strong>
+                            <span class="badge text-xs {% if semester.is_active %}badge-success{% else %}badge-error{% endif %} px-2 py-2">
+                                {{ semester.is_active|yesno:"Active,Inactive" }}
+                            </span>
+                        </p>
+                    </div>
+                    <div class="card-actions mt-3 flex gap-2">
+                        <button class="btn btn-xs btn-warning edit-semester w-full sm:w-auto" 
+                                data-semester-id="{{ semester.id }}"
+                                data-program-id="{{ semester.program.id }}"
+                                data-session-id="{{ semester.session.id }}"
+                                data-number="{{ semester.number }}"
+                                data-name="{{ semester.name }}"
+                                data-description="{{ semester.description|default:'' }}"
+                                data-start-time="{{ semester.start_time|date:'Y-m-d'|default:'' }}"
+                                data-end-time="{{ semester.end_time|date:'Y-m-d'|default:'' }}"
+                                data-is-active="{{ semester.is_active|yesno:'true,false' }}">
+                            <i class="fas fa-edit"></i>
+                            <span class="hidden sm:inline ml-1">Edit</span>
+                        </button>
+                        <button class="btn btn-xs btn-error delete-semester w-full sm:w-auto" data-semester-id="{{ semester.id }}">
+                            <i class="fas fa-trash"></i>
+                            <span class="hidden sm:inline ml-1">Delete</span>
+                        </button>
                     </div>
                 </div>
             </div>
+            {% empty %}
+            <div class="col-span-full text-center p-6">
+                <i class="fas fa-calendar text-4xl text-base-content/20 mb-2"></i>
+                <h3 class="text-base font-semibold text-base-content/70 mb-1">No Semesters Found</h3>
+                <p class="text-sm text-base-content/50">Use the form above to add new semesters.</p>
+            </div>
+            {% endfor %}
         </div>
+
+        <!-- Pagination -->
+        {% if semesters.paginator.num_pages > 1 %}
+        <div class="flex justify-center mt-6">
+            <div class="join">
+                {% if semesters.has_previous %}
+                <a href="?page={{ semesters.previous_page_number }}&q={{ search_query }}&program_id={{ selected_program }}&session_id={{ selected_session }}" class="btn btn-xs join-item">Previous</a>
+                {% endif %}
+                {% for num in semesters.paginator.page_range %}
+                <a href="?page={{ num }}&q={{ search_query }}&program_id={{ selected_program }}&session_id={{ selected_session }}" class="btn btn-xs join-item {% if semesters.number == num %}btn-active{% endif %}">{{ num }}</a>
+                {% endfor %}
+                {% if semesters.has_next %}
+                <a href="?page={{ semesters.next_page_number }}&q={{ search_query }}&program_id={{ selected_program }}&session_id={{ selected_session }}" class="btn btn-xs join-item">Next</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Edit Semester Modal -->
+        <dialog id="editSemesterModal" class="modal">
+            <div class="modal-box w-11/12 max-w-3xl">
+                <h3 class="font-bold text-lg sm:text-xl mb-3">Edit Semester</h3>
+                <form id="edit-semester-form" method="post" action="{% url 'faculty_staff:edit_semester' %}" class="space-y-4">
+                    {% csrf_token %}
+                    <input type="hidden" name="semester_id" id="edit_semester_id">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">Program</span>
+                            </label>
+                            <select name="program_id" id="edit_program_id" class="select select-bordered select2 w-full" required>
+                                <option value="">Select a program...</option>
+                                {% for program in programs %}
+                                <option value="{{ program.id }}">{{ program.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <span id="edit-program-error" class="text-error text-xs mt-1"></span>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">Session</span>
+                            </label>
+                            <select name="session_id" id="edit_session_id" class="select select-bordered select2 w-full" required>
+                                <option value="">Select a session...</option>
+                                {% for session in academic_sessions %}
+                                <option value="{{ session.id }}">{{ session.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <span id="edit-session-error" class="text-error text-xs mt-1"></span>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">Semester Number</span>
+                            </label>
+                            <input type="number" name="number" id="edit_number" class="input input-bordered w-full" required min="1">
+                            <span id="edit-number-error" class="text-error text-xs mt-1"></span>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">Semester Name</span>
+                            </label>
+                            <input type="text" name="name" id="edit_name" class="input input-bordered w-full" required>
+                            <span id="edit-name-error" class="text-error text-xs mt-1"></span>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">Description</span>
+                            </label>
+                            <textarea name="description" id="edit_description" class="textarea textarea-bordered w-full" rows="3"></textarea>
+                            <span id="edit-description-error" class="text-error text-xs mt-1"></span>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">Start Date</span>
+                            </label>
+                            <input type="date" name="start_time" id="edit_start_time" class="input input-bordered w-full">
+                            <span id="edit-start-time-error" class="text-error text-xs mt-1"></span>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">End Date</span>
+                            </label>
+                            <input type="date" name="end_time" id="edit_end_time" class="input input-bordered w-full">
+                            <span id="edit-end-time-error" class="text-error text-xs mt-1"></span>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">Active</span>
+                            </label>
+                            <select name="is_active" id="edit_is_active" class="select select-bordered w-full">
+                                <option value="true">Yes</option>
+                                <option value="false">No</option>
+                            </select>
+                            <span id="edit-is-active-error" class="text-error text-xs mt-1"></span>
+                        </div>
+                    </div>
+                    <div class="modal-action flex gap-2">
+                        <button type="button" class="btn btn-xs btn-secondary w-full sm:w-auto" onclick="document.getElementById('editSemesterModal').close()">Close</button>
+                        <button type="submit" class="btn btn-xs btn-primary w-full sm:w-auto" id="edit-semester-submit">Update Semester</button>
+                    </div>
+                </form>
+            </div>
+            <form method="dialog" class="modal-backdrop">
+                <button>close</button>
+            </form>
+        </dialog>
     </div>
 
-    <!-- Edit Semester Modal (DaisyUI) -->
-    <dialog id="editSemesterModal" class="modal">
-        <div class="modal-box w-11/12 max-w-5xl">
-            <h3 class="font-bold text-2xl mb-4">Edit Semester</h3>
-            <form id="edit-semester-form" method="post" action="{% url 'faculty_staff:edit_semester' %}" class="space-y-4">
-                {% csrf_token %}
-                <input type="hidden" name="semester_id" id="edit_semester_id">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Program</span>
-                        </label>
-                        <select name="program_id" id="edit_program_id" class="select select-bordered select2 w-full" required>
-                            <option value="">Select a program...</option>
-                            {% for program in programs %}
-                            <option value="{{ program.id }}">{{ program.name }}</option>
-                            {% endfor %}
-                        </select>
-                        <span id="edit-program-error" class="text-error"></span>
-                    </div>
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Session</span>
-                        </label>
-                        <select name="session_id" id="edit_session_id" class="select select-bordered select2 w-full max-w-xs" required>
-                            <option value="">Select a session...</option>
-                            {% for session in academic_sessions %}
-                            <option value="{{ session.id }}">{{ session.name }}</option>
-                            {% endfor %}
-                        </select>
-                        <span id="edit-session-error" class="text-error"></span>
-                    </div>
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Semester Number</span>
-                        </label>
-                        <input type="number" name="number" id="edit_number" class="input input-bordered" required min="1">
-                        <span id="edit-number-error" class="text-error"></span>
-                    </div>
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Name</span>
-                        </label>
-                        <input type="text" name="name" id="edit_name" class="input input-bordered" required>
-                        <span id="edit-name-error" class="text-error"></span>
-                    </div>
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Description</span>
-                        </label>
-                        <textarea name="description" id="edit_description" class="textarea textarea-bordered"></textarea>
-                        <span id="edit-description-error" class="text-error"></span>
-                    </div>
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Start Date</span>
-                        </label>
-                        <input type="date" name="start_time" id="edit_start_time" class="input input-bordered">
-                        <span id="edit-start-time-error" class="text-error"></span>
-                    </div>
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">End Date</span>
-                        </label>
-                        <input type="date" name="end_time" id="edit_end_time" class="input input-bordered">
-                        <span id="edit-end-time-error" class="text-error"></span>
-                    </div>
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Active</span>
-                        </label>
-                        <select name="is_active" id="edit_is_active" class="select select-bordered">
-                            <option value="true">Yes</option>
-                            <option value="false">No</option>
-                        </select>
-                        <span id="edit-is-active-error" class="text-error"></span>
-                    </div>
-                </div>
-                <div class="modal-action">
-                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('editSemesterModal').close()">Close</button>
-                    <button type="submit" class="btn btn-primary" id="edit-semester-submit">Update Semester</button>
-                </div>
-            </form>
-        </div>
-        <form method="dialog" class="modal-backdrop">
-            <button>close</button>
-        </form>
-    </dialog>
-</div>
+    <!-- Include Select2 CSS and JS -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
-<!-- Include Select2 CSS and JS -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+    $(document).ready(function() {
+        let isSubmitting = false;
 
-{% comment %} <!-- Custom Select2 Styling to Match DaisyUI -->
-<style>
-.select2-container .select2-selection--single {
-    height: 2.5rem !important;
-    border: 1px solid hsl(var(--bc) / 0.2) !important;
-    border-radius: var(--rounded-btn, 0.5rem) !important;
-    background-color: hsl(var(--b1)) !important;
-    padding: 0.5rem !important;
-    font-size: 0.875rem !important;
-    line-height: 1.25rem !important;
-}
-.select2-container .select2-selection--single .select2-selection__rendered {
-    padding-left: 0 !important;
-    color: hsl(var(--nc) / 0.8) !important; /* Changed to neutral color to remove black */
-}
-.select2-container .select2-selection--single .select2-selection__arrow {
-    height: 2.5rem !important;
-    right: 0.5rem !important;
-}
-.select2-container .select2-selection--single .select2-selection__arrow b {
-    border-color: hsl(var(--bc) / 0.5) transparent transparent transparent !important;
-}
-.select2-container--open .select2-selection--single .select2-selection__arrow b {
-    border-color: transparent transparent hsl(var(--bc) / 0.5) transparent !important;
-}
-.select2-dropdown {
-    background-color: hsl(var(--b1)) !important;
-    border: 1px solid hsl(var(--bc) / 0.2) !important;
-    border-radius: var(--rounded-box, 1rem) !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
-}
-.select2-results__option {
-    padding: 0.5rem 1rem !important;
-    color: hsl(var(--nc) / 0.8) !important; /* Changed to neutral color to remove black */
-}
-.select2-results__option--highlighted {
-    background-color: hsl(var(--p) / 0.1) !important;
-    color: hsl(var(--pc)) !important;
-}
-.select2-container--default .select2-selection--single .select2-selection__placeholder {
-    color: hsl(var(--bc) / 0.5) !important;
-}
-.select2-container--default .select2-selection--single:focus {
-    outline: none !important;
-    border-color: hsl(var(--p)) !important;
-    box-shadow: 0 0 0 3px hsl(var(--p) / 0.2) !important;
-}
-</style> {% endcomment %}
-
-<script>
-$(document).ready(function() {
-    let isSubmitting = false; // Flag to prevent double submission
-
-    // Initialize Select2 for both forms
-    $('.select2').select2({
-        placeholder: $(this).attr('placeholder') || 'Select an option...',
-        allowClear: true
-    });
-
-    // Add Semester Form Submission
-    $('#add-semester-form').on('submit', function(e) {
-        e.preventDefault();
-        if (isSubmitting) return;
-        isSubmitting = true;
-
-        const submitBtn = $(this).find('button[type="submit"]');
-        submitBtn.prop('disabled', true);
-        submitBtn.html('<span class="loading loading-spinner loading-sm"></span> Processing...');
-        
-        $('.text-error').text('');
-        
-        let isValid = true;
-        $(this).find('[required]').each(function() {
-            if (!$(this).val()) {
-                const fieldName = $(this).attr('name');
-                $(`#add-${fieldName.replace('_', '-')}-error`).text('This field is required.');
-                isValid = false;
-            }
+        // Force focus on Select2 search input
+        $(document).on('select2:open', () => {
+            setTimeout(() => {
+                document.querySelector('.select2-search__field')?.focus();
+            }, 0);
         });
-        
-        if (!isValid) {
-            submitBtn.prop('disabled', false);
-            submitBtn.html('<i class="fas fa-plus"></i> Add Semester');
-            isSubmitting = false;
-            return;
-        }
-        
-        $.ajax({
-            url: $(this).attr('action'),
-            type: 'POST',
-            data: $(this).serialize(),
-            success: function(response) {
-                if (response.success) {
-                    const successAlert = `
-                        <div class="alert alert-success">
-                            ${response.message}
-                            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
-                        </div>
-                    `;
-                    $('.semester-form').prepend(successAlert);
-                    $('#add-semester-form')[0].reset();
-                    $('.select2').val(null).trigger('change');
-                    setTimeout(() => {
-                        location.reload();
-                    }, 1500);
-                } else {
-                    const errorAlert = `
-                        <div class="alert alert-error">
-                            Error: ${response.message}
-                            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
-                        </div>
-                    `;
-                    $('.semester-form').prepend(errorAlert);
+
+        // Initialize Select2
+        $('#add_program_id').select2({
+            placeholder: 'Select a program...',
+            minimumInputLength: 0,
+            allowClear: true,
+            width: '100%'
+        });
+        $('#add_session_id').select2({
+            placeholder: 'Select a session...',
+            minimumInputLength: 0,
+            allowClear: true,
+            width: '100%'
+        });
+        $('#program_id_filter').select2({
+            placeholder: 'All Programs in {{ request.user.teacher_profile.department.name }}',
+            minimumInputLength: 0,
+            allowClear: true,
+            width: '100%'
+        });
+        $('#session_id_filter').select2({
+            placeholder: 'All Sessions',
+            minimumInputLength: 0,
+            allowClear: true,
+            width: '100%'
+        });
+        $('#edit_program_id').select2({
+            placeholder: 'Select a program...',
+            minimumInputLength: 0,
+            allowClear: true,
+            width: '100%',
+            dropdownParent: $('#editSemesterModal')
+        });
+        $('#edit_session_id').select2({
+            placeholder: 'Select a session...',
+            minimumInputLength: 0,
+            allowClear: true,
+            width: '100%',
+            dropdownParent: $('#editSemesterModal')
+        });
+
+        // Add Semester Form Submission
+        $('#add-semester-form').on('submit', function(e) {
+            e.preventDefault();
+            if (isSubmitting) return;
+            isSubmitting = true;
+
+            const submitBtn = $(this).find('button[type="submit"]');
+            submitBtn.prop('disabled', true).addClass('loading');
+
+            $('.text-error').text('');
+
+            let isValid = true;
+            $(this).find('[required]').each(function() {
+                if (!$(this).val()) {
+                    const fieldName = $(this).attr('name');
+                    $(`#add-${fieldName.replace('_', '-')}-error`).text('This field is required.');
+                    isValid = false;
                 }
-            },
-            error: function(xhr, status, error) {
-                const errorAlert = `
-                    <div class="alert alert-error">
-                        An error occurred: ${error}
-                        <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
-                    </div>
-                `;
-                $('.semester-form').prepend(errorAlert);
-            },
-            complete: function() {
-                submitBtn.prop('disabled', false);
-                submitBtn.html('<i class="fas fa-plus"></i> Add Semester');
+            });
+
+            if (!isValid) {
+                submitBtn.prop('disabled', false).removeClass('loading');
                 isSubmitting = false;
+                return;
             }
-        });
-    });
 
-    // Edit Semester Button (Event Delegation)
-    $(document).on('click', '.edit-semester', function() {
-        const semesterId = $(this).data('semester-id');
-        const programId = $(this).data('program-id');
-        const sessionId = $(this).data('session-id');
-        const number = $(this).data('number');
-        const name = $(this).data('name');
-        const description = $(this).data('description');
-        const startTime = $(this).data('start-time');
-        const endTime = $(this).data('end-time');
-        const isActive = $(this).data('is-active');
-
-        console.log('Edit clicked:', { semesterId, programId, sessionId, number, name, description, startTime, endTime, isActive });
-
-        // Populate modal form
-        $('#edit_semester_id').val(semesterId);
-        $('#edit_program_id').val(programId).trigger('change');
-        $('#edit_session_id').val(sessionId).trigger('change');
-        $('#edit_number').val(number);
-        $('#edit_name').val(name);
-        $('#edit_description').val(description);
-        $('#edit_start_time').val(startTime);
-        $('#edit_end_time').val(endTime);
-        $('#edit_is_active').val(isActive);
-        $('.text-error').text('');
-
-        // Show DaisyUI modal
-        document.getElementById('editSemesterModal').showModal();
-    });
-
-    // Edit Semester Form Submission
-    $('#edit-semester-form').on('submit', function(e) {
-        e.preventDefault();
-        if (isSubmitting) return;
-        isSubmitting = true;
-
-        const submitBtn = $('#edit-semester-submit');
-        submitBtn.prop('disabled', true);
-        submitBtn.html('<span class="loading loading-spinner loading-sm"></span> Processing...');
-
-        $('.text-error').text('');
-
-        let isValid = true;
-        $('#edit-semester-form').find('[required]').each(function() {
-            if (!$(this).val()) {
-                const fieldName = $(this).attr('name');
-                $(`#edit-${fieldName.replace('_', '-')}-error`).text('This field is required.');
-                isValid = false;
-            }
-        });
-
-        if (!isValid) {
-            submitBtn.prop('disabled', false);
-            submitBtn.text('Update Semester');
-            isSubmitting = false;
-            return;
-        }
-
-        $.ajax({
-            url: $('#edit-semester-form').attr('action'),
-            type: 'POST',
-            data: $('#edit-semester-form').serialize(),
-            success: function(response) {
-                if (response.success) {
-                    document.getElementById('editSemesterModal').close();
-                    const successAlert = `
-                        <div class="alert alert-success">
-                            ${response.message}
-                            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
-                        </div>
-                    `;
-                    $('.semester-form').prepend(successAlert);
-                    setTimeout(() => {
-                        location.reload();
-                    }, 1500);
-                } else {
-                    const errorAlert = `
-                        <div class="alert alert-error">
-                            Error: ${response.message}
-                            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
-                        </div>
-                    `;
-                    $('#editSemesterModal .modal-box').prepend(errorAlert);
-                }
-            },
-            error: function(xhr, status, error) {
-                const errorAlert = `
-                    <div class="alert alert-error">
-                        An error occurred: ${error}
-                        <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
-                    </div>
-                `;
-                $('#editSemesterModal .modal-box').prepend(errorAlert);
-            },
-            complete: function() {
-                submitBtn.prop('disabled', false);
-                submitBtn.text('Update Semester');
-                isSubmitting = false;
-            }
-        });
-    });
-
-    // Reset modal form when closed
-    $('#editSemesterModal').on('close', function() {
-        $('#edit-semester-form')[0].reset();
-        $('#edit_program_id').val(null).trigger('change');
-        $('#edit_session_id').val(null).trigger('change');
-        $('.text-error').text('');
-        $('#editSemesterModal .modal-box .alert').remove();
-    });
-
-    // Delete Semester Button
-    $(document).on('click', '.delete-semester', function() {
-        const semesterId = $(this).data('semester-id');
-        if (confirm('Are you sure you want to delete this semester?')) {
             $.ajax({
-                url: "{% url 'faculty_staff:delete_semester' %}",
+                url: $(this).attr('action'),
                 type: 'POST',
-                data: {
-                    semester_id: semesterId,
-                    csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+                data: $(this).serialize(),
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader('X-CSRFToken', $('input[name=csrfmiddlewaretoken]').val());
                 },
                 success: function(response) {
                     if (response.success) {
                         const successAlert = `
-                            <div class="alert alert-success">
-                                ${response.message}
-                                <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
+                            <div class="alert alert-success shadow-md mb-4 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 mr-2 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span class="flex-1">${response.message}</span>
+                                <button type="button" class="btn btn-xs btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
                             </div>
                         `;
                         $('.semester-form').prepend(successAlert);
-                        setTimeout(() => {
-                            location.reload();
-                        }, 1500);
+                        $('#add-semester-form')[0].reset();
+                        $('#add_program_id, #add_session_id').val(null).trigger('change');
+                        setTimeout(() => location.reload(), 1000);
                     } else {
                         const errorAlert = `
-                            <div class="alert alert-error">
-                                Error: ${response.message}
-                                <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
+                            <div class="alert alert-error shadow-md mb-4 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 mr-2 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                <span class="flex-1">Error: ${response.message}</span>
+                                <button type="button" class="btn btn-xs btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
                             </div>
                         `;
                         $('.semester-form').prepend(errorAlert);
@@ -631,16 +522,165 @@ $(document).ready(function() {
                 },
                 error: function(xhr, status, error) {
                     const errorAlert = `
-                        <div class="alert alert-error">
-                            An error occurred: ${error}
-                            <button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
+                        <div class="alert alert-error shadow-md mb-4 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 mr-2 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                            <span class="flex-1">An error occurred: ${error}</span>
+                            <button type="button" class="btn btn-xs btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
                         </div>
                     `;
                     $('.semester-form').prepend(errorAlert);
+                },
+                complete: function() {
+                    submitBtn.prop('disabled', false).removeClass('loading');
+                    isSubmitting = false;
                 }
             });
-        }
+        });
+
+        // Edit Semester Button
+        $(document).on('click', '.edit-semester', function() {
+            const data = $(this).data();
+            $('#edit_semester_id').val(data.semesterId);
+            $('#edit_program_id').val(data.programId).trigger('change');
+            $('#edit_session_id').val(data.sessionId).trigger('change');
+            $('#edit_number').val(data.number);
+            $('#edit_name').val(data.name);
+            $('#edit_description').val(data.description);
+            $('#edit_start_time').val(data.startTime);
+            $('#edit_end_time').val(data.endTime);
+            $('#edit_is_active').val(data.isActive);
+            $('.text-error').text('');
+            document.getElementById('editSemesterModal').showModal();
+        });
+
+        // Edit Semester Form Submission
+        $('#edit-semester-form').on('submit', function(e) {
+            e.preventDefault();
+            if (isSubmitting) return;
+            isSubmitting = true;
+
+            const submitBtn = $('#edit-semester-submit');
+            submitBtn.prop('disabled', true).addClass('loading');
+
+            $('.text-error').text('');
+
+            let isValid = true;
+            $(this).find('[required]').each(function() {
+                if (!$(this).val()) {
+                    const fieldName = $(this).attr('name');
+                    $(`#edit-${fieldName.replace('_', '-')}-error`).text('This field is required.');
+                    isValid = false;
+                }
+            });
+
+            if (!isValid) {
+                submitBtn.prop('disabled', false).removeClass('loading');
+                isSubmitting = false;
+                return;
+            }
+
+            $.ajax({
+                url: $(this).attr('action'),
+                type: 'POST',
+                data: $(this).serialize(),
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader('X-CSRFToken', $('input[name=csrfmiddlewaretoken]').val());
+                },
+                success: function(response) {
+                    if (response.success) {
+                        document.getElementById('editSemesterModal').close();
+                        const successAlert = `
+                            <div class="alert alert-success shadow-md mb-4 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 mr-2 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span class="flex-1">${response.message}</span>
+                                <button type="button" class="btn btn-xs btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
+                            </div>
+                        `;
+                        $('.semester-form').prepend(successAlert);
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        const errorAlert = `
+                            <div class="alert alert-error shadow-md mb-4 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 mr-2 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                <span class="flex-1">Error: ${response.message}</span>
+                                <button type="button" class="btn btn-xs btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
+                            </div>
+                        `;
+                        $('#editSemesterModal .modal-box').prepend(errorAlert);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    const errorAlert = `
+                        <div class="alert alert-error shadow-md mb-4 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 mr-2 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                            <span class="flex-1">An error occurred: ${error}</span>
+                            <button type="button" class="btn btn-xs btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
+                        </div>
+                    `;
+                    $('#editSemesterModal .modal-box').prepend(errorAlert);
+                },
+                complete: function() {
+                    submitBtn.prop('disabled', false).removeClass('loading');
+                    isSubmitting = false;
+                }
+            });
+        });
+
+        // Reset modal form when closed
+        $('#editSemesterModal').on('close', function() {
+            $('#edit-semester-form')[0].reset();
+            $('#edit_program_id, #edit_session_id').val(null).trigger('change');
+            $('.text-error').text('');
+            $('#editSemesterModal .modal-box .alert').remove();
+        });
+
+        // Delete Semester Button
+        $(document).on('click', '.delete-semester', function() {
+            const semesterId = $(this).data('semester-id');
+            if (confirm('Are you sure you want to delete this semester?')) {
+                $.ajax({
+                    url: "{% url 'faculty_staff:delete_semester' %}",
+                    type: 'POST',
+                    data: {
+                        semester_id: semesterId,
+                        csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            const successAlert = `
+                                <div class="alert alert-success shadow-md mb-4 flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 mr-2 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                    <span class="flex-1">${response.message}</span>
+                                    <button type="button" class="btn btn-xs btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
+                                </div>
+                            `;
+                            $('.semester-form').prepend(successAlert);
+                            setTimeout(() => location.reload(), 1000);
+                        } else {
+                            const errorAlert = `
+                                <div class="alert alert-error shadow-md mb-4 flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 mr-2 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                    <span class="flex-1">Error: ${response.message}</span>
+                                    <button type="button" class="btn btn-xs btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
+                                </div>
+                            `;
+                            $('.semester-form').prepend(errorAlert);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        const errorAlert = `
+                            <div class="alert alert-error shadow-md mb-4 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 mr-2 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                <span class="flex-1">An error occurred: ${error}</span>
+                                <button type="button" class="btn btn-xs btn-circle btn-ghost" onclick="$(this).parent().remove()">✕</button>
+                            </div>
+                        `;
+                        $('.semester-form').prepend(errorAlert);
+                    }
+                });
+            }
+        });
     });
-});
-</script>
+    </script>
+</div>
 {% endblock %}

@@ -1,0 +1,312 @@
+{% extends 'base_student.html' %}
+{% load humanize %}
+
+{% block title %}My Profile{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-2 sm:px-4 py-6">
+    <!-- Header -->
+    <div class="hero bg-base-200 text-base-content rounded-lg shadow-lg mb-6">
+        <div class="hero-content text-center py-6">
+            <div class="max-w-4xl">
+                <h1 class="text-3xl sm:text-4xl font-bold mb-2">Student Profile</h1>
+                <p class="text-base sm:text-lg text-base-content/90">
+                    View and manage your academic and personal information
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-base-100 shadow-md rounded-lg p-6">
+        <div class="flex flex-col md:flex-row gap-8">
+            <!-- Left Column - Profile Card -->
+            <div class="w-full md:w-1/3 space-y-6">
+                <div class="card bg-base-200 shadow-sm">
+                    <div class="card-body items-center text-center">
+                        <!-- Profile Picture -->
+                        <div class="avatar mb-4">
+                            <div class="w-40 h-40 rounded-full overflow-hidden border-4 border-primary">
+                                {% if student.applicant.applicant_photo %}
+                                    <img src="{{ student.applicant.applicant_photo.url }}" alt="Profile" class="w-full h-full object-cover">
+                                {% else %}
+                                    <div class="w-full h-full bg-gray-200 flex items-center justify-center">
+                                        <i class="fas fa-user text-6xl text-gray-400"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <h2 class="card-title">{{ student.applicant.full_name|default:"-" }}</h2>
+                        <p class="text-primary">{{ student.program.name|default:"-" }}</p>
+                        <p class="text-sm text-gray-500">ID: {{ student.university_roll_no|default:"-" }}</p>
+                        
+                        <div class="divider my-2"></div>
+                        
+                        <!-- Status Badge -->
+                        <div class="w-full">
+                            <p class="text-sm text-gray-500">Status</p>
+                            <span class="badge {% if student.current_status == 'active' %}badge-success{% elif student.current_status == 'suspended' %}badge-warning{% else %}badge-error{% endif %} mt-1">
+                                {{ student.get_current_status_display|default:"-" }}
+                            </span>
+                        </div>
+                        
+                        <!-- Edit Profile Button -->
+                        <div class="card-actions mt-4 w-full">
+                            <a href="{% url 'students:settings' %}" class="btn btn-primary w-full">
+                                <i class="fas fa-edit mr-2"></i>Edit Profile
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Emergency Contacts -->
+                <div class="card bg-base-200 shadow-sm">
+                    <div class="card-body">
+                        <h3 class="card-title text-lg">
+                            <i class="fas fa-phone-alt mr-2"></i>
+                            Emergency Contacts
+                        </h3>
+                        <div class="divider my-1"></div>
+                        <div class="space-y-3">
+                            <div>
+                                <p class="text-sm text-gray-500">Contact Person</p>
+                                <p class="font-medium">{{ student.emergency_contact|default:"Not provided" }}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Phone Number</p>
+                                <p class="font-medium">{{ student.emergency_phone|default:"Not provided" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column - Profile Details -->
+            <div class="w-full md:w-2/3 space-y-6">
+                <!-- Personal Information -->
+                <div class="card bg-base-200 shadow-sm">
+                    <div class="card-body">
+                        <h2 class="card-title text-xl">
+                            <i class="fas fa-user-circle mr-2"></i>
+                            Personal Information
+                        </h2>
+                        <div class="divider my-1"></div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm text-gray-500">Full Name</p>
+                                <p class="font-medium">{{ student.applicant.full_name|default:"-" }}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Email</p>
+                                <p class="font-medium">{{ user.email|default:"-" }}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">CNIC</p>
+                                <p class="font-medium">{{ student.applicant.cnic|default:"-" }}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Date of Birth</p>
+                                <p class="font-medium">{{ student.applicant.dob|date:"F d, Y"|default:"-" }}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Contact Number</p>
+                                <p class="font-medium">{{ student.applicant.contact_no|default:"-" }}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Religion</p>
+                                <p class="font-medium">{{ student.applicant.religion|default:"-" }}</p>
+                            </div>
+                            <div class="md:col-span-2">
+                                <p class="text-sm text-gray-500">Permanent Address</p>
+                                <p class="font-medium">{{ student.applicant.permanent_address|default:"-"|linebreaksbr }}</p>
+                            </div>
+                            {% if student.applicant.identification_mark %}
+                            <div class="md:col-span-2">
+                                <p class="text-sm text-gray-500">Identification Mark</p>
+                                <p class="font-medium">{{ student.applicant.identification_mark }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Academic Information -->
+                <div class="card bg-base-200 shadow-sm">
+                    <div class="card-body">
+                        <h2 class="card-title text-xl">
+                            <i class="fas fa-graduation-cap mr-2"></i>
+                            Academic Information
+                        </h2>
+                        <div class="divider my-1"></div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm text-gray-500">University Roll No</p>
+                                <p class="font-medium">{{ student.university_roll_no|default:"-" }}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">College Roll No</p>
+                                <p class="font-medium">{{ student.college_roll_no|default:"-" }}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Program</p>
+                                <p class="font-medium">{{ student.program.name|default:"-" }}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Department</p>
+                                <p class="font-medium">{{ student.program.department.name|default:"-" }}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Faculty</p>
+                                <p class="font-medium">{{ student.program.department.faculty.name|default:"-" }}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Shift</p>
+                                <p class="font-medium">{{ student.applicant.get_shift_display|default:"-" }}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Enrollment Date</p>
+                                <p class="font-medium">{{ student.enrollment_date|date:"F d, Y"|default:"-" }}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Graduation Date</p>
+                                <p class="font-medium">
+                                    {% if student.graduation_date %}
+                                        {{ student.graduation_date|date:"F d, Y" }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Family Information -->
+                <div class="card bg-base-200 shadow-sm">
+                    <div class="card-body">
+                        <h2 class="card-title text-xl">
+                            <i class="fas fa-users mr-2"></i>
+                            Family Information
+                        </h2>
+                        <div class="divider my-1"></div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm text-gray-500">{{ student.applicant.get_relationship_display|default:"Father's" }} Name</p>
+                                <p class="font-medium">{{ student.applicant.father_name|default:"-" }}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Occupation</p>
+                                <p class="font-medium">{{ student.applicant.father_occupation|default:"-" }}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">CNIC</p>
+                                <p class="font-medium">{{ student.applicant.father_cnic|default:"-" }}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Monthly Income</p>
+                                <p class="font-medium">
+                                    {% if student.applicant.monthly_income %}
+                                        Rs. {{ student.applicant.monthly_income|floatformat:2|intcomma }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </p>
+                            </div>
+                            {% if student.applicant.mother_name %}
+                            <div>
+                                <p class="text-sm text-gray-500">Mother's Name</p>
+                                <p class="font-medium">{{ student.applicant.mother_name }}</p>
+                            </div>
+                            {% endif %}
+                            {% if student.applicant.mother_occupation %}
+                            <div>
+                                <p class="text-sm text-gray-500">Mother's Occupation</p>
+                                <p class="font-medium">{{ student.applicant.mother_occupation }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Academic Qualifications -->
+                {% if academic_qualifications %}
+                <div class="card bg-base-200 shadow-sm">
+                    <div class="card-body">
+                        <h2 class="card-title text-xl">
+                            <i class="fas fa-certificate mr-2"></i>
+                            Academic Qualifications
+                        </h2>
+                        <div class="divider my-1"></div>
+                        <div class="overflow-x-auto">
+                            <table class="table table-zebra">
+                                <thead>
+                                    <tr>
+                                        <th>Exam</th>
+                                        <th>Year</th>
+                                        <th>Board/University</th>
+                                        <th>Marks</th>
+                                        <th>Division</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for qual in academic_qualifications %}
+                                    <tr>
+                                        <td>{{ qual.exam_passed }}</td>
+                                        <td>{{ qual.passing_year }}</td>
+                                        <td>{{ qual.board|default:"-" }}</td>
+                                        <td>
+                                            {% if qual.marks_obtained and qual.total_marks %}
+                                                {{ qual.marks_obtained }}/{{ qual.total_marks }} ({{ qual.percentage|floatformat:2 }}%)
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ qual.division|default:"-" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Extra Curricular Activities -->
+                {% if extra_curriculars %}
+                <div class="card bg-base-200 shadow-sm">
+                    <div class="card-body">
+                        <h2 class="card-title text-xl">
+                            <i class="fas fa-trophy mr-2"></i>
+                            Extra Curricular Activities
+                        </h2>
+                        <div class="divider my-1"></div>
+                        <div class="space-y-4">
+                            {% for activity in extra_curriculars %}
+                            <div class="bg-base-100 rounded-lg p-4 shadow">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <h3 class="font-semibold">{{ activity.activity_type }}</h3>
+                                        <p class="text-sm text-gray-600">{{ activity.organization }}</p>
+                                    </div>
+                                    <span class="badge badge-outline">{{ activity.activity_year }}</span>
+                                </div>
+                                {% if activity.details %}
+                                <p class="mt-2 text-sm">{{ activity.details }}</p>
+                                {% endif %}
+                                {% if activity.achievements %}
+                                <div class="mt-2">
+                                    <p class="text-sm font-medium">Achievements:</p>
+                                    <p class="text-sm">{{ activity.achievements }}</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

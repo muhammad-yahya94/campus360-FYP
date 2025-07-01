@@ -3,82 +3,86 @@
 {% block title %}Add Course{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto space-y-6">
-    <!-- Header -->
-    <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-xl shadow-lg mb-6">
-        <div class="text-center py-6">
-            <h1 class="text-4xl font-bold">Add Course</h1>
-            <p class="text-lg text-white/80">Create a new course offering</p>
+<div class="drawer-content flex flex-col min-h-screen">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        <!-- Header -->
+        <div class="hero bg-primary text-primary-content rounded-lg shadow-lg mb-6">
+            <div class="hero-content text-center py-6">
+                <div class="max-w-md">
+                    <h1 class="text-3xl sm:text-4xl font-bold mb-2">Add Course</h1>
+                    <p class="text-base sm:text-lg text-primary-content/90">Create a new course offering</p>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <!-- Add Course Form -->
-    <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-            <h2 class="card-title text-2xl mb-4">
-                <i class="fas fa-book"></i>
-                Course Details
-            </h2>
-            <form method="post" action="{% url 'faculty_staff:add_course' %}" novalidate class="space-y-4">
-                {% csrf_token %}
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Course Code</span>
-                        </label>
-                        <input type="text" name="code" id="code" class="input input-bordered" value="{{ form.code.value|default:'' }}" required>
-                        {% if form.errors.code %}
-                        <span class="text-error">{{ form.errors.code.0 }}</span>
-                        {% endif %}
+        <!-- Add Course Form -->
+        <div class="card bg-base-100 shadow-lg">
+            <div class="card-body">
+                <h2 class="card-title text-xl text-base-content mb-4">
+                    <i class="fas fa-book mr-2"></i>
+                    Course Details
+                </h2>
+                <form method="post" action="{% url 'faculty_staff:add_course' %}" novalidate class="space-y-4">
+                    {% csrf_token %}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text text-sm text-base-content">Course Code</span>
+                            </label>
+                            <input type="text" name="code" id="code" class="input input-bordered text-sm text-base-content" value="{{ form.code.value|default:'' }}" required>
+                            {% if form.errors.code %}
+                            <span class="text-error text-xs">{{ form.errors.code.0 }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text text-sm text-base-content">Course Name</span>
+                            </label>
+                            <input type="text" name="name" id="name" class="input input-bordered text-sm text-base-content" value="{{ form.name.value|default:'' }}" required>
+                            {% if form.errors.name %}
+                            <span class="text-error text-xs">{{ form.errors.name.0 }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text text-sm text-base-content">Credits</span>
+                            </label>
+                            <input type="number" name="credits" id="credits" class="input input-bordered text-sm text-base-content" value="{{ form.credits.value|default:3 }}" min="1" required>
+                            {% if form.errors.credits %}
+                            <span class="text-error text-xs">{{ form.errors.credits.0 }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text text-sm text-base-content">Lab Work</span>
+                            </label>
+                            <input type="number" name="lab_work" id="lab_work" class="input input-bordered text-sm text-base-content" value="{{ form.lab_work.value|default:0 }}" min="0" required>
+                            {% if form.errors.lab_work %}
+                            <span class="text-error text-xs">{{ form.errors.lab_work.0 }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text text-sm text-base-content">Active</span>
+                            </label>
+                            <select name="is_active" id="is_active" class="select select-bordered text-sm text-base-content">
+                                <option value="True" {% if form.is_active.value|default:'True' %}selected{% endif %}>Yes</option>
+                                <option value="False" {% if not form.is_active.value|default:'True' %}selected{% endif %}>No</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="form-control">
                         <label class="label">
-                            <span class="label-text">Course Name</span>
+                            <span class="label-text text-sm text-base-content">Description</span>
                         </label>
-                        <input type="text" name="name" id="name" class="input input-bordered" value="{{ form.name.value|default:'' }}" required>
-                        {% if form.errors.name %}
-                        <span class="text-error">{{ form.errors.name.0 }}</span>
-                        {% endif %}
+                        <textarea name="description" id="description" class="textarea textarea-bordered text-sm text-base-content" rows="4">{{ form.description.value|default:'' }}</textarea>
                     </div>
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Credits</span>
-                        </label>
-                        <input type="number" name="credits" id="credits" class="input input-bordered" value="{{ form.credits.value|default:3 }}" min="1" required>
-                        {% if form.errors.credits %}
-                        <span class="text-error">{{ form.errors.credits.0 }}</span>
-                        {% endif %}
-                    </div>
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Lab work</span>
-                        </label>
-                        <input type="number" name="lab_work" id="lab_work" class="input input-bordered" value="{{ form.lab_work.value|default:0 }}" min="0" required>
-                        {% if form.errors.lab_work %}
-                        <span class="text-error">{{ form.errors.lab_work.0 }}</span>
-                        {% endif %}
-                    </div>
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Active</span>
-                        </label>
-                        <select name="is_active" id="is_active" class="select select-bordered">
-                            <option value="True" {% if form.is_active.value|default:'True' %}selected{% endif %}>Yes</option>
-                            <option value="False" {% if not form.is_active.value|default:'True' %}selected{% endif %}>No</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text">Description</span>
-                    </label>
-                    <textarea name="description" id="description" class="textarea textarea-bordered">{{ form.description.value|default:'' }}</textarea>
-                </div>
-                <button type="submit" class="btn btn-primary w-full">
-                    <i class="fas fa-plus"></i>
-                    Add Course
-                </button>
-            </form>
+                    <button type="submit" class="btn btn-sm btn-primary w-full sm:w-auto">
+                        <i class="fas fa-plus mr-2"></i>
+                        Add Course
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 </div>

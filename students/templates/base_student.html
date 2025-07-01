@@ -276,6 +276,11 @@
                         </a>
                     </li>
                         <li>
+                            <a href="{% url 'students:profile' %}" class="{% if request.resolver_match.url_name == 'profile' %}active{% endif %} text-lg py-3">
+                                <i class="fas fa-user text-lg w-6"></i> My Profile
+                            </a>
+                        </li>
+                        <li>
                             <a href="{% url 'students:settings' %}" class="{% if request.resolver_match.url_name == 'settings' %}active{% endif %} text-lg py-3">
                                 <i class="fas fa-cog text-lg w-6"></i> Settings
                             </a>

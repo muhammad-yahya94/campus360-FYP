@@ -3,13 +3,13 @@
 {% block title %}HOD Dashboard{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto space-y-6">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
     <!-- Welcome Header -->
-    <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-xl">
-        <div class="hero-content text-center py-8">
-            <div>
-                <h1 class="text-4xl font-bold mb-2">Welcome, {{ request.user.get_full_name }}</h1>
-                <p class="text-lg opacity-90">Department Head Dashboard</p>
+    <div class="hero bg-primary text-primary-content rounded-lg shadow-lg">
+        <div class="hero-content text-center py-6">
+            <div class="max-w-md">
+                <h1 class="text-3xl sm:text-4xl font-bold mb-2">Welcome, {{ request.user.get_full_name }}</h1>
+                <p class="text-base sm:text-lg text-primary-content/90">Department Head Dashboard</p>
             </div>
         </div>
     </div>
@@ -17,7 +17,7 @@
     <!-- Statistics Cards Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <!-- Total Staff Card -->
-        <div class="stats shadow bg-primary text-primary-content">
+        <div class="stats shadow bg-primary/80 text-primary-content">
             <div class="stat">
                 <div class="stat-figure">
                     <i class="fas fa-users text-3xl opacity-60"></i>
@@ -29,7 +29,7 @@
         </div>
 
         <!-- Active Staff Card -->
-        <div class="stats shadow bg-success text-success-content">
+        <div class="stats shadow bg-success/80 text-success-content">
             <div class="stat">
                 <div class="stat-figure">
                     <i class="fas fa-user-check text-3xl opacity-60"></i>
@@ -41,7 +41,7 @@
         </div>
 
         <!-- Active Students Card -->
-        <div class="stats shadow bg-info text-info-content">
+        <div class="stats shadow bg-info/80 text-info-content">
             <div class="stat">
                 <div class="stat-figure">
                     <i class="fas fa-graduation-cap text-3xl opacity-60"></i>
@@ -53,7 +53,7 @@
         </div>
 
         <!-- Current Sessions Card -->
-        <div class="stats shadow bg-warning text-warning-content">
+        <div class="stats shadow bg-warning/80 text-warning-content">
             <div class="stat">
                 <div class="stat-figure">
                     <i class="fas fa-calendar-alt text-3xl opacity-60"></i>
@@ -68,7 +68,7 @@
     <!-- Additional Statistics -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <!-- Programs Card -->
-        <div class="stats shadow bg-secondary text-secondary-content">
+        <div class="stats shadow bg-secondary/80 text-secondary-content">
             <div class="stat">
                 <div class="stat-figure">
                     <i class="fas fa-book text-3xl opacity-60"></i>
@@ -80,7 +80,7 @@
         </div>
 
         <!-- Working Semesters Card -->
-        <div class="stats shadow bg-accent text-accent-content">
+        <div class="stats shadow bg-accent/80 text-accent-content">
             <div class="stat">
                 <div class="stat-figure">
                     <i class="fas fa-chalkboard text-3xl opacity-60"></i>
@@ -95,16 +95,16 @@
     <!-- Department Info and Quick Actions -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Department Information Card -->
-        <div class="card bg-base-100 shadow-xl">
+        <div class="card bg-base-100 shadow-lg">
             <div class="card-body">
-                <h2 class="card-title text-2xl">
-                    <i class="fas fa-building text-primary"></i>
+                <h2 class="card-title text-2xl text-base-content">
+                    <i class="fas fa-building text-primary mr-2"></i>
                     Department Information
                 </h2>
                 <div class="space-y-4">
                     <div class="flex items-center gap-3">
                         <div class="badge badge-primary badge-lg">Department</div>
-                        <span class="text-lg font-semibold">{{ department.name }}</span>
+                        <span class="text-lg font-semibold text-base-content">{{ department.name }}</span>
                     </div>
                     <p class="text-base-content/70">
                         Manage your department's staff, students, and academic resources efficiently.
@@ -125,30 +125,30 @@
         </div>
         
         <!-- Quick Actions Card -->
-        <div class="card bg-base-100 shadow-xl">
+        <div class="card bg-base-100 shadow-lg">
             <div class="card-body">
-                <h2 class="card-title text-2xl">
-                    <i class="fas fa-bolt text-warning"></i>
+                <h2 class="card-title text-2xl text-base-content">
+                    <i class="fas fa-bolt text-warning mr-2"></i>
                     Quick Actions
                 </h2>
                 <div class="space-y-3">
-                    <a href="{% url 'faculty_staff:staff_management' %}" class="btn btn-primary w-full justify-start">
-                        <i class="fas fa-users"></i>
+                    <a href="{% url 'faculty_staff:staff_management' %}" class="btn btn-sm btn-primary w-full justify-start">
+                        <i class="fas fa-users mr-2"></i>
                         Manage Staff
                         <div class="badge badge-neutral ml-auto">{{ total_staff }}</div>
                     </a>
-                    <a href="{% url 'faculty_staff:add_staff' %}" class="btn btn-success w-full justify-start">
-                        <i class="fas fa-user-plus"></i>
+                    <a href="{% url 'faculty_staff:add_staff' %}" class="btn btn-sm btn-success w-full justify-start">
+                        <i class="fas fa-user-plus mr-2"></i>
                         Add New Staff
                         <i class="fas fa-arrow-right ml-auto"></i>
                     </a>
-                    <a href="{% url 'faculty_staff:semester_management' %}" class="btn btn-info w-full justify-start">
-                        <i class="fas fa-calendar-alt"></i>
+                    <a href="{% url 'faculty_staff:semester_management' %}" class="btn btn-sm btn-info w-full justify-start">
+                        <i class="fas fa-calendar-alt mr-2"></i>
                         Semester Management
                         <div class="badge badge-neutral ml-auto">{{ working_semesters }}</div>
                     </a>
-                    <a href="{% url 'faculty_staff:notices' %}" class="btn btn-warning w-full justify-start">
-                        <i class="fas fa-bullhorn"></i>
+                    <a href="{% url 'faculty_staff:notices' %}" class="btn btn-sm btn-warning w-full justify-start">
+                        <i class="fas fa-bullhorn mr-2"></i>
                         Manage Notices
                         <i class="fas fa-arrow-right ml-auto"></i>
                     </a>
@@ -158,29 +158,33 @@
     </div>
 
     <!-- Recent Activities -->
-    <div class="card bg-base-100 shadow-xl">
+    <div class="card bg-base-100 shadow-lg">
         <div class="card-body">
-            <h2 class="card-title text-2xl mb-4">
-                <i class="fas fa-clock text-info"></i>
+            <h2 class="card-title text-2xl text-base-content mb-4">
+                <i class="fas fa-clock text-info mr-2"></i>
                 Recent Activities
             </h2>
             {% if recent_activities %}
                 <div class="space-y-3">
                     {% for activity in recent_activities %}
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle"></i>
+                        <div class="alert alert-info shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
                             <span>{{ activity }}</span>
                         </div>
                     {% endfor %}
                 </div>
             {% else %}
-                <div class="text-center py-8">
-                    <i class="fas fa-inbox text-6xl text-base-content/20 mb-4"></i>
-                    <h3 class="text-xl font-semibold text-base-content/70 mb-2">No Recent Activities</h3>
-                    <p class="text-base-content/50">Activities will appear here as they occur.</p>
-                    <div class="mt-4">
-                        <a href="{% url 'faculty_staff:staff_management' %}" class="btn btn-primary">
-                            <i class="fas fa-plus"></i>
+                <div class="alert alert-info shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div class="text-center">
+                        <h3 class="text-xl font-semibold text-base-content/70 mb-2">No Recent Activities</h3>
+                        <p class="text-base-content/50 mb-4">Activities will appear here as they occur.</p>
+                        <a href="{% url 'faculty_staff:staff_management' %}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-plus mr-2"></i>
                             Start Managing
                         </a>
                     </div>
@@ -191,45 +195,45 @@
 
     <!-- Additional Navigation Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div class="card bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-xl hover:shadow-2xl transition-shadow">
+        <div class="card bg-base-100 shadow-lg bg-primary/10">
             <div class="card-body">
-                <h3 class="card-title">
-                    <i class="fas fa-graduation-cap"></i>
+                <h3 class="card-title text-base-content">
+                    <i class="fas fa-graduation-cap mr-2"></i>
                     Students
                 </h3>
-                <p class="opacity-90">Manage student records and sessions</p>
+                <p class="text-base-content/70">Manage student records and sessions</p>
                 <div class="card-actions justify-end">
-                    <a href="{% url 'faculty_staff:session_students' academic_sessions.0.id %}" class="btn btn-ghost text-white border-white hover:bg-white hover:text-blue-600">
+                    <a href="{% url 'faculty_staff:session_students' academic_sessions.0.id %}" class="btn btn-sm btn-outline btn-primary">
                         View Students
                     </a>
                 </div>
             </div>
         </div>
 
-        <div class="card bg-gradient-to-br from-green-500 to-green-600 text-white shadow-xl hover:shadow-2xl transition-shadow">
+        <div class="card bg-base-100 shadow-lg bg-success/10">
             <div class="card-body">
-                <h3 class="card-title">
-                    <i class="fas fa-book"></i>
+                <h3 class="card-title text-base-content">
+                    <i class="fas fa-book mr-2"></i>
                     Courses
                 </h3>
-                <p class="opacity-90">Add and manage course offerings</p>
+                <p class="text-base-content/70">Add and manage course offerings</p>
                 <div class="card-actions justify-end">
-                    <a href="{% url 'faculty_staff:add_course' %}" class="btn btn-ghost text-white border-white hover:bg-white hover:text-green-600">
+                    <a href="{% url 'faculty_staff:add_course' %}" class="btn btn-sm btn-outline btn-success">
                         Manage Courses
                     </a>
                 </div>
             </div>
         </div>
 
-        <div class="card bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-xl hover:shadow-2xl transition-shadow">
+        <div class="card bg-base-100 shadow-lg bg-info/10">
             <div class="card-body">
-                <h3 class="card-title">
-                    <i class="fas fa-clipboard-check"></i>
+                <h3 class="card-title text-base-content">
+                    <i class="fas fa-clipboard-check mr-2"></i>
                     Exams
                 </h3>
-                <p class="opacity-90">Record and manage exam results</p>
+                <p class="text-base-content/70">Record and manage exam results</p>
                 <div class="card-actions justify-end">
-                    <a href="{% url 'faculty_staff:exam_results' %}" class="btn btn-ghost text-white border-white hover:bg-white hover:text-purple-600">
+                    <a href="{% url 'faculty_staff:exam_results' %}" class="btn btn-sm btn-outline btn-info">
                         View Results
                     </a>
                 </div>

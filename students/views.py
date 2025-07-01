@@ -16,6 +16,7 @@ from django.core.exceptions import ObjectDoesNotExist
 # Django Imports
 from django import forms
 from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.urls import reverse
 from django.utils import timezone
@@ -978,6 +979,40 @@ def settings_view(request):
         return redirect('students:dashboard')
     
     
+@login_required
+def profile_view(request):
+    """
+    Display student profile information with all related details.
+    """
+    try:
+        student = Student.objects.select_related('applicant', 'program', 'program__department', 'program__department__faculty').get(user=request.user)
+        
+        # Get academic qualifications
+        academic_qualifications = student.applicant.academic_qualifications.all().order_by('-passing_year')
+        
+        # Get extra curricular activities
+        extra_curriculars = student.applicant.extra_curricular_activities.all().order_by('-activity_year')
+        
+        context = {
+            'student': student,
+            'user': request.user,
+            'applicant': student.applicant,
+            'academic_qualifications': academic_qualifications,
+            'extra_curriculars': extra_curriculars,
+            'student_full_name': student.applicant.full_name if hasattr(student, 'applicant') else '',
+            'today_date': timezone.now().date(),
+        }
+        return render(request, 'profile.html', context)
+    except Student.DoesNotExist:
+        messages.error(request, 'Student profile not found.')
+        return redirect('students:dashboard')
+    except Exception as e:
+        logger.error(f"Error in profile_view: {str(e)}")
+        messages.error(request, 'An error occurred while loading your profile.')
+        return redirect('students:dashboard')
+
+
+@login_required
 def update_account(request):
     """
     Handle updating student account information.
@@ -1044,8 +1079,23 @@ def update_account(request):
 
             # Save new profile picture
             fs = FileSystemStorage()
-            filename = fs.save(f'profile_pictures/user_{user.id}/{profile_picture.name}', profile_picture)
-            user.profile_picture = fs.url(filename)
+            # Create a clean filename and path
+            import os
+            import uuid
+            
+            # Generate a unique filename to prevent collisions
+            file_ext = os.path.splitext(profile_picture.name)[1]
+            filename = f"{uuid.uuid4().hex}{file_ext}"
+            
+            # Create the relative path for storage
+            relative_path = os.path.join('profile_pictures', f'user_{user.id}', filename)
+            
+            # Save the file
+            saved_path = fs.save(relative_path, profile_picture)
+            
+            # Store just the relative path in the database
+            # Django's FileField will handle the URL construction
+            user.profile_picture.name = saved_path
 
         # Update user information
         user.email = email

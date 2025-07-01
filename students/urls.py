@@ -37,8 +37,9 @@ urlpatterns = [
     path('get-quiz/<int:quiz_id>/', views.get_quiz, name='get_quiz'),  # 8.2 Get Quiz
     path('submit-quiz/<int:quiz_id>/', views.submit_quiz, name='submit_quiz'),  # 8.3 Submit Quiz
 
-    # ========== 9. Settings ==========
-    path('settings/', views.settings_view, name='settings'),  # 9.1 Settings Page
+    # ========== 9. Profile & Settings ==========
+    path('profile/', views.profile_view, name='profile'),  # 9.1 Profile Page
+    path('settings/', views.settings_view, name='settings'),  # 9.2 Settings Page
     path('settings/update-account/', views.update_account, name='update_account'),  # 9.2 Update Account
     path('settings/change-password/', views.change_password, name='change_password'),  # 9.3 Change Password
 ]

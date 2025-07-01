@@ -8,6 +8,10 @@ import random
 
 # Third-Party Imports
 import pytz
+from django.contrib import messages
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth import update_session_auth_hash
+from django.core.exceptions import ObjectDoesNotExist
 
 # Django Imports
 from django import forms
@@ -18,6 +22,11 @@ from django.utils import timezone
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.files.storage import default_storage, FileSystemStorage
 from django.views.decorators.http import require_GET, require_POST
+from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib import messages
+from django.conf import settings
+import os
 from django.contrib import messages
 from django.db import transaction
 from django.db.models import Sum, Q, Count, Max
@@ -41,11 +50,6 @@ from courses.models import (
 from faculty_staff.models import Teacher, TeacherDetails
 from students.models import Student, StudentSemesterEnrollment, CourseEnrollment
 
-
-
-
-
-
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -59,19 +63,26 @@ def student_login(request):
     if request.method == 'POST':
         email = request.POST.get('username')  # Email field is used as username
         password = request.POST.get('password')
+
+        # Attempt to authenticate the user
         user = authenticate(request, username=email, password=password)
+
         if user is not None:
-            try:  
+            # Check if the user is associated with a Student profile
+            try:
                 student = Student.objects.get(user=user)
-                login(request, user)
-                messages.success(request, 'Login successful!')
-                return redirect('students:dashboard')
+                if student.current_status in ['active', 'suspended']:  # Optional: Only allow active or suspended students
+                    login(request, user)
+                    messages.success(request, 'Login successful!')
+                    return redirect('students:dashboard')
+                else:
+                    messages.error(request, 'Your account is not in an active or suspended status.')
             except Student.DoesNotExist:
-                messages.error(request, 'You are not authorized as a student.')
+                messages.error(request, 'You are not authorized as a student. Only students can log in.')
         else:
             messages.error(request, 'Invalid email or password.')
-    return render(request, 'login.html')
 
+    return render(request, 'login.html')
 
 
 @login_required
@@ -102,7 +113,7 @@ def student_dashboard(request):
             'enrollments': [],
         })
 
-    # ✅ Get active semester in current session for student's program
+    # Get active semester in current session for student's program
     active_semester = Semester.objects.filter(
         program=student.program,
         session=current_session,
@@ -132,7 +143,7 @@ def student_dashboard(request):
     enrollments = CourseEnrollment.objects.filter(
         student_semester_enrollment__student=student,
         course_offering__academic_session=current_session,
-        course_offering__semester__is_active=True  # ✅ Filter only active semester courses
+        course_offering__semester__is_active=True  # Filter only active semester courses
     ).select_related(
         'course_offering__course',
         'course_offering__semester',
@@ -146,13 +157,6 @@ def student_dashboard(request):
         'active_semester': active_semester,
         'enrollments': enrollments,
     })
-
-
-
-
-
-
-
 
 def my_courses(request):
     user = request.user
@@ -195,12 +199,10 @@ def my_courses(request):
         else:
             enrollments = CourseEnrollment.objects.none()  # No enrollments if no semesters exist
 
-
-
     semester_numbers = Semester.objects.filter(
-    program=student.program,
-    is_active=True
-).order_by('number').values_list('number', flat=True)
+        program=student.program,
+        is_active=True
+    ).order_by('number').values_list('number', flat=True)
     print(f'this is queery set only numbers --  {semester_numbers}')
     context = {
         'enrollments': enrollments,
@@ -210,8 +212,6 @@ def my_courses(request):
         'selected_semester_number': selected_semester_number or first_semester_number,
     }
     return render(request, 'my_courses.html', context)
-
-
 
 @login_required
 def assignments(request, course_offering_id):
@@ -355,7 +355,6 @@ def upload_image(request):
     logger.error("Invalid request for image upload")
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
-
 @login_required
 def study_materials(request, course_offering_id):
     logger.info(f"Study materials requested for course_offering_id: {course_offering_id} by user: {request.user}")
@@ -472,9 +471,27 @@ def logout_view(request):
     messages.success(request, 'You have been logged out successfully.')
     return redirect('students:login')
 
+class PasswordChangeForm(forms.Form):
+    old_password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'input input-bordered w-full'}))
+    new_password1 = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'input input-bordered w-full'}))
+    new_password2 = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'input input-bordered w-full'}))
 
+    def __init__(self, user, *args, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
 
+    def clean_old_password(self):
+        old_password = self.cleaned_data.get('old_password')
+        if not self.user.check_password(old_password):
+            raise forms.ValidationError('Your old password was entered incorrectly.')
+        return old_password
 
+    def clean_new_password2(self):
+        password1 = self.cleaned_data.get('new_password1')
+        password2 = self.cleaned_data.get('new_password2')
+        if password1 and password2 and password1 != password2:
+            raise forms.ValidationError("The two password fields didn't match.")
+        return password2
 
 
 
@@ -917,3 +934,196 @@ def submit_quiz(request, quiz_id):
     except Exception as e:
         logger.error(f"Error processing quiz submission {quiz_id}: {str(e)}")
         return JsonResponse({'success': False, 'message': f'Error: {str(e)}'}, status=500)
+
+def settings_view(request):
+    """
+    View for the student settings page.
+    Displays account information and settings options.
+    """
+    try:
+        student = Student.objects.get(user=request.user)
+        user = request.user
+
+        # Initialize data with current user and applicant information
+        initial_data = {
+            'full_name': student.applicant.full_name,
+            'email': user.email,
+            'contact_no': student.applicant.contact_no or '',
+            'address': student.applicant.permanent_address or '',
+        }
+
+        # Create a simple form-like object for the template
+        user_form = type('UserForm', (), {'instance': type('Instance', (), initial_data)})()
+
+        # Password change form (using Django's built-in form)
+        from django.contrib.auth.forms import PasswordChangeForm
+        password_form = PasswordChangeForm(user)
+
+        context = {
+            'student': student,
+            'user': user,
+            'user_form': user_form,
+            'password_form': password_form,
+            'form_errors': {},
+            'student_full_name': student.applicant.full_name,
+            'today_date': timezone.now().date(),
+        }
+        return render(request, 'settings.html', context)
+    except Student.DoesNotExist:
+        messages.error(request, 'Student profile not found.')
+        return redirect('students:dashboard')
+    except Exception as e:
+        logger.error(f"Error in settings_view: {str(e)}")
+        messages.error(request, 'An error occurred while loading settings.')
+        return redirect('students:dashboard')
+    
+    
+def update_account(request):
+    """
+    Handle updating student account information.
+    """
+    try:
+        student = Student.objects.get(user=request.user)
+        user = request.user
+        form_errors = {}
+
+        # Get form data
+        full_name = request.POST.get('full_name', '').strip()
+        email = request.POST.get('email', '').strip()
+        contact_no = request.POST.get('contact_no', '').strip()
+        address = request.POST.get('address', '').strip()
+
+        # Validate required fields
+        if not full_name:
+            form_errors['full_name'] = 'Full name is required.'
+        if not email:
+            form_errors['email'] = 'Email is required.'
+        elif '@' not in email:
+            form_errors['email'] = 'Enter a valid email address.'
+
+        # If there are validation errors, return to the form with errors
+        if form_errors:
+            initial_data = {
+                'full_name': full_name,
+                'email': email,
+                'contact_no': contact_no,
+                'address': address,
+            }
+            user_form = type('UserForm', (), {'instance': type('Instance', (), initial_data)})()
+            context = {
+                'student': student,
+                'user': user,
+                'user_form': user_form,
+                'password_form': PasswordChangeForm(user),
+                'form_errors': form_errors,
+                'student_full_name': full_name,
+                'today_date': timezone.now().date(),
+            }
+            return render(request, 'settings.html', context, status=400)
+
+        # Handle profile picture upload
+        if 'profile_picture' in request.FILES:
+            profile_picture = request.FILES['profile_picture']
+            # Validate file size (max 2MB)
+            if profile_picture.size > 2 * 1024 * 1024:
+                messages.error(request, 'Profile picture size should not exceed 2MB.')
+                return redirect('students:settings')
+
+            # Validate file type
+            if not profile_picture.content_type.startswith('image/'):
+                messages.error(request, 'Only image files are allowed for profile pictures.')
+                return redirect('students:settings')
+
+            # Delete old profile picture if exists
+            if user.profile_picture:
+                try:
+                    if os.path.isfile(user.profile_picture.path):
+                        os.remove(user.profile_picture.path)
+                except (ValueError, FileNotFoundError):
+                    pass  # File doesn't exist or path is not accessible
+
+            # Save new profile picture
+            fs = FileSystemStorage()
+            filename = fs.save(f'profile_pictures/user_{user.id}/{profile_picture.name}', profile_picture)
+            user.profile_picture = fs.url(filename)
+
+        # Update user information
+        user.email = email
+        user.save()
+
+        # Update applicant information
+        applicant = student.applicant
+        applicant.full_name = full_name
+        applicant.contact_no = contact_no
+        applicant.address = address
+        applicant.save()
+
+        messages.success(request, 'Account updated successfully!')
+        return redirect('students:settings')
+
+    except Student.DoesNotExist:
+        messages.error(request, 'Student profile not found.')
+        return redirect('students:dashboard')
+    except Exception as e:
+        logger.error(f"Error updating account: {str(e)}")
+        messages.error(request, 'An error occurred while updating your account.')
+        return redirect('students:settings')
+    
+    
+def change_password(request):
+    """
+    Handle password change for the student.
+    """
+    try:
+        student = Student.objects.get(user=request.user)
+        user = request.user
+        form = PasswordChangeForm(user, request.POST)
+
+        if form.is_valid():
+            try:
+                user = form.save()
+                update_session_auth_hash(request, user)  # Keep the user logged in
+                messages.success(request, 'Your password was successfully updated!')
+                return redirect('students:settings')
+            except Exception as e:
+                logger.error(f"Error saving password: {str(e)}")
+                messages.error(request, 'An error occurred while saving your new password.')
+                return redirect('students:settings')
+        else:
+            # Prepare context to return to the settings page with form errors
+            form_errors = {}
+            for field, errors in form.errors.items():
+                field_name = field.replace('_', ' ').title()
+                form_errors[field] = [f"{field_name}: {error}" for error in errors]
+
+            # Get current user and applicant data for the form
+            initial_data = {
+                'full_name': student.applicant.full_name,
+                'email': user.email,
+                'contact_no': student.applicant.contact_no or '',
+                'address': student.applicant.permanent_address or '',
+            }
+
+            context = {
+                'student': student,
+                'user': user,
+                'user_form': type('UserForm', (), {'instance': type('Instance', (), initial_data)})(),
+                'password_form': form,
+                'form_errors': form_errors,
+                'password_errors': True,  # Flag to show password tab by default
+                'student_full_name': student.applicant.full_name,
+                'today_date': timezone.now().date(),
+            }
+            return render(request, 'settings.html', context, status=400)
+
+    except Student.DoesNotExist:
+        messages.error(request, 'Student profile not found.')
+        return redirect('students:dashboard')
+    except Exception as e:
+        logger.error(f"Error in change_password view: {str(e)}")
+        messages.error(request, 'An unexpected error occurred. Please try again later.')
+        return redirect('students:settings')
+    
+    
+    
+            

@@ -1,0 +1,161 @@
+{% extends 'base_student.html' %}
+
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6 px-2 sm:px-4 py-6">
+    <!-- Header -->
+    <div class="hero bg-base-200 text-base-content rounded-lg shadow-lg mb-6">
+        <div class="hero-content text-center py-6">
+            <div class="max-w-md">
+                <h1 class="text-3xl sm:text-4xl font-bold mb-2">Settings</h1>
+                <p class="text-base sm:text-lg text-base-content/90">
+                    Manage your account and preferences
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accordion Sections -->
+    <div class="space-y-4">
+        <!-- Account Section -->
+        <div class="collapse collapse-arrow bg-base-100 shadow-md">
+            <input type="checkbox" name="account" checked />
+            <div class="collapse-title text-xl font-medium">
+                <i class="fas fa-user mr-2"></i> Account Information
+            </div>
+            <div class="collapse-content">
+                <form method="post" action="{% url 'students:update_account' %}" enctype="multipart/form-data" class="space-y-4 p-4" id="account-form">
+                    {% csrf_token %}
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text text-sm sm:text-base">Profile Picture</span>
+                        </label>
+                        <div class="flex items-center space-x-4">
+                            <!-- Preview Container -->
+                            <div class="relative w-20 h-20">
+                                <img id="profile-preview" src="{% if user.profile_picture %}{{ user.profile_picture.url }}{% else %}#{% endif %}" alt="Profile Preview" class="w-full h-full rounded-full object-cover {% if not user.profile_picture %}hidden{% endif %}">
+                                {% if not user.profile_picture %}
+                                <div class="absolute inset-0 flex items-center justify-center bg-gray-200 rounded-full">
+                                    <span class="text-gray-500">No Image</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <!-- File Input -->
+                            <input type="file" name="profile_picture" id="profile_picture" class="input input-bordered text-sm sm:text-base w-full max-w-xs" accept="image/*">
+                        </div>
+                        {% if form_errors.profile_picture %}
+                        <span class="text-error text-xs sm:text-sm">{{ form_errors.profile_picture }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text text-sm sm:text-base">Full Name</span>
+                        </label>
+                        <input type="text" name="full_name" class="input input-bordered text-sm sm:text-base" value="{{ user_form.instance.full_name }}" required>
+                        {% if form_errors.full_name %}
+                        <span class="text-error text-xs sm:text-sm">{{ form_errors.full_name }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text text-sm sm:text-base">Email</span>
+                        </label>
+                        <input type="email" name="email" class="input input-bordered text-sm sm:text-base" value="{{ user_form.instance.email }}" required>
+                        {% if form_errors.email %}
+                        <span class="text-error text-xs sm:text-sm">{{ form_errors.email }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text text-sm sm:text-base">Contact No</span>
+                        </label>
+                        <input type="text" name="contact_no" class="input input-bordered text-sm sm:text-base" value="{{ user_form.instance.contact_no }}">
+                        {% if form_errors.contact_no %}
+                        <span class="text-error text-xs sm:text-sm">{{ form_errors.contact_no }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text text-sm sm:text-base">Address</span>
+                        </label>
+                        <textarea name="address" class="textarea textarea-bordered text-sm sm:text-base" rows="3">{{ user_form.instance.address }}</textarea>
+                        {% if form_errors.address %}
+                        <span class="text-error text-xs sm:text-sm">{{ form_errors.address }}</span>
+                        {% endif %}
+                    </div>
+                    <button type="submit" class="btn btn-primary w-full sm:w-auto">Update Account</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Security Section -->
+        <div class="collapse collapse-arrow bg-base-100 shadow-md">
+            <input type="checkbox" name="security" {% if password_errors %}checked{% endif %} />
+            <div class="collapse-title text-xl font-medium">
+                <i class="fas fa-lock mr-2"></i> Change Password
+            </div>
+            <div class="collapse-content">
+                <form method="post" action="{% url 'students:change_password' %}" class="space-y-4 p-4">
+                    {% csrf_token %}
+                    <div class="space-y-4">
+                        {% for field in password_form %}
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text text-sm sm:text-base">{{ field.label }}</span>
+                            </label>
+                            {{ field }}
+                            {% if field.errors %}
+                            <span class="text-error text-xs sm:text-sm">{{ field.errors }}</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        <button type="submit" class="btn btn-primary w-full sm:w-auto">Change Password</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const input = document.getElementById('profile_picture');
+        const preview = document.getElementById('profile-preview');
+        const placeholder = preview ? preview.parentElement.querySelector('div') : null;
+
+        if (input && preview && placeholder) {
+            // Set initial state
+            if (!preview.src || preview.src === '#') {
+                preview.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+            }
+
+            input.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        preview.src = e.target.result;
+                        preview.classList.remove('hidden');
+                        placeholder.classList.add('hidden');
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    // Revert to current image or hide if none
+                    {% if user.profile_picture %}
+                        preview.src = "{{ user.profile_picture.url }}";
+                        preview.classList.remove('hidden');
+                        placeholder.classList.add('hidden');
+                    {% else %}
+                        preview.classList.add('hidden');
+                        placeholder.classList.remove('hidden');
+                    {% endif %}
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %}

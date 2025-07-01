@@ -5,19 +5,22 @@
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
   <!-- Hero Section -->
-  <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-lg shadow-lg mb-6">
-    <div class="text-center py-6">
-      <h1 class="text-3xl sm:text-4xl font-bold mb-2">My Courses Record</h1>
-      <p class="text-base sm:text-lg opacity-90">Welcome, {{ student.applicant.full_name }}! Explore your courses for {{ current_session.name|default:"current session" }}.</p>
+
+  <div class="hero bg-base-200 rounded-lg shadow-lg mb-6">
+    <div class="hero-content text-center">
+      <div class="max-w-md">
+        <h1 class="text-3xl sm:text-4xl font-bold text-base-content mb-2">My Courses Record</h1>
+        <p class="text-base sm:text-lg text-base-content/90">Welcome, {{ student.applicant.full_name }}! Explore your courses for {{ active_semester.name|default:"current semester" }}.</p>
+      </div>
     </div>
   </div>
 
   <!-- Semester Tabs -->
   <div class="mb-6">
-    <div class="flex flex-wrap gap-2 border-b border-gray-200">
+    <div class="tabs tabs-bordered flex flex-wrap gap-2">
       {% for semester_num in semester_numbers %}
         <a href="?semester={{ semester_num }}"
-           class="px-4 py-2 text-sm font-medium {% if selected_semester_number|add:"0" == semester_num %}bg-indigo-600 text-white{% else %}text-gray-500 hover:text-gray-700{% endif %} rounded-t-lg">
+           class="tab tab-lg {% if selected_semester_number|add:'0' == semester_num %}tab-active bg-primary text-primary-content{% else %}text-base-content/70 hover:text-base-content{% endif %}">
           Semester {{ semester_num }}
         </a>
       {% endfor %}
@@ -26,25 +29,27 @@
 
   <!-- Enrolled Courses -->
   {% if enrollments %}
-    <div class="bg-white shadow-lg rounded-lg overflow-hidden mb-6">
-      <div class="p-6">
-        <h2 class="text-2xl font-semibold text-gray-900 mb-4">Courses for Semester {{ selected_semester_number }}</h2>
+    <div class="card bg-base-100 shadow-lg rounded-lg overflow-hidden mb-6">
+      <div class="card-body">
+        <h2 class="card-title text-2xl text-base-content mb-4">Courses for Semester {{ selected_semester_number }}</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {% for enrollment in enrollments %}
-          <div class="bg-gray-50 p-4 rounded-lg shadow hover:shadow-md transition-shadow">
-            <h3 class="text-lg font-medium text-gray-900">{{ enrollment.course_offering.course.code }} - {{ enrollment.course_offering.course.name }}</h3>
-            <p class="text-sm text-gray-600">Semester: {{ enrollment.course_offering.semester.name }}</p>
-            <p class="text-sm text-gray-600">Instructor: {{ enrollment.course_offering.teacher.user.get_full_name }}</p>
-            <p class="text-sm text-gray-600">Type: {{ enrollment.course_offering.get_offering_type_display }}</p>
-            <div class="mt-4 flex flex-wrap gap-2">
-              <a href="{% url 'students:study_materials' enrollment.course_offering.id %}?course_offering_id={{ enrollment.course_offering.id }}"
-                 class="inline-flex items-center px-3 py-1 bg-gray-500 text-white text-sm font-medium rounded-md hover:bg-gray-600">Course Content</a>
-              <a href="{% url 'students:assignments' enrollment.course_offering.id %}"
-                 class="inline-flex items-center px-3 py-1 bg-blue-500 text-white text-sm font-medium rounded-md hover:bg-blue-600">Assignments</a>
-              <a href="{% url 'students:attendance' %}?course_offering_id={{ enrollment.course_offering.id }}"
-                 class="inline-flex items-center px-3 py-1 bg-yellow-500 text-white text-sm font-medium rounded-md hover:bg-yellow-600">Attendance</a>
-              <a href="{% url 'students:solve_quiz' enrollment.course_offering.id %}"
-                 class="inline-flex items-center px-3 py-1 bg-indigo-500 text-white text-sm font-medium rounded-md hover:bg-indigo-600">Quizzes</a>
+          <div class="card bg-base-100 shadow-md hover:shadow-lg transition-shadow">
+            <div class="card-body">
+              <h3 class="text-lg font-medium text-base-content">{{ enrollment.course_offering.course.code }} - {{ enrollment.course_offering.course.name }}</h3>
+              <p class="text-sm text-base-content/70">Semester: {{ enrollment.course_offering.semester.name }}</p>
+              <p class="text-sm text-base-content/70">Instructor: {{ enrollment.course_offering.teacher.user.get_full_name }}</p>
+              <p class="text-sm text-base-content/70">Type: {{ enrollment.course_offering.get_offering_type_display }}</p>
+              <div class="card-actions mt-4 flex flex-wrap gap-2">
+                <a href="{% url 'students:study_materials' enrollment.course_offering.id %}"
+                   class="btn btn-sm btn-primary">Course Content</a>
+                <a href="{% url 'students:assignments' enrollment.course_offering.id %}"
+                   class="btn btn-sm btn-secondary">Assignments</a>
+                <a href="{% url 'students:attendance' enrollment.course_offering.id %}"
+                   class="btn btn-sm btn-warning">Attendance</a>
+                <a href="{% url 'students:solve_quiz' enrollment.course_offering.id %}"
+                   class="btn btn-sm btn-info">Quizzes</a>
+              </div>
             </div>
           </div>
           {% endfor %}
@@ -52,9 +57,12 @@
       </div>
     </div>
   {% else %}
-    <div class="alert alert-info text-center">
-      <i class="fas fa-info-circle mr-2"></i> You have no enrolled courses for Semester {{ selected_semester_number }}.
+    <div class="alert alert-info shadow-lg mb-6">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+      <span>You have no enrolled courses for Semester {{ selected_semester_number }}.</span>
     </div>
   {% endif %}
-
+</div>
 {% endblock %}

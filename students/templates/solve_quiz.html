@@ -5,117 +5,79 @@
 {% block content %}
 <style>
     .select2-container {
-        width: 100% !important;
-    }
-    .question-block {
-        border: 1px solid #e5e7eb;
-        border-radius: 0.5rem;
-        padding: 1rem;
-        margin-bottom: 1rem;
-        position: relative;
-        transition: all 0.3s ease;
-    }
-    .modal {
-        transition: opacity 0.3s ease, transform 0.3s ease;
-        transform: translateY(-50px);
-        opacity: 0;
-        visibility: hidden;
-    }
-    .modal.modal-open {
-        transform: translateY(0);
-        opacity: 1;
-        visibility: visible;
-    }
-    .modal-dialog {
-        @apply max-w-2xl w-[95%] sm:w-full mx-auto my-6;
-    }
-    .modal-content {
-        transition: all 0.3s ease;
-        max-height: 95vh;
-        @apply flex flex-col;
-    }
-    .modal-body {
-        overflow-y: auto;
-        max-height: calc(95vh - 140px);
-        @apply flex-grow p-6;
-    }
-    .modal-footer {
-        @apply sticky bottom-0 bg-white pt-4 border-t border-gray-200;
-    }
-    .input-error {
-        @apply border-error ring-error;
-    }
-    .error-text {
-        @apply text-error text-sm mt-1;
-    }
-    .table th, .table td {
-        @apply px-4 py-3 text-sm;
-    }
-    .timer {
-        @apply text-lg font-semibold text-primary;
-    }
-    .timer-expired {
-        @apply text-error text-sm font-medium mt-2 animate-pulse;
+        @apply w-full;
     }
 </style>
 
-<div class="container mx-auto px-4 py-6">
-    <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-xl shadow-lg mb-6">
-        <div class="text-center py-6">
-            <h1 class="text-4xl font-bold">Solve Quiz</h1>
-            <p class="text-lg text-white/80">For {{ course_offering.course.code }} - {{ course_offering.course.name }}</p>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- Hero Section -->
+    <div class="hero bg-base-200 text-base-content rounded-lg shadow-lg mb-6">
+        <div class="hero-content text-center py-6">
+            <div class="max-w-md">
+                <h1 class="text-3xl sm:text-4xl font-bold mb-2">Solve Quiz</h1>
+                <p class="text-base sm:text-lg text-base-content/90">
+                    For {{ course_offering.course.code }} - {{ course_offering.course.name }}
+                </p>
+            </div>
         </div>
     </div>
 
-    <div class="card bg-white shadow-lg rounded-lg mb-6 mt-5">
-        <div class="card-body p-6">
-            <h5 class="card-title text-xl font-semibold mb-4">Available Quizzes</h5>
+    <!-- Quizzes Table -->
+    <div class="card bg-base-100 shadow-lg rounded-lg mb-6">
+        <div class="card-body">
+            <h5 class="card-title text-xl text-base-content mb-4">Available Quizzes</h5>
             <form id="course-selection-form">
                 <div class="mb-4">
-                    <label for="course_offering_id" class="label text-sm font-medium text-gray-700">Course Offering</label>
-                    <p id="course-offering-text" class="text-gray-600">{{ course_offering.course.code }} - {{ course_offering.course.name }} - {{ course_offering.program.name }} ({{ course_offering.semester.name }}, {{ course_offering.academic_session.name }})</p>
+                    <label for="course_offering_id" class="label text-sm font-medium text-base-content">Course Offering</label>
+                    <p id="course-offering-text" class="text-base-content/70">
+                        {{ course_offering.course.code }} - {{ course_offering.course.name }} - {{ course_offering.program.name }} ({{ course_offering.semester.name }}, {{ course_offering.academic_session.name }})
+                    </p>
                     <input type="hidden" name="course_offering_id" id="course_offering_id" value="{{ course_offering.id }}">
-                    <span id="course-offering-error" class="error-text"></span>
+                    <span id="course-offering-error" class="text-error text-sm mt-1"></span>
                 </div>
             </form>
 
-            <!-- Quizzes Table -->
             {% if quizzes %}
-            <div class="mt-6">
-                <h6 class="text-lg font-semibold mb-3">Published Quizzes</h6>
-                <div class="overflow-x-auto">
-                    <table class="table table-auto w-full bg-white border border-gray-200 rounded-lg">
-                        <thead class="bg-gray-100">
-                            <tr>
-                                <th>Title</th>
-                                <th>Timer (Seconds)</th>
-                                <th>Questions</th>
-                                <th>Created at</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for quiz_data in quizzes %}
-                            <tr class="hover:bg-gray-50">
-                                <td>{{ quiz_data.quiz.title }}</td>
-                                <td>{{ quiz_data.quiz.timer_seconds }}</td>
-                                <td>{{ quiz_data.quiz.questions.count }}</td>
-                                <td>{{ quiz_data.quiz.created_at }}</td>
-                                <td>
-                                    {% if quiz_data.has_taken %}
-                                    <a href="{% url 'students:submit_quiz' quiz_data.quiz.id %}" class="btn btn-success btn-sm hover:scale-105 transition-transform">View Result</a>
-                                    {% else %}
-                                    <button type="button" class="btn btn-primary btn-sm solve-quiz hover:scale-105 transition-transform" data-quiz-id="{{ quiz_data.quiz.id }}">Solve</button>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                <div class="mt-6">
+                    <h6 class="text-lg font-semibold text-base-content mb-3">Published Quizzes</h6>
+                    <div class="overflow-x-auto">
+                        <table class="table w-full bg-base-100">
+                            <thead class="bg-base-200">
+                                <tr>
+                                    <th class="text-sm font-semibold text-base-content/80">Title</th>
+                                    <th class="text-sm font-semibold text-base-content/80">Timer (Seconds)</th>
+                                    <th class="text-sm font-semibold text-base-content/80">Questions</th>
+                                    <th class="text-sm font-semibold text-base-content/80">Created at</th>
+                                    <th class="text-sm font-semibold text-base-content/80">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for quiz_data in quizzes %}
+                                    <tr class="hover:bg-base-200/50">
+                                        <td class="text-sm text-base-content">{{ quiz_data.quiz.title }}</td>
+                                        <td class="text-sm text-base-content">{{ quiz_data.quiz.timer_seconds }}</td>
+                                        <td class="text-sm text-base-content">{{ quiz_data.quiz.questions.count }}</td>
+                                        <td class="text-sm text-base-content">{{ quiz_data.quiz.created_at }}</td>
+                                        <td>
+                                            {% if quiz_data.has_taken %}
+                                                <a href="{% url 'students:submit_quiz' quiz_data.quiz.id %}" class="btn btn-sm btn-success hover:scale-105 transition-transform">View Result</a>
+                                            {% else %}
+                                                <button type="button" class="btn btn-sm btn-primary solve-quiz hover:scale-105 transition-transform" data-quiz-id="{{ quiz_data.quiz.id }}">Solve</button>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
             {% else %}
-            <p class="text-gray-600 mt-4">No published quizzes available for this course offering.</p>
+                <div class="alert alert-info shadow-lg mt-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span>No published quizzes available for this course offering.</span>
+                </div>
             {% endif %}
         </div>
     </div>
@@ -123,37 +85,29 @@
 
 <!-- Solve Quiz Modal -->
 <div class="modal" id="solveQuizModal" tabindex="-1" aria-labelledby="solveQuizModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content bg-white rounded-lg shadow-xl">
-            <div class="modal-header flex justify-between items-center p-4 border-b border-gray-200">
-                <h5 class="modal-title text-xl font-semibold text-gray-800" id="solveQuizModalLabel">Solve Quiz</h5>
-                <button type="button" class="btn-close hover:text-error transition-colors" id="modal-close" aria-label="Close modal">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
+    <div class="modal-box max-w-2xl w-[95%] sm:w-full mx-auto my-6">
+        <h5 class="text-xl font-semibold text-base-content mb-4" id="solveQuizModalLabel">Solve Quiz</h5>
+        <form id="solve-quiz-form" method="post" action="">
+            {% csrf_token %}
+            <input type="hidden" id="quiz-id" name="quiz_id" value="">
+            <div class="mb-4">
+                <h6 class="text-lg font-semibold text-base-content">
+                    Time Remaining: <span id="timer" class="text-primary font-semibold">0</span> seconds
+                </h6>
+                <p id="timer-expired-message" class="text-error text-sm font-medium mt-2 hidden animate-pulse">
+                    Time's up! Question marked incorrect.
+                </p>
             </div>
-            <div class="modal-body">
-                <form id="solve-quiz-form" method="post" action="">
-                    {% csrf_token %}
-                    <input type="hidden" id="quiz-id" name="quiz_id" value="">
-                    <div class="mb-4">
-                        <h6 class="text-lg font-semibold text-gray-800">Time Remaining: <span id="timer" class="timer">0</span> seconds</h6>
-                        <p id="timer-expired-message" class="timer-expired hidden">Time's up! Question marked incorrect.</p>
-                    </div>
-                    <div id="question-blocks"></div>
-                </form>
-            </div>
-            <div class="modal-footer px-4 pb-4 sm:px-6">
-                <div class="flex justify-between">
-                    <div class="space-x-2">
-                        <button type="button" class="btn btn-secondary hover:scale-105 transition-transform" id="prev-question">Previous</button>
-                        <button type="button" class="btn btn-secondary hover:scale-105 transition-transform" id="next-question">Next</button>
-                    </div>
-                    <div class="space-x-2">
-                        <button type="submit" form="solve-quiz-form" class="btn btn-primary hover:scale-105 transition-transform">Submit Quiz</button>
-                    </div>
+            <div id="question-blocks"></div>
+            <div class="modal-action mt-4">
+                <button type="button" class="btn btn-sm btn-ghost" id="modal-close">Close</button>
+                <div class="space-x-2">
+                    <button type="button" class="btn btn-sm btn-secondary" id="prev-question">Previous</button>
+                    <button type="button" class="btn btn-sm btn-secondary" id="next-question">Next</button>
+                    <button type="submit" class="btn btn-sm btn-primary">Submit Quiz</button>
                 </div>
             </div>
-        </div>
+        </form>
     </div>
 </div>
 
@@ -163,7 +117,7 @@
 <script>
 // XSS protection
 function escapeHtml(str) {
-    return String(str).replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>').replace(/"/g, '"').replace(/'/g, '');
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
 // Modal handling
@@ -214,25 +168,27 @@ function showQuestion(index) {
     currentQuestionIndex = index;
     const question = questions[index];
     $('#question-blocks').html(`
-        <div class="question-block bg-gray-50" data-index="${index}">
-            <div class="form-control mb-4">
-                <label class="label text-sm font-medium text-gray-700">Question ${index + 1}: ${escapeHtml(question.text)}</label>
-                <div class="options-container">
+        <div class="card bg-base-100 shadow-md border border-base-200">
+            <div class="card-body">
+                <label class="label text-sm font-medium text-base-content">
+                    Question ${index + 1}: ${escapeHtml(question.text)}
+                </label>
+                <div class="space-y-2">
                     ${question.options.map((option, j) => `
-                        <div class="flex items-center mb-2">
-                            <input type="radio" name="answers[${index}]" value="${option.id}" class="radio mr-2" id="option-${index}-${j}" ${question.selected_option == option.id ? 'checked' : ''}>
-                            <label for="option-${index}-${j}" class="text-sm text-gray-700">${escapeHtml(option.text)}</label>
+                        <div class="flex items-center">
+                            <input type="radio" name="answers[${index}]" value="${option.id}" class="radio radio-primary mr-2" id="option-${index}-${j}" ${question.selected_option == option.id ? 'checked' : ''}>
+                            <label for="option-${index}-${j}" class="text-sm text-base-content">${escapeHtml(option.text)}</label>
                         </div>
                     `).join('')}
                 </div>
-                <span id="question-${index}-error" class="error-text"></span>
+                <span id="question-${index}-error" class="text-error text-sm mt-1"></span>
             </div>
         </div>
     `);
     $('#prev-question').prop('disabled', index === 0);
     $('#next-question').prop('disabled', index === questions.length - 1);
     startTimer(question.timer_seconds);
-    $('.modal-body').animate({ scrollTop: 0 }, 300);
+    $('.modal-box').animate({ scrollTop: 0 }, 300);
 }
 
 $(document).on('click', '.solve-quiz', function() {
@@ -289,10 +245,6 @@ $('#solve-quiz-form').on('submit', function(e) {
     questions[currentQuestionIndex].selected_option = selected ? parseInt(selected) : null;
     console.log('Submitting quiz with answers:', questions);
 
-
-
- 
-
     let formData = new FormData(this);
     questions.forEach((q, index) => {
         if (q.selected_option) {
@@ -323,4 +275,4 @@ $('#solve-quiz-form').on('submit', function(e) {
     });
 });
 </script>
-{% endblock %}   
+{% endblock %}

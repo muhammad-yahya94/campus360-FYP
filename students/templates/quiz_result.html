@@ -3,62 +3,60 @@
 {% block title %}Quiz Result - {{ quiz.title }}{% endblock %}
 
 {% block content %}
-<style>
-    .question-block {
-        border: 1px solid #e5e7eb;
-        border-radius: 0.5rem;
-        padding: 1rem;
-        margin-bottom: 1rem;
-        position: relative;
-    }
-    .correct {
-        @apply text-success;
-    }
-    .incorrect {
-        @apply text-error;
-    }
-    .table th, .table td {
-        @apply px-4 py-3 text-sm;
-    }
-</style>
-
-<div class="container mx-auto px-4 py-6">
-    <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-xl shadow-lg mb-6">
-        <div class="text-center py-6">
-            <h1 class="text-4xl font-bold">Quiz Result</h1>
-            <p class="text-lg text-white/80">For {{ quiz.course_offering.course.code }} - {{ quiz.course_offering.course.name }}</p>
-            {% if student_full_name %}
-            <p class="text-md text-white/80">Student: {{ student_full_name }}</p>
-            {% endif %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- Hero Section -->
+    <div class="hero bg-base-200 rounded-lg shadow-lg mb-6">
+        <div class="hero-content text-center">
+          <div class="max-w-md">
+            <h1 class="text-3xl sm:text-4xl font-bold text-base-content mb-2">Quiz Result</h1>
+            <p class="text-base sm:text-lg text-base-content/90">                     For {{ quiz.course_offering.course.code }} - {{ quiz.course_offering.course.name }}</p>
+          </div>
         </div>
-    </div>
-
-    <div class="card bg-white shadow-lg rounded-lg mb-6 mt-5">
-        <div class="card-body p-6">
-            <h5 class="card-title text-xl font-semibold mb-4">Results for {{ quiz.title }}</h5>
-            <p class="text-lg font-medium">Your Score: {{ result.score }}</p>
-            <div class="mt-6">
-                <h6 class="text-lg font-semibold mb-3">Question Details</h6>
-                {% for answer in result.answers %}
-                <div class="question-block bg-gray-50">
-                    <div class="form-control mb-4">
-                        <label class="label text-sm font-medium text-gray-700">Question {{ forloop.counter }}: {{ answer.question.text }}</label>
-                        <p class="text-sm">Your Answer: 
-                            <span class="{% if answer.is_correct %}correct{% else %}incorrect{% endif %}">
-                                {{ answer.selected_option.text|default:"Not answered" }}
-                            </span>
-                        </p>
-                        <p class="text-sm">Correct Answer: 
-                            <span class="correct">{{ answer.correct_option.text }}</span>
-                        </p>
-                        <p class="text-sm">Marks: {{ answer.marks_awarded }} / {{ answer.question.marks }}</p>
-                    </div>
+      </div>
+    <!-- Results Card -->
+    <div class="card bg-base-100 shadow-lg rounded-lg mb-6">
+        <div class="card-body">
+            <h5 class="card-title text-xl text-base-content mb-4">Results for {{ quiz.title }}</h5>
+            {% if result %}
+                <p class="text-lg font-medium text-base-content">Your Score: {{ result.score }}</p>
+                <div class="mt-6">
+                    <h6 class="text-lg font-semibold text-base-content mb-3">Question Details</h6>
+                    {% for answer in result.answers %}
+                        <div class="card bg-base-100 border border-base-200 mb-4">
+                            <div class="card-body">
+                                <label class="label text-sm font-medium text-base-content">
+                                    Question {{ forloop.counter }}: {{ answer.question.text }}
+                                </label>
+                                <p class="text-sm text-base-content">
+                                    Your Answer: 
+                                    <span class="{% if answer.is_correct %}text-success{% else %}text-error{% endif %}">
+                                        {{ answer.selected_option.text|default:"Not answered" }}
+                                    </span>
+                                </p>
+                                <p class="text-sm text-base-content">
+                                    Correct Answer: 
+                                    <span class="text-success">{{ answer.correct_option.text }}</span>
+                                </p>
+                                <p class="text-sm text-base-content">
+                                    Marks: {{ answer.marks_awarded }} / {{ answer.question.marks }}
+                                </p>
+                            </div>
+                        </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
-            </div>
-            <div class="flex justify-end mt-4">
-                <a href="{% url 'students:solve_quiz' quiz.course_offering.id %}" class="btn btn-primary hover:scale-105 transition-transform">Back to Quizzes</a>
-            </div>
+                <div class="flex justify-end mt-4">
+                    <a href="{% url 'students:solve_quiz' quiz.course_offering.id %}" class="btn btn-sm btn-primary hover:scale-105 transition-transform">
+                        <i class="fas fa-arrow-left mr-2"></i> Back to Quizzes
+                    </a>
+                </div>
+            {% else %}
+                <div class="alert alert-info shadow-lg mt-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span>No quiz results available.</span>
+                </div>
+            {% endif %}
         </div>
     </div>
 </div>

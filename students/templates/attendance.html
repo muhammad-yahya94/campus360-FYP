@@ -5,77 +5,86 @@
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
   <!-- Hero Section -->
-  <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-lg shadow-lg mb-6">
-    <div class="text-center py-6">
-      <h1 class="text-3xl sm:text-4xl font-bold mb-2">Attendance</h1>
-      <p class="text-base sm:text-lg opacity-90">View your attendance for {{ active_semester.name|default:"current semester" }}{% if course_offering_id %} - {{ attendances.first.course_offering.course.code }} {{ attendances.first.course_offering.course.name }}{% endif %}.</p>
+
+  <div class="hero bg-base-200 rounded-lg shadow-lg mb-6">
+    <div class="hero-content text-center">
+      <div class="max-w-md">
+        <h1 class="text-3xl sm:text-4xl font-bold text-base-content mb-2">Attendance</h1>
+        <p class="text-base sm:text-lg text-base-content/90">          View your attendance for {{ course_offering.course.code }} - {{ course_offering.course.name }}.</p>
+      </div>
     </div>
   </div>
 
   <!-- Attendance Statistics -->
-  {% if course_stats %}
-    <!-- Attendance Card -->
-  <div class="bg-white shadow-lg rounded-lg p-6 mb-6">
-    <h2 class="text-2xl font-semibold mb-4 flex items-center">
-      <i class="fas fa-calendar-check text-indigo-600 mr-2"></i> Attendance
-    </h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      {% for stat in course_stats %}
-      <div class="form-control">
-        <label class="label"><span class="label-text">Total Attendance</span></label>
-        <p class="text-lg">{{ stat.total }}</p>
+  {% if course_stats.total > 0 %}
+    <div class="card bg-base-100 shadow-lg rounded-lg mb-6">
+      <div class="card-body">
+        <h2 class="card-title text-2xl text-base-content mb-4 flex items-center">
+          <i class="fas fa-calendar-check text-primary mr-2"></i> Attendance
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="stat">
+            <div class="stat-title">Total Classes</div>
+            <div class="stat-value text-base-content">{{ course_stats.total }}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-title">Present</div>
+            <div class="stat-value text-success">{{ course_stats.present }}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-title">Absent</div>
+            <div class="stat-value text-error">{{ course_stats.absent }}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-title">Leave</div>
+            <div class="stat-value text-warning">{{ course_stats.leave }}</div>
+          </div>
+          <div class="stat md:col-span-2 lg:col-span-4">
+            <div class="stat-title">Attendance Percentage</div>
+            <div class="stat-value text-primary">{{ course_stats.percentage }}%</div>
+          </div>
+        </div>
       </div>
-      <div class="form-control">
-        <label class="label"><span class="label-text">Present</span></label>
-        <p class="text-lg text-green-600">{{ stat.present }}</p>
-      </div>
-      <div class="form-control">
-        <label class="label"><span class="label-text">Absent</span></label>
-        <p class="text-lg text-red-600">{{ stat.absent }}</p>
-      </div>
-      <div class="form-control">
-        <label class="label"><span class="label-text">Leave</span></label>
-        <p class="text-lg text-yellow-600">{{ stat.leave }}</p>
-      </div>
-      <div class="form-control md:col-span-2 lg:col-span-4">
-        <label class="label"><span class="label-text">Attendance Percentage</span></label>
-        <p class="text-lg font-bold text-indigo-600">{{ stat.percentage|floatformat:2 }}%</p>
-      </div>
-          {% endfor %}
     </div>
-  </div>
+  {% else %}
+    <div class="alert alert-info shadow-lg mb-6">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+      <span>No attendance records available for {{ course_offering.course.code }} - {{ course_offering.course.name }}.</span>
+    </div>
   {% endif %}
 
   <!-- Attendance Records -->
   {% if attendances %}
-    <div class="bg-white shadow-lg rounded-lg overflow-hidden mb-6">
-      <div class="p-6">
-        <h2 class="text-2xl font-semibold text-gray-900 mb-4">Attendance Records for {{ active_semester.name|default:"Current Semester" }}</h2>
+    <div class="card bg-base-100 shadow-lg rounded-lg overflow-hidden mb-6">
+      <div class="card-body">
+        <h2 class="card-title text-2xl text-base-content mb-4">
+          Attendance Records
+        </h2>
         <div class="overflow-x-auto">
-          <table class="table table-zebra w-full">
-            <thead>
+          <table class="table w-full bg-base-100">
+            <thead class="bg-base-200">
               <tr>
-                <th class="text-sm font-semibold text-gray-700">Sr</th>
-                <th class="text-sm font-semibold text-gray-700">Course</th>
-                <th class="text-sm font-semibold text-gray-700">Date</th>
-                <th class="text-sm font-semibold text-gray-700">Status</th>
-                <th class="text-sm font-semibold text-gray-700">Shift</th>
-                <th class="text-sm font-semibold text-gray-700">Recorded By</th>
+                <th class="text-sm font-semibold text-base-content/80">Sr</th>
+                <th class="text-sm font-semibold text-base-content/80">Date</th>
+                <th class="text-sm font-semibold text-base-content/80">Status</th>
+                {% comment %} <th class="text-sm font-semibold text-base-content/80">Shift</th> {% endcomment %}
+                <th class="text-sm font-semibold text-base-content/80">Recorded By</th>
               </tr>
             </thead>
             <tbody>
               {% for attendance in attendances %}
-                <tr>
-                  <td class="text-sm">{{ forloop.counter }}</td>
-                  <td class="text-sm">{{ attendance.course_offering.course.code }} - {{ attendance.course_offering.course.name }}</td>
-                  <td class="text-sm">{{ attendance.date|date:"Y-m-d" }}</td>
+                <tr class="hover:bg-base-200/50">
+                  <td class="text-sm text-base-content">{{ forloop.counter }}</td>
+                  <td class="text-sm text-base-content">{{ attendance.date|date:"Y-m-d" }}</td>
                   <td>
-                    <span class="badge {% if attendance.status == 'present' %}badge-success{% elif attendance.status == 'absent' %}badge-error{% else %}badge-warning{% endif %}">
+                    <span class="badge {% if attendance.status == 'present' %}bg-success text-success-content{% elif attendance.status == 'absent' %}bg-error text-error-content{% else %}bg-warning text-warning-content{% endif %}">
                       {{ attendance.get_status_display }}
                     </span>
                   </td>
-                  <td class="text-sm">{{ attendance.shift|default:"N/A" }}</td>
-                  <td class="text-sm">{{ attendance.recorded_by.user.get_full_name|default:"N/A" }}</td>
+                  {% comment %} <td class="text-sm text-base-content">{{ attendance.shift|default:"N/A" }}</td> {% endcomment %}
+                  <td class="text-sm text-base-content">{{ attendance.recorded_by.user.get_full_name|default:"N/A" }}</td>
                 </tr>
               {% endfor %}
             </tbody>
@@ -84,40 +93,13 @@
       </div>
     </div>
   {% else %}
-    <div class="alert alert-info text-center">
-      <i class="fas fa-info-circle mr-2"></i> No attendance records available for {{ active_semester.name|default:"the current semester" }}{% if course_offering_id %} - {{ attendances.first.course_offering.course.code }} {{ attendances.first.course_offering.course.name }}{% endif %}.
+    <div class="alert alert-info shadow-lg mb-6">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+      <span>No attendance records available for {{ course_offering.course.code }} - {{ course_offering.course.name }}.</span>
     </div>
   {% endif %}
 </div>
 
-<!-- Chart.js Script -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
-<script>
-  {% for stat in course_stats %}
-    new Chart(document.getElementById('chart-{{ stat.course.id }}'), {
-      type: 'bar',
-      data: {
-        labels: ['Present', 'Absent', 'Leave'],
-        datasets: [{
-          label: 'Attendance',
-          data: [{{ stat.present }}, {{ stat.absent }}, {{ stat.leave }}],
-          backgroundColor: ['#22c55e', '#ef4444', '#eab308'],
-          borderColor: ['#16a34a', '#dc2626', '#ca8a04'],
-          borderWidth: 1
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          title: { display: true, text: 'Attendance Breakdown' }
-        },
-        scales: {
-          y: { beginAtZero: true, ticks: { stepSize: 1 } }
-        }
-      }
-    });
-  {% endfor %}
-</script>
 {% endblock %}

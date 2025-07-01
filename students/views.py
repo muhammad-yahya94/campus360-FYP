@@ -366,8 +366,6 @@ def study_materials(request, course_offering_id):
         course_offering = CourseOffering.objects.get(
             id=course_offering_id,
             enrollments__student_semester_enrollment__student=student,
-            is_active=True,
-            course__is_active=True
         )
         logger.info(f"Found course offering: {course_offering}")
     except Student.DoesNotExist:
@@ -480,86 +478,47 @@ def logout_view(request):
 
 
 
-
-
-@login_required
-def student_attendance(request):
+def student_attendance(request, course_offering_id):
     try:
         student = Student.objects.get(user=request.user)
     except Student.DoesNotExist:
         messages.error(request, 'You are not authorized as a student.')
         return redirect('students:login')
 
-    # Get the active semester
-    active_semester = Semester.objects.filter(
-        is_active=True,
-        program=student.program,
-    ).first()
+    # Get the course offering
+    course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
 
-    # Initialize attendance records and stats
-    attendances = []
-    course_stats = []
+    # Get attendance records for this student and course offering
+    attendances = Attendance.objects.filter(
+        course_offering_id=course_offering_id,
+        student=student
+    ).select_related(
+        'course_offering__course',
+        'recorded_by__user'
+    ).order_by('-date')
 
-    # Get course_offering_id from query parameter (optional)
-    course_offering_id = request.GET.get('course_offering_id')
+    # Calculate attendance statistics
+    total_classes = attendances.count()
+    present_count = attendances.filter(status='present').count()
+    absent_count = attendances.filter(status='absent').count()
+    leave_count = attendances.filter(status='leave').count()
+    
+    percentage = (present_count / total_classes * 100) if total_classes > 0 else 0
 
-    # Fetch attendance for the active semester's courses
-    if active_semester:
-        semester_enrollment = StudentSemesterEnrollment.objects.filter(
-            student=student,
-            semester=active_semester,
-            status='enrolled'
-        ).first()
-        if semester_enrollment:
-            # Fetch attendance records
-            query = Attendance.objects.filter(
-                course_offering__enrollments__student_semester_enrollment=semester_enrollment,
-                course_offering__is_active=True,
-                course_offering__course__is_active=True
-            ).select_related(
-                'course_offering__course',
-                'course_offering__semester',
-                'course_offering__teacher__user',
-                'recorded_by__user'
-            ).order_by('-date')
-
-            if course_offering_id:
-                query = query.filter(course_offering__id=course_offering_id)
-
-            attendances = query
-
-            # Aggregate stats for each course
-            stats_query = CourseEnrollment.objects.filter(
-                student_semester_enrollment=semester_enrollment,
-                course_offering__is_active=True,
-                course_offering__course__is_active=True
-            ).annotate(
-                present_count=Count('course_offering__attendances', filter=Q(course_offering__attendances__status='present')),
-                absent_count=Count('course_offering__attendances', filter=Q(course_offering__attendances__status='absent')),
-                leave_count=Count('course_offering__attendances', filter=Q(course_offering__attendances__status='leave')),
-                total_count=Count('course_offering__attendances')
-            )
-
-            if course_offering_id:
-                stats_query = stats_query.filter(course_offering__id=course_offering_id)
-
-            course_stats = [
-                {
-                    'course': enrollment.course_offering.course,
-                    'present': enrollment.present_count,
-                    'absent': enrollment.absent_count,
-                    'leave': enrollment.leave_count,
-                    'total': enrollment.total_count,
-                    'percentage': (enrollment.present_count / enrollment.total_count * 100) if enrollment.total_count > 0 else 0
-                } for enrollment in stats_query
-            ]
+    course_stats = {
+        'course': course_offering.course,
+        'present': present_count,
+        'absent': absent_count,
+        'leave': leave_count,
+        'total': total_classes,
+        'percentage': round(percentage, 2)
+    }
 
     context = {
         'student': student,
-        'active_semester': active_semester,
         'attendances': attendances,
         'course_stats': course_stats,
-        'course_offering_id': course_offering_id,
+        'course_offering': course_offering,
     }
     return render(request, 'attendance.html', context)
 

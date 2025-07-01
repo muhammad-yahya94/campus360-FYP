@@ -29,7 +29,7 @@ urlpatterns = [
     path('timetable/', views.student_timetable, name='timetable'),  # 6.1 Student Timetable
 
     # ========== 7. Attendance ==========
-    path('attendance/', views.student_attendance, name='attendance'),  # 7.1 View Attendance
+    path('attendance/<int:course_offering_id>/', views.student_attendance, name='attendance'),  # 7.1 View Attendance
     path('attendance-stats/', views.student_attendance_stats, name='attendance_stats'),  # 7.2 Attendance Stats
 
     # ========== 8. Quizzes ==========

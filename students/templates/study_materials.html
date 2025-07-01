@@ -5,42 +5,45 @@
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
   <!-- Header -->
-  <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-xl shadow-lg mb-6">
-    <div class="text-center py-6">
-        <h1 class="text-4xl font-bold">Course Content</h1>
-        <p class="text-lg text-white/80">{{ course_offering.course.code }} - {{ course_offering.course.name }}</p>
-        <p class="text-lg text-white/80">{{ course_offering.teacher.user.get_full_name }} • {{ course_offering.semester.name }}</p>
+
+  <div class="hero bg-base-200 rounded-lg shadow-lg mb-6">
+    <div class="hero-content text-center">
+      <div class="max-w-md">
+        <h1 class="text-3xl sm:text-4xl font-bold text-base-content mb-2">Course Content</h1>
+        <p class="text-base sm:text-lg text-base-content/90">{{ course_offering.course.code }} - {{ course_offering.course.name }}.</p>
+        <p class="text-base sm:text-lg text-base-content/90">{{ course_offering.teacher.user.get_full_name }} • {{ course_offering.semester.name }}.</p>
+      </div>
     </div>
-</div>
+  </div>
 
   {% if page_obj %}
     <!-- Materials Table -->
-    <div class="bg-white rounded-lg shadow overflow-hidden mb-8">
-      <div class="p-6">
+    <div class="card bg-base-100 shadow-lg rounded-lg overflow-hidden mb-8">
+      <div class="card-body">
         <div class="flex justify-between items-center mb-6">
-          <h3 class="text-xl font-semibold text-gray-900">
-            <i class="fas fa-folder-open mr-2 text-indigo-600"></i>
+          <h3 class="card-title text-xl text-base-content">
+            <i class="fas fa-folder-open mr-2 text-primary"></i>
             All Materials
           </h3>
-          <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
+          <span class="badge bg-primary text-primary-content">
             {{ page_obj.paginator.count }} item{{ page_obj.paginator.count|pluralize }}
           </span>
         </div>
         <div class="overflow-x-auto">
-          <table class="table w-full border-collapse">
-            <thead class="bg-gray-100">
+          <table class="table w-full bg-base-100">
+            <thead class="bg-base-200">
               <tr>
-                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-900">Title</th>
-                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-900">Details</th>
+                <th class="px-4 py-3 text-left text-sm font-semibold text-base-content/80">Title</th>
+                <th class="px-4 py-3 text-left text-sm font-semibold text-base-content/80">Details</th>
               </tr>
             </thead>
             <tbody>
               {% for material in page_obj %}
-                <tr class="hover:bg-gray-50 transition-colors">
-                  <td class="px-4 py-3 text-sm font-medium text-gray-900 cursor-pointer toggle-details" data-target="details-{{ forloop.counter0 }}">
+                <tr class="hover:bg-base-200/50 transition-colors">
+                  <td class="px-4 py-3 text-sm font-medium text-base-content cursor-pointer toggle-details" data-target="details-{{ forloop.counter0 }}">
                     {{ material.title }}
                   </td>
-                  <td class="px-4 py-3 text-sm text-gray-500">
+                  <td class="px-4 py-3 text-sm text-base-content/70">
                     Uploaded on {{ material.created_at|date:"M d, Y" }}<br>
                     By {{ material.teacher.user.get_full_name|default:"System" }}
                   </td>
@@ -48,39 +51,39 @@
                 <tr id="details-{{ forloop.counter0 }}" class="details-row hidden">
                   <td colspan="2" class="px-4 py-0">
                     <div class="details-content max-h-0 overflow-hidden transition-all duration-300 ease-in-out">
-                      <div class="p-4 border-t border-gray-200">
+                      <div class="p-4 border-t border-base-200">
                         {% if material.topic %}
-                          <p class="text-sm font-medium text-gray-700 mb-1">Topic:</p>
-                          <p class="text-sm text-gray-600 mb-3">{{ material.topic }}</p>
+                          <p class="text-sm font-medium text-base-content mb-1">Topic:</p>
+                          <p class="text-sm text-base-content/70 mb-3">{{ material.topic }}</p>
                         {% endif %}
                         {% if material.description %}
-                          <p class="text-sm font-medium text-gray-700 mb-1">Description:</p>
-                          <p class="text-sm text-gray-600 mb-3">{{ material.description }}</p>
+                          <p class="text-sm font-medium text-base-content mb-1">Description:</p>
+                          <p class="text-sm text-base-content/70 mb-3">{{ material.description }}</p>
                         {% endif %}
                         {% if material.useful_links %}
-                          <p class="text-sm font-medium text-gray-700 mb-1">Useful Links:</p>
+                          <p class="text-sm font-medium text-base-content mb-1">Useful Links:</p>
                           <div class="space-y-1 mb-3">
                             {% for link in material.useful_links.split %}
-                              <a href="{{ link }}" target="_blank" class="block text-blue-600 hover:underline text-sm">
+                              <a href="{{ link }}" target="_blank" class="block text-primary hover:underline text-sm">
                                 <i class="fas fa-external-link-alt mr-1"></i> {{ link|truncatechars:60 }}
                               </a>
                             {% endfor %}
                           </div>
                         {% endif %}
                         {% if material.video_link %}
-                          <p class="text-sm font-medium text-gray-700 mb-1">Video Link:</p>
+                          <p class="text-sm font-medium text-base-content mb-1">Video Link:</p>
                           <div class="mb-3">
                             <a href="{{ material.video_link }}" target="_blank" 
-                               class="inline-flex items-center px-3 py-1.5 bg-red-50 text-red-700 rounded-md text-sm hover:bg-red-100 transition-colors">
+                               class="btn btn-sm btn-error">
                               <i class="fab fa-youtube mr-1.5"></i> Watch Video
                             </a>
                           </div>
                         {% endif %}
                         {% if material.image %}
-                          <p class="text-sm font-medium text-gray-700 mb-1">Image:</p>
+                          <p class="text-sm font-medium text-base-content mb-1">Image:</p>
                           <div class="mb-3" style="max-width:400px;">
                             <img src="{{ material.image.url }}" alt="{{ material.title }}" 
-                                 class="max-w-full h-auto rounded-lg border border-gray-200">
+                                 class="max-w-full h-auto rounded-lg border border-base-200">
                           </div>
                         {% endif %}
                       </div>
@@ -100,7 +103,7 @@
               {% endif %}
               {% for num in page_obj.paginator.page_range %}
                 {% if page_obj.number == num %}
-                  <button class="join-item btn btn-sm btn-active">{{ num }}</button>
+                  <button class="join-item btn btn-sm btn-active bg-primary text-primary-content">{{ num }}</button>
                 {% elif num > page_obj.number|add:-3 and num < page_obj.number|add:3 %}
                   <a href="?page={{ num }}" class="join-item btn btn-sm">{{ num }}</a>
                 {% endif %}
@@ -116,14 +119,13 @@
       </div>
     </div>
   {% else %}
-    <div class="bg-white rounded-lg shadow p-8 text-center">
-      <div class="max-w-md mx-auto">
-        <div class="text-indigo-500 mb-4">
-          <i class="fas fa-folder-open text-5xl"></i>
-        </div>
-        <h3 class="text-lg font-medium text-gray-900 mb-2">No study materials available</h3>
-        <p class="text-gray-500 mb-6">There are no study materials uploaded for this course yet.</p>
-        <a href="{% url 'students:my_courses' %}" class="btn btn-primary">
+    <div class="alert alert-info shadow-lg mb-6">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+      <span>There are no study materials uploaded for this course yet.</span>
+      <div class="ml-auto">
+        <a href="{% url 'students:my_courses' %}" class="btn btn-sm btn-primary">
           <i class="fas fa-arrow-left mr-2"></i> Back to Courses
         </a>
       </div>

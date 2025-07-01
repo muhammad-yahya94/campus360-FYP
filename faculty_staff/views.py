@@ -9,7 +9,7 @@ import pytz
 
 # Django Core Imports
 from django import forms
-from django.contrib import messages
+from django.contrib import messages  
 from django.contrib.auth import (
     authenticate, login, logout,
     update_session_auth_hash, get_user_model
@@ -17,7 +17,7 @@ from django.contrib.auth import (
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.files.storage import default_storage
-from django.core.paginator import Paginator
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db import transaction
 from django.db.models import Sum, Q, Count, Max, Subquery, OuterRef
 from django.db.utils import IntegrityError
@@ -3302,6 +3302,91 @@ def student_performance(request, course_offering_id, student_id):
     }
     logger.info(f"Fetched performance data for student {student.applicant.full_name} in course offering {course_offering_id}")
     return render(request, 'faculty_staff/student_performance.html', context)
+    
+@hod_or_professor_required
+def student_semester_performance(request, student_id):
+    student = get_object_or_404(Student, pk=student_id)
+
+    # Get all semester enrollments for the student
+    semester_enrollments = StudentSemesterEnrollment.objects.filter(
+        student=student,
+        # status='enrolled'  # Adjust based on your status logic
+    ).select_related('semester').order_by('semester__number')
+
+    print("Total semester enrollments found:", semester_enrollments.count())
+
+    # Aggregate performance stats for all semesters
+    stats_by_semester = []
+    for sem_enrollment in semester_enrollments:
+        semester = sem_enrollment.semester
+        print(f"Processing Semester {semester.number} (Status: {sem_enrollment.status})")
+
+        # Fetch all course offerings for the semester
+        course_enrollments = CourseEnrollment.objects.filter(student_semester_enrollment=sem_enrollment)
+        course_offerings = [enrollment.course_offering for enrollment in course_enrollments]
+
+        # Aggregate attendance data
+        attendance_records = Attendance.objects.filter(student=student, course_offering__in=course_offerings)
+        attendance_summary = attendance_records.values('status').annotate(count=Count('status'))
+        attendance_data = {item['status']: item['count'] for item in attendance_summary}
+        attendance_total = attendance_records.count()
+        attendance_present = attendance_data.get('present', 0)
+        attendance_absent = attendance_data.get('absent', 0)
+        attendance_leave = attendance_data.get('leave', 0)
+
+        # Aggregate assignment submissions
+        assignments = AssignmentSubmission.objects.filter(
+            student=student,
+            assignment__course_offering__in=course_offerings
+        ).values('assignment__title', 'assignment__course_offering__course__code', 'assignment__course_offering__course__name').annotate(
+            score=Sum('marks_obtained'),
+            max_score=Max('assignment__max_points')
+        ).order_by('assignment__course_offering__course__code', 'assignment__title')
+
+        # Aggregate quiz submissions
+        quizzes = QuizSubmission.objects.filter(
+            student=student,
+            quiz__course_offering__in=course_offerings,
+            quiz__publish_flag=True
+        ).values('quiz__title', 'quiz__course_offering__course__code', 'quiz__course_offering__course__name').annotate(
+            score=Max('score'),
+            max_score=Subquery(
+                Question.objects.filter(quiz=OuterRef('quiz')).values('quiz').annotate(
+                    total=Sum('marks')
+                ).values('total')[:1]
+            )
+        ).order_by('quiz__course_offering__course__code', 'quiz__title')
+
+        stats_by_semester.append({
+            'semester': semester,
+            'attendance_total': attendance_total,
+            'attendance_present': attendance_present,
+            'attendance_absent': attendance_absent,
+            'attendance_leave': attendance_leave,
+            'attendance_percentage': (attendance_present / attendance_total * 100) if attendance_total > 0 else 0,
+            'assignments': assignments,
+            'quizzes': quizzes,
+        })
+
+    # Pagination (1 semester per page)
+    paginator = Paginator(stats_by_semester, 1)
+    page = request.GET.get('page')
+    try:
+        stats_by_page = paginator.page(page)
+    except PageNotAnInteger:
+        stats_by_page = paginator.page(1)
+    except EmptyPage:
+        stats_by_page = paginator.page(paginator.num_pages)
+
+    context = {
+        'student': student,
+        'stats_by_semester': stats_by_page,
+    }
+    logger.info(f"Fetched semester performance data for student {student.applicant.full_name}")
+    return render(request, 'faculty_staff/student_semester_performance.html', context)    
+    
+    
+    
     
 @hod_or_professor_required
 def settings(request):

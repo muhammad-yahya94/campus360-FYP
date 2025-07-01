@@ -83,7 +83,7 @@ urlpatterns = [
     path('delete-exam-result/', views.delete_exam_result, name='delete_exam_result'),
     path('load-students-for-course/', views.load_students_for_course, name='load_students_for_course'),
     path('course/<int:course_offering_id>/student/<int:student_id>/performance/', views.student_performance, name='student_performance'),
-
+path('student/<int:student_id>/performance/', views.student_semester_performance, name='student_semester_performance'),
     # ========== 13. Attendance ==========
     path('attendance/', views.attendance, name='attendance'),
     path('record-attendance/', views.record_attendance, name='record_attendance'),

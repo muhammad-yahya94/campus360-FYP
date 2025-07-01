@@ -73,6 +73,10 @@
                                         <a href="{% url 'faculty_staff:student_detail' student.pk %}" class="link link-primary">
                                             {{ student.applicant.full_name }}
                                         </a>
+                                        <br>
+                                        <a href="{% url 'faculty_staff:student_semester_performance' student.pk %}" class="link link-secondary text-xs">
+                                            View Semester Performance
+                                        </a>
                                     </td>
                                     <td class="text-xs text-base-content">{{ student.university_roll_no|default:"N/A" }}</td>
                                     <td class="text-xs text-base-content hidden sm:table-cell">{{ student.college_roll_no|default:"N/A" }}</td>
@@ -97,6 +101,10 @@
                                     <h3 class="text-sm font-semibold text-base-content truncate max-w-[200px]">
                                         <a href="{% url 'faculty_staff:student_detail' student.pk %}" class="link link-primary">
                                             {{ student.applicant.full_name }}
+                                        </a>
+                                        <br>
+                                        <a href="{% url 'faculty_staff:student_semester_performance' student.pk %}" class="link link-secondary text-xs">
+                                            View Semester Performance
                                         </a>
                                     </h3>
                                     <span class="badge badge-xs {% if student.current_status == 'active' %}badge-success{% elif student.current_status == 'graduated' %}badge-info{% else %}badge-error{% endif %}">

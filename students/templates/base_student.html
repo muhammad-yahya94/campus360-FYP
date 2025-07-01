@@ -11,7 +11,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 
     <script>  
-        // Theme management
+        // Theme management   
         function changeTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
             localStorage.setItem('selectedTheme', theme);
@@ -194,17 +194,15 @@
 
             <!-- Main content -->
             <main class="flex-1 p-4 lg:p-8">
+                <!-- Back Button -->
+                <button onclick="window.history.back()" class="btn btn-ghost btn-sm mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Back
+                </button>
+                
                 {% block content %}
-                <!-- Placeholder content for testing -->
-                <div class="hero min-h-96 bg-base-200 rounded-lg">
-                    <div class="hero-content text-center">
-                        <div class="max-w-md">
-                            <h1 class="text-5xl font-bold">Welcome!</h1>
-                            <p class="py-6">This is the main content area for the student dashboard.</p>
-                            <button class="btn btn-primary">Get Started</button>
-                        </div>
-                    </div>
-                </div>
                 {% endblock %}
             </main>
         </div>

@@ -46,7 +46,7 @@ from admissions.models import (
 from courses.models import (
     Course, CourseOffering, ExamResult, StudyMaterial, Assignment,
     AssignmentSubmission, Notice, Attendance, Venue, TimetableSlot,
-    Quiz, Question, Option, QuizSubmission
+    Quiz, Question, Option, QuizSubmission, 
 )
 from faculty_staff.models import Teacher, TeacherDetails
 from students.models import Student, StudentSemesterEnrollment, CourseEnrollment
@@ -430,6 +430,9 @@ def study_materials(request, course_offering_id):
         messages.error(request, 'An error occurred while processing study materials.')
         return redirect('students:my_courses')
 
+from django.db.models import Q
+from datetime import datetime
+
 @login_required
 def notices(request):
     try:
@@ -438,11 +441,67 @@ def notices(request):
         messages.error(request, 'You are not authorized as a student.')
         return redirect('students:login')
 
-    notices = Notice.objects.all().order_by('-created_at')
+    # Get filter parameters
+    notice_type = request.GET.get('notice_type', '')
+    priority = request.GET.get('priority', '')
+    search = request.GET.get('search', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+
+    # Start with base queryset
+    notices = Notice.objects.filter(
+        Q(programs__in=[student.program]) | Q(programs__isnull=True),
+        # Q(sessions__in=[student.current_session]) | Q(sessions__isnull=True),
+        is_active=True,
+        valid_from__lte=timezone.now(),
+    ).distinct()
+
+    # Apply filters
+    if notice_type:
+        notices = notices.filter(notice_type=notice_type)
+    
+    if priority:
+        notices = notices.filter(priority=priority)
+    
+    if search:
+        notices = notices.filter(
+            Q(title__icontains=search) |
+            Q(content__icontains=search)
+        )
+    
+    if date_from:
+        try:
+            date_from = datetime.strptime(date_from, '%Y-%m-%d').date()
+            notices = notices.filter(created_at__date__gte=date_from)
+        except ValueError:
+            pass
+    
+    if date_to:
+        try:
+            date_to = datetime.strptime(date_to, '%Y-%m-%d').date()
+            notices = notices.filter(created_at__date__lte=date_to)
+        except ValueError:
+            pass
+
+    # Order and paginate
+    notices = notices.order_by('-is_pinned', '-created_at')[:20]
+    
+    # Get unique notice types and priorities for filter dropdowns
+    notice_types = Notice.NOTICE_TYPES
+    priorities = Notice.PRIORITY_LEVELS
 
     context = {
         'student': student,
         'notices': notices,
+        'notice_types': notice_types,
+        'priorities': priorities,
+        'current_filters': {
+            'notice_type': notice_type,
+            'priority': priority,
+            'search': search,
+            'date_from': date_from if date_from else '',
+            'date_to': date_to if date_to else '',
+        },
     }
     return render(request, 'notice.html', context)
 
@@ -633,7 +692,7 @@ def student_attendance_stats(request):
         stats_by_page = paginator.page(paginator.num_pages)
 
     context = {
-        'student': student,
+        'student': student,   
         'active_semester': active_semester,
         'stats_by_semester': stats_by_page,
     }

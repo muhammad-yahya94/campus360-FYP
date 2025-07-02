@@ -72,10 +72,6 @@ urlpatterns = [
     path('assignment-submissions/<int:assignment_id>/', views.assignment_submissions, name='assignment_submissions'),
     path('grade-submission/', views.grade_submission, name='grade_submission'),
 
-    # ========== 11. Notices ==========
-    path('notices/', views.notices, name='notices'),
-    path('post-notice/', views.post_notice, name='post_notice'),
-    path('delete-notice/', views.delete_notice, name='delete_notice'),
 
     # ========== 12. Exam Results ==========
     path('exam-results/', views.exam_results, name='exam_results'),
@@ -83,8 +79,12 @@ urlpatterns = [
     path('delete-exam-result/', views.delete_exam_result, name='delete_exam_result'),
     path('load-students-for-course/', views.load_students_for_course, name='load_students_for_course'),
     path('course/<int:course_offering_id>/student/<int:student_id>/performance/', views.student_performance, name='student_performance'),
-path('student/<int:student_id>/performance/', views.student_semester_performance, name='student_semester_performance'),
-    # ========== 13. Attendance ==========
+    path('student/<int:student_id>/performance/', views.student_semester_performance, name='student_semester_performance'),
+    # ========== 13. Notice Board ==========
+    path('notices/', views.notice_board, name='notice_board'),
+    path('notices/toggle-pin/<int:notice_id>/', views.toggle_pin_notice, name='toggle_pin_notice'),
+    
+    # ========== 14. Attendance ==========
     path('attendance/', views.attendance, name='attendance'),
     path('record-attendance/', views.record_attendance, name='record_attendance'),
     path('load-attendance/', views.load_attendance, name='load_attendance'),

@@ -4,6 +4,7 @@ from academics.models import Program, Department, Faculty, Semester
 from admissions.models import Applicant, AcademicSession
 from faculty_staff.models import Teacher
 from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator
 import os
 from django.utils import timezone
 
@@ -207,21 +208,84 @@ class AssignmentSubmission(models.Model):
         verbose_name = "Assignment Submission"
         verbose_name_plural = "Assignment Submissions"
 
-# ===== Notice Board =====
-class Notice(models.Model):
-    title = models.CharField(max_length=200, help_text="Title of the notice (e.g., 'Exam Schedule Update').")
-    content = models.TextField(help_text="The content of the notice.")
-    created_by = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True, related_name='created_notices', help_text="The teacher who created this notice.")
-    created_at = models.DateTimeField(auto_now_add=True, help_text="The date and time when the notice was created.")
-    is_active = models.BooleanField(default=True, help_text="Check if this notice is currently visible to students.")
 
-    def __str__(self):
-        return f"{self.title} by {self.created_by.user.get_full_name()}"
+
+
+# Notice Types and Priority Levels
+
+
+class Notice(models.Model):
+    NOTICE_TYPES = (
+    ('general', 'General'),
+    ('academic', 'Academic'),
+    ('event', 'Event'),
+    ('exam', 'Exam'),
+    ('holiday', 'Holiday'),
+    ('other', 'Other'),
+)
+
+    PRIORITY_LEVELS = (
+        ('high', 'High'),
+        ('medium', 'Medium'),
+        ('low', 'Low'),
+    )
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    notice_type = models.CharField(max_length=20, choices=NOTICE_TYPES, default='general')
+    priority = models.CharField(max_length=10, choices=PRIORITY_LEVELS, default='medium')
+    programs = models.ManyToManyField(Program, related_name='notices', blank=True, help_text="Select programs this notice applies to (leave blank for all programs).")
+    sessions = models.ManyToManyField(AcademicSession, related_name='notices', blank=True, help_text="Select academic sessions this notice applies to (leave blank for all sessions).")
+    is_pinned = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    valid_from = models.DateTimeField(default=timezone.now)
+    valid_until = models.DateTimeField(null=True, blank=True)
+    attachment = models.FileField(
+        upload_to='notices/attachments/',
+        null=True,
+        blank=True,
+        validators=[FileExtensionValidator(allowed_extensions=['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'])]
+    )
+    created_by = models.ForeignKey('faculty_staff.Teacher', on_delete=models.SET_NULL, null=True, related_name='created_notices')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = "Notice"
-        verbose_name_plural = "Notices"
+        ordering = ['-is_pinned', '-created_at']
+        indexes = [
+            models.Index(fields=['-created_at']),
+            models.Index(fields=['notice_type']),
+            models.Index(fields=['priority']),
+            models.Index(fields=['is_active']),
+        ]
 
+    def __str__(self):
+        return self.title
+
+    @property
+    def is_currently_active(self):
+        now = timezone.now()
+        if self.valid_until:
+            return self.is_active and (self.valid_from <= now <= self.valid_until)
+        return self.is_active and (self.valid_from <= now)
+
+    @property
+    def filename(self):
+        return self.attachment.name.split('/')[-1] if self.attachment else None
+
+    def get_target_audience(self):
+        if self.programs.exists():
+            progs = list(self.programs.values_list('name', flat=True))
+            if len(progs) > 3:
+                return f"{', '.join(progs[:3])} and {len(progs) - 3} more"
+            return ', '.join(progs)
+        if self.sessions.exists():
+            sess = list(self.sessions.values_list('name', flat=True))
+            if len(sess) > 3:
+                return f"{', '.join(sess[:3])} and {len(sess) - 3} more"
+            return ', '.join(sess)
+        return "All Programs and Sessions"
+    
+    
 # ===== Marks After Exams =====
 class ExamResult(models.Model):
     EXAM_TYPES = [

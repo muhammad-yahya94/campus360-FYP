@@ -26,9 +26,10 @@ from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
-# Custom User Model
+
+# Custom User Model  
 CustomUser = get_user_model()
 
 # App Imports (Local Apps)
@@ -2423,49 +2424,128 @@ def grade_submission(request):
     return JsonResponse({'success': True, 'message': 'Submission graded successfully.'})
 
 
-def notices(request):
-    return render(request, 'faculty_staff/notices.html')
 
 
 @login_required
-def post_notice(request):
-    if request.method == "POST" and request.user.teacher_profile.designation == 'head_of_department':
-        course_offering_id = request.POST.get('course_offering_id')
-        title = request.POST.get('title')
-        content = request.POST.get('content')
+def notice_board(request):
+    if request.user.teacher_profile and request.user.teacher_profile.designation == 'head_of_department':
+        # HoD view: Manage all notices
+        notices = Notice.objects.all().order_by('-is_pinned', '-created_at')
+    elif request.user.teacher_profile:
+        # Teacher view: View only notices relevant to their department's programs
+        department = request.user.teacher_profile.department
+        notices = Notice.objects.filter(
+            models.Q(programs__department=department) | models.Q(sessions__semesters__program__department=department)
+        ).distinct().order_by('-is_pinned', '-created_at')
+    else:
+        # Student view: Filter by enrolled program and session
+        student = getattr(request.user, 'student_profile', None)
+        if student:
+            current_semester = StudentSemesterEnrollment.objects.filter(student=student).first()
+            if current_semester:
+                current_program = current_semester.student.program
+                current_session = current_semester.semester.session
+                notices = Notice.objects.filter(
+                    models.Q(programs__in=[current_program]) | models.Q(programs__isnull=True),
+                    models.Q(sessions__in=[current_session]) | models.Q(sessions__isnull=True),
+                    models.Q(valid_until__gte=timezone.now()) | models.Q(valid_until__isnull=True),
+                    is_active=True,
+                    valid_from__lte=timezone.now(),
+                ).distinct().order_by('-is_pinned', '-created_at')
+        else:
+            notices = Notice.objects.none()
 
-        if not all([course_offering_id, title, content]):
-            return JsonResponse({'success': False, 'message': 'All required fields must be filled.'})
+    if request.method == 'POST':
+        if 'create_notice' in request.POST:
+            if not request.user.teacher_profile or request.user.teacher_profile.designation != 'head_of_department':
+                messages.error(request, "Only the Head of Department can create notices.")
+                return redirect('notice_board')
 
-        course_offering = get_object_or_404(
-            CourseOffering,
-            id=course_offering_id,
-            teacher=request.user.teacher_profile
-        )
-        Notice.objects.create(
-            course_offering=course_offering,
-            title=title,
-            content=content,
-            created_by=request.user.teacher_profile
-        )
-        return JsonResponse({'success': True, 'message': 'Notice posted successfully.'})
-    return JsonResponse({'success': False, 'message': 'Invalid request.'})
+            title = request.POST.get('title')
+            content = request.POST.get('content')
+            notice_type = request.POST.get('notice_type', 'general')
+            priority = request.POST.get('priority', 'medium')
+            program_ids = request.POST.getlist('programs')
+            session_ids = request.POST.getlist('sessions')
+            is_pinned = request.POST.get('is_pinned') == 'on'
+            valid_from = request.POST.get('valid_from') or timezone.now()
+            valid_until = request.POST.get('valid_until')
+            attachment = request.FILES.get('attachment')
 
-
-@login_required
-def delete_notice(request):
-    if request.method == "POST" and request.user.teacher_profile.designation == 'head_of_department':
-        notice_id = request.POST.get('notice_id')
-        if notice_id:
-            notice = get_object_or_404(
-                Notice,
-                id=notice_id,
-                course_offering__teacher=request.user.teacher_profile
+            # First create the notice without the many-to-many relationships
+            notice = Notice.objects.create(
+                title=title,
+                content=content,
+                notice_type=notice_type,
+                priority=priority,
+                is_pinned=is_pinned,
+                valid_from=valid_from,
+                valid_until=valid_until if valid_until else None,
+                attachment=attachment,
+                created_by=request.user.teacher_profile
             )
-            notice.delete()
-            return JsonResponse({'success': True, 'message': 'Notice deleted successfully.'})
-        return JsonResponse({'success': False, 'message': 'Notice ID is required.'})
-    return JsonResponse({'success': False, 'message': 'Invalid request.'})
+            # Now that the notice has an ID, we can set the many-to-many relationships
+            if program_ids:
+                notice.programs.set(program_ids)
+            if session_ids:
+                notice.sessions.set(session_ids)
+            messages.success(request, "Notice created successfully.")
+        elif 'toggle_active' in request.POST:
+            notice_id = request.POST.get('notice_id')
+            notice = get_object_or_404(Notice, id=notice_id)
+            if request.user.teacher_profile and request.user.teacher_profile.designation == 'head_of_department':
+                notice.is_active = not notice.is_active
+                notice.save()
+                messages.success(request, f"Notice '{notice.title}' {'activated' if notice.is_active else 'deactivated'} successfully.")
+        elif 'edit_notice' in request.POST:
+            notice_id = request.POST.get('notice_id')
+            notice = get_object_or_404(Notice, id=notice_id)
+            if request.user.teacher_profile and request.user.teacher_profile.designation == 'head_of_department':
+                notice.title = request.POST.get('title')
+                notice.content = request.POST.get('content')
+                notice.notice_type = request.POST.get('notice_type')
+                notice.priority = request.POST.get('priority')
+                notice.programs.set(request.POST.getlist('programs'))
+                notice.sessions.set(request.POST.getlist('sessions'))
+                notice.valid_from = request.POST.get('valid_from') or timezone.now()
+                notice.valid_until = request.POST.get('valid_until')
+                if request.FILES.get('attachment'):
+                    notice.attachment = request.FILES.get('attachment')
+                notice.is_pinned = request.POST.get('is_pinned') == 'on'
+                notice.save()
+                messages.success(request, "Notice updated successfully.")
+        elif 'delete_notice' in request.POST:
+            notice_id = request.POST.get('notice_id')
+            notice = get_object_or_404(Notice, id=notice_id)
+            if request.user.teacher_profile and request.user.teacher_profile.designation == 'head_of_department':
+                notice.delete()
+                messages.success(request, "Notice deleted successfully.")
+
+    # Pagination
+    paginator = Paginator(notices, 10)  # 10 notices per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    programs = Program.objects.all()  # Fetch all programs for the form
+    sessions = AcademicSession.objects.all()  # Fetch all sessions for the form
+
+    return render(request, 'faculty_staff/notice_board.html', {
+        'notices': page_obj,
+        'programs': programs,
+        'sessions': sessions,
+        'notice_types': dict(NOTICE_TYPES),
+        'priorities': dict(PRIORITY_LEVELS)
+    })
+
+@login_required
+@require_http_methods(['POST'])
+def toggle_pin_notice(request, notice_id):
+    notice = get_object_or_404(Notice, id=notice_id)
+    if request.user.teacher_profile and request.user.teacher_profile.designation == 'head_of_department':
+        notice.is_pinned = not notice.is_pinned
+        notice.save()
+        return JsonResponse({'is_pinned': notice.is_pinned, 'message': 'Pin status updated.'})
+    return JsonResponse({'error': 'Permission denied'}, status=403)
 
 
 @login_required

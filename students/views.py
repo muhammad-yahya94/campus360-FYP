@@ -432,6 +432,9 @@ def study_materials(request, course_offering_id):
 
 from django.db.models import Q
 from datetime import datetime
+import subprocess
+import tempfile
+import os
 
 @login_required
 def notices(request):
@@ -1179,6 +1182,123 @@ def update_account(request):
         return redirect('students:settings')
     
     
+import json
+import subprocess
+import tempfile
+import os
+import platform
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+
+@login_required
+def ide(request):
+    """
+    View for the online code editor.
+    """
+    return render(request, 'ide.html')
+
+def run_code(request):
+    """
+    API endpoint to execute code and return the output.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Only POST method is allowed'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        code = data.get('code', '')
+        language = data.get('language', 'python')
+
+        if not code.strip():
+            return JsonResponse({'error': 'No code provided'}, status=400)
+
+        if len(code) > 10240:
+            return JsonResponse({'error': 'Code too large (max 10KB)'}, status=400)
+
+        output = ''
+        temp_path = None
+        executable = None
+
+        # Determine platform-specific settings
+        is_windows = platform.system() == 'Windows'
+        python_cmd = 'python' if is_windows else 'python3'
+        executable_ext = '.exe' if is_windows else '.out'
+
+        suffix = {
+            'python': '.py',
+            'c': '.c',
+            'cpp': '.cpp'
+        }.get(language, '.txt')
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix, dir='.') as temp:
+            temp.write(code.encode('utf-8'))
+            temp_path = temp.name
+
+        try:
+            if language == 'python':
+                result = subprocess.run(
+                    [python_cmd, temp_path],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                    shell=is_windows  # Use shell=True on Windows for PATH resolution
+                )
+                output = result.stdout
+                if result.stderr:
+                    output += '\nError:\n' + result.stderr
+
+            elif language in ['c', 'cpp']:
+                compiler = 'gcc' if language == 'c' else 'g++'
+                executable = temp_path + executable_ext
+                compile_result = subprocess.run(
+                    [compiler, temp_path, '-o', executable],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                    shell=is_windows
+                )
+                if compile_result.returncode != 0:
+                    output = f'Compilation Error:\n{compile_result.stderr}'
+                else:
+                    run_result = subprocess.run(
+                        [executable],
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
+                        shell=is_windows
+                    )
+                    output = run_result.stdout
+                    if run_result.stderr:
+                        output += '\nError:\n' + run_result.stderr
+
+            else:
+                output = f'Language {language} not supported on the server'
+
+        except subprocess.TimeoutExpired:
+            output = 'Error: Code execution timed out (10 seconds)'
+        except subprocess.CalledProcessError as e:
+            output = f'Error executing code: {str(e)}\n{e.stderr}'
+        except FileNotFoundError as e:
+            output = f'Error: Compiler/interpreter not found: {str(e)}'
+        except Exception as e:
+            output = f'Error executing code: {str(e)}'
+        finally:
+            try:
+                if temp_path and os.path.exists(temp_path):
+                    os.unlink(temp_path)
+                if executable and os.path.exists(executable):
+                    os.unlink(executable)
+            except Exception as e:
+                output += f'\nWarning: Failed to clean up files: {str(e)}'
+
+        return JsonResponse({'output': output})
+
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
 def change_password(request):
     """
     Handle password change for the student.

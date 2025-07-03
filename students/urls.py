@@ -40,6 +40,10 @@ urlpatterns = [
     # ========== 9. Profile & Settings ==========
     path('profile/', views.profile_view, name='profile'),  # 9.1 Profile Page
     path('settings/', views.settings_view, name='settings'),  # 9.2 Settings Page
-    path('settings/update-account/', views.update_account, name='update_account'),  # 9.2 Update Account
-    path('settings/change-password/', views.change_password, name='change_password'),  # 9.3 Change Password
+    path('settings/update-account/', views.update_account, name='update_account'),  # 9.3 Update Account
+    path('settings/change-password/', views.change_password, name='change_password'),  # 9.4 Change Password
+    
+    # ========== 10. Online IDE ==========
+    path('ide/', views.ide, name='ide'),  # 10.1 Online Code Editor
+    path('run_code/', views.run_code, name='run_code'),  # 10.2 Execute Code
 ]

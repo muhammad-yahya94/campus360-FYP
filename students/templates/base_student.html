@@ -283,6 +283,11 @@
                                 <i class="fas fa-cog text-lg w-6"></i> Settings
                             </a>
                         </li>
+                        <li>
+                            <a href="{% url 'students:ide' %}" class="{% if request.resolver_match.url_name == 'ide' %}active{% endif %} text-lg py-3">
+                                <i class="fas fa-code text-lg w-6"></i> Code Editor
+                            </a>
+                        </li>
                         <div class="divider"></div>
                         <li>
                             <a href="{% url 'students:logout' %}" class="text-error hover:bg-error hover:text-error-content text-lg py-3">

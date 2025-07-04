@@ -57,9 +57,7 @@
             </div>
             <!-- Single Editor for Python/C/C++ -->
             <div id="code-editor" class="h-full">
-                <textarea id="editor" class="w-full h-full"># Write your code here
-# Example Python code
-print("Hello, Campus360!")</textarea>
+                <textarea id="editor" class="w-full h-full"></textarea>
             </div>
         </div>
     </div>
@@ -67,13 +65,17 @@ print("Hello, Campus360!")</textarea>
     <!-- Output Panel -->
     <div class="bg-white rounded-lg shadow-md overflow-hidden">
         <div class="bg-gray-800 text-white px-4 py-2 font-mono text-sm flex items-center">
-            <i class="fas fa-terminal mr-2"></i> Output
+            <i class="fas fa-terminal mr-2"></i> Console
         </div>
         <div class="h-48 overflow-auto bg-gray-900 text-gray-100 p-4 font-mono text-sm">
             <!-- Iframe for HTML/CSS/JS Output -->
             <iframe id="web-output" class="w-full h-full hidden"></iframe>
             <!-- Pre for Python/C/C++ Output -->
             <pre id="output" class="whitespace-pre-wrap"></pre>
+        </div>
+        <!-- Input Box for Python/C/C++ -->
+        <div class="bg-gray-800 p-2">
+            <input id="input-box" type="text" class="w-full bg-gray-700 text-white px-3 py-1 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-300" placeholder="Enter input here..." disabled>
         </div>
     </div>
 </div>
@@ -136,6 +138,7 @@ const webEditors = document.getElementById('web-editors');
 const codeEditorDiv = document.getElementById('code-editor');
 const webOutput = document.getElementById('web-output');
 const textOutput = document.getElementById('output');
+const inputBox = document.getElementById('input-box');
 
 languageSelect.addEventListener('change', function() {
     const lang = this.value;
@@ -148,30 +151,35 @@ languageSelect.addEventListener('change', function() {
         javascript: 'javascript'
     };
     const examples = {
-        python: '# Example Python code\nprint("Hello, Campus360!")',
-        c: '#include <stdio.h>\nint main() {\n    printf("Hello, Campus360!\\n");\n    return 0;\n}',
-        cpp: '#include <iostream>\nusing namespace std;\nint main() {\n    cout << "Hello, Campus360!" << endl;\n    return 0;\n}',
-        html: '<h1>Hello, Campus360!</h1>',
-        css: 'h1 { color: blue; }',
-        javascript: 'console.log("Hello, Campus360!");'
+        python: '# Write your Python code here\n',
+        c: '// Write your C code here\n#include <stdio.h>\nint main() {\n    return 0;\n}',
+        cpp: '// Write your C++ code here\n#include <iostream>\nusing namespace std;\nint main() {\n    return 0;\n}',
+        html: '<!-- Write your HTML code here -->\n',
+        css: '/* Write your CSS code here */\n',
+        javascript: '// Write your JavaScript code here\n'
     };
     if (['html', 'css', 'javascript'].includes(lang)) {
         webEditors.classList.remove('hidden');
         codeEditorDiv.classList.add('hidden');
         webOutput.classList.remove('hidden');
         textOutput.classList.add('hidden');
-        htmlEditor.setValue(examples.html || '');
-        cssEditor.setValue(examples.css || '');
-        jsEditor.setValue(examples.javascript || '');
+        inputBox.classList.add('hidden');
+        htmlEditor.setValue(examples.html);
+        cssEditor.setValue(examples.css);
+        jsEditor.setValue(examples.javascript);
+        inputBox.disabled = true;
         updateWebOutput();
     } else {
         webEditors.classList.add('hidden');
         codeEditorDiv.classList.remove('hidden');
         webOutput.classList.add('hidden');
         textOutput.classList.remove('hidden');
+        inputBox.classList.remove('hidden');
         codeEditor.setOption('mode', modes[lang]);
-        codeEditor.setValue(examples[lang] || '');
+        codeEditor.setValue(examples[lang]);
         textOutput.textContent = '';
+        inputBox.disabled = true;
+        inputBox.value = '';
     }
 });
 
@@ -202,51 +210,180 @@ cssEditor.on('change', updateWebOutput);
 jsEditor.on('change', updateWebOutput);
 
 // Run Button Handler
-document.getElementById('run-btn').addEventListener('click', function() {
+let inputPending = false;
+let currentProcessId = null;
+let inputs = [];
+
+// Function to reset button and input states
+function resetRunButton() {
+    const runBtn = document.getElementById('run-btn');
+    runBtn.disabled = false;
+    runBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    inputBox.disabled = true;
+    inputPending = false;
+}
+
+// Function to clear any running process
+async function clearCurrentProcess() {
+    if (currentProcessId) {
+        try {
+            await fetch('{% url 'students:clear_process' %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ process_id: currentProcessId })
+            });
+        } catch (error) {
+            console.error('Error clearing process:', error);
+        } finally {
+            currentProcessId = null;
+            inputs = [];
+        }
+    }
+}
+
+document.getElementById('run-btn').addEventListener('click', async function() {
     const language = languageSelect.value;
     const runBtn = this;
+    
+    // Disable button immediately
     runBtn.disabled = true;
     runBtn.classList.add('opacity-50', 'cursor-not-allowed');
-
-    if (['html', 'css', 'javascript'].includes(language)) {
-        updateWebOutput();
-        runBtn.disabled = false;
-        runBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-    } else {
-        const code = codeEditor.getValue();
-        textOutput.textContent = 'Running...';
-        textOutput.classList.remove('error');
-        fetch('{% url 'students:run_code' %}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: JSON.stringify({
-                code: code,
-                language: language
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                textOutput.textContent = 'Error: ' + data.error;
-                textOutput.classList.add('error');
-            } else {
-                textOutput.textContent = data.output || 'No output';
-                textOutput.classList.remove('error');
-            }
-            runBtn.disabled = false;
-            runBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-        })
-        .catch(error => {
-            textOutput.textContent = 'Error: ' + error.message;
-            textOutput.classList.add('error');
-            runBtn.disabled = false;
-            runBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-        });
+    inputBox.disabled = true;
+    inputBox.value = '';
+    
+    try {
+        // Clear any existing process first
+        await clearCurrentProcess();
+        
+        // Generate new process ID
+        currentProcessId = Date.now().toString() + Math.random().toString(36).slice(2);
+        const processId = currentProcessId; // Capture for this execution
+        inputs = [];
+        
+        if (['html', 'css', 'javascript'].includes(language)) {
+            updateWebOutput();
+            resetRunButton();
+        } else {
+            const code = codeEditor.getValue();
+            textOutput.textContent = 'Running...';
+            textOutput.classList.remove('error');
+            runCode(code, language, '', processId, runBtn);
+        }
+    } catch (error) {
+        console.error('Error in run button handler:', error);
+        resetRunButton();
     }
 });
+
+// Handle input in the input box
+inputBox.addEventListener('keydown', async function(event) {
+    if (event.key === 'Enter' && inputPending) {
+        event.preventDefault();
+        const input = inputBox.value.trim();
+        if (input !== '') {
+            inputs.push(input);
+            textOutput.textContent += input + '\n'; // Append input to output
+            inputBox.value = '';
+            inputBox.disabled = true;
+            inputPending = false;
+            
+            // Get the current process ID to ensure we're working with the right process
+            const processId = currentProcessId;
+            if (!processId) {
+                resetRunButton();
+                return;
+            }
+            runCode(codeEditor.getValue(), languageSelect.value, input, currentProcessId, document.getElementById('run-btn'));
+        }
+    }
+});
+
+function runCode(code, language, input, processId, runBtn) {
+    // Reset any previous states
+    textOutput.classList.remove('error');
+    
+    if (!code.trim()) {
+        textOutput.textContent = 'Error: No code provided';
+        textOutput.classList.add('error');
+        resetRunButton();
+        return;
+    }
+    
+    // Ensure we have a valid process ID
+    if (!processId) {
+        textOutput.textContent = 'Error: No active process';
+        textOutput.classList.add('error');
+        resetRunButton();
+        return;
+    }
+    
+    // Show loading state
+    runBtn.disabled = true;
+    runBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    inputBox.disabled = true;
+    
+    fetch('{% url 'students:run_code' %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            code: code,
+            language: language,
+            input: input,
+            process_id: processId
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        // Ignore if this response is for an old process
+        if (currentProcessId !== processId) return;
+        
+        if (data.error) {
+            textOutput.textContent = data.output ? 
+                `${data.output}\nError: ${data.error}` : 
+                `Error: ${data.error}`;
+            textOutput.classList.add('error');
+            resetRunButton();
+            currentProcessId = null;
+            return;
+        }
+        
+        if (data.prompt) {
+            // Show prompt and wait for user input
+            textOutput.textContent = data.output || '';
+            inputBox.disabled = false;
+            inputBox.focus();
+            inputPending = true;
+        } else {
+            // Execution completed successfully
+            textOutput.textContent = data.output || 'No output';
+            textOutput.classList.remove('error');
+            resetRunButton();
+            currentProcessId = null;
+        }
+    })
+    .catch(error => {
+        console.error('Error executing code:', error);
+        
+        // Only update UI if this error is for the current process
+        if (currentProcessId === processId) {
+            textOutput.textContent = `Error: ${error.message || 'Failed to execute code'}`;
+            textOutput.classList.add('error');
+            resetRunButton();
+            currentProcessId = null;
+        }
+    });
+}
 
 // Clear Button Handler
 document.getElementById('clear-btn').addEventListener('click', function() {
@@ -259,12 +396,26 @@ document.getElementById('clear-btn').addEventListener('click', function() {
         } else {
             codeEditor.setValue('');
             textOutput.textContent = '';
+            inputBox.disabled = true;
+            inputBox.value = '';
             textOutput.classList.remove('error');
         }
+        inputPending = false;
+        currentProcessId = null;
+        inputs = [];
+        // Clear backend process
+        fetch('{% url 'students:clear_process' %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ process_id: currentProcessId })
+        });
     }
 });
 
-// Save Button Handler (Updated for Separate Files)
+// Save Button Handler
 document.getElementById('save-btn').addEventListener('click', function() {
     const language = languageSelect.value;
     const defaultExt = {
@@ -305,7 +456,6 @@ document.getElementById('save-btn').addEventListener('click', function() {
 
 {% block extra_css %}
 <style>
-    /* Custom scrollbar for output panel */
     #output::-webkit-scrollbar {
         width: 8px;
         height: 8px;
@@ -320,28 +470,29 @@ document.getElementById('save-btn').addEventListener('click', function() {
     #output::-webkit-scrollbar-thumb:hover {
         background: #718096;
     }
-
-    /* CodeMirror custom styles */
     .CodeMirror {
         width: 100%;
         height: 100%;
         font-family: 'Fira Code', 'Cascadia Code', 'Consolas', 'Monaco', 'Courier New', monospace;
         font-size: 14px;
     }
-
-    /* Iframe for web output */
     #web-output {
         width: 100%;
         height: 100%;
         border: none;
     }
-
-    /* Error styling */
+    #output {
+        background: #2d3748;
+        outline: none;
+    }
     #output.error {
         color: #f87171;
     }
-
-    /* Custom select dropdown */
+    #input-box:disabled {
+        background: #4a5568;
+        color: #a0aec0;
+        cursor: not-allowed;
+    }
     select {
         -webkit-appearance: none;
         -moz-appearance: none;
@@ -352,8 +503,6 @@ document.getElementById('save-btn').addEventListener('click', function() {
         background-size: 1em;
         padding-right: 2.5rem;
     }
-
-    /* Responsive design */
     @media (max-width: 768px) {
         .flex.gap-4 {
             flex-direction: column;
@@ -363,7 +512,7 @@ document.getElementById('save-btn').addEventListener('click', function() {
         }
         .h-96 {
             height: 50vh;
-       凉
+        }
         .h-48 {
             height: 30vh;
         }

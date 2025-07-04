@@ -5,6 +5,7 @@ import logging
 import datetime
 from datetime import time
 import random
+import uuid
 
 # Third-Party Imports
 import pytz
@@ -1182,13 +1183,27 @@ def update_account(request):
         return redirect('students:settings')
     
     
+    
+    
 import json
 import subprocess
 import tempfile
 import os
 import platform
+import threading
+import queue
+import time
+import logging
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger('django')
+
+# Store active subprocesses
+active_processes = {}
 
 @login_required
 def ide(request):
@@ -1197,9 +1212,33 @@ def ide(request):
     """
     return render(request, 'ide.html')
 
+def read_output(process, output_queue):
+    """
+    Read subprocess stdout and stderr line-by-line in real-time.
+    """
+    while process.poll() is None:
+        try:
+            line = process.stdout.readline()
+            if line:
+                output_queue.put(('stdout', line))
+        except Exception as e:
+            logger.error(f"Error reading stdout: {e}")
+            output_queue.put(('stderr', f"Error reading stdout: {e}"))
+            break
+        try:
+            line = process.stderr.readline()
+            if line:
+                output_queue.put(('stderr', line))
+        except Exception as e:
+            logger.error(f"Error reading stderr: {e}")
+            output_queue.put(('stderr', f"Error reading stderr: {e}"))
+            break
+        time.sleep(0.005)  # Optimized for responsiveness
+
+@login_required
 def run_code(request):
     """
-    API endpoint to execute code and return the output.
+    Execute Python code and handle dynamic inputs with exact prompt display.
     """
     if request.method != 'POST':
         return JsonResponse({'error': 'Only POST method is allowed'}, status=405)
@@ -1208,6 +1247,11 @@ def run_code(request):
         data = json.loads(request.body)
         code = data.get('code', '')
         language = data.get('language', 'python')
+        input_data = data.get('input', '').strip()
+        process_id = data.get('process_id', '')
+
+        if language != 'python':
+            return JsonResponse({'error': f'Language {language} not supported in backend'}, status=400)
 
         if not code.strip():
             return JsonResponse({'error': 'No code provided'}, status=400)
@@ -1215,90 +1259,183 @@ def run_code(request):
         if len(code) > 10240:
             return JsonResponse({'error': 'Code too large (max 10KB)'}, status=400)
 
-        output = ''
-        temp_path = None
-        executable = None
+        if len(input_data) > 1024:
+            return JsonResponse({'error': 'Input too large (max 1KB)'}, status=400)
 
-        # Determine platform-specific settings
         is_windows = platform.system() == 'Windows'
         python_cmd = 'python' if is_windows else 'python3'
-        executable_ext = '.exe' if is_windows else '.out'
 
-        suffix = {
-            'python': '.py',
-            'c': '.c',
-            'cpp': '.cpp'
-        }.get(language, '.txt')
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix, dir='.') as temp:
-            temp.write(code.encode('utf-8'))
-            temp_path = temp.name
+        output = ''
+        temp_path = None
+        temp_dir = None
 
         try:
-            if language == 'python':
-                result = subprocess.run(
+            # Initialize process if not already running
+            if process_id not in active_processes:
+                temp_dir = os.path.join('.', f'temp_{process_id}')
+                os.makedirs(temp_dir, exist_ok=True)
+
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.py', dir=temp_dir) as temp:
+                    # Inject flush for stdout to ensure prompt display
+                    code = "import sys\nsys.stdout.flush()\n" + code
+                    temp.write(code.encode('utf-8'))
+                    temp_path = temp.name
+
+                output_queue = queue.Queue()
+
+                process = subprocess.Popen(
                     [python_cmd, temp_path],
-                    capture_output=True,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
                     text=True,
-                    timeout=10,
-                    shell=is_windows  # Use shell=True on Windows for PATH resolution
+                    shell=is_windows,
+                    bufsize=1,  # Line buffering
+                    encoding='utf-8',
+                    errors='replace'
                 )
-                output = result.stdout
-                if result.stderr:
-                    output += '\nError:\n' + result.stderr
+                reader_thread = threading.Thread(target=read_output, args=(process, output_queue))
+                reader_thread.daemon = True
+                reader_thread.start()
+                active_processes[process_id] = {
+                    'process': process,
+                    'temp_path': temp_path,
+                    'temp_dir': temp_dir,
+                    'inputs': [],
+                    'output': '',
+                    'output_queue': output_queue,
+                    'reader_thread': reader_thread,
+                    'last_output_time': time.time()
+                }
 
-            elif language in ['c', 'cpp']:
-                compiler = 'gcc' if language == 'c' else 'g++'
-                executable = temp_path + executable_ext
-                compile_result = subprocess.run(
-                    [compiler, temp_path, '-o', executable],
-                    capture_output=True,
-                    text=True,
-                    timeout=10,
-                    shell=is_windows
-                )
-                if compile_result.returncode != 0:
-                    output = f'Compilation Error:\n{compile_result.stderr}'
-                else:
-                    run_result = subprocess.run(
-                        [executable],
-                        capture_output=True,
-                        text=True,
-                        timeout=10,
-                        shell=is_windows
-                    )
-                    output = run_result.stdout
-                    if run_result.stderr:
-                        output += '\nError:\n' + run_result.stderr
+            # Handle input for existing process
+            process_info = active_processes.get(process_id)
+            if not process_info:
+                return JsonResponse({'error': 'Process not found'}, status=400)
 
-            else:
-                output = f'Language {language} not supported on the server'
+            process = process_info['process']
+            temp_path = process_info['temp_path']
+            temp_dir = process_info['temp_dir']
+            output_queue = process_info['output_queue']
+
+            if input_data:
+                process_info['inputs'].append(input_data)
+                try:
+                    process.stdin.write(input_data + '\n')
+                    process.stdin.flush()
+                    process_info['last_output_time'] = time.time()
+                except BrokenPipeError:
+                    output = process_info['output'] + '\nError: Input stream closed unexpectedly'
+                    active_processes.pop(process_id, None)
+                    return JsonResponse({'output': output, 'error': 'Input stream closed'})
+
+            # Read output with timeout
+            output = process_info['output']
+            timeout = 15
+            start_time = time.time()
+            while time.time() - start_time < timeout and process.poll() is None:
+                try:
+                    source, line = output_queue.get_nowait()
+                    output += line
+                    process_info['output'] = output
+                    process_info['last_output_time'] = time.time()
+                except queue.Empty:
+                    # Check if program is waiting for input
+                    if time.time() - process_info['last_output_time'] > 0.3 and output:
+                        process_info['output'] = output
+                        logger.debug(f"Process {process_id}: Prompt detected, output: {output}")
+                        return JsonResponse({'prompt': True, 'output': output})
+                    time.sleep(0.005)
+                    continue
+
+            # Check if process has terminated
+            if process.poll() is not None:
+                while True:
+                    try:
+                        source, line = output_queue.get_nowait()
+                        output += line
+                    except queue.Empty:
+                        break
+                process_info['output'] = output
+                process_info['reader_thread'].join(timeout=1)
+                active_processes.pop(process_id, None)
+                return JsonResponse({'output': output})
+
+            # If no new output for 0.3 seconds and output exists, assume waiting for input
+            if output and time.time() - process_info['last_output_time'] > 0.3:
+                process_info['output'] = output
+                logger.debug(f"Process {process_id}: Prompt detected, output: {output}")
+                return JsonResponse({'prompt': True, 'output': output})
+
+            # Non-interactive program or no further input needed
+            process_info['output'] = output
+            active_processes.pop(process_id, None)
+            return JsonResponse({'output': output})
 
         except subprocess.TimeoutExpired:
-            output = 'Error: Code execution timed out (10 seconds)'
+            output = process_info['output'] + '\nError: Code execution timed out (15 seconds).'
+            active_processes.pop(process_id, None)
+            return JsonResponse({'output': output, 'error': 'Timeout'})
         except subprocess.CalledProcessError as e:
-            output = f'Error executing code: {str(e)}\n{e.stderr}'
+            output = process_info['output'] + f'\nError executing code: {str(e)}\n{e.stderr}'
+            active_processes.pop(process_id, None)
+            return JsonResponse({'output': output, 'error': str(e)})
         except FileNotFoundError as e:
-            output = f'Error: Compiler/interpreter not found: {str(e)}'
+            output = f'Error: Python interpreter not found: {str(e)}. Ensure {python_cmd} is installed.'
+            active_processes.pop(process_id, None)
+            return JsonResponse({'output': output, 'error': str(e)})
         except Exception as e:
-            output = f'Error executing code: {str(e)}'
+            output = process_info['output'] + f'\nError: {str(e)}'
+            active_processes.pop(process_id, None)
+            return JsonResponse({'output': output, 'error': str(e)})
         finally:
-            try:
-                if temp_path and os.path.exists(temp_path):
+            if temp_path and os.path.exists(temp_path):
+                try:
                     os.unlink(temp_path)
-                if executable and os.path.exists(executable):
-                    os.unlink(executable)
-            except Exception as e:
-                output += f'\nWarning: Failed to clean up files: {str(e)}'
-
-        return JsonResponse({'output': output})
+                except:
+                    logger.warning(f"Failed to delete temp file: {temp_path}")
+            if temp_dir and os.path.exists(temp_dir):
+                try:
+                    os.rmdir(temp_dir)
+                except:
+                    logger.warning(f"Failed to delete temp dir: {temp_dir}")
 
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
     except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
 
+@login_required
+def clear_process(request):
+    """
+    Clear a specific process and its resources.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Only POST method is allowed'}, status=405)
 
+    try:
+        data = json.loads(request.body)
+        process_id = data.get('process_id', '')
+        process_info = active_processes.pop(process_id, None)
+        if process_info:
+            try:
+                process_info['process'].terminate()
+                process_info['reader_thread'].join(timeout=1)
+                if process_info['temp_path'] and os.path.exists(process_info['temp_path']):
+                    os.unlink(process_info['temp_path'])
+                if process_info['temp_dir'] and os.path.exists(process_info['temp_dir']):
+                    os.rmdir(process_info['temp_dir'])
+            except Exception as e:
+                logger.warning(f"Error cleaning up process {process_id}: {e}")
+        return JsonResponse({'message': 'Process cleared'})
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        logger.error(f"Error in clear_process: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)   
+    
+    
 def change_password(request):
     """
     Handle password change for the student.

@@ -28,7 +28,8 @@
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
     .ql-container {
-        height: 500px; /* Increased height for more lines in rich text editor */
+        height: 500px;
+        border: 1px solid #e2e8f0;
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
@@ -36,7 +37,7 @@
         border-radius: 8px 8px 0 0;
     }
     .hidden {
-        display: none !important; /* Ensure complete hiding */
+        display: none !important;
     }
     .btn-primary {
         background-color: #2563eb;
@@ -56,7 +57,6 @@
         transition: all 0.3s;
     }
     .btn-outline:hover {
-        background-color: #f1f5f9;
         color: #1e40af;
     }
     .select-bordered {
@@ -64,8 +64,8 @@
         border-radius: 6px;
     }
     .file-input-bordered {
+        border: 1px solid #e2e8f0;
         border-radius: 6px;
-        padding: 8px;
     }
     .container {
         max-width: 800px;
@@ -77,14 +77,9 @@
 </style>
 
 <div class="container mx-auto py-6">
-    <div class="hero bg-base-200 rounded-lg shadow-lg mb-6">
-        <div class="hero-content text-center">
-          <div class="max-w-md">
-            <h1 class="text-3xl sm:text-4xl font-bold text-base-content mb-2">Submit Assignment</h1>
-            <p class="text-base sm:text-lg text-base-content/90"> {{ assignment.title }} - {{ assignment.course_offering.course.name }}</p>
-          </div>
-        </div>
-    </div>
+    <h1 class="text-3xl font-bold mb-4 text-gray-800">Submit Assignment</h1>
+    <h2 class="text-lg text-gray-500 mb-6">{{ assignment.title }} - {{ assignment.course_offering.course.name }}</h2>
+
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
 
@@ -133,7 +128,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // Initialize Quill
+    // Initialize Quill with disabled copy-paste
     const quill = new Quill('#submissionText', {
         theme: 'snow',
         modules: {
@@ -143,7 +138,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 [{ list: 'ordered' }, { list: 'bullet' }],
                 ['link', 'image'],
                 ['clean']
-            ]
+            ],
+            keyboard: {
+                bindings: {
+                    // Disable Ctrl+C, Ctrl+V, Ctrl+X
+                    copy: { key: 'c', ctrlKey: true, handler: () => false },
+                    paste: { key: 'v', ctrlKey: true, handler: () => false },
+                    cut: { key: 'x', ctrlKey: true, handler: () => false }
+                }
+            }
         }
     });
 
@@ -171,7 +174,7 @@ document.addEventListener('DOMContentLoaded', function () {
             submissionText.classList.add('hidden');
             submissionType.value = 'code';
             toggleButton.innerHTML = `<i class="fas fa-font mr-1"></i> Rich Text`;
-            setTimeout(() => codeEditor.refresh(), 0); // Refresh CodeMirror after display
+            setTimeout(() => codeEditor.refresh(), 0);
         } else {
             codeEditorContainer.classList.add('hidden');
             submissionText.classList.remove('hidden');
@@ -182,6 +185,50 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initialize with rich text editor visible
     toggleEditors(false);
+
+    // Prevent copy, cut, paste, and context menu in Quill
+    const quillEditor = document.querySelector('.ql-editor');
+    if (quillEditor) {
+        ['copy', 'cut', 'paste', 'contextmenu'].forEach(event => {
+            quillEditor.addEventListener(event, e => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, true);
+        });
+
+        // Disable keyboard shortcuts for copy/paste/cut
+        quillEditor.addEventListener('keydown', e => {
+            if ((e.ctrlKey || e.metaKey) && [67, 86, 88].includes(e.keyCode)) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            if (e.keyCode === 93) { // Context menu key
+                e.preventDefault();
+            }
+        }, true);
+    }
+
+    // Prevent copy, cut, paste, and context menu in CodeMirror
+    const codeMirror = document.querySelector('.CodeMirror');
+    if (codeMirror) {
+        ['copy', 'cut', 'paste', 'contextmenu'].forEach(event => {
+            codeMirror.addEventListener(event, e => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, true);
+        });
+
+        // Disable keyboard shortcuts in CodeMirror
+        codeEditor.on('keydown', (cm, e) => {
+            if ((e.ctrlKey || e.metaKey) && [67, 86, 88].includes(e.keyCode)) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            if (e.keyCode === 93) { // Context menu key
+                e.preventDefault();
+            }
+        });
+    }
 
     // Toggle Editors
     toggleButton.addEventListener('click', function () {

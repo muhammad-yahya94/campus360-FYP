@@ -5,32 +5,49 @@
 
 {% block content %}
 <div class="container mx-auto px-4 py-6 max-w-6xl">
-    <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
-        <i class="fas fa-code mr-2"></i> Online Code Editor
-    </h2>
+  <!-- Header Section -->
+  <div class="hero bg-base-200 rounded-lg shadow-lg mb-6">
+    <div class="hero-content text-center">
+      <div class="max-w-md">
+        <h1 class="text-3xl sm:text-4xl font-bold text-base-content mb-2">Online Code Editor</h1>
+        <p class="text-base sm:text-lg text-base-content/90"> Practice web development </p>
+      </div>
+    </div>
+  </div>
 
     <!-- Editor Card -->
     <div class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
         <!-- Toolbar -->
-        <div class="bg-blue-600 text-white px-4 py-3 flex justify-between items-center">
-            <div class="flex items-center space-x-2">
-                <select id="language" class="bg-blue-700 text-white text-sm rounded px-3 py-1 border border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                    <option value="python">Python</option>
-                    <option value="javascript">JavaScript</option>
-                    <option value="html">HTML</option>
-                    <option value="css">CSS</option>
-                    <option value="c">C</option>
-                    <option value="cpp">C++</option>
-                </select>
-                <button id="run-btn" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm flex items-center">
-                    <i class="fas fa-play mr-1"></i> Run
-                </button>
-                <button id="clear-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm flex items-center">
+        <div class="bg-base-200 px-4 py-3 flex flex-wrap gap-2 justify-between items-center border-b border-base-300">
+            <div class="flex flex-wrap gap-2">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text text-sm font-medium">Theme</span>
+                    </label>
+                    <select id="theme" class="select select-bordered select-sm w-full max-w-xs">
+                        <option value="monokai">Monokai</option>
+                        <option value="dracula">Dracula</option>
+                        <option value="solarized light">Solarized Light</option>
+                        <option value="nord">Nord</option>
+                        <option value="material">Material</option>
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text text-sm font-medium">Font Size</span>
+                    </label>
+                    <select id="font-size" class="select select-bordered select-sm">
+                        <option value="12px">Small</option>
+                        <option value="14px" selected>Medium</option>
+                        <option value="16px">Large</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button id="clear-btn" class="btn btn-sm btn-warning">
                     <i class="fas fa-eraser mr-1"></i> Clear
                 </button>
-            </div>
-            <div>
-                <button id="save-btn" class="bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-1 rounded text-sm flex items-center">
+                <button id="save-btn" class="btn btn-sm btn-primary">
                     <i class="fas fa-save mr-1"></i> Save
                 </button>
             </div>
@@ -38,26 +55,62 @@
 
         <!-- Editor Area -->
         <div class="h-96">
-            <!-- HTML/CSS/JS Editors (Hidden by Default) -->
-            <div id="web-editors" class="hidden">
+            <!-- HTML/CSS/JS Editors -->
+            <div id="web-editors">
                 <div class="flex gap-4 h-full">
                     <div class="w-1/3">
                         <label class="block bg-gray-800 text-white px-2 py-1 font-mono">HTML</label>
-                        <textarea id="html-editor" class="h-[calc(100%-2rem)] w-full"></textarea>
+                        <textarea id="html-editor" class="h-[calc(100%-2rem)] w-full"><!DOCTYPE html>
+<html>
+<head>
+    <title>My Web Page</title>
+</head>
+<body>
+    <h1>Welcome to Campus360 IDE</h1>
+    <p>Start coding here!</p>
+    <div id="output"></div>
+</body>
+</html></textarea>
                     </div>
                     <div class="w-1/3">
                         <label class="block bg-gray-800 text-white px-2 py-1 font-mono">CSS</label>
-                        <textarea id="css-editor" class="h-[calc(100%-2rem)] w-full"></textarea>
+                        <textarea id="css-editor" class="h-[calc(100%-2rem)] w-full">body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 20px;
+    background-color: #f5f5f5;
+}
+
+h1 {
+    color: #2c3e50;
+    text-align: center;
+}
+
+#output {
+    margin-top: 20px;
+    padding: 15px;
+    background: white;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}</textarea>
                     </div>
                     <div class="w-1/3">
                         <label class="block bg-gray-800 text-white px-2 py-1 font-mono">JavaScript</label>
-                        <textarea id="js-editor" class="h-[calc(100%-2rem)] w-full"></textarea>
+                        <textarea id="js-editor" class="h-[calc(100%-2rem)] w-full">// JavaScript code goes here
+document.addEventListener('DOMContentLoaded', function() {
+    const output = document.getElementById('output');
+    output.innerHTML = 'JavaScript is working! 🎉';
+    
+    // Example: Change background color on click
+    document.body.addEventListener('click', function() {
+        const colors = ['#f0f9ff', '#f0fff4', '#fff7ed'];
+        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+        document.body.style.backgroundColor = randomColor;
+    });
+});</textarea>
                     </div>
                 </div>
-            </div>
-            <!-- Single Editor for Python/C/C++ -->
-            <div id="code-editor" class="h-full">
-                <textarea id="editor" class="w-full h-full"></textarea>
             </div>
         </div>
     </div>
@@ -65,17 +118,10 @@
     <!-- Output Panel -->
     <div class="bg-white rounded-lg shadow-md overflow-hidden">
         <div class="bg-gray-800 text-white px-4 py-2 font-mono text-sm flex items-center">
-            <i class="fas fa-terminal mr-2"></i> Console
+            <i class="fas fa-terminal mr-2"></i> Preview
         </div>
-        <div class="h-48 overflow-auto bg-gray-900 text-gray-100 p-4 font-mono text-sm">
-            <!-- Iframe for HTML/CSS/JS Output -->
-            <iframe id="web-output" class="w-full h-full hidden"></iframe>
-            <!-- Pre for Python/C/C++ Output -->
-            <pre id="output" class="whitespace-pre-wrap"></pre>
-        </div>
-        <!-- Input Box for Python/C/C++ -->
-        <div class="bg-gray-800 p-2">
-            <input id="input-box" type="text" class="w-full bg-gray-700 text-white px-3 py-1 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-300" placeholder="Enter input here..." disabled>
+        <div class="h-64 overflow-auto bg-white text-gray-900 p-4 font-mono text-sm">
+            <iframe id="web-output" class="w-full h-full"></iframe>
         </div>
     </div>
 </div>
@@ -86,101 +132,89 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css">
 <!-- Language Modes -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/python/python.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/javascript/javascript.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/htmlmixed/htmlmixed.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/css/css.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/clike/clike.min.js"></script>
-<!-- Theme -->
+<!-- Themes -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/monokai.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/dracula.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/solarized.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/nord.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/material.min.css">
 
 <script>
-// Initialize CodeMirror Editors
-const codeEditor = CodeMirror.fromTextArea(document.getElementById('editor'), {
-    mode: 'python',
-    theme: 'monokai',
+// Initialize CodeMirror editors with default theme from localStorage
+const savedTheme = localStorage.getItem('selectedTheme') || 'light';
+const defaultTheme = savedTheme === 'dark' ? 'monokai' : 'default';
+
+const editorOptions = {
+    theme: defaultTheme,
     lineNumbers: true,
+    lineWrapping: true,
+    autoCloseBrackets: true,
+    extraKeys: {"Ctrl-Space": "autocomplete"},
+    indentUnit: 4,
     tabSize: 4,
-    indentWithTabs: false,
-    lineWrapping: true
-});
+    indentWithTabs: false
+};
 
 const htmlEditor = CodeMirror.fromTextArea(document.getElementById('html-editor'), {
-    mode: 'htmlmixed',
-    theme: 'monokai',
-    lineNumbers: true,
-    tabSize: 4,
-    indentWithTabs: false,
-    lineWrapping: true
+    ...editorOptions,
+    mode: 'htmlmixed'
 });
 
 const cssEditor = CodeMirror.fromTextArea(document.getElementById('css-editor'), {
-    mode: 'css',
-    theme: 'monokai',
-    lineNumbers: true,
-    tabSize: 4,
-    indentWithTabs: false,
-    lineWrapping: true
+    ...editorOptions,
+    mode: 'css'
 });
 
 const jsEditor = CodeMirror.fromTextArea(document.getElementById('js-editor'), {
-    mode: 'javascript',
-    theme: 'monokai',
-    lineNumbers: true,
-    tabSize: 4,
-    indentWithTabs: false,
-    lineWrapping: true
+    ...editorOptions,
+    mode: 'javascript'
 });
 
-// Toggle Editors and Output Based on Language
-const languageSelect = document.getElementById('language');
-const webEditors = document.getElementById('web-editors');
-const codeEditorDiv = document.getElementById('code-editor');
-const webOutput = document.getElementById('web-output');
-const textOutput = document.getElementById('output');
-const inputBox = document.getElementById('input-box');
+// Set initial font size
+const savedFontSize = localStorage.getItem('editorFontSize') || '14px';
+document.documentElement.style.setProperty('--editor-font-size', savedFontSize);
+document.getElementById('font-size').value = savedFontSize;
 
-languageSelect.addEventListener('change', function() {
-    const lang = this.value;
-    const modes = {
-        python: 'python',
-        c: 'text/x-csrc',
-        cpp: 'text/x-c++src',
-        html: 'htmlmixed',
-        css: 'css',
-        javascript: 'javascript'
-    };
-    const examples = {
-        python: '# Write your Python code here\n',
-        c: '// Write your C code here\n#include <stdio.h>\nint main() {\n    return 0;\n}',
-        cpp: '// Write your C++ code here\n#include <iostream>\nusing namespace std;\nint main() {\n    return 0;\n}',
-        html: '<!-- Write your HTML code here -->\n',
-        css: '/* Write your CSS code here */\n',
-        javascript: '// Write your JavaScript code here\n'
-    };
-    if (['html', 'css', 'javascript'].includes(lang)) {
-        webEditors.classList.remove('hidden');
-        codeEditorDiv.classList.add('hidden');
-        webOutput.classList.remove('hidden');
-        textOutput.classList.add('hidden');
-        inputBox.classList.add('hidden');
-        htmlEditor.setValue(examples.html);
-        cssEditor.setValue(examples.css);
-        jsEditor.setValue(examples.javascript);
-        inputBox.disabled = true;
-        updateWebOutput();
-    } else {
-        webEditors.classList.add('hidden');
-        codeEditorDiv.classList.remove('hidden');
-        webOutput.classList.add('hidden');
-        textOutput.classList.remove('hidden');
-        inputBox.classList.remove('hidden');
-        codeEditor.setOption('mode', modes[lang]);
-        codeEditor.setValue(examples[lang]);
-        textOutput.textContent = '';
-        inputBox.disabled = true;
-        inputBox.value = '';
-    }
+// Apply font size to all editors
+const updateFontSize = (size) => {
+    document.documentElement.style.setProperty('--editor-font-size', size);
+    document.querySelectorAll('.CodeMirror').forEach(editor => {
+        editor.CodeMirror.refresh();
+    });
+    localStorage.setItem('editorFontSize', size);
+};
+
+// Apply theme to all editors
+const updateEditorTheme = (theme) => {
+    [htmlEditor, cssEditor, jsEditor].forEach(editor => {
+        editor.setOption('theme', theme);
+    });
+}
+
+// Theme selector
+document.getElementById('theme').addEventListener('change', function() {
+    const theme = this.value;
+    updateEditorTheme(theme);
+});
+
+// Font size selector
+document.getElementById('font-size').addEventListener('change', function() {
+    updateFontSize(this.value);
+});
+
+// Set initial theme from saved preference
+const savedEditorTheme = localStorage.getItem('editorTheme') || defaultTheme;
+document.getElementById('theme').value = savedEditorTheme;
+updateEditorTheme(savedEditorTheme);
+
+// Listen for theme changes from the main app
+document.addEventListener('themeChanged', (e) => {
+    const newTheme = e.detail.theme === 'dark' ? 'monokai' : 'default';
+    updateEditorTheme(newTheme);
+    document.getElementById('theme').value = newTheme;
 });
 
 // Debounce for Live Preview
@@ -193,254 +227,80 @@ function debounce(func, wait) {
 }
 
 const updateWebOutput = debounce(function() {
-    if (['html', 'css', 'javascript'].includes(languageSelect.value)) {
-        const htmlCode = htmlEditor.getValue();
-        const cssCode = `<style>${cssEditor.getValue()}</style>`;
-        const jsCode = `<script>${jsEditor.getValue()}<\/script>`;
-        const outputFrame = webOutput.contentWindow.document;
-        outputFrame.open();
-        outputFrame.write(htmlCode + cssCode + jsCode);
-        outputFrame.close();
-    }
+    const htmlCode = htmlEditor.getValue();
+    const cssCode = `<style>${cssEditor.getValue()}</style>`;
+    const jsCode = `<script>${jsEditor.getValue()}<\/script>`;
+    const outputFrame = document.getElementById('web-output').contentWindow.document;
+    outputFrame.open();
+    outputFrame.write(htmlCode + cssCode + jsCode);
+    outputFrame.close();
 }, 300);
 
-// Attach live preview to web editors
+// Initial render and attach live preview
+updateWebOutput();
 htmlEditor.on('change', updateWebOutput);
 cssEditor.on('change', updateWebOutput);
 jsEditor.on('change', updateWebOutput);
 
-// Run Button Handler
-let inputPending = false;
-let currentProcessId = null;
-let inputs = [];
-
-// Function to reset button and input states
-function resetRunButton() {
-    const runBtn = document.getElementById('run-btn');
-    runBtn.disabled = false;
-    runBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-    inputBox.disabled = true;
-    inputPending = false;
-}
-
-// Function to clear any running process
-async function clearCurrentProcess() {
-    if (currentProcessId) {
-        try {
-            await fetch('{% url 'students:clear_process' %}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify({ process_id: currentProcessId })
-            });
-        } catch (error) {
-            console.error('Error clearing process:', error);
-        } finally {
-            currentProcessId = null;
-            inputs = [];
-        }
-    }
-}
-
-document.getElementById('run-btn').addEventListener('click', async function() {
-    const language = languageSelect.value;
-    const runBtn = this;
-    
-    // Disable button immediately
-    runBtn.disabled = true;
-    runBtn.classList.add('opacity-50', 'cursor-not-allowed');
-    inputBox.disabled = true;
-    inputBox.value = '';
-    
-    try {
-        // Clear any existing process first
-        await clearCurrentProcess();
-        
-        // Generate new process ID
-        currentProcessId = Date.now().toString() + Math.random().toString(36).slice(2);
-        const processId = currentProcessId; // Capture for this execution
-        inputs = [];
-        
-        if (['html', 'css', 'javascript'].includes(language)) {
-            updateWebOutput();
-            resetRunButton();
-        } else {
-            const code = codeEditor.getValue();
-            textOutput.textContent = 'Running...';
-            textOutput.classList.remove('error');
-            runCode(code, language, '', processId, runBtn);
-        }
-    } catch (error) {
-        console.error('Error in run button handler:', error);
-        resetRunButton();
-    }
-});
-
-// Handle input in the input box
-inputBox.addEventListener('keydown', async function(event) {
-    if (event.key === 'Enter' && inputPending) {
-        event.preventDefault();
-        const input = inputBox.value.trim();
-        if (input !== '') {
-            inputs.push(input);
-            textOutput.textContent += input + '\n'; // Append input to output
-            inputBox.value = '';
-            inputBox.disabled = true;
-            inputPending = false;
-            
-            // Get the current process ID to ensure we're working with the right process
-            const processId = currentProcessId;
-            if (!processId) {
-                resetRunButton();
-                return;
-            }
-            runCode(codeEditor.getValue(), languageSelect.value, input, currentProcessId, document.getElementById('run-btn'));
-        }
-    }
-});
-
-function runCode(code, language, input, processId, runBtn) {
-    // Reset any previous states
-    textOutput.classList.remove('error');
-    
-    if (!code.trim()) {
-        textOutput.textContent = 'Error: No code provided';
-        textOutput.classList.add('error');
-        resetRunButton();
-        return;
-    }
-    
-    // Ensure we have a valid process ID
-    if (!processId) {
-        textOutput.textContent = 'Error: No active process';
-        textOutput.classList.add('error');
-        resetRunButton();
-        return;
-    }
-    
-    // Show loading state
-    runBtn.disabled = true;
-    runBtn.classList.add('opacity-50', 'cursor-not-allowed');
-    inputBox.disabled = true;
-    
-    fetch('{% url 'students:run_code' %}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': '{{ csrf_token }}'
-        },
-        body: JSON.stringify({
-            code: code,
-            language: language,
-            input: input,
-            process_id: processId
-        })
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        // Ignore if this response is for an old process
-        if (currentProcessId !== processId) return;
-        
-        if (data.error) {
-            textOutput.textContent = data.output ? 
-                `${data.output}\nError: ${data.error}` : 
-                `Error: ${data.error}`;
-            textOutput.classList.add('error');
-            resetRunButton();
-            currentProcessId = null;
-            return;
-        }
-        
-        if (data.prompt) {
-            // Show prompt and wait for user input
-            textOutput.textContent = data.output || '';
-            inputBox.disabled = false;
-            inputBox.focus();
-            inputPending = true;
-        } else {
-            // Execution completed successfully
-            textOutput.textContent = data.output || 'No output';
-            textOutput.classList.remove('error');
-            resetRunButton();
-            currentProcessId = null;
-        }
-    })
-    .catch(error => {
-        console.error('Error executing code:', error);
-        
-        // Only update UI if this error is for the current process
-        if (currentProcessId === processId) {
-            textOutput.textContent = `Error: ${error.message || 'Failed to execute code'}`;
-            textOutput.classList.add('error');
-            resetRunButton();
-            currentProcessId = null;
-        }
-    });
-}
-
 // Clear Button Handler
 document.getElementById('clear-btn').addEventListener('click', function() {
     if (confirm('Are you sure you want to clear the editor?')) {
-        if (['html', 'css', 'javascript'].includes(languageSelect.value)) {
-            htmlEditor.setValue('');
-            cssEditor.setValue('');
-            jsEditor.setValue('');
-            webOutput.contentWindow.document.body.innerHTML = '';
-        } else {
-            codeEditor.setValue('');
-            textOutput.textContent = '';
-            inputBox.disabled = true;
-            inputBox.value = '';
-            textOutput.classList.remove('error');
-        }
-        inputPending = false;
-        currentProcessId = null;
-        inputs = [];
-        // Clear backend process
-        fetch('{% url 'students:clear_process' %}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: JSON.stringify({ process_id: currentProcessId })
-        });
+        htmlEditor.setValue(`<!DOCTYPE html>
+<html>
+<head>
+    <title>My Web Page</title>
+</head>
+<body>
+    <h1>Welcome to Campus360 IDE</h1>
+    <p>Start coding here!</p>
+    <div id="output"></div>
+</body>
+</html>`);
+        cssEditor.setValue(`body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 20px;
+    background-color: #f5f5f5;
+}
+
+h1 {
+    color: #2c3e50;
+    text-align: center;
+}
+
+#output {
+    margin-top: 20px;
+    padding: 15px;
+    background: white;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}`);
+        jsEditor.setValue(`// JavaScript code goes here
+document.addEventListener('DOMContentLoaded', function() {
+    const output = document.getElementById('output');
+    output.innerHTML = 'JavaScript is working! 🎉';
+    
+    // Example: Change background color on click
+    document.body.addEventListener('click', function() {
+        const colors = ['#f0f9ff', '#f0fff4', '#fff7ed'];
+        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+        document.body.style.backgroundColor = randomColor;
+    });
+});`);
+        updateWebOutput();
     }
 });
 
 // Save Button Handler
 document.getElementById('save-btn').addEventListener('click', function() {
-    const language = languageSelect.value;
-    const defaultExt = {
-        python: 'py',
-        javascript: 'js',
-        html: 'html',
-        css: 'css',
-        c: 'c',
-        cpp: 'cpp'
-    }[language] || 'txt';
-
-    let code = '';
-    if (language === 'html') {
-        code = htmlEditor.getValue();
-    } else if (language === 'css') {
-        code = cssEditor.getValue();
-    } else if (language === 'javascript') {
-        code = jsEditor.getValue();
-    } else {
-        code = codeEditor.getValue();
-    }
-
-    const filename = prompt('Enter filename:', `code.${defaultExt}`);
+    const filename = prompt('Enter filename:', `code.html`);
     if (filename) {
-        const blob = new Blob([code], { type: 'text/plain' });
+        const htmlCode = htmlEditor.getValue();
+        const cssCode = `<style>${cssEditor.getValue()}</style>`;
+        const jsCode = `<script>${jsEditor.getValue()}<\/script>`;
+        const fullCode = htmlCode + cssCode + jsCode;
+        const blob = new Blob([fullCode], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -454,44 +314,53 @@ document.getElementById('save-btn').addEventListener('click', function() {
 </script>
 {% endblock %}
 
-{% block extra_css %}
 <style>
-    #output::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-    }
-    #output::-webkit-scrollbar-track {
-        background: #1a202c;
-    }
-    #output::-webkit-scrollbar-thumb {
-        background: #4a5568;
-        border-radius: 4px;
-    }
-    #output::-webkit-scrollbar-thumb:hover {
-        background: #718096;
-    }
-    .CodeMirror {
-        width: 100%;
-        height: 100%;
-        font-family: 'Fira Code', 'Cascadia Code', 'Consolas', 'Monaco', 'Courier New', monospace;
-        font-size: 14px;
-    }
     #web-output {
         width: 100%;
         height: 100%;
         border: none;
     }
-    #output {
-        background: #2d3748;
-        outline: none;
+    :root {
+        --editor-font-size: 14px;
     }
-    #output.error {
-        color: #f87171;
+    
+    /* Custom styles for the IDE */
+    .CodeMirror {
+        height: 100%;
+        font-family: 'Fira Code', 'Cascadia Code', 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: var(--editor-font-size);
+        line-height: 1.5;
+        transition: background-color 0.3s ease;
     }
-    #input-box:disabled {
-        background: #4a5568;
-        color: #a0aec0;
-        cursor: not-allowed;
+    
+    .CodeMirror-gutters {
+        background-color: var(--fallback-b1, oklch(var(--b1)));
+        border-right: 1px solid var(--fallback-b2, oklch(var(--b2)));
+    }
+    
+    .CodeMirror-linenumber {
+        color: var(--fallback-bc, oklch(var(--bc) / 0.7));
+        padding: 0 8px;
+    }
+    
+    /* Theme-aware styles */
+    [data-theme="dark"] .CodeMirror {
+        --fallback-b1: #1e1e1e;
+        --fallback-b2: #2d2d2d;
+        --fallback-bc: #d1d5db;
+    }
+    
+    [data-theme="light"] .CodeMirror {
+        --fallback-b1: #ffffff;
+        --fallback-b2: #e5e7eb;
+        --fallback-bc: #4b5563;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .CodeMirror {
+            font-size: calc(var(--editor-font-size) * 0.9);
+        }
     }
     select {
         -webkit-appearance: none;
@@ -513,8 +382,8 @@ document.getElementById('save-btn').addEventListener('click', function() {
         .h-96 {
             height: 50vh;
         }
-        .h-48 {
-            height: 30vh;
+        .h-64 {
+            height: 40vh;
         }
     }
 </style>

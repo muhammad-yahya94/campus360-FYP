@@ -45,6 +45,4 @@ urlpatterns = [
     
     # ========== 10. Online IDE ==========
     path('ide/', views.ide, name='ide'),  # 10.1 Online Code Editor
-    path('run_code/', views.run_code, name='run_code'),  # 10.2 Execute Code
-    path('clear_process/', views.clear_process, name='clear_process'),  # 10.3 Clear Process
 ]

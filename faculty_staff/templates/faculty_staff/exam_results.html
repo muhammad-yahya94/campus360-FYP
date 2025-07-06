@@ -3,68 +3,53 @@
 {% block title %}Exam Results{% endblock %}
 
 {% block content %}
-<style>
-    .card {
-        border-radius: 10px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    }
-    .table th {
-        background-color: #e9ecef;
-        color: #343a40;
-    }
-    .table-hover tbody tr:hover {
-        background-color: #f8f9fa;
-    }
-    .select2-container {
-        width: 100% !important;
-    }
-    .error {
-        color: red;
-    }
-    .mark-input {
-        width: 100px;
-    }
-    .select2-selection--single {
-        background-color: #f8f9fa !important;
-        cursor: not-allowed !important;
-    }
-</style>
-
-<div class="container-fluid">
-    <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-xl">
-        <div class="hero-content text-center py-8 mb-2">
+<div class="container mx-auto px-4">
+    <!-- Hero Section -->
+    <div class="hero bg-gradient-to-r from-primary to-secondary rounded-box mb-6">
+        <div class="hero-content text-center py-8">
             <div>
-                <h1 class="text-4xl font-bold mb-2">Exam Results</h1>
-                <p class="text-lg opacity-90">Manage and track Results</p>
+                <h1 class="text-3xl font-bold text-primary-content">Exam Results</h1>
+                <p class="text-base-content/70">
+                    {{ course_offering.course.code }} - {{ course_offering.course.name }}
+                    <br>
+                    <span class="text-sm">Academic Session: {{ course_offering.academic_session.name }}</span>
+                </p>
             </div>
         </div>
     </div>
 
     <!-- Error Message -->
     {% if error %}
-    <div class="alert alert-error mt-4">{{ error }}</div>
+    <div class="alert alert-error mb-6 shadow-lg">
+        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span>{{ error }}</span>
+    </div>
     {% endif %}
+    
 
+    {% if not exam_results %}
     <!-- Record Exam Results Form -->
-    <div class="card mb-4">
+    <div class="card bg-base-100 shadow-xl mb-6">
         <div class="card-body">
-            <h5 class="card-title">Record Exam Results</h5>
+            <h2 class="card-title">Record Exam Results</h2>
             <form id="record-exam-results-form" method="post" action="{% url 'faculty_staff:record_exam_results' %}">
                 {% csrf_token %}
                 <input type="hidden" name="course_offering_id" id="hidden_course_offering_id" value="{{ course_offering_id|default_if_none:'' }}">
-                <div class="row g-3 mb-3">
-                    <div class="col-md-12">
-                        <label for="course_offering_id" class="form-label">Course Offering</label>
-                        <select name="course_offering_display" id="course_offering_id" class="form-select select2" disabled>
-                            <option value="">Loading course offering...</option>
-                        </select>
-                        <span id="course-offering-error" class="error"></span>
-                    </div>
+                <div class="form-control mb-4">
+                    <label class="label" for="course_offering_id">
+                        <span class="label-text">Course Offering</span>
+                    </label>
+                    <select name="course_offering_display" id="course_offering_id" class="select select-bordered w-full" disabled>
+                        <option value="">Loading course offering...</option>
+                    </select>
+                    <span id="course-offering-error" class="text-error text-sm mt-1"></span>
                 </div>
 
-                <!-- Students Table with Input Fields -->
-                <div class="table-responsive" id="students-table-container" style="display: none;">
-                    <table class="table table-hover">
+                <!-- Students Table -->
+                <div class="overflow-x-auto" id="students-table-container" style="display: none;">
+                    <table class="table w-full">
                         <thead>
                             <tr>
                                 <th>Student</th>
@@ -72,6 +57,7 @@
                                 <th>Sessional</th>
                                 <th>Final</th>
                                 <th>Practical</th>
+                                <th>Remarks</th>
                             </tr>
                         </thead>
                         <tbody id="students-table-body">
@@ -79,43 +65,47 @@
                             <tr>
                                 <td>{{ student.name }}</td>
                                 <td>
-                                    <input type="number" name="mid_{{ student.id }}" class="form-control mark-input" min="0" max="100" required>
-                                    <span class="error" id="mid-error-{{ student.id }}"></span>
+                                    <input type="number" name="mid_{{ student.id }}" class="input input-bordered input-sm w-24" min="0" max="100">
+                                    <span class="text-error text-sm" id="mid-error-{{ student.id }}"></span>
                                 </td>
                                 <td>
-                                    <input type="number" name="sessional_{{ student.id }}" class="form-control mark-input" min="0" max="100" required>
-                                    <span class="error" id="sessional-error-{{ student.id }}"></span>
+                                    <input type="number" name="sessional_{{ student.id }}" class="input input-bordered input-sm w-24" min="0" max="100">
+                                    <span class="text-error text-sm" id="sessional-error-{{ student.id }}"></span>
                                 </td>
                                 <td>
-                                    <input type="number" name="project_{{ student.id }}" class="form-control mark-input" min="0" max="100" required>
-                                    <span class="error" id="project-error-{{ student.id }}"></span>
+                                    <input type="number" name="project_{{ student.id }}" class="input input-bordered input-sm w-24" min="0" max="100">
+                                    <span class="text-error text-sm" id="project-error-{{ student.id }}"></span>
                                 </td>
                                 <td>
-                                    <input type="number" name="practical_{{ student.id }}" class="form-control mark-input" min="0" max="100" required>
-                                    <span class="error" id="practical-error-{{ student.id }}"></span>
+                                    <input type="number" name="practical_{{ student.id }}" class="input input-bordered input-sm w-24" min="0" max="100">
+                                    <span class="text-error text-sm" id="practical-error-{{ student.id }}"></span>
+                                </td>
+                                <td>
+                                    <input type="text" name="remarks_{{ student.id }}" class="input input-bordered input-sm w-full">
+                                    <span class="text-error text-sm" id="remarks-error-{{ student.id }}"></span>
                                 </td>
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="5" class="text-center">No students found for the selected course offering.</td>
+                                <td colspan="6" class="text-center">No students found for the selected course offering.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
-                    <div class="text-end mt-3">
+                    <div class="card-actions justify-end mt-4">
                         <button type="submit" class="btn btn-primary">Submit All Results</button>
                     </div>
                 </div>
             </form>
         </div>
     </div>
-
+    {% endif %}
     <!-- Existing Exam Results Table -->
-    <div class="card">
+    <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
-            <h5 class="card-title">Existing Exam Results</h5>
-            <div class="table-responsive">
-                <table class="table table-hover">
+            <h2 class="card-title">Existing Exam Results</h2>
+            <div class="overflow-x-auto">
+                <table class="table w-full">
                     <thead>
                         <tr>
                             <th>Student Name</th>
@@ -134,14 +124,25 @@
                         <tr>
                             <td>{{ result.student.applicant.full_name }}</td>
                             <td>{{ result.course.code }}</td>
-                            <td>{{ result.mid }}</td>
-                            <td>{{ result.sessional }}</td>
-                            <td>{{ result.practical }}</td>
-                            <td>{{ result.project }}</td>
+                            <td>{{ result.mid|default:'0' }}</td>
+                            <td>{{ result.sessional|default:'0' }}</td>
+                            <td>{{ result.practical|default:'0' }}</td>
+                            <td>{{ result.project|default:'0' }}</td>
                             <td>{{ result.final_year }}</td>
                             <td>{{ result.remarks|default:"No Remarks" }}</td>
                             <td>
-                                <button class="btn btn-danger btn-sm delete-result" data-result-id="{{ result.id }}">Delete</button>
+                                <label for="editResultModal" class="btn btn-warning btn-sm edit-result" 
+                                       data-result-id="{{ result.id }}"
+                                       data-mid="{{ result.mid|default:'0' }}"
+                                       data-sessional="{{ result.sessional|default:'0' }}"
+                                       data-practical="{{ result.practical|default:'0' }}"
+                                       data-project="{{ result.project|default:'0' }}"
+                                       data-remarks="{{ result.remarks|default:''|escape }}">
+                                    <i class="fas fa-edit"></i> Edit
+                                </label>
+                                <button class="btn btn-error btn-sm delete-result" data-result-id="{{ result.id }}">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
                             </td>
                         </tr>
                         {% empty %}
@@ -156,17 +157,66 @@
     </div>
 </div>
 
+<!-- Edit Result Modal -->
+<input type="checkbox" id="editResultModal" class="modal-toggle" />
+<div class="modal" role="dialog">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg">Edit Exam Result</h3>
+        <form id="edit-result-form">
+            {% csrf_token %}
+            <input type="hidden" id="edit_result_id" name="result_id" value="">
+            <input type="hidden" id="edit_course_offering_id" name="course_offering_id" value="{{ course_offering_id|default_if_none:'' }}">
+            <div class="form-control mb-3">
+                <label class="label" for="edit_mid">
+                    <span class="label-text">Mid Marks</span>
+                </label>
+                <input type="number" class="input input-bordered" id="edit_mid" name="mid" min="0" max="100">
+            </div>
+            <div class="form-control mb-3">
+                <label class="label" for="edit_sessional">
+                    <span class="label-text">Sessional Marks</span>
+                </label>
+                <input type="number" class="input input-bordered" id="edit_sessional" name="sessional" min="0" max="100">
+            </div>
+            <div class="form-control mb-3">
+                <label class="label" for="edit_practical">
+                    <span class="label-text">Practical Marks</span>
+                </label>
+                <input type="number" class="input input-bordered" id="edit_practical" name="practical" min="0" max="100">
+            </div>
+            <div class="form-control mb-3">
+                <label class="label" for="edit_project">
+                    <span class="label-text">Final Project Marks</span>
+                </label>
+                <input type="number" class="input input-bordered" id="edit_project" name="project" min="0" max="100">
+            </div>
+            <div class="form-control mb-3">
+                <label class="label" for="edit_remarks">
+                    <span class="label-text">Remarks</span>
+                </label>
+                <textarea class="textarea textarea-bordered" id="edit_remarks" name="remarks" rows="3"></textarea>
+            </div>
+            <div class="modal-action">
+                <label for="editResultModal" class="btn btn-ghost">Close</label>
+                <button type="submit" class="btn btn-primary">Save changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
 <script>
 $(document).ready(function() {
-    // Initialize Select2 for course offering (disabled)
+    // Initialize Select2 for course offering
     $('#course_offering_id').select2({
         placeholder: "Course offering selected",
-        minimumResultsForSearch: Infinity, // Disable search
-        allowClear: false
+        minimumResultsForSearch: Infinity,
+        allowClear: false,
+        width: '100%'
     }).prop('disabled', true);
 
     // Function to load students for a course offering
@@ -184,20 +234,32 @@ $(document).ready(function() {
                             tbody.append(`
                                 <tr>
                                     <td>${student.name}</td>
-                                    <td><input type="number" name="mid_${student.id}" class="form-control mark-input" min="0" max="100" required>
-                                        <span class="error" id="mid-error-${student.id}"></span></td>
-                                    <td><input type="number" name="sessional_${student.id}" class="form-control mark-input" min="0" max="100" required>
-                                        <span class="error" id="sessional-error-${student.id}"></span></td>
-                                    <td><input type="number" name="project_${student.id}" class="form-control mark-input" min="0" max="100" required>
-                                        <span class="error" id="project-error-${student.id}"></span></td>
-                                    <td><input type="number" name="practical_${student.id}" class="form-control mark-input" min="0" max="100" required>
-                                        <span class="error" id="practical-error-${student.id}"></span></td>
+                                    <td>
+                                        <input type="number" name="mid_${student.id}" class="input input-bordered input-sm w-24" min="0" max="100">
+                                        <span class="text-error text-sm" id="mid-error-${student.id}"></span>
+                                    </td>
+                                    <td>
+                                        <input type="number" name="sessional_${student.id}" class="input input-bordered input-sm w-24" min="0" max="100">
+                                        <span class="text-error text-sm" id="sessional-error-${student.id}"></span>
+                                    </td>
+                                    <td>
+                                        <input type="number" name="project_${student.id}" class="input input-bordered input-sm w-24" min="0" max="100">
+                                        <span class="text-error text-sm" id="project-error-${student.id}"></span>
+                                    </td>
+                                    <td>
+                                        <input type="number" name="practical_${student.id}" class="input input-bordered input-sm w-24" min="0" max="100">
+                                        <span class="text-error text-sm" id="practical-error-${student.id}"></span>
+                                    </td>
+                                    <td>
+                                        <input type="text" name="remarks_${student.id}" class="input input-bordered input-sm w-full">
+                                        <span class="text-error text-sm" id="remarks-error-${student.id}"></span>
+                                    </td>
                                 </tr>
                             `);
                         });
                         $('#students-table-container').show();
                     } else {
-                        tbody.append('<tr><td colspan="5" class="text-center">No students found for the selected course offering.</td></tr>');
+                        tbody.append('<tr><td colspan="6" class="text-center">No students found for the selected course offering.</td></tr>');
                         $('#students-table-container').show();
                     }
                 } else {
@@ -212,12 +274,12 @@ $(document).ready(function() {
         });
     }
 
-    // Check for course_offering_id in URL on page load
+    // Load course offering on page load
     const urlParams = new URLSearchParams(window.location.search);
     const courseOfferingId = urlParams.get('course_offering_id');
     if (courseOfferingId) {
         $('#hidden_course_offering_id').val(courseOfferingId);
-        // Fetch course offering details to populate Select2
+        $('#edit_course_offering_id').val(courseOfferingId);
         $.ajax({
             url: "{% url 'faculty_staff:search_course_offerings' %}",
             type: 'GET',
@@ -251,7 +313,7 @@ $(document).ready(function() {
         alert('Error: Course offering ID not provided.');
     }
 
-    // Handle form submission with AJAX
+    // Handle form submission
     $('#record-exam-results-form').on('submit', function(e) {
         e.preventDefault();
         let formData = $(this).serialize();
@@ -300,8 +362,94 @@ $(document).ready(function() {
         });
     });
 
-    // Handle delete action with AJAX
-    $('.delete-result').on('click', function() {
+    // Handle edit button click
+    $(document).on('click', '.edit-result', function(e) {
+        e.preventDefault();
+        const $button = $(this);
+        const resultId = $button.data('result-id');
+        const mid = $button.data('mid');
+        const sessional = $button.data('sessional');
+        const practical = $button.data('practical');
+        const project = $button.data('project');
+        const remarks = $button.data('remarks');
+
+        // Log button data for debugging
+        console.log('Edit button data:', {
+            resultId: resultId,
+            mid: mid,
+            sessional: sessional,
+            practical: practical,
+            project: project,
+            remarks: remarks
+        });
+
+        // Populate the form with existing data
+        $('#edit_result_id').val(resultId || '');
+        $('#edit_mid').val(mid || '');
+        $('#edit_sessional').val(sessional || '');
+        $('#edit_practical').val(practical || '');
+        $('#edit_project').val(project || '');
+        $('#edit_remarks').val(remarks || '');
+
+        // Log form values for debugging
+        console.log('Form values after setting:', {
+            result_id: $('#edit_result_id').val(),
+            course_offering_id: $('#edit_course_offering_id').val(),
+            mid: $('#edit_mid').val(),
+            sessional: $('#edit_sessional').val(),
+            practical: $('#edit_practical').val(),
+            project: $('#edit_project').val(),
+            remarks: $('#edit_remarks').val()
+        });
+
+        // Show the modal
+        document.getElementById('editResultModal').checked = true;
+    });
+
+    // Handle edit form submission
+    $(document).on('submit', '#edit-result-form', function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const formDataObj = Object.fromEntries(formData);
+
+        // Log form data before submission
+        console.log('Form data before submission:', formDataObj);
+
+        // Validate result_id
+        if (!formDataObj.result_id) {
+            alert('Error: Result ID is missing.');
+            return;
+        }
+
+        $.ajax({
+            url: "{% url 'faculty_staff:update_exam_result' %}",
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            headers: {
+                'X-CSRFToken': $('input[name=csrfmiddlewaretoken]').val()
+            },
+            success: function(response) {
+                console.log('Update response:', response);
+                if (response.success) {
+                    alert('Result updated successfully!');
+                    document.getElementById('editResultModal').checked = false;
+                    location.reload();
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error details:', xhr.responseText);
+                alert('An error occurred while updating the result: ' + (xhr.responseJSON?.message || error));
+            }
+        });
+    });
+
+    // Handle delete action
+    $(document).on('click', '.delete-result', function() {
         let resultId = $(this).data('result-id');
         if (confirm('Are you sure you want to delete this exam result?')) {
             $.ajax({
@@ -309,6 +457,7 @@ $(document).ready(function() {
                 type: 'POST',
                 data: {
                     result_id: resultId,
+                    course_offering_id: $('#hidden_course_offering_id').val(),
                     csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
                 },
                 success: function(response) {
@@ -327,4 +476,4 @@ $(document).ready(function() {
     });
 });
 </script>
-{% endblock %}   
+{% endblock %}

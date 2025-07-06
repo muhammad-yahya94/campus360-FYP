@@ -78,6 +78,7 @@ urlpatterns = [
     path('record-exam-results/', views.record_exam_results, name='record_exam_results'),
     path('delete-exam-result/', views.delete_exam_result, name='delete_exam_result'),
     path('load-students-for-course/', views.load_students_for_course, name='load_students_for_course'),
+    path('update-exam-result/', views.update_exam_result, name='update_exam_result'), 
     path('course/<int:course_offering_id>/student/<int:student_id>/performance/', views.student_performance, name='student_performance'),
     path('student/<int:student_id>/performance/', views.student_semester_performance, name='student_semester_performance'),
     # ========== 13. Notice Board ==========

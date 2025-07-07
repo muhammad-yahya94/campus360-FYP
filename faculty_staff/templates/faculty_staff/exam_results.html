@@ -2,6 +2,54 @@
 
 {% block title %}Exam Results{% endblock %}
 
+<style media="print">
+    @page {
+        size: landscape;
+        margin: 0.5cm;
+    }
+    body * {
+        visibility: hidden;
+    }
+    .print-section, .print-section * {
+        visibility: visible;
+    }
+    .print-section {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+    .no-print {
+        display: none !important;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th, td {
+        border: 1px solid #000;
+        padding: 5px;
+        text-align: left;
+    }
+    th {
+        background-color: #f1f1f1;
+    }
+</style>
+
+<script>
+    // Add print button click event listener
+    document.addEventListener('DOMContentLoaded', function() {
+        const printButton = document.getElementById('printButton');
+        printButton.addEventListener('click', function() {
+            const printSection = document.querySelector('.print-section');
+            const originalDisplay = printSection.style.display;
+            printSection.style.display = 'block';
+            window.print();
+            printSection.style.display = originalDisplay;
+        });
+    });
+</script>
+
 {% block content %}
 <div class="container mx-auto px-4">
     <!-- Hero Section -->
@@ -103,12 +151,19 @@
     <!-- Existing Exam Results Table -->
     <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
-            <h2 class="card-title">Existing Exam Results</h2>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="card-title">Existing Exam Results</h2>
+                <button id="printButton" class="btn btn-primary print:hidden">
+                    <i class="fas fa-print mr-2"></i>Print Results
+                </button>
+            </div>
             <div class="overflow-x-auto">
                 <table class="table w-full">
                     <thead>
                         <tr>
                             <th>Student Name</th>
+                            <th>University roll no</th>
+                            <th>College roll no</th>
                             <th>Course</th>
                             <th>Mid</th>
                             <th>Sessional</th>
@@ -123,6 +178,8 @@
                         {% for result in exam_results %}
                         <tr>
                             <td>{{ result.student.applicant.full_name }}</td>
+                            <td>{{ result.student.university_roll_no }}</td>
+                            <td>{{ result.student.college_roll_no }}</td>
                             <td>{{ result.course.code }}</td>
                             <td>{{ result.mid|default:'0' }}</td>
                             <td>{{ result.sessional|default:'0' }}</td>
@@ -186,7 +243,7 @@
             </div>
             <div class="form-control mb-3">
                 <label class="label" for="edit_project">
-                    <span class="label-text">Final Project Marks</span>
+                    <span class="label-text">Final Marks</span>
                 </label>
                 <input type="number" class="input input-bordered" id="edit_project" name="project" min="0" max="100">
             </div>
@@ -211,6 +268,107 @@
 
 <script>
 $(document).ready(function() {
+    // Print functionality
+    $('#printButton').on('click', function() {
+        // Create a print window
+        var printWindow = window.open('', '', 'width=1000,height=600');
+        
+        // Get the table HTML
+        var tableHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Exam Results - ${$('h1').text()}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 20px; font-size: 12px; }
+                    h1 { color: #333; text-align: center; margin-bottom: 20px; font-size: 18px; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
+                    th, td { border: 1px solid #000; padding: 6px; text-align: left; }
+                    th { background-color: #f1f1f1; font-weight: bold; white-space: nowrap; }
+                    .print-header { text-align: center; margin-bottom: 15px; }
+                    .print-header h1 { margin: 0 0 5px 0; }
+                    .print-header p { margin: 3px 0; font-size: 11px; }
+                    @page { 
+                        size: A4 landscape; 
+                        margin: 0.5cm;
+                        @bottom-center {
+                            content: "Page " counter(page) " of " counter(pages);
+                            font-size: 10px;
+                        }
+                    }
+                    @media print {
+                        table { page-break-inside: auto; }
+                        tr { page-break-inside: avoid; page-break-after: auto; }
+                        thead { display: table-header-group; }
+                        tfoot { display: table-footer-group; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="print-header">
+                    <h1>${$('h1').text()}</h1>
+                    <p>${$('h1').next('p').text()}</p>
+                    <p>Printed on: ${new Date().toLocaleString()}</p>
+                </div>
+                <table class="table w-full">
+                    <thead>
+                        <tr>
+                            <th>SR No</th>
+                            <th>University Roll No</th>
+                            <th>College Roll No</th>
+                            <th>Student Name</th>
+                            <th>Course</th>
+                            <th>Mid</th>
+                            <th>Sessional</th>
+                            <th>Practical</th>
+                            <th>Final</th>
+                            <th>Academic Session</th>
+                            <th>Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${$('.card .overflow-x-auto tbody tr').map(function(index) {
+                            const $row = $(this);
+                            if ($row.find('td').length > 1) { // Skip empty rows
+                                // Get student data directly from table cells
+                                
+                                return `
+                                    <tr>
+                                        <td>${index + 1}</td>
+                                        <td>${$row.find('td:eq(1)').text()}</td> <!-- University Roll No -->
+                                        <td>${$row.find('td:eq(2)').text()}</td> <!-- College Roll No -->
+                                        <td>${$row.find('td:eq(0)').text()}</td> <!-- Student Name -->
+                                        <td>${$row.find('td:eq(3)').text()}</td> <!-- Course -->
+                                        <td>${$row.find('td:eq(4)').text()}</td> <!-- Mid -->
+                                        <td>${$row.find('td:eq(5)').text()}</td> <!-- Sessional -->
+                                        <td>${$row.find('td:eq(6)').text()}</td> <!-- Practical -->
+                                        <td>${$row.find('td:eq(7)').text()}</td> <!-- Final -->
+                                        <td>${$row.find('td:eq(8)').text()}</td> <!-- Academic Session -->
+                                        <td>${$row.find('td:eq(9)').text()}</td> <!-- Remarks -->
+                                    </tr>
+                                `;
+                            }
+                            return '';
+                        }).get().join('')}
+                    </tbody>
+                </table>
+            </body>
+            </html>
+        `;
+        
+        // Write the HTML to the print window
+        printWindow.document.open();
+        printWindow.document.write(tableHtml);
+        printWindow.document.close();
+        
+        // Wait for the content to load before printing
+        printWindow.onload = function() {
+            printWindow.print();
+            printWindow.close();
+        };
+    });
+
+    // Original document.ready code
     // Initialize Select2 for course offering
     $('#course_offering_id').select2({
         placeholder: "Course offering selected",

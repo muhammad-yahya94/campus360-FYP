@@ -2,13 +2,67 @@
 
 {% block title %}Weekly Timetable - {{ department.name }}{% endblock %}
 
+{% block extra_css %}
+<style>
+  @media print {
+    body * {
+      visibility: hidden;
+    }
+    .print-section, .print-section * {
+      visibility: visible;
+    }
+    .print-section {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      padding: 20px;
+    }
+    .no-print {
+      display: none !important;
+    }
+    @page {
+      size: A4 landscape;
+      margin: 0.5cm;
+    }
+    .timetable-day {
+      page-break-inside: avoid;
+      margin-bottom: 20px;
+    }
+    .timetable-slot {
+      page-break-inside: avoid;
+    }
+  }
+  .print-header {
+    text-align: center;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #333;
+    padding-bottom: 10px;
+  }
+  .print-header h1 {
+    margin: 0 0 5px 0;
+    color: #1e40af;
+  }
+  .print-header p {
+    margin: 5px 0;
+    color: #4b5563;
+  }
+  .print-footer {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 10px;
+    color: #6b7280;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
   <!-- Header -->
   <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-xl shadow-lg mb-6">
     <div class="text-center py-8">
       <h1 class="text-4xl font-bold mb-2">Weekly Timetable</h1>
-      <p class="text-lg opacity-90">{{ department.name }} - {{ academic_session.name|default:'No Active Session' }}</p>
+      <p class="text-lg opacity-90">{{ department.name }} - <span class="academic-session">{{ academic_session.name|default:'No Active Session' }}</span></p>
     </div>
   </div>
 
@@ -19,6 +73,9 @@
       Back to Course Offerings
     </a>
     <div class="flex items-center gap-4">
+      <button id="printTimetableBtn" class="btn btn-primary no-print">
+        <i class="fas fa-print mr-2"></i>Print Timetable
+      </button>
       <label for="session-filter" class="text-sm font-medium text-gray-700">Select Session:</label>
       <select id="session-filter" onchange="window.location.href='?session_id=' + this.value + '&shift=' + document.getElementById('shift-filter').value" class="border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500">
         {% comment %} <option value="">All Sessions</option> {% endcomment %}
@@ -38,7 +95,7 @@
   </div>
 
   <!-- Timetable -->
-  <div class="bg-white shadow-xl rounded-lg p-6">
+  <div class="bg-white shadow-xl rounded-lg p-6 print-section">
     <h2 class="text-2xl font-semibold mb-4">
       <i class="fas fa-calendar-week mr-2"></i>
       Timetable Overview
@@ -53,13 +110,58 @@
             </button>
             <div id="slots-{{ day.day_value }}" class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for slot in day.slots %}
-                <div class="relative p-4 rounded-lg shadow-md transition duration-200 {% if slot.shift == 'Morning' %}bg-blue-100 border-blue-300 hover:bg-blue-200{% elif slot.shift == 'Evening' %}bg-purple-100 border-purple-300 hover:bg-purple-200{% else %}bg-green-100 border-green-300 hover:bg-green-200{% endif %}" data-tooltip="Teacher: {{ slot.teacher }}<br>Program: {{ slot.program }}">
-                  <p class="font-semibold text-lg {% if slot.shift == 'Morning' %}text-blue-800{% elif slot.shift == 'Evening' %}text-purple-800{% else %}text-green-800{% endif %}">
-                    {{ slot.course_code }} - {{ slot.course_name }}
-                  </p>
-                  <p class="text-sm text-gray-600"><i class="fas fa-map-marker-alt mr-1"></i>{{ slot.venue }} room no. {{ slot.room_no }}</p>
-                  <p class="text-sm text-gray-600"><i class="fas fa-clock mr-1"></i>{{ slot.start_time }}–{{ slot.end_time }}</p>
-                  <p class="text-sm italic {% if slot.shift == 'Morning' %}text-blue-600{% elif slot.shift == 'Evening' %}text-purple-600{% else %}text-green-600{% endif %}">{{ slot.shift }}</p>
+                <div 
+                  class="relative overflow-hidden rounded-xl shadow-lg transition-all duration-300 transform hover:scale-[1.02] {% if slot.shift == 'Morning' %}bg-gradient-to-br from-blue-50 to-blue-100 border-l-4 border-blue-400{% elif slot.shift == 'Evening' %}bg-gradient-to-br from-purple-50 to-purple-100 border-l-4 border-purple-400{% else %}bg-gradient-to-br from-green-50 to-green-100 border-l-4 border-green-400{% endif %} hover:shadow-xl" 
+                  data-tooltip="Teacher: {{ slot.teacher }}<br>Program: {{ slot.program }}"
+                  data-teacher="{{ slot.teacher }}"
+                  data-course-code="{{ slot.course_code }}"
+                  data-course-name="{{ slot.course_name }}"
+                  data-program="{{ slot.program }}"
+                >
+                  <div class="p-5">
+                    <!-- Course Header -->
+                    <div class="flex items-start justify-between mb-3">
+                      <div>
+                        <span class="inline-block px-3 py-1 text-xs font-semibold rounded-full {% if slot.shift == 'Morning' %}bg-blue-100 text-blue-800{% elif slot.shift == 'Evening' %}bg-purple-100 text-purple-800{% else %}bg-green-100 text-green-800{% endif %} mb-2">
+                          {{ slot.shift }}
+                        </span>
+                        <h3 class="text-lg font-bold {% if slot.shift == 'Morning' %}text-blue-900{% elif slot.shift == 'Evening' %}text-purple-900{% else %}text-green-900{% endif %} mb-1">
+                          {{ slot.course_code }}
+                        </h3>
+                        <p class="text-sm font-medium text-gray-600">{{ slot.course_name }}</p>
+                      </div>
+                      <div class="text-right">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {% if slot.shift == 'Morning' %}bg-blue-100 text-blue-800{% elif slot.shift == 'Evening' %}bg-purple-100 text-purple-800{% else %}bg-green-100 text-green-800{% endif %}">
+                          <i class="fas fa-clock mr-1"></i>{{ slot.start_time }}–{{ slot.end_time }}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <!-- Teacher and Program Info -->
+                    <div class="mt-4 p-3 bg-white rounded-lg border border-gray-100 shadow-sm">
+                      <div class="flex items-start">
+                        <div class="flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center {% if slot.shift == 'Morning' %}bg-blue-100 text-blue-600{% elif slot.shift == 'Evening' %}bg-purple-100 text-purple-600{% else %}bg-green-100 text-green-600{% endif %}">
+                          <i class="fas fa-chalkboard-teacher"></i>
+                        </div>
+                        <div class="ml-3">
+                          <p class="text-sm font-medium text-gray-900">{{ slot.teacher|default:'Not Assigned' }}</p>
+                          <p class="text-xs text-gray-500 flex items-center">
+                            <i class="fas fa-graduation-cap mr-1"></i>{{ slot.program|default:'No Program' }}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Location and Additional Info -->
+                    <div class="mt-3 flex items-center justify-between text-xs text-gray-600">
+                      <span class="inline-flex items-center">
+                        <i class="fas fa-map-marker-alt mr-1.5"></i>
+                        {{ slot.venue }}
+                        <span class="mx-1">•</span>
+                        Room {{ slot.room_no }}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               {% empty %}
                 <p class="col-span-full text-center text-gray-500">No slots scheduled for {{ day.day_label }}.</p>
@@ -102,6 +204,257 @@
 
 {% block extra_js %}
 <script>
+function printTimetable() {
+  try {
+    // Create a new container for the print content
+    const printContent = document.createElement('div');
+    printContent.className = 'print-container';
+    
+    // Get the current academic session from the page
+    const academicSession = document.querySelector('.academic-session')?.textContent || 'Current Session';
+    
+    // Create teacher details section
+    const teacherSection = document.createElement('div');
+    teacherSection.className = 'teacher-section mb-8';
+    teacherSection.innerHTML = `
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold">Teacher Schedule Overview</h2>
+        <span class="text-sm font-medium bg-gray-100 px-3 py-1 rounded-full">${academicSession}</span>
+      </div>
+      <div class="border-b pb-2 mb-4"></div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        ${Array.from(new Set(Array.from(document.querySelectorAll('[data-teacher]')).map(el => 
+          el.getAttribute('data-teacher')
+        ))).filter(Boolean).map(teacher => {
+          const teacherSlots = Array.from(document.querySelectorAll(`[data-teacher="${teacher}"]`));
+          const courses = [...new Set(teacherSlots.map(slot => ({
+            code: slot.getAttribute('data-course-code'),
+            name: slot.getAttribute('data-course-name'),
+            program: slot.getAttribute('data-program')
+          })))];
+          
+          return `
+            <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+              <div class="flex items-center mb-3">
+                <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 mr-3">
+                  <i class="fas fa-chalkboard-teacher"></i>
+                </div>
+                <h3 class="font-bold text-gray-800">${teacher}</h3>
+              </div>
+              <div class="space-y-2">
+                ${courses.map(course => `
+                  <div class="text-sm p-2 bg-gray-50 rounded border border-gray-100">
+                    <p class="font-medium">${course.code} - ${course.name}</p>
+                    <p class="text-xs text-gray-600">${course.program || 'No Program'}</p>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+    
+    // Clone the timetable section
+    const timetableSection = document.querySelector('.print-section').cloneNode(true);
+    
+    // Remove teacher info cards from timetable section
+    timetableSection.querySelectorAll('.bg-white.rounded-lg.border').forEach(el => {
+      if (el.textContent.includes('chalkboard-teacher')) {
+        el.remove();
+      }
+    });
+    
+    // Add session info to timetable section
+    const timetableHeader = timetableSection.querySelector('h2');
+    if (timetableHeader) {
+      const sessionBadge = document.createElement('span');
+      sessionBadge.className = 'text-sm font-medium bg-gray-100 px-3 py-1 rounded-full ml-4';
+      sessionBadge.textContent = academicSession;
+      timetableHeader.parentNode.insertBefore(sessionBadge, timetableHeader.nextSibling);
+    }
+    
+    // Add both sections to print content
+    printContent.appendChild(teacherSection);
+    printContent.appendChild(timetableSection);
+    
+    // Remove any elements with class 'no-print'
+    printContent.querySelectorAll('.no-print').forEach(el => el.remove());
+    
+    // Create a new window for printing - must be triggered by user action
+    const printWindow = window.open('', '_blank');
+    
+    // Check if window was opened (not blocked by popup blocker)
+    if (!printWindow || printWindow.closed || typeof printWindow.closed === 'undefined') {
+      alert('Please allow popups for this site to use the print feature.');
+      return;
+    }
+    
+    const currentDate = new Date().toLocaleString();
+  
+  // Create the print document
+  const printDoc = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>${document.title}</title>
+      <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+      <style>
+        @page {
+          size: A4 landscape;
+          margin: 0.5cm;
+        }
+        body {
+          font-family: Arial, sans-serif;
+          margin: 0;
+          padding: 20px;
+          font-size: 12px;
+        }
+        .print-header {
+          text-align: center;
+          margin-bottom: 20px;
+          padding-bottom: 10px;
+        }
+        .print-header h1 {
+          margin: 0 0 5px 0;
+          font-size: 24px;
+          color: #1e40af;
+        }
+        .print-header p {
+          margin: 5px 0;
+          color: #4b5563;
+        }
+        .print-footer {
+          text-align: center;
+          margin-top: 20px;
+          font-size: 10px;
+          color: #6b7280;
+        }
+        /* Ensure cards don't break across pages */
+        .border-gray-200 {
+          page-break-inside: avoid;
+          break-inside: avoid;
+        }
+        /* Force grid layout for printing */
+        .grid {
+          display: grid !important;
+          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+          gap: 1rem;
+        }
+        /* Enhanced print styles */
+        @media print {
+          .teacher-section {
+            page-break-after: always;
+            margin-bottom: 2rem;
+          }
+          .teacher-section h2 {
+            color: #1e40af;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+          }
+          body {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            font-size: 13px;
+            line-height: 1.4;
+          }
+          
+          /* Card styling for print */
+          [class*='from-'] {
+            background: #fff !important;
+            border: 1px solid #e5e7eb !important;
+          }
+          
+          /* Ensure proper spacing and breaks */
+          .border-gray-200 {
+            break-inside: avoid;
+            page-break-inside: avoid;
+            margin-bottom: 16px;
+          }
+          
+          /* Header styling for print */
+          .print-header {
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+          }
+          
+          /* Ensure colors are visible in print */
+          .bg-white, .print-tooltip, .bg-opacity-50 {
+            background-color: #fff !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            border: 1px solid #f3f4f6 !important;
+          }
+          
+          /* Fix for gradient backgrounds in print */
+          [class*='from-'], [class*='to-'] {
+            background-image: none !important;
+          }
+          
+          /* Ensure text is readable */
+          .text-gray-600, .text-gray-700, .text-gray-900 {
+            color: #1f2937 !important;
+          }
+          
+          /* Print tooltip styling */
+          .print-tooltip {
+            display: block !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            position: static !important;
+            transform: none !important;
+            margin-top: 8px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            background-color: #f9fafb !important;
+            border: 1px solid #e5e7eb !important;
+            font-size: 12px;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="print-header">
+        <h1>${document.querySelector('h1').textContent}</h1>
+        <p>${document.querySelector('.text-lg').textContent}</p>
+        <p>Generated on: ${currentDate}</p>
+      </div>
+      ${printContent.outerHTML}
+      <div class="print-footer">
+        Generated by Campus360 - ${window.location.hostname}
+      </div>
+      <script>
+        // Auto-print when the print window loads
+        window.onload = function() {
+          // Expand all days for printing
+          document.querySelectorAll('[id^="slots-"]').forEach(el => {
+            el.classList.remove('hidden');
+          });
+          
+          setTimeout(function() {
+            window.print();
+          }, 500);
+        };
+      <\/script>
+    <\/body>
+    <\/html>
+  `;
+  
+  printWindow.document.open();
+  printWindow.document.write(printDoc);
+  printWindow.document.close();
+  
+  // Focus the window (helps with some browsers)
+  printWindow.focus();
+  
+  } catch (error) {
+    console.error('Print error:', error);
+    alert('An error occurred while preparing the print view. Please try again.');
+  }
+}
+
 function toggleDay(dayId) {
   const slots = document.getElementById(`slots-${dayId}`);
   const icon = document.getElementById(`toggle-icon-${dayId}`);
@@ -116,6 +469,9 @@ function toggleDay(dayId) {
 
 // Initialize all days as expanded
 document.querySelectorAll('[id^="slots-"]').forEach(el => el.classList.remove('hidden'));
+
+// Add event listener for print button
+document.getElementById('printTimetableBtn').addEventListener('click', printTimetable);
 
 // Tooltip functionality
 document.querySelectorAll('[data-tooltip]').forEach(el => {

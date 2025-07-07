@@ -4,6 +4,12 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <!-- Print Button -->
+  <div class="flex justify-end mb-4">
+    <button id="printButton" class="btn btn-primary print:hidden">
+      <i class="fas fa-print mr-2"></i>Print Performance
+    </button>
+  </div>
   <!-- Header -->
   <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-lg shadow-lg mb-6">
     <div class="text-center py-6">
@@ -152,6 +158,60 @@
   {% endfor %}
 
   {% block extra_scripts %}
+  <style media="print">
+    @page {
+      size: A4 landscape;
+      margin: 1cm;
+    }
+    body {
+      font-size: 12pt;
+      line-height: 1.4;
+    }
+    .no-print {
+      display: none !important;
+    }
+    .card {
+      box-shadow: none;
+      border: 1px solid #e5e7eb;
+      margin-bottom: 20px;
+      break-inside: avoid;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+      font-size: 11pt;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 6px 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f3f4f6;
+    }
+    .print-header {
+      text-align: center;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #333;
+    }
+    .print-header h1 {
+      margin: 0 0 5px 0;
+      font-size: 18pt;
+    }
+    .print-header p {
+      margin: 5px 0;
+      font-size: 12pt;
+    }
+    .print-section {
+      page-break-after: always;
+    }
+    .print-section:last-child {
+      page-break-after: auto;
+    }
+  </style>
+  
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       const rows = document.querySelectorAll('table tbody tr:not(.empty-row)');
@@ -178,6 +238,245 @@
           percentageCell.textContent = 'N/A';
         }
       });
+    });
+
+    // Print functionality
+    document.getElementById('printButton').addEventListener('click', function() {
+      // Create a print window
+      const printWindow = window.open('', '_blank');
+      
+      // Get the current date for the printout
+      const currentDate = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      
+      // Create the print content
+      let printContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>${document.title}</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif;
+              margin: 0;
+              padding: 20px;
+              color: #000;
+            }
+            .print-header {
+              text-align: center;
+              margin-bottom: 20px;
+              padding-bottom: 10px;
+              border-bottom: 2px solid #333;
+            }
+            .print-header h1 {
+              margin: 0 0 5px 0;
+              font-size: 24px;
+              color: #1e40af;
+            }
+            .print-header p {
+              margin: 5px 0;
+              color: #4b5563;
+            }
+            .print-section {
+              margin-bottom: 30px;
+              page-break-inside: avoid;
+            }
+            h2 {
+              color: #1e40af;
+              font-size: 18px;
+              margin: 15px 0 10px 0;
+              padding-bottom: 5px;
+              border-bottom: 1px solid #e5e7eb;
+            }
+            h3 {
+              color: #1e3a8a;
+              font-size: 16px;
+              margin: 15px 0 10px 0;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 10px 0;
+              font-size: 12px;
+            }
+            th, td {
+              border: 1px solid #ddd;
+              padding: 6px 8px;
+              text-align: left;
+            }
+            th {
+              background-color: #f3f4f6;
+              font-weight: bold;
+            }
+            .stats-grid {
+              display: grid;
+              grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+              gap: 15px;
+              margin: 15px 0;
+            }
+            .stat-item {
+              border: 1px solid #e5e7eb;
+              padding: 10px;
+              border-radius: 4px;
+              background-color: #f9fafb;
+            }
+            .stat-item .label {
+              font-weight: 600;
+              margin-bottom: 5px;
+              color: #4b5563;
+            }
+            .stat-item .value {
+              font-size: 16px;
+              font-weight: 600;
+              color: #1e40af;
+            }
+            .page-break {
+              page-break-after: always;
+            }
+            @page {
+              size: A4 landscape;
+              margin: 1cm;
+            }
+            @media print {
+              body {
+                padding: 0;
+                margin: 0;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="print-header">
+            <h1>Semester Performance Report</h1>
+            <p>${document.querySelector('h1').textContent}</p>
+            <p>Generated on: ${currentDate}</p>
+          </div>
+      `;
+
+      // Add each semester's data
+      document.querySelectorAll('.card').forEach((card, index) => {
+        const semesterTitle = card.querySelector('h2')?.textContent || `Semester ${index + 1}`;
+        
+        printContent += `
+          <div class="print-section">
+            <h2>${semesterTitle}</h2>
+        `;
+
+        // Add attendance section
+        const attendanceSection = card.querySelector('.bg-white.shadow-md.rounded-lg');
+        if (attendanceSection) {
+          const title = attendanceSection.querySelector('h3')?.textContent || 'Attendance';
+          const stats = Array.from(attendanceSection.querySelectorAll('.form-control')).map(el => {
+            const label = el.querySelector('.label-text')?.textContent || '';
+            const value = el.querySelector('p')?.textContent || '';
+            return { label, value };
+          });
+
+          printContent += `
+            <div class="attendance-section">
+              <h3>${title}</h3>
+              <div class="stats-grid">
+          `;
+
+          stats.forEach(stat => {
+            printContent += `
+              <div class="stat-item">
+                <div class="label">${stat.label}</div>
+                <div class="value">${stat.value}</div>
+              </div>
+            `;
+          });
+
+          printContent += `
+              </div>
+            </div>
+          `;
+        }
+
+        // Add assignments section
+        const assignmentsSection = card.querySelectorAll('.bg-white.shadow-md.rounded-lg')[1];
+        if (assignmentsSection) {
+          const title = assignmentsSection.querySelector('h3')?.textContent || 'Assignments';
+          const table = assignmentsSection.querySelector('table');
+          
+          if (table) {
+            printContent += `
+              <div class="assignments-section">
+                <h3>${title}</h3>
+                ${table.outerHTML}
+              </div>
+            `;
+          }
+        }
+
+        // Add quizzes section
+        const quizzesSection = card.querySelectorAll('.bg-white.shadow-md.rounded-lg')[2];
+        if (quizzesSection) {
+          const title = quizzesSection.querySelector('h3')?.textContent || 'Quizzes';
+          const table = quizzesSection.querySelector('table');
+          
+          if (table) {
+            printContent += `
+              <div class="quizzes-section">
+                <h3>${title}</h3>
+                ${table.outerHTML}
+              </div>
+            `;
+          }
+        }
+
+        printContent += `
+          </div>
+        `;
+      });
+
+      // Close the HTML
+      printContent += `
+          <script>
+            // Calculate percentages for quizzes in the print view
+            document.addEventListener('DOMContentLoaded', function() {
+              const rows = document.querySelectorAll('table tbody tr');
+              rows.forEach(row => {
+                const scoreCell = row.querySelector('td:nth-child(3)');
+                const maxScoreCell = row.querySelector('td:nth-child(4)');
+                const percentageCell = row.querySelector('td:nth-child(5)');
+
+                if (scoreCell && maxScoreCell && percentageCell) {
+                  const scoreText = scoreCell.textContent.trim();
+                  const maxScoreText = maxScoreCell.textContent.trim();
+
+                  if (scoreText !== 'N/A' && maxScoreText !== 'N/A') {
+                    const score = parseFloat(scoreText);
+                    const maxScore = parseFloat(maxScoreText);
+                    
+                    if (!isNaN(score) && !isNaN(maxScore) && maxScore > 0) {
+                      const percentage = (score / maxScore * 100).toFixed(2);
+                      percentageCell.textContent = percentage + '%';
+                    }
+                  }
+                }
+              });
+            });
+          <\/script>
+        </body>
+        </html>
+      `;
+
+      // Write the content to the print window
+      printWindow.document.open();
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+
+      // Wait for the content to load before printing
+      printWindow.onload = function() {
+        setTimeout(() => {
+          printWindow.print();
+          printWindow.close();
+        }, 500);
+      };
     });
   </script>
   {% endblock %}

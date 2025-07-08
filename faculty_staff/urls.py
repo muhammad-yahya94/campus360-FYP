@@ -99,6 +99,7 @@ urlpatterns = [
 
     # ========== 15. Teacher Courses ==========
     path('teacher-course-list/', views.teacher_course_list, name='teacher_course_list'),
+    path('teacher/<int:teacher_id>/lectures/', views.teacher_lecture_details, name='teacher_lecture_details'),
 
     # ========== 16. Settings & Profile ==========
     path('settings/', views.settings, name='settings'),

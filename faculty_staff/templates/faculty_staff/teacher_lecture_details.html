@@ -1,0 +1,236 @@
+{% extends 'faculty_staff/base_dashboard.html' %}
+
+{% block title %}Lecture Details - {{ teacher.user.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Header -->
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold mb-2">Lecture Details for {{ teacher.user.get_full_name }}</h1>
+        <p class="text-base-content/70 mb-4">{{ teacher.designation }} - {{ teacher.department.name }}</p>
+        <a href="{% url 'faculty_staff:staff_management' %}" class="btn btn-sm btn-secondary">
+            <i class="fas fa-arrow-left mr-2"></i>Back to Staff Management
+        </a>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="card bg-primary text-primary-content">
+            <div class="card-body">
+                <h3 class="card-title text-lg">
+                    <i class="fas fa-chalkboard-teacher mr-2"></i>
+                    Total Lectures
+                </h3>
+                <p class="text-3xl font-bold">{{ lecture_count }}</p>
+            </div>
+        </div>
+        
+        <div class="card bg-success text-success-content">
+            <div class="card-body">
+                <h3 class="card-title text-lg">
+                    <i class="fas fa-money-bill-wave mr-2"></i>
+                    Salary per Lecture
+                </h3>
+                <p class="text-3xl font-bold">{{ salary_per_lecture|default:"0" }}</p>
+            </div>
+        </div>
+        
+        <div class="card bg-info text-info-content">
+            <div class="card-body">
+                <h3 class="card-title text-lg">
+                    <i class="fas fa-calculator mr-2"></i>
+                    Total Salary
+                </h3>
+                <p class="text-3xl font-bold">{{ total_salary|default:"0" }}</p>
+            </div>
+        </div>
+        
+        <div class="card bg-warning text-warning-content">
+            <div class="card-body">
+                <h3 class="card-title text-lg">
+                    <i class="fas fa-calendar-alt mr-2"></i>
+                    This Month
+                </h3>
+                {% for month in monthly_stats %}
+                    {% if month.is_current %}
+                        <p class="text-2xl font-bold">{{ month.lecture_count }}</p>
+                        <p class="text-sm">{{ month.salary }}</p>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Statistics -->
+    <div class="card bg-base-100 shadow-lg mb-6">
+        <div class="card-body">
+            <h2 class="card-title text-xl mb-4">
+                <i class="fas fa-chart-line mr-2"></i>
+                Monthly Statistics ({{ current_year }})
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="table table-sm w-full">
+                    <thead class="bg-base-200">
+                        <tr>
+                            <th>Month</th>
+                            <th>Lectures</th>
+                            <th>Salary</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for month in monthly_stats %}
+                        <tr class="{% if month.is_current %}bg-primary/10{% endif %}">
+                            <td class="font-medium">{{ month.month }}</td>
+                            <td>{{ month.lecture_count }}</td>
+                            <td>{{ month.salary }}</td>
+                            <td>
+                                {% if month.is_current %}
+                                    <span class="badge badge-primary">Current</span>
+                                {% elif month.lecture_count > 0 %}
+                                    <span class="badge badge-success">Active</span>
+                                {% else %}
+                                    <span class="badge badge-neutral">No Lectures</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Course-wise Statistics -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div class="card bg-base-100 shadow-lg">
+            <div class="card-body">
+                <h2 class="card-title text-xl mb-4">
+                    <i class="fas fa-book mr-2"></i>
+                    Course-wise Statistics
+                </h2>
+                {% if course_stats %}
+                <div class="overflow-x-auto">
+                    <table class="table table-sm w-full">
+                        <thead class="bg-base-200">
+                            <tr>
+                                <th>Course</th>
+                                <th>Program</th>
+                                <th>Semester</th>
+                                <th>Lectures</th>
+                                <th>Salary</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for course in course_stats %}
+                            <tr>
+                                <td>
+                                    <div class="font-medium">{{ course.course_offering__course__code }}</div>
+                                    <div class="text-xs text-base-content/70">{{ course.course_offering__course__name }}</div>
+                                </td>
+                                <td>{{ course.course_offering__program__name }}</td>
+                                <td>{{ course.course_offering__semester__name }}</td>
+                                <td>{{ course.lecture_count }}</td>
+                                <td>{{ course.total_salary }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">No course statistics available.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Semester-wise Statistics -->
+        <div class="card bg-base-100 shadow-lg">
+            <div class="card-body">
+                <h2 class="card-title text-xl mb-4">
+                    <i class="fas fa-graduation-cap mr-2"></i>
+                    Semester-wise Statistics
+                </h2>
+                {% if semester_stats %}
+                <div class="overflow-x-auto">
+                    <table class="table table-sm w-full">
+                        <thead class="bg-base-200">
+                            <tr>
+                                <th>Semester</th>
+                                <th>Session</th>
+                                <th>Lectures</th>
+                                <th>Salary</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for semester in semester_stats %}
+                            <tr>
+                                <td class="font-medium">{{ semester.course_offering__semester__name }}</td>
+                                <td>{{ semester.course_offering__academic_session__name }}</td>
+                                <td>{{ semester.lecture_count }}</td>
+                                <td>{{ semester.total_salary }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">No semester statistics available.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Lectures -->
+    <div class="card bg-base-100 shadow-lg">
+        <div class="card-body">
+            <h2 class="card-title text-xl mb-4">
+                <i class="fas fa-history mr-2"></i>
+                Recent Lectures (Last 10)
+            </h2>
+            {% if recent_lectures %}
+            <div class="overflow-x-auto">
+                <table class="table table-sm w-full">
+                    <thead class="bg-base-200">
+                        <tr>
+                            <th>Date</th>
+                            <th>Course</th>
+                            <th>Program</th>
+                            <th>Semester</th>
+                            <th>Shift</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lecture in recent_lectures %}
+                        <tr>
+                            <td>{{ lecture.date|date:"M d, Y" }}</td>
+                            <td>
+                                <div class="font-medium">{{ lecture.course_offering.course.code }}</div>
+                                <div class="text-xs text-base-content/70">{{ lecture.course_offering.course.name }}</div>
+                            </td>
+                            <td>{{ lecture.course_offering.program.name }}</td>
+                            <td>{{ lecture.course_offering.semester.name }}</td>
+                            <td>
+                                {% if lecture.shift %}
+                                    <span class="badge badge-sm badge-outline">{{ lecture.shift|title }}</span>
+                                {% else %}
+                                    <span class="badge badge-sm badge-neutral">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge badge-sm {% if lecture.status == 'present' %}badge-success{% elif lecture.status == 'absent' %}badge-error{% else %}badge-warning{% endif %}">
+                                    {{ lecture.status|title }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">No recent lectures found.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -125,9 +125,12 @@
                                         <label for="deleteStaffModal{{ staff.id }}" class="btn btn-xs btn-outline btn-error">
                                             <i class="fas fa-trash"></i>
                                         </label>
+                                        <a href="{% url 'faculty_staff:teacher_lecture_details' staff.id %}" class="btn btn-xs btn-outline btn-success" title="View Lectures">
+                                            <i class="fas fa-chalkboard-teacher"></i>
+                                        </a>
                                     </div>
                                 </td>
-                            </tr>
+                            </tr>   
                             {% endwith %}
                             {% endfor %}
                         </tbody>

@@ -432,6 +432,91 @@ def delete_staff(request, staff_id):
     })
 
 
+# ... existing code ...
+from django.db.models import Count
+# ... existing code ...
+
+@hod_required
+def teacher_lecture_details(request, teacher_id):
+    # Ensure the teacher is in the HOD's department
+    hod_department = request.user.teacher_profile.department
+    teacher = get_object_or_404(Teacher, id=teacher_id, department=hod_department)
+
+    # Get all attendance records recorded by this teacher
+    from courses.models import Attendance
+    lectures = Attendance.objects.filter(recorded_by=teacher).order_by('-date')
+    lecture_count = lectures.count()
+
+    # Get teacher details for salary calculation
+    teacher_details = teacher.details if hasattr(teacher, 'details') else None
+    salary_per_lecture = teacher_details.salary_per_lecture if teacher_details else 0
+
+    # Calculate total salary
+    total_salary = lecture_count * salary_per_lecture if salary_per_lecture else 0
+
+    # Monthly statistics
+    from django.db.models import Count, Sum
+    from django.utils import timezone
+    from datetime import datetime
+    import calendar
+
+    monthly_stats = []
+    current_year = timezone.now().year
+    current_month = timezone.now().month
+
+    for month in range(1, 13):
+        month_lectures = lectures.filter(
+            date__year=current_year,
+            date__month=month
+        )
+        month_count = month_lectures.count()
+        month_salary = month_count * salary_per_lecture if salary_per_lecture else 0
+        
+        monthly_stats.append({
+            'month': calendar.month_name[month],
+            'lecture_count': month_count,
+            'salary': month_salary,
+            'is_current': month == current_month
+        })
+
+    # Course-wise statistics
+    course_stats = lectures.values(
+        'course_offering__course__code',
+        'course_offering__course__name',
+        'course_offering__semester__name',
+        'course_offering__program__name'
+    ).annotate(
+        lecture_count=Count('id'),
+        total_salary=Count('id') * salary_per_lecture if salary_per_lecture else 0
+    ).order_by('-lecture_count')
+
+    # Semester-wise statistics
+    semester_stats = lectures.values(
+        'course_offering__semester__name',
+        'course_offering__academic_session__name'
+    ).annotate(
+        lecture_count=Count('id'),
+        total_salary=Count('id') * salary_per_lecture if salary_per_lecture else 0
+    ).order_by('-lecture_count')
+
+    # Recent lectures (last 10)
+    recent_lectures = lectures[:10]
+
+    context = {
+        'teacher': teacher,
+        'lectures': lectures,
+        'lecture_count': lecture_count,
+        'salary_per_lecture': salary_per_lecture,
+        'total_salary': total_salary,
+        'monthly_stats': monthly_stats,
+        'course_stats': course_stats,
+        'semester_stats': semester_stats,
+        'recent_lectures': recent_lectures,
+    }
+    return render(request, 'faculty_staff/teacher_lecture_details.html', context)
+
+
+
 @hod_required
 def session_students(request, session_id):
     hod_department = request.user.teacher_profile.department
@@ -849,7 +934,7 @@ def save_course_offering(request):
             'message': 'Invalid shift selected.'
         })
 
-    try:
+    try:  
         course = Course.objects.get(id=course_id)
         teacher = Teacher.objects.get(id=teacher_id, is_active=True)
         program = Program.objects.get(id=program_id)
@@ -2435,7 +2520,7 @@ def notice_board(request):
         # Teacher view: View only notices relevant to their department's programs
         department = request.user.teacher_profile.department
         notices = Notice.objects.filter(
-            models.Q(programs__department=department) | models.Q(sessions__semesters__program__department=department)
+            Q(programs__department=department) | Q(sessions__semesters__program__department=department)
         ).distinct().order_by('-is_pinned', '-created_at')
     else:
         # Student view: Filter by enrolled program and session
@@ -2446,9 +2531,9 @@ def notice_board(request):
                 current_program = current_semester.student.program
                 current_session = current_semester.semester.session
                 notices = Notice.objects.filter(
-                    models.Q(programs__in=[current_program]) | models.Q(programs__isnull=True),
-                    models.Q(sessions__in=[current_session]) | models.Q(sessions__isnull=True),
-                    models.Q(valid_until__gte=timezone.now()) | models.Q(valid_until__isnull=True),
+                    Q(programs__in=[current_program]) | Q(programs__isnull=True),
+                    Q(sessions__in=[current_session]) | Q(sessions__isnull=True),
+                    Q(valid_until__gte=timezone.now()) | Q(valid_until__isnull=True),
                     is_active=True,
                     valid_from__lte=timezone.now(),
                 ).distinct().order_by('-is_pinned', '-created_at')
@@ -3393,7 +3478,7 @@ def edit_attendance(request):
         if attendance_id and student_id and status in ['present', 'absent', 'leave']:
             attendance = get_object_or_404(Attendance, id=attendance_id, student__applicant_id=student_id)
             if attendance.date != timezone.now().date():
-                return JsonResponse({'success': False, 'message': 'Can only edit today’s attendance.'})
+                return JsonResponse({'success': False, 'message': "Can only edit today's attendance."})
             teacher = get_object_or_404(Teacher, user=request.user)
             attendance.status = status
             attendance.shift = shift

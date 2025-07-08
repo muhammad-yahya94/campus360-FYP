@@ -156,8 +156,8 @@
                                     <p><strong>Department:</strong> {{ staff.department.name }}</p>
                                     <p><strong>Designation:</strong> {{ staff.get_designation_display }}</p>
                                     <p><strong>Employment Type:</strong> {{ details.employment_type|default:"N/A" }}</p>
-                                    <p><strong>Salary/Lecture:</strong> {{ details.salary_per_lecture|default:"N/A" }}</p>
-                                    <p><strong>Fix Salary:</strong> {{ details.fixed_salary|default:"N/A" }}</p>
+                                    <p><strong>Salary/Lecture:</strong> {{ details.salary_per_lecture|default:"0" }}</p>
+                                    <p><strong>Fix Salary:</strong> {{ details.fixed_salary|default:"0" }}</p>
                                     <p><strong>Current Status:</strong> {{ details.status|default:"N/A" }}
                                         {% if details.status == 'on_break' %} 🛑
                                         {% elif details.status == 'on_lecture' %} 📢

@@ -2635,8 +2635,8 @@ def notice_board(request):
         'notices': page_obj,
         'programs': programs,
         'sessions': sessions,
-        'notice_types': dict(NOTICE_TYPES),
-        'priorities': dict(PRIORITY_LEVELS)
+        'notice_types': dict(Notice.NOTICE_TYPES),
+        'priorities': dict(Notice.PRIORITY_LEVELS)
     })
 
 @login_required

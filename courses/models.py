@@ -344,6 +344,7 @@ class Attendance(models.Model):
         return f"{self.student.applicant.full_name} - {self.course_offering.course.code} - {self.date} - {self.status} - {self.shift or 'N/A'}"        
 
 
+
 class Quiz(models.Model):
     course_offering = models.ForeignKey(CourseOffering, on_delete=models.CASCADE, related_name='quizzes')
     title = models.CharField(max_length=255, help_text="Topic name for the quiz")

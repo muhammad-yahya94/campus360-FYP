@@ -19,7 +19,7 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.files.storage import default_storage
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db import transaction
-from django.db.models import Sum, Q, Count, Max, Subquery, OuterRef
+from django.db.models import Sum, Q, Count, Max, Subquery, OuterRef, F, Value
 from django.db.utils import IntegrityError
 from django.forms.models import inlineformset_factory
 from django.http import JsonResponse
@@ -432,9 +432,6 @@ def delete_staff(request, staff_id):
     })
 
 
-# ... existing code ...
-from django.db.models import Count
-# ... existing code ...
 
 @hod_required
 def teacher_lecture_details(request, teacher_id):
@@ -455,7 +452,7 @@ def teacher_lecture_details(request, teacher_id):
     total_salary = lecture_count * salary_per_lecture if salary_per_lecture else 0
 
     # Monthly statistics
-    from django.db.models import Count, Sum
+    from django.db.models import Count, Sum, F, Value
     from django.utils import timezone
     from datetime import datetime
     import calendar
@@ -480,24 +477,44 @@ def teacher_lecture_details(request, teacher_id):
         })
 
     # Course-wise statistics
-    course_stats = lectures.values(
-        'course_offering__course__code',
-        'course_offering__course__name',
-        'course_offering__semester__name',
-        'course_offering__program__name'
-    ).annotate(
-        lecture_count=Count('id'),
-        total_salary=Count('id') * salary_per_lecture if salary_per_lecture else 0
-    ).order_by('-lecture_count')
+    if salary_per_lecture and salary_per_lecture > 0:
+        course_stats = lectures.values(
+            'course_offering__course__code',
+            'course_offering__course__name',
+            'course_offering__semester__name',
+            'course_offering__program__name'
+        ).annotate(
+            lecture_count=Count('id'),
+            total_salary=Count('id') * Value(salary_per_lecture)
+        ).order_by('-lecture_count')
+    else:
+        course_stats = lectures.values(
+            'course_offering__course__code',
+            'course_offering__course__name',
+            'course_offering__semester__name',
+            'course_offering__program__name'
+        ).annotate(
+            lecture_count=Count('id'),
+            total_salary=Value(0)
+        ).order_by('-lecture_count')
 
     # Semester-wise statistics
-    semester_stats = lectures.values(
-        'course_offering__semester__name',
-        'course_offering__academic_session__name'
-    ).annotate(
-        lecture_count=Count('id'),
-        total_salary=Count('id') * salary_per_lecture if salary_per_lecture else 0
-    ).order_by('-lecture_count')
+    if salary_per_lecture and salary_per_lecture > 0:
+        semester_stats = lectures.values(
+            'course_offering__semester__name',
+            'course_offering__academic_session__name'
+        ).annotate(
+            lecture_count=Count('id'),
+            total_salary=Count('id') * Value(salary_per_lecture)
+        ).order_by('-lecture_count')
+    else:
+        semester_stats = lectures.values(
+            'course_offering__semester__name',
+            'course_offering__academic_session__name'
+        ).annotate(
+            lecture_count=Count('id'),
+            total_salary=Value(0)
+        ).order_by('-lecture_count')
 
     # Recent lectures (last 10)
     recent_lectures = lectures[:10]

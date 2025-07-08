@@ -25,6 +25,7 @@ urlpatterns = [
     path('student/<int:student_id>/', views.student_detail, name='student_detail'),
     path('edit-enrollment-status/', views.edit_enrollment_status, name='edit_enrollment_status'),
     path('view-students/', views.view_students, name='view_students'),
+    path('student/<int:student_id>/set_role/', views.set_student_role, name='set_student_role'),
 
     # ========== 5. Courses & Offerings ==========
     path('add-course/', views.add_course, name='add_course'),

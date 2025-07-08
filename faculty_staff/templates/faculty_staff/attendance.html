@@ -119,7 +119,13 @@
                             {% for student in students %}
                             <tr>
                                 <td>{{ forloop.counter }}</td>
-                                <td>{{ student.name }}</td>
+                                <td>{{ student.name }}
+                                    {% if student.role == 'CR' %}
+                                        <span class="badge badge-warning ml-1">CR</span>
+                                    {% elif student.role == 'GR' %}
+                                        <span class="badge badge-secondary ml-1" style="background-color:#f472b6; color:white;">GR</span>
+                                    {% endif %}
+                                </td>
                                 <td>{{ student.college_roll_no|default:'N/A' }}</td>
                                 <td>{{ student.university_roll_no|default:'N/A' }}</td>
                                 <td>
@@ -277,7 +283,13 @@ $(document).ready(function() {
                             tbody.append(`
                                 <tr>
                                     <td>${index + 1}</td>
-                                    <td>${attendance.student_name}</td>
+                                    <td>${attendance.student_name}
+                                        {% if attendance.student_role == 'CR' %}
+                                            <span class="badge badge-warning ml-1">CR</span>
+                                        {% elif attendance.student_role == 'GR' %}
+                                            <span class="badge badge-secondary ml-1" style="background-color:#f472b6; color:white;">GR</span>
+                                        {% endif %}
+                                    </td>
                                     <td>${attendance.college_roll_no || 'N/A'}</td>
                                     <td>${attendance.university_roll_no || 'N/A'}</td>
                                     <td>${attendance.status === 'present' ? '<span class="status-check">✔</span>' : ''}</td>
@@ -296,7 +308,13 @@ $(document).ready(function() {
                             existingTbody.append(`
                                 <tr>
                                     <td>${index + 1}</td>
-                                    <td>${attendance.student_name}</td>
+                                    <td>${attendance.student_name}
+                                        {% if attendance.student_role == 'CR' %}
+                                            <span class="badge badge-warning ml-1">CR</span>
+                                        {% elif attendance.student_role == 'GR' %}
+                                            <span class="badge badge-secondary ml-1" style="background-color:#f472b6; color:white;">GR</span>
+                                        {% endif %}
+                                    </td>
                                     <td>${attendance.college_roll_no || 'N/A'}</td>
                                     <td>${attendance.university_roll_no || 'N/A'}</td>
                                     <td>${attendance.course_code}</td>
@@ -330,7 +348,13 @@ $(document).ready(function() {
                                             tbody.append(`
                                                 <tr>
                                                     <td>${index + 1}</td>
-                                                    <td>${student.name}</td>
+                                                    <td>${student.name}
+                                                        {% if student.role == 'CR' %}
+                                                            <span class="badge badge-warning ml-1">CR</span>
+                                                        {% elif student.role == 'GR' %}
+                                                            <span class="badge badge-secondary ml-1" style="background-color:#f472b6; color:white;">GR</span>
+                                                        {% endif %}
+                                                    </td>
                                                     <td>${student.college_roll_no || 'N/A'}</td>
                                                     <td>${student.university_roll_no || 'N/A'}</td>
                                                     <td>

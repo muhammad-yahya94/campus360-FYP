@@ -61,12 +61,20 @@
         </div>
     </div>
 
+    <!-- Year Selector -->
+    <div class="mb-4 flex flex-wrap gap-2 items-center">
+        <span class="font-semibold mr-2">Select Year:</span>
+        {% for year in years %}
+            <a href="?year={{ year }}" class="btn btn-xs {% if year == selected_year %}btn-primary{% else %}btn-outline{% endif %}">{{ year }}</a>
+        {% endfor %}
+    </div>
+
     <!-- Monthly Statistics -->
     <div class="card bg-base-100 shadow-lg mb-6">
         <div class="card-body">
             <h2 class="card-title text-xl mb-4">
                 <i class="fas fa-chart-line mr-2"></i>
-                Monthly Statistics ({{ current_year }})
+                Monthly Statistics ({{ selected_year }})
             </h2>
             <div class="overflow-x-auto">
                 <table class="table table-sm w-full">
@@ -197,7 +205,7 @@
                             <th>Program</th>
                             <th>Semester</th>
                             <th>Shift</th>
-                            <th>Status</th>
+                            {% comment %} <th>Status</th> {% endcomment %}
                         </tr>
                     </thead>
                     <tbody>
@@ -217,11 +225,11 @@
                                     <span class="badge badge-sm badge-neutral">N/A</span>
                                 {% endif %}
                             </td>
-                            <td>
+                            {% comment %} <td>
                                 <span class="badge badge-sm {% if lecture.status == 'present' %}badge-success{% elif lecture.status == 'absent' %}badge-error{% else %}badge-warning{% endif %}">
                                     {{ lecture.status|title }}
                                 </span>
-                            </td>
+                            </td> {% endcomment %}
                         </tr>
                         {% endfor %}
                     </tbody>

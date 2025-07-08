@@ -73,6 +73,11 @@
                                         <a href="{% url 'faculty_staff:student_detail' student.pk %}" class="link link-primary">
                                             {{ student.applicant.full_name }}
                                         </a>
+                                        {% if student.role == 'CR' %}
+                                            <span class="badge badge-warning ml-1">CR</span>
+                                        {% elif student.role == 'GR' %}
+                                            <span class="badge badge-secondary ml-1" style="background-color:#f472b6; color:white;">GR</span>
+                                        {% endif %}
                                         <br>
                                         <a href="{% url 'faculty_staff:student_semester_performance' student.pk %}" class="link link-secondary text-xs">
                                             View Semester Performance
@@ -102,6 +107,11 @@
                                         <a href="{% url 'faculty_staff:student_detail' student.pk %}" class="link link-primary">
                                             {{ student.applicant.full_name }}
                                         </a>
+                                        {% if student.role == 'CR' %}
+                                            <span class="badge badge-warning ml-1">CR</span>
+                                        {% elif student.role == 'GR' %}
+                                            <span class="badge badge-secondary ml-1" style="background-color:#f472b6; color:white;">GR</span>
+                                        {% endif %}
                                         <br>
                                         <a href="{% url 'faculty_staff:student_semester_performance' student.pk %}" class="link link-secondary text-xs">
                                             View Semester Performance

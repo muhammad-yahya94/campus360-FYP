@@ -43,6 +43,13 @@ class Student(models.Model):
     
     emergency_contact = models.CharField(max_length=100, blank=True, help_text="Enter the name of an emergency contact person.")
     emergency_phone = models.CharField(max_length=15, blank=True, help_text="Enter the phone number for the emergency contact.")
+    role = models.CharField(
+        max_length=2,
+        choices=[('CR', 'Class Representative'), ('GR', 'Girls Representative')],
+        null=True,
+        blank=True,
+        help_text="Select the student's role (CR/GR) if applicable."
+    )
     
     class Meta:
         verbose_name = "Student"

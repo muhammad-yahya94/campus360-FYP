@@ -451,29 +451,40 @@ def teacher_lecture_details(request, teacher_id):
     # Calculate total salary
     total_salary = lecture_count * salary_per_lecture if salary_per_lecture else 0
 
-    # Monthly statistics
+    # Year selection
+    from django.db.models.functions import ExtractYear
     from django.db.models import Count, Sum, F, Value
     from django.utils import timezone
     from datetime import datetime
     import calendar
 
-    monthly_stats = []
+    # Get all years with attendance data
+    years_qs = lectures.annotate(year=ExtractYear('date')).values_list('year', flat=True).distinct().order_by('-year')
+    years = list(years_qs)
     current_year = timezone.now().year
-    current_month = timezone.now().month
+    selected_year = request.GET.get('year')
+    try:
+        selected_year = int(selected_year)
+        if selected_year not in years:
+            selected_year = current_year
+    except (TypeError, ValueError):
+        selected_year = current_year
 
+    # Monthly statistics for selected year
+    monthly_stats = []
+    current_month = timezone.now().month if selected_year == current_year else 1
     for month in range(1, 13):
         month_lectures = lectures.filter(
-            date__year=current_year,
+            date__year=selected_year,
             date__month=month
         )
         month_count = month_lectures.count()
         month_salary = month_count * salary_per_lecture if salary_per_lecture else 0
-        
         monthly_stats.append({
             'month': calendar.month_name[month],
             'lecture_count': month_count,
             'salary': month_salary,
-            'is_current': month == current_month
+            'is_current': (month == current_month and selected_year == current_year)
         })
 
     # Course-wise statistics
@@ -529,6 +540,9 @@ def teacher_lecture_details(request, teacher_id):
         'course_stats': course_stats,
         'semester_stats': semester_stats,
         'recent_lectures': recent_lectures,
+        'years': years,
+        'selected_year': selected_year,
+        'current_year': current_year,
     }
     return render(request, 'faculty_staff/teacher_lecture_details.html', context)
 
@@ -3941,5 +3955,17 @@ def get_quiz(request, quiz_id):
         'timer_seconds': quiz.timer_seconds,
         'questions': questions
     })
+    
+@hod_required
+@require_POST
+def set_student_role(request, student_id):
+    student = get_object_or_404(Student, pk=student_id)
+    role = request.POST.get('role')
+    if role not in ['CR', 'GR', '']:
+        role = None
+    student.role = role if role else None
+    student.save()
+    messages.success(request, 'Student role updated successfully.')
+    return redirect('faculty_staff:student_detail', student_id=student.pk)
     
     

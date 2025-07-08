@@ -54,7 +54,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     <tbody>
                         {% for submission in submissions %}
                         <tr class="hover:bg-base-200/50">
-                            <td class="px-4 py-4 whitespace-nowrap text-sm text-base-content">{{ submission.student }}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-base-content">{{ submission.student }}
+                                {% if submission.student.role == 'CR' %}
+                                    <span class="badge badge-warning ml-1">CR</span>
+                                {% elif submission.student.role == 'GR' %}
+                                    <span class="badge badge-secondary ml-1" style="background-color:#f472b6; color:white;">GR</span>
+                                {% endif %}
+                            </td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm text-base-content">
                                 {% if submission.content %}
                                 <label for="content-modal-{{ submission.id }}" class="btn btn-sm btn-outline">

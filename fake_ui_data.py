@@ -1,3 +1,10 @@
+import os
+import django
+
+# Set up Django environment
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'campus360FYP.settings')
+django.setup()
+
 from django.db import models
 from faker import Faker
 import random
@@ -6,11 +13,9 @@ from django.utils import timezone
 from users.models import CustomUser
 from announcements.models import News, Event
 from site_elements.models import Slider, Alumni, Gallery
+from faculty_staff.models import Office, OfficeStaff
 from django_ckeditor_5.fields import CKEditor5Field
 from autoslug import AutoSlugField
-import os
-# Set up Django environment
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'campus360-FYP.settings')  # Replace with your project's settings module
 
 
 fake = Faker()
@@ -20,7 +25,6 @@ def create_fake_users(num_users=5):
     users = []
     for _ in range(num_users):
         user = CustomUser.objects.create(
-            username=fake.user_name(),
             email=fake.email(),
             first_name=fake.first_name(),
             last_name=fake.last_name(),
@@ -90,6 +94,51 @@ def create_fake_gallery(num_items=15):
         )
         gallery.save()
 
+def create_treasure_office():
+    """Create Treasure Office and its staff."""
+    # Create the Treasure Office
+    treasure_office = Office.objects.create(
+        name="Treasure Office",
+        description="The Treasure Office is responsible for managing all financial transactions, fee collection, and financial records of the institution. We handle student fee payments, staff payroll, budget management, and financial reporting.",
+        location="Administrative Building, Ground Floor, Room 101",
+        contact_email="treasure@campus360.edu",
+        contact_phone="+1-555-0123",
+        slug="treasure-office"
+    )
+    
+    # Create staff members for the Treasure Office
+    staff_positions = [
+        "Treasurer",
+        "Assistant Treasurer", 
+        "Financial Officer",
+        "Accountant",
+        "Cashier"
+    ]
+    
+    staff_members = []
+    for i, position in enumerate(staff_positions):
+        # Create user for staff member
+        user = CustomUser.objects.create(
+            email=f"treasure.staff{i+1}@campus360.edu",
+            first_name=fake.first_name(),
+            last_name=fake.last_name(),
+            is_active=True
+        )
+        user.set_password('password123')
+        user.save()
+        
+        # Create office staff member
+        staff = OfficeStaff.objects.create(
+            user=user,
+            office=treasure_office,
+            position=position,
+            contact_no=f"+1-555-{1000+i:04d}"
+        )
+        staff_members.append(staff)
+    
+    print(f"Created Treasure Office with {len(staff_members)} staff members")
+    return treasure_office, staff_members
+
 def populate_fake_data():
     """Populate all models with fake data."""
     print("Creating fake users...")
@@ -104,6 +153,8 @@ def populate_fake_data():
     create_fake_alumni(10)
     print("Creating fake gallery images...")
     create_fake_gallery(15)
+    print("Creating Treasure Office...")
+    create_treasure_office()
     print("Fake data population complete.")
 
 if __name__ == "__main__":

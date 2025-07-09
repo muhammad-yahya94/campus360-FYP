@@ -44,7 +44,7 @@ from courses.models import (
     Attendance, Venue, TimetableSlot,
     Quiz, Question, QuizSubmission, Option
 )
-from faculty_staff.models import Teacher, TeacherDetails
+from faculty_staff.models import Teacher, TeacherDetails, OfficeStaff, Office
 from students.models import Student, StudentSemesterEnrollment, CourseEnrollment
 
 # Forms

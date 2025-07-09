@@ -132,7 +132,7 @@
             .table {
                 font-size: 0.8rem;
             }
-        }
+        }   
     </style>
 
     <!-- Navbar Start -->
@@ -153,11 +153,8 @@
             <div class="navbar-nav ms-auto">
                 <a href="{% url 'my_applications' %}" class="nav-item nav-link {% if request.path == '/apply/my-applications/' %}active{% endif %}">My Applications</a>
                 <a href="{% url 'apply' %}" class="nav-item nav-link {% if request.path == '/apply/' %}active{% endif %}">Application Form</a>
-                <a href="{% url 'home' %}" class="btn btn-primary py-4 px-lg-5 d-none d-lg-block">
-                    Go Back<i class="fa fa-arrow-right ms-3"></i>
-                </a>
-                <!-- Mobile version of Go Back button -->
-                <a href="{% url 'home' %}" class="nav-item nav-link d-lg-none">Go Back</a>
+                <a href="{% url 'logout' %}" class="btn btn-primary py-4 px-lg-5 d-none d-lg-block">Logout<i class="fa fa-sign-out-alt ms-3"></i></a>
+                <a href="{% url 'logout' %}" class="nav-item nav-link d-lg-none">Logout</a>
             </div>
         </div>
     </nav>

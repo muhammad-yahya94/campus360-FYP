@@ -1,0 +1,16 @@
+{% extends 'fee_management/office_base.html' %}
+{% block title %}Office Staff Dashboard{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto mt-12 bg-base-100 p-8 rounded-lg shadow">
+    <h1 class="text-3xl font-bold mb-4">Welcome, {{ request.user.get_full_name|default:request.user.first_name }}</h1>
+    <p class="mb-4">This is your Office Staff dashboard. Here you can verify applicants, manage students, and handle fee operations.</p>
+    <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <a href="{% url 'fee_management:applicant_verification' %}" class="btn btn-primary btn-block">Applicant Verification</a>
+        <a href="{% url 'fee_management:student_management' %}" class="btn btn-secondary btn-block">Student Management</a>
+        <a href="{% url 'fee_management:admission_fee' %}" class="btn btn-accent btn-block">Admission Fee</a>
+        <a href="{% url 'fee_management:semester_fee' %}" class="btn btn-info btn-block">Semester Fee</a>
+        <a href="{% url 'fee_management:fee_verification' %}" class="btn btn-success btn-block">Fee Verification</a>
+    </div>
+</div>
+{% endblock %} 

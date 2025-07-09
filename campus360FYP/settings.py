@@ -71,7 +71,8 @@ INSTALLED_APPS = [
     'django_extensions',
     'payment',
     'background_task', #ya wesy pakadge k liy add kia gaya hai
-    'bgtask'
+    'bgtask',
+    'fee_management',
 ]
 
 MIDDLEWARE = [

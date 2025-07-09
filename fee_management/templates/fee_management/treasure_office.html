@@ -1,0 +1,44 @@
+{% extends 'base_student.html' %}
+{% block title %}Treasure Office{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto bg-base-100 rounded-lg shadow p-6">
+    <h1 class="text-3xl font-bold mb-2">{{ office.name }}</h1>
+    <p class="mb-4 text-gray-600">{{ office.description }}</p>
+    <div class="mb-4 flex flex-col md:flex-row gap-4">
+        {% if office.image %}
+            <img src="{{ office.image.url }}" alt="{{ office.name }}" class="w-40 h-40 object-cover rounded-lg border" />
+        {% endif %}
+        <div>
+            <p><i class="fas fa-map-marker-alt text-primary"></i> <span class="font-semibold">Location:</span> {{ office.location }}</p>
+            <p><i class="fas fa-envelope text-primary"></i> <span class="font-semibold">Email:</span> <a href="mailto:{{ office.contact_email }}" class="text-blue-600">{{ office.contact_email }}</a></p>
+            <p><i class="fas fa-phone text-primary"></i> <span class="font-semibold">Phone:</span> {{ office.contact_phone }}</p>
+        </div>
+    </div>
+    <h2 class="text-2xl font-semibold mt-8 mb-4">Office Staff</h2>
+    <div class="overflow-x-auto">
+        <table class="table w-full">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Position</th>
+                    <th>Contact</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for staff in staff_members %}
+                <tr>
+                    <td>{{ staff.user.get_full_name|default:staff.user.first_name }}</td>
+                    <td>{{ staff.position }}</td>
+                    <td>{{ staff.contact_no }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="text-center">No staff members found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %} 

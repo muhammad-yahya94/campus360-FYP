@@ -1,0 +1,530 @@
+{% extends 'fee_management/office_base.html' %}
+{% block title %}Semester Fee Management{% endblock %}
+{% block content %}
+<style>
+  .section-content {
+    transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+    overflow: hidden;
+  }
+  .section-content.hidden {
+    max-height: 0;
+    opacity: 0;
+  }
+  .section-content:not(.hidden) {
+    height: auto; /* Adjust based on content size */
+    opacity: 1;
+  }
+  .toggle-icon i {
+    transition: transform 0.3s ease;
+  }
+  .toggle-icon.hidden i {
+    transform: rotate(180deg);
+  }
+</style>
+
+<!-- Hero Section -->
+<div class="mb-6">
+  <div id="hero-section" class="hero bg-base-200 rounded-lg shadow-lg py-8 section-content">
+    <div class="hero-content text-center">
+      <div class="max-w-md">
+        <h1 class="text-3xl sm:text-4xl font-bold text-base-content mb-2">Semester Fee Management</h1>
+        <p class="text-base sm:text-lg text-base-content/90">Search, schedule, and manage semester fees for students.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FeeType Form Section -->
+<div class="mb-6">
+  <div class="flex justify-between items-center mb-2">
+    <h2 class="text-xl font-semibold text-base-content">Add Fee Type</h2>
+    <span class="toggle-icon cursor-pointer" onclick="toggleSection('feetype-form-section')">
+      <i class="fas fa-chevron-down text-base-content"></i>
+    </span>
+  </div>
+  <div id="feetype-form-section" class="max-w-full mx-auto mb-4 px-4 section-content">
+    <button class="btn btn-primary rounded-full px-6" onclick="openFeeTypeModal(null, '', '', true)">Add Fee Type</button>
+  </div>
+</div>
+
+<!-- FeeType Modal (Add/Edit) -->
+<dialog id="addFeeTypeModal" class="modal">
+  <div class="modal-box bg-base-100 rounded-xl shadow-xl p-8 max-w-md w-full">
+    <h2 class="text-2xl font-bold text-base-content mb-6" id="feetype-modal-title">Add Fee Type</h2>
+    <form method="post" class="space-y-6" id="feetype-form">
+      {% csrf_token %}
+      <input type="hidden" name="form_type" value="fee_type">
+      <input type="hidden" name="feetype_id" id="feetype_id">
+      {% if fee_type_errors %}
+      <div class="bg-error/10 border border-error rounded-lg p-4 text-error">
+        {% for error in fee_type_errors %}
+        <p>{{ error }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <div>
+        <label class="block mb-2 font-semibold text-base-content" for="fee_type_name">Name</label>
+        <input type="text" id="fee_type_name" name="fee_type_name" class="input input-bordered w-full rounded-lg" required>
+      </div>
+      <div>
+        <label class="block mb-2 font-semibold text-base-content" for="fee_type_description">Description</label>
+        <textarea id="fee_type_description" name="fee_type_description" class="textarea textarea-bordered w-full rounded-lg"></textarea>
+      </div>
+      <div>
+        <label class="block mb-2 font-semibold text-base-content" for="fee_type_is_active">Active</label>
+        <input type="checkbox" id="fee_type_is_active" name="fee_type_is_active" class="checkbox checkbox-primary" checked>
+      </div>
+      <div class="flex gap-4">
+        <button type="submit" class="btn btn-primary w-full rounded-lg">Save</button>
+        <button type="button" class="btn btn-ghost w-full rounded-lg" onclick="document.getElementById('addFeeTypeModal').close()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<!-- FeeType Delete Confirmation Modal -->
+<dialog id="deleteFeeTypeModal" class="modal">
+  <div class="modal-box bg-base-100 rounded-xl shadow-xl p-8 max-w-md w-full">
+    <h2 class="text-2xl font-bold text-error mb-6">Delete Fee Type</h2>
+    <p class="mb-6 text-base-content">Are you sure you want to delete this fee type?</p>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="form_type" value="delete_feetype">
+      <input type="hidden" name="feetype_id" id="delete_feetype_id">
+      <button type="submit" class="btn btn-error w-full rounded-lg">Yes, Delete</button>
+    </form>
+    <button type="button" class="btn btn-ghost w-full rounded-lg mt-2" onclick="document.getElementById('deleteFeeTypeModal').close()">Cancel</button>
+  </div>
+</dialog>
+
+<!-- FeeType Table Section -->
+<div class="mb-6">
+  <div class="flex justify-between items-center mb-2">
+    <h2 class="text-xl font-semibold text-base-content">Fee Types</h2>
+    <span class="toggle-icon cursor-pointer" onclick="toggleSection('feetype-table-section')">
+      <i class="fas fa-chevron-down text-base-content"></i>
+    </span>
+  </div>
+  <div id="feetype-table-section" class="max-w-full mx-auto bg-base-100 rounded-xl shadow-xl p-8 mb-8 section-content">
+    <div class="overflow-x-auto">
+      <table class="table w-full">
+        <thead>
+          <tr>
+            <th class="text-base-content">Name</th>
+            <th class="text-base-content">Description</th>
+            <th class="text-base-content">Active</th>
+            <th class="text-base-content">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fee_type in fee_types %}
+          <tr>
+            <td>{{ fee_type.name }}</td>
+            <td>{{ fee_type.description|default:"-" }}</td>
+            <td>{{ fee_type.is_active|yesno:"Yes,No" }}</td>
+            <td>
+              <button class="btn btn-xs btn-outline rounded-lg" onclick="openFeeTypeModal({{ fee_type.pk }}, '{{ fee_type.name|escapejs }}', '{{ fee_type.description|escapejs }}', {{ fee_type.is_active|yesno:'true,false' }})">Edit</button>
+              <button class="btn btn-xs btn-error rounded-lg ml-2" onclick="openDeleteFeeTypeModal({{ fee_type.pk }})">Delete</button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="4" class="text-center text-base-content">No fee types found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Semester Fee Form Section -->
+<div class="mb-6">
+  <div class="flex justify-between items-center mb-2">
+    <h2 class="text-xl font-semibold text-base-content">{% if edit_fee %}Edit Semester Fee{% else %}Add Semester Fee{% endif %}</h2>
+    <span class="toggle-icon cursor-pointer" onclick="toggleSection('semester-fee-form-section')">
+      <i class="fas fa-chevron-down text-base-content"></i>
+    </span>
+  </div>
+  <div id="semester-fee-form-section" class="max-w-full mx-auto bg-base-100 rounded-xl shadow-xl p-8 mb-8 section-content">
+    <form method="post" class="space-y-6">
+      {% csrf_token %}
+      <input type="hidden" name="form_type" value="semester_fee">
+      {% if errors %}
+      <div class="bg-error/10 border border-error rounded-lg p-4 text-error">
+        {% for error in errors %}
+        <p>{{ error }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if edit_fee %}
+      <input type="hidden" name="edit_id" value="{{ edit_fee.pk }}">
+      {% endif %}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Left Section: Amounts and Funds -->
+        <div class="space-y-6">
+          <div>
+            <label class="block mb-2 font-semibold text-base-content" for="fee_type">Fee Type</label>
+            <select id="fee_type" name="fee_type" class="select select-bordered w-full rounded-lg" required>
+              <option value="" {% if not edit_fee.fee_type %}selected{% endif %}>Select Fee Type</option>
+              {% for fee_type in fee_types %}
+              <option value="{{ fee_type.pk }}" {% if edit_fee.fee_type.pk == fee_type.pk %}selected{% endif %}>{{ fee_type.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block mb-2 font-semibold text-base-content" for="amount">Amount</label>
+            <input type="number" id="amount" name="amount" class="input input-bordered w-full rounded-lg" step="0.01" min="0" value="{% if edit_fee %}{{ edit_fee.amount }}{% endif %}" required oninput="calculateTotal()">
+          </div>
+          <div>
+            <label class="block mb-2 font-semibold text-base-content" for="computer_fee">Computer Fee</label>
+            <input type="checkbox" id="computer_fee" name="computer_fee" class="checkbox checkbox-primary" {% if edit_fee.computer_fee %}checked{% endif %} onchange="toggleAmountField('computer_fee', 'computer_fee_amount'); calculateTotal()">
+          </div>
+          <div id="computer_fee_amount_div" {% if not edit_fee.computer_fee %}class="hidden"{% endif %}>
+            <label class="block mb-2 font-semibold text-base-content" for="computer_fee_amount">Computer Fee Amount</label>
+            <input type="number" id="computer_fee_amount" name="computer_fee_amount" class="input input-bordered w-full rounded-lg" step="0.01" min="0" value="{% if edit_fee %}{{ edit_fee.computer_fee_amount|default_if_none:'0' }}{% endif %}" {% if edit_fee.computer_fee %}required{% endif %} oninput="calculateTotal()">
+          </div>
+          <div>
+            <label class="block mb-2 font-semibold text-base-content" for="examination_fund">Examination Fund</label>
+            <input type="checkbox" id="examination_fund" name="examination_fund" class="checkbox checkbox-primary" {% if edit_fee.examination_fund %}checked{% endif %} onchange="toggleAmountField('examination_fund', 'examination_fund_amount'); calculateTotal()">
+          </div>
+          <div id="examination_fund_amount_div" {% if not edit_fee.examination_fund %}class="hidden"{% endif %}>
+            <label class="block mb-2 font-semibold text-base-content" for="examination_fund_amount">Examination Fund Amount</label>
+            <input type="number" id="examination_fund_amount" name="examination_fund_amount" class="input input-bordered w-full rounded-lg" step="0.01" min="0" value="{% if edit_fee %}{{ edit_fee.examination_fund_amount|default_if_none:'0' }}{% endif %}" {% if edit_fee.examination_fund %}required{% endif %} oninput="calculateTotal()">
+          </div>
+          <div>
+            <label class="block mb-2 font-semibold text-base-content" for="tuition_fee">Tuition Fee</label>
+            <input type="checkbox" id="tuition_fee" name="tuition_fee" class="checkbox checkbox-primary" {% if edit_fee.tuition_fee %}checked{% endif %} onchange="toggleAmountField('tuition_fee', 'tuition_fee_amount'); calculateTotal()">
+          </div>
+          <div id="tuition_fee_amount_div" {% if not edit_fee.tuition_fee %}class="hidden"{% endif %}>
+            <label class="block mb-2 font-semibold text-base-content" for="tuition_fee_amount">Tuition Fee Amount</label>
+            <input type="number" id="tuition_fee_amount" name="tuition_fee_amount" class="input input-bordered w-full rounded-lg" step="0.01" min="0" value="{% if edit_fee %}{{ edit_fee.tuition_fee_amount|default_if_none:'0' }}{% endif %}" {% if edit_fee.tuition_fee %}required{% endif %} oninput="calculateTotal()">
+          </div>
+          <div>
+            <label class="block mb-2 font-semibold text-base-content" for="others">Others</label>
+            <input type="checkbox" id="others" name="others" class="checkbox checkbox-primary" {% if edit_fee.others %}checked{% endif %} onchange="toggleAmountField('others', 'others_amount'); calculateTotal()">
+          </div>
+          <div id="others_amount_div" {% if not edit_fee.others %}class="hidden"{% endif %}>
+            <label class="block mb-2 font-semibold text-base-content" for="others_amount">Others Amount</label>
+            <input type="number" id="others_amount" name="others_amount" class="input input-bordered w-full rounded-lg" step="0.01" min="0" value="{% if edit_fee %}{{ edit_fee.others_amount|default_if_none:'0' }}{% endif %}" {% if edit_fee.others %}required{% endif %} oninput="calculateTotal()">
+          </div>
+          <div>
+            <label class="block mb-2 font-semibold text-base-content" for="evening_fund">Evening Fund</label>
+            <input type="checkbox" id="evening_fund" name="evening_fund" class="checkbox checkbox-primary" {% if edit_fee.evening_fund %}checked{% endif %} onchange="toggleAmountField('evening_fund', 'evening_fund_amount'); calculateTotal()">
+          </div>
+          <div id="evening_fund_amount_div" {% if not edit_fee.evening_fund %}class="hidden"{% endif %}>
+            <label class="block mb-2 font-semibold text-base-content" for="evening_fund_amount">Evening Fund Amount</label>
+            <input type="number" id="evening_fund_amount" name="evening_fund_amount" class="input input-bordered w-full rounded-lg" step="0.01" min="0" value="{% if edit_fee %}{{ edit_fee.evening_fund_amount|default_if_none:'0' }}{% endif %}" {% if edit_fee.evening_fund %}required{% endif %} oninput="calculateTotal()">
+          </div>
+          <div>
+            <label class="block mb-2 font-semibold text-base-content" for="total_amount">Total Amount</label>
+            <input type="number" id="total_amount" name="total_amount" class="input input-bordered w-full rounded-lg" step="0.01" min="0" value="{% if edit_fee %}{{ edit_fee.total_amount }}{% endif %}" readonly>
+          </div>
+          <div>
+            <label class="block mb-2 font-semibold text-base-content" for="is_active">Active</label>
+            <input type="checkbox" id="is_active" name="is_active" class="checkbox checkbox-primary" {% if edit_fee.is_active|default_if_none:True %}checked{% endif %}>
+          </div>
+        </div>
+        <!-- Right Section: Session, Semester, Programs -->
+        <div class="space-y-6">
+          <div>
+            <label class="block mb-2 font-semibold text-base-content" for="academic_session">Academic Session</label>
+            <select id="academic_session" name="academic_session" class="select select-bordered w-full rounded-lg" required onchange="fetchPrograms()">
+              <option value="" {% if not edit_fee.semester_fees.first.academic_session %}selected{% endif %}>Select Academic Session</option>
+              {% for session in academic_sessions %}
+              <option value="{{ session.pk }}" {% if edit_fee.semester_fees.first.academic_session.pk == session.pk %}selected{% endif %}>{{ session.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block mb-2 font-semibold text-base-content" for="programs">Programs</label>
+            <select id="programs" name="programs" class="select select-bordered w-full rounded-lg h-48" size="10" multiple required onchange="fetchSemesters()">
+              {% if edit_fee %}
+              {% for program in edit_fee.semester_fees.first.programs.all %}
+              <option value="{{ program.pk }}" selected>{{ program.name }}</option>
+              {% endfor %}
+              {% else %}
+              <!-- Populated by AJAX -->
+              {% endif %}
+            </select>
+          </div>
+          <div>
+            <label class="block mb-2 font-semibold text-base-content" for="semester_number">Semester Number</label>
+            <select id="semester_number" name="semester_number" class="select select-bordered w-full rounded-lg h-32" size="10" multiple required>
+              {% if edit_fee %}
+              {% for semester in edit_fee.semester_fees.first.semester_number.all %}
+              <option value="{{ semester.pk }}" selected>{{ semester.name }} ({{ semester.program.name }})</option>
+              {% endfor %}
+              {% else %}
+              <!-- Populated by AJAX -->
+              {% endif %}
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="flex gap-4 mt-6">
+        <button type="submit" class="btn btn-primary w-full rounded-lg">{% if edit_fee %}Update{% else %}Add{% endif %} Semester Fee</button>
+        {% if edit_fee %}
+        <a href="{% url 'fee_management:semester_fee' %}" class="btn btn-ghost w-full rounded-lg">Cancel Edit</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Semester Fee Table Section -->
+<!-- Semester Fee Table Section -->
+<div class="mb-6">
+    <div class="flex justify-between items-center mb-2">
+      <h2 class="text-xl font-semibold text-base-content">Semester Fees</h2>
+      <span class="toggle-icon cursor-pointer" onclick="toggleSection('semester-fee-table-section')">
+        <i class="fas fa-chevron-down text-base-content"></i>
+      </span>
+    </div>
+    <div id="semester-fee-table-section" class="max-w-full mx-auto bg-base-100 rounded-xl shadow-xl p-8 mb-8 section-content">
+      <form method="get" class="mb-6 flex flex-col sm:flex-row gap-4">
+        <input type="text" name="q" value="{{ query }}" placeholder="Search by fee type or amount..." class="input input-bordered w-full sm:w-64 rounded-lg">
+        <button type="submit" class="btn btn-primary rounded-lg">Search</button>
+      </form>
+      <div class="overflow-x-auto">
+        <table class="table w-full">
+          <thead>
+            <tr>
+              <th class="text-base-content">Fee Type</th>
+              <th class="text-base-content">Amount</th>
+              <th class="text-base-content">Computer Fee</th>
+              <th class="text-base-content">Examination Fund</th>
+              <th class="text-base-content">Tuition Fee</th>
+              <th class="text-base-content">Others</th>
+              <th class="text-base-content">Evening Fund</th>
+              <th class="text-base-content">Total</th>
+              <th class="text-base-content">Active</th>
+              <th class="text-base-content">Semesters</th>
+              <th class="text-base-content">Session</th>
+              <th class="text-base-content">Programs</th>
+              <th class="text-base-content">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for fee in semester_fees %}
+            <tr {% if edit_fee and fee.pk == edit_fee.pk %}class="bg-info/10"{% endif %}>
+              <td>{{ fee.fee_type.name }}</td>
+              <td>{{ fee.amount }}</td>
+              <td>
+                {% if fee.computer_fee %}
+                  {{ fee.computer_fee_amount|default:"0" }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td>
+                {% if fee.examination_fund %}
+                  {{ fee.examination_fund_amount|default:"0" }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td>
+                {% if fee.tuition_fee %}
+                  {{ fee.tuition_fee_amount|default:"0" }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td>
+                {% if fee.others %}
+                  {{ fee.others_amount|default:"0" }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td>
+                {% if fee.evening_fund %}
+                  {{ fee.evening_fund_amount|default:"0" }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td>{{ fee.total_amount }}</td>
+              <td>{{ fee.is_active|yesno:"Yes,No" }}</td>
+              <td>
+                {% if fee.semester_fees.first %}
+                  {% for semester in fee.semester_fees.first.semester_number.all %}
+                    {{ semester.name }} ({{ semester.program.name }}){% if not forloop.last %}, {% endif %}
+                  {% empty %}
+                    -
+                  {% endfor %}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td>{{ fee.semester_fees.first.academic_session|default:"-" }}</td>
+              <td>
+                {% if fee.semester_fees.first %}
+                  {% for program in fee.semester_fees.first.programs.all %}
+                    {{ program.name }}{% if not forloop.last %}, {% endif %}
+                  {% empty %}
+                    -
+                  {% endfor %}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td>
+                <a href="?edit={{ fee.pk }}{% if query %}&q={{ query }}{% endif %}" class="btn btn-xs btn-outline rounded-lg">Edit</a>
+                <a href="?delete={{ fee.pk }}{% if query %}&q={{ query }}{% endif %}" class="btn btn-xs btn-error rounded-lg ml-2">Delete</a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="13" class="text-center text-base-content">No semester fees found.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<!-- Semester Fee Delete Confirmation Modal -->
+{% if delete_fee %}
+<div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+  <div class="bg-base-100 rounded-xl shadow-xl p-8 max-w-md w-full">
+    <h2 class="text-2xl font-bold text-error mb-6">Delete Semester Fee</h2>
+    <p class="mb-6 text-base-content">Are you sure you want to delete this semester fee schedule?</p>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="form_type" value="delete_fee">
+      <input type="hidden" name="delete_id" value="{{ delete_fee.pk }}">
+      <button type="submit" class="btn btn-error w-full rounded-lg">Yes, Delete</button>
+    </form>
+    <a href="{% url 'fee_management:semester_fee' %}" class="btn btn-ghost w-full rounded-lg mt-2">Cancel</a>
+  </div>
+</div>
+{% endif %}
+
+<script>
+function toggleAmountField(checkboxId, amountFieldId) {
+  const checkbox = document.getElementById(checkboxId);
+  const amountDiv = document.getElementById(amountFieldId + '_div');
+  const amountInput = document.getElementById(amountFieldId);
+  if (checkbox.checked) {
+    amountDiv.classList.remove('hidden');
+    amountInput.setAttribute('required', 'required');
+  } else {
+    amountDiv.classList.add('hidden');
+    amountInput.removeAttribute('required');
+  }
+  calculateTotal();
+}
+
+function toggleSection(sectionId) {
+  const section = document.getElementById(sectionId);
+  const toggleIcon = document.querySelector(`[onclick="toggleSection('${sectionId}')"] i`);
+  section.classList.toggle('hidden');
+  toggleIcon.classList.toggle('fa-chevron-down');
+  toggleIcon.classList.toggle('fa-chevron-up');
+}
+
+function openFeeTypeModal(id, name, description, isActive) {
+  const modal = document.getElementById('addFeeTypeModal');
+  const form = document.getElementById('feetype-form');
+  const title = document.getElementById('feetype-modal-title');
+  const feetypeIdInput = document.getElementById('feetype_id');
+  const nameInput = document.getElementById('fee_type_name');
+  const descriptionInput = document.getElementById('fee_type_description');
+  const isActiveInput = document.getElementById('fee_type_is_active');
+  
+  if (id) {
+    title.textContent = 'Edit Fee Type';
+    feetypeIdInput.value = id;
+    nameInput.value = name;
+    descriptionInput.value = description;
+    isActiveInput.checked = isActive;
+  } else {
+    title.textContent = 'Add Fee Type';
+    feetypeIdInput.value = '';
+    nameInput.value = '';
+    descriptionInput.value = '';
+    isActiveInput.checked = true;
+  }
+  
+  modal.showModal();
+}
+
+function openDeleteFeeTypeModal(id) {
+  const modal = document.getElementById('deleteFeeTypeModal');
+  const feetypeIdInput = document.getElementById('delete_feetype_id');
+  feetypeIdInput.value = id;
+  modal.showModal();
+}
+
+function calculateTotal() {
+  const amount = parseFloat(document.getElementById('amount').value) || 0;
+  const computerFeeChecked = document.getElementById('computer_fee').checked;
+  const computerFeeAmount = computerFeeChecked ? parseFloat(document.getElementById('computer_fee_amount').value) || 0 : 0;
+  const examinationFundChecked = document.getElementById('examination_fund').checked;
+  const examinationFundAmount = examinationFundChecked ? parseFloat(document.getElementById('examination_fund_amount').value) || 0 : 0;
+  const tuitionFeeChecked = document.getElementById('tuition_fee').checked;
+  const tuitionFeeAmount = tuitionFeeChecked ? parseFloat(document.getElementById('tuition_fee_amount').value) || 0 : 0;
+  const othersChecked = document.getElementById('others').checked;
+  const othersAmount = othersChecked ? parseFloat(document.getElementById('others_amount').value) || 0 : 0;
+  const eveningFundChecked = document.getElementById('evening_fund').checked;
+  const eveningFundAmount = eveningFundChecked ? parseFloat(document.getElementById('evening_fund_amount').value) || 0 : 0;
+  
+  const total = amount + computerFeeAmount + examinationFundAmount + tuitionFeeAmount + othersAmount + eveningFundAmount;
+  document.getElementById('total_amount').value = total.toFixed(2);
+}
+
+function fetchPrograms() {
+  const sessionId = document.getElementById('academic_session').value;
+  const programSelect = document.getElementById('programs');
+  const semesterSelect = document.getElementById('semester_number');
+  programSelect.innerHTML = '<option value="">Select Programs</option>';
+  semesterSelect.innerHTML = '<option value="">Select Semesters</option>';
+  
+  if (sessionId) {
+    fetch(`/fee_management/get_programs/?session_id=${sessionId}`)
+      .then(response => response.json())
+      .then(data => {
+        data.programs.forEach(program => {
+          const option = document.createElement('option');
+          option.value = program.id;
+          option.textContent = program.name;
+          programSelect.appendChild(option);
+        });
+      })
+      .catch(error => {
+        console.error('Error fetching programs:', error);
+      });
+  }
+}
+
+function fetchSemesters() {
+  const sessionId = document.getElementById('academic_session').value;
+  const programSelect = document.getElementById('programs');
+  const selectedPrograms = Array.from(programSelect.selectedOptions).map(option => option.value);
+  const semesterSelect = document.getElementById('semester_number');
+  semesterSelect.innerHTML = '<option value="">Select Semesters</option>';
+  
+  if (sessionId && selectedPrograms.length > 0) {
+    fetch(`/fee_management/get_semesters/?session_id=${sessionId}&program_ids=${selectedPrograms.join(',')}`)
+      .then(response => response.json())
+      .then(data => {
+        data.semesters.forEach(semester => {
+          const option = document.createElement('option');
+          option.value = semester.id;
+          option.textContent = `${semester.name} (${semester.program_name})`;
+          semesterSelect.appendChild(option);
+        });
+      })
+      .catch(error => {
+        console.error('Error fetching semesters:', error);
+      });
+  }
+}
+
+// Initialize total calculation on page load
+document.addEventListener('DOMContentLoaded', calculateTotal);
+</script>
+{% endblock %}

@@ -98,7 +98,7 @@ def student_dashboard(request):
             student.applicant.full_name,
             student.user.id,
             student.program.name,
-            student.program.id
+            student.program.id  
         )
     except Student.DoesNotExist:
         logger.error("No Student found for user: %s", request.user)

@@ -113,7 +113,7 @@ class CourseOfferingAutocompleteView(AutocompleteJsonView):
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
     form = StudentAdminForm
-    list_display = ('applicant', 'program', 'university_roll_no', 'current_status', 'enrollment_date')
+    list_display = ('applicant', 'program', 'university_roll_no', 'applicant__session', 'applicant__shift', 'current_status', 'enrollment_date')
     list_filter = ('current_status', 'program')  
     search_fields = ('applicant__full_name', 'university_roll_no', 'college_roll_no', 'user__email', 'program__name', 'program__degree_type', 'program__department__name')
     autocomplete_fields = ('applicant', 'user', 'program')

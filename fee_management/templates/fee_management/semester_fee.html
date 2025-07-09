@@ -8,7 +8,7 @@
   }
   .section-content.hidden {
     max-height: 0;
-    opacity: 0;
+    opacity: 0;    
   }
   .section-content:not(.hidden) {
     height: auto; /* Adjust based on content size */
@@ -74,7 +74,7 @@
         <label class="block mb-2 font-semibold text-base-content" for="fee_type_is_active">Active</label>
         <input type="checkbox" id="fee_type_is_active" name="fee_type_is_active" class="checkbox checkbox-primary" checked>
       </div>
-      <div class="flex gap-4">
+      <div class="flex flex-col space-y-4">
         <button type="submit" class="btn btn-primary w-full rounded-lg">Save</button>
         <button type="button" class="btn btn-ghost w-full rounded-lg" onclick="document.getElementById('addFeeTypeModal').close()">Cancel</button>
       </div>
@@ -226,7 +226,7 @@
           </div>
         </div>
         <!-- Right Section: Session, Semester, Programs -->
-        <div class="space-y-6">
+        <div class="space-y-6">  
           <div>
             <label class="block mb-2 font-semibold text-base-content" for="academic_session">Academic Session</label>
             <select id="academic_session" name="academic_session" class="select select-bordered w-full rounded-lg" required onchange="fetchPrograms()">
@@ -234,6 +234,14 @@
               {% for session in academic_sessions %}
               <option value="{{ session.pk }}" {% if edit_fee.semester_fees.first.academic_session.pk == session.pk %}selected{% endif %}>{{ session.name }}</option>
               {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block mb-2 font-semibold text-base-content" for="shift">Shift</label>
+            <select id="shift" name="shift" class="select select-bordered w-full rounded-lg" required>
+              <option value="" {% if not edit_fee.semester_fees.first.shift %}selected{% endif %}>Select Shift</option>
+              <option value="morning" {% if edit_fee.semester_fees.first.shift == 'morning' %}selected{% endif %}>Morning</option>
+              <option value="evening" {% if edit_fee.semester_fees.first.shift == 'evening' %}selected{% endif %}>Evening</option>
             </select>
           </div>
           <div>
@@ -265,7 +273,7 @@
       <div class="flex gap-4 mt-6">
         <button type="submit" class="btn btn-primary w-full rounded-lg">{% if edit_fee %}Update{% else %}Add{% endif %} Semester Fee</button>
         {% if edit_fee %}
-        <a href="{% url 'fee_management:semester_fee' %}" class="btn btn-ghost w-full rounded-lg">Cancel Edit</a>
+        <a href="{% url 'fee_management:semester-fee' %}" class="btn btn-ghost w-full rounded-lg">Cancel Edit</a>
         {% endif %}
       </div>
     </form>
@@ -302,6 +310,7 @@
               <th class="text-base-content">Semesters</th>
               <th class="text-base-content">Session</th>
               <th class="text-base-content">Programs</th>
+              <th class="text-base-content">Shift</th>
               <th class="text-base-content">Actions</th>
             </tr>
           </thead>
@@ -371,6 +380,13 @@
                 {% endif %}
               </td>
               <td>
+                {% if fee.shift %}
+                  {{ fee.shift|default:"-" }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td>
                 <a href="?edit={{ fee.pk }}{% if query %}&q={{ query }}{% endif %}" class="btn btn-xs btn-outline rounded-lg">Edit</a>
                 <a href="?delete={{ fee.pk }}{% if query %}&q={{ query }}{% endif %}" class="btn btn-xs btn-error rounded-lg ml-2">Delete</a>
               </td>
@@ -398,7 +414,7 @@
       <input type="hidden" name="delete_id" value="{{ delete_fee.pk }}">
       <button type="submit" class="btn btn-error w-full rounded-lg">Yes, Delete</button>
     </form>
-    <a href="{% url 'fee_management:semester_fee' %}" class="btn btn-ghost w-full rounded-lg mt-2">Cancel</a>
+    <a href="{% url 'fee_management:semester-fee' %}" class="btn btn-ghost w-full rounded-lg mt-2">Cancel</a>
   </div>
 </div>
 {% endif %}
@@ -484,7 +500,7 @@ function fetchPrograms() {
   semesterSelect.innerHTML = '<option value="">Select Semesters</option>';
   
   if (sessionId) {
-    fetch(`/fee_management/get_programs/?session_id=${sessionId}`)
+    fetch(`/fees/get_programs/?session_id=${sessionId}`)
       .then(response => response.json())
       .then(data => {
         data.programs.forEach(program => {
@@ -508,7 +524,7 @@ function fetchSemesters() {
   semesterSelect.innerHTML = '<option value="">Select Semesters</option>';
   
   if (sessionId && selectedPrograms.length > 0) {
-    fetch(`/fee_management/get_semesters/?session_id=${sessionId}&program_ids=${selectedPrograms.join(',')}`)
+    fetch(`/fees/get_semesters/?session_id=${sessionId}&program_ids=${selectedPrograms.join(',')}`)
       .then(response => response.json())
       .then(data => {
         data.semesters.forEach(semester => {

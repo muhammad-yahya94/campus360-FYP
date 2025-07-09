@@ -15,5 +15,7 @@ urlpatterns = [
 path('semester-fee/', views.semester_fee, name='semester-fee'),
 path('get_programs/', views.get_programs, name='get_programs'),
 path('get_semesters/', views.get_semesters, name='get_semesters'),
+    path('get_semesters_by_roll/', views.get_semesters_by_roll, name='get_semesters_by_roll'),
+    path('generate-voucher/', views.generate_voucher, name='generate_voucher'),
     path('fee-verification/', views.fee_verification, name='fee_verification'),
 ] 

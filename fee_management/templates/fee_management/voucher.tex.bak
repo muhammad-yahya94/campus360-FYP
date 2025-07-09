@@ -1,0 +1,142 @@
+% Defining a comprehensive preamble for the voucher
+\documentclass[a4paper,12pt]{article}
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{parskip}
+\usepackage{amsmath}
+\usepackage{times}
+\usepackage{noto}
+
+% Defining custom commands for consistent formatting
+\newcommand{\voucherheader}[1]{\textbf{\large #1}\vspace{0.2cm}}
+\newcommand{\vouchersection}[1]{\textbf{#1:}\vspace{0.1cm}}
+\newcommand{\voucheritem}[2]{\textbf{#1} & #2 \\}
+\newcommand{\vouchertotal}[2]{\textbf{#1} & \textbf{#2} \\}
+
+% Starting the document
+\begin{document}
+
+% Office Copy
+\voucherheader{Fee Voucher - Office Copy}
+\begin{tabular}{p{0.45\textwidth} p{0.45\textwidth}}
+    \vouchersection{Student Details} & \vouchersection{Voucher Details} \\
+    \voucheritem{Name}{{{ student_name }}} & \voucheritem{Voucher ID}{{{ voucher_id }}} \\
+    \voucheritem{CNIC}{{{ cnic }}} & \voucheritem{Issue Date}{{{ generated_at }}} \\
+    \voucheritem{Father's Name}{{{ father_name }}} & \voucheritem{Due Date}{{{ due_date }}} \\
+    \voucheritem{Program}{{{ program }}} & \\
+    \voucheritem{Semester}{{{ semester }}} & \\
+    \voucheritem{Academic Session}{{{ academic_session }}} & \\
+\end{tabular}
+
+\vspace{0.3cm}
+\vouchersection{Fee Details}
+\begin{tabular}{p{0.7\textwidth} r}
+    \toprule
+    \textbf{Description} & \textbf{Amount (PKR)} \\
+    \midrule
+    \voucheritem{Fee Type: {{ fee_type }}}{{ amount }} \\
+    {% if computer_fee %}
+    \voucheritem{Computer Fee}{{ computer_fee_amount }} \\
+    {% endif %}
+    {% if examination_fund %}
+    \voucheritem{Examination Fund}{{ examination_fund_amount }} \\
+    {% endif %}
+    {% if tuition_fee %}
+    \voucheritem{Tuition Fee}{{ tuition_fee_amount }} \\
+    {% endif %}
+    {% if others %}
+    \voucheritem{Others}{{ others_amount }} \\
+    {% endif %}
+    {% if evening_fund %}
+    \voucheritem{Evening Fund}{{ evening_fund_amount }} \\
+    {% endif %}
+    \midrule
+    \vouchertotal{Total Amount}{{ total_amount }} \\
+    \bottomrule
+\end{tabular}
+
+\pagebreak
+
+% Student Copy
+\voucherheader{Fee Voucher - Student Copy}
+\begin{tabular}{p{0.45\textwidth} p{0.45\textwidth}}
+    \vouchersection{Student Details} & \vouchersection{Voucher Details} \\
+    \voucheritem{Name}{{{ student_name }}} & \voucheritem{Voucher ID}{{{ voucher_id }}} \\
+    \voucheritem{CNIC}{{{ cnic }}} & \voucheritem{Issue Date}{{{ generated_at }}} \\
+    \voucheritem{Father's Name}{{{ father_name }}} & \voucheritem{Due Date}{{{ due_date }}} \\
+    \voucheritem{Program}{{{ program }}} & \\
+    \voucheritem{Semester}{{{ semester }}} & \\
+    \voucheritem{Academic Session}{{{ academic_session }}} & \\
+\end{tabular}
+
+\vspace{0.3cm}
+\vouchersection{Fee Details}
+\begin{tabular}{p{0.7\textwidth} r}
+    \toprule
+    \textbf{Description} & \textbf{Amount (PKR)} \\
+    \midrule
+    \voucheritem{Fee Type: {{ fee_type }}}{{ amount }} \\
+    {% if computer_fee %}
+    \voucheritem{Computer Fee}{{ computer_fee_amount }} \\
+    {% endif %}
+    {% if examination_fund %}
+    \voucheritem{Examination Fund}{{ examination_fund_amount }} \\
+    {% endif %}
+    {% if tuition_fee %}
+    \voucheritem{Tuition Fee}{{ tuition_fee_amount }} \\
+    {% endif %}
+    {% if others %}
+    \voucheritem{Others}{{ others_amount }} \\
+    {% endif %}
+    {% if evening_fund %}
+    \voucheritem{Evening Fund}{{ evening_fund_amount }} \\
+    {% endif %}
+    \midrule
+    \vouchertotal{Total Amount}{{ total_amount }} \\
+    \bottomrule
+\end{tabular}
+
+\pagebreak
+
+% Department Copy
+\voucherheader{Fee Voucher - Department Copy}
+\begin{tabular}{p{0.45\textwidth} p{0.45\textwidth}}
+    \vouchersection{Student Details} & \vouchersection{Voucher Details} \\
+    \voucheritem{Name}{{{ student_name }}} & \voucheritem{Voucher ID}{{{ voucher_id }}} \\
+    \voucheritem{CNIC}{{{ cnic }}} & \voucheritem{Issue Date}{{{ generated_at }}} \\
+    \voucheritem{Father's Name}{{{ father_name }}} & \voucheritem{Due Date}{{{ due_date }}} \\
+    \voucheritem{Program}{{{ program }}} & \\
+    \voucheritem{Semester}{{{ semester }}} & \\
+    \voucheritem{Academic Session}{{{ academic_session }}} & \\
+\end{tabular}
+
+\vspace{0.3cm}
+\vouchersection{Fee Details}
+\begin{tabular}{p{0.7\textwidth} r}
+    \toprule
+    \textbf{Description} & \textbf{Amount (PKR)} \\
+    \midrule
+    \voucheritem{Fee Type: {{ fee_type }}}{{ amount }} \\
+    {% if computer_fee %}
+    \voucheritem{Computer Fee}{{ computer_fee_amount }} \\
+    {% endif %}
+    {% if examination_fund %}
+    \voucheritem{Examination Fund}{{ examination_fund_amount }} \\
+    {% endif %}
+    {% if tuition_fee %}
+    \voucheritem{Tuition Fee}{{ tuition_fee_amount }} \\
+    {% endif %}
+    {% if others %}
+    \voucheritem{Others}{{ others_amount }} \\
+    {% endif %}
+    {% if evening_fund %}
+    \voucheritem{Evening Fund}{{ evening_fund_amount }} \\
+    {% endif %}
+    \midrule
+    \vouchertotal{Total Amount}{{ total_amount }} \\
+    \bottomrule
+\end{tabular}
+
+\end{document}

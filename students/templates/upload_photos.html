@@ -1,0 +1,61 @@
+{% extends "base_student.html" %}
+{% load static %}
+
+{% block title %}Upload Photos - Campus360{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="bg-base-100 shadow-xl rounded-lg p-6">
+        <h1 class="text-2xl font-bold mb-4">Upload Photos</h1>
+        
+        {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+            <div class="alert {% if message.tags == 'error' %}alert-error{% else %}alert-success{% endif %}">
+                <div class="flex-1">
+                    <span>{{ message }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" class="space-y-4">
+            {% csrf_token %}
+            {% for i in '0123456789' %}
+            <div class="form-control">
+                <label class="label">
+                    <span class="label-text">Photo {{ forloop.counter }}</span>
+                </label>
+                <input type="file" name="photos" accept="image/*" class="file-input file-input-bordered w-full max-w-xs" onchange="validateFile(this)">
+                <p class="text-sm text-gray-500 mt-2">Maximum file size: 2MB. Only image files are allowed.</p>
+            </div>
+            {% endfor %}
+            <div class="form-control">
+                <button type="submit" class="btn btn-primary">Upload Photos</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function validateFile(input) {
+    const maxSizeMB = 2;
+    const maxSizeBytes = maxSizeMB * 1024 * 1024;
+
+    if (input.files.length > 0) {
+        const file = input.files[0];
+        if (!file.type.startsWith('image/')) {
+            alert('Only image files are allowed.');
+            input.value = '';
+            return;
+        }
+        if (file.size > maxSizeBytes) {
+            alert('Photo size must be less than 2MB.');
+            input.value = '';
+            return;
+        }
+    }
+}
+</script>
+{% endblock %}

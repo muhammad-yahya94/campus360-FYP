@@ -6,7 +6,7 @@ import datetime
 from datetime import time
 import random
 import uuid
-
+import shutil
 # Third-Party Imports
 import pytz
 from django.contrib import messages
@@ -1262,6 +1262,100 @@ def semester_fees(request):
         messages.error(request, 'An error occurred while loading your fee status.')
         return redirect('students:semester_fees')
 
+@login_required
+def upload_photos(request):
+    """
+    View for uploading up to 10 photos per student, replacing existing photos.
+    Photos are stored in: media/Attandence/[session]/[program]/[cnic]
+    """
+    try:
+        student = Student.objects.get(user=request.user)
+    except Student.DoesNotExist:
+        logger.error(f"No Student found for user: {request.user}")
+        messages.error(request, 'Student profile not found.')
+        return redirect('students:dashboard')
+    except Exception as e:
+        logger.error(f"Error fetching student for user {request.user}: {str(e)}")
+        messages.error(request, 'An unexpected error occurred. Please try again later.')
+        return redirect('students:dashboard')
+
+    if request.method == 'POST':
+        uploaded_files = request.FILES.getlist('photos')
+        if not uploaded_files:
+            logger.warning(f"No files uploaded by student: {student.applicant.full_name}")
+            messages.error(request, 'No photos were selected.')
+            return redirect('students:upload_photos')
+
+        if len(uploaded_files) > 10:
+            logger.warning(f"Too many files ({len(uploaded_files)}) uploaded by student: {student.applicant.full_name}")
+            messages.error(request, 'You can upload a maximum of 10 photos.')
+            return redirect('students:upload_photos')
+
+        # Validate files
+        for file in uploaded_files:
+            if not file.content_type.startswith('image/'):
+                logger.warning(f"Non-image file {file.name} uploaded by student: {student.applicant.full_name}")
+                messages.error(request, f'File {file.name} is not an image.')
+                return redirect('students:upload_photos')
+            if file.size > 2 * 1024 * 1024:  # 2MB
+                logger.warning(f"File {file.name} exceeds 2MB by student: {student.applicant.full_name}")
+                messages.error(request, f'File {file.name} exceeds 2MB.')
+                return redirect('students:upload_photos')
+
+        # Get dynamic directory components
+        session_name = student.applicant.session.name.replace(" ", "_") if student.applicant.session else "Unknown_Session"
+        program_name = student.program.name.replace(" ", "_") if student.program else "Unknown_Program"
+        cnic = str(student.applicant.cnic) if student.applicant.cnic else "Unknown_CNIC"
+
+        # Define base media path
+        base_path = os.path.join(
+            settings.MEDIA_ROOT,
+            'Attandence',
+            session_name,
+            program_name,
+            cnic
+        )
+
+        # Remove existing directory if it exists
+        if os.path.exists(base_path):
+            try:
+                shutil.rmtree(base_path)
+                logger.info(f"Removed existing directory: {base_path} for student: {student.applicant.full_name}")
+            except Exception as e:
+                logger.error(f"Error removing directory {base_path}: {str(e)}")
+                messages.error(request, 'Error clearing previous photos. Please try again.')
+                return redirect('students:upload_photos')
+
+        # Create directory
+        try:
+            os.makedirs(base_path, exist_ok=True)
+            logger.debug(f"Created directory: {base_path}")
+        except Exception as e:
+            logger.error(f"Error creating directory {base_path}: {str(e)}")
+            messages.error(request, 'Error creating storage directory. Please try again.')
+            return redirect('students:upload_photos')
+
+        # Save new files
+        fs = FileSystemStorage(location=base_path)
+        for index, file in enumerate(uploaded_files, start=1):
+            filename = f"{index}.jpg"
+            try:
+                fs.save(filename, file)
+                logger.info(f"Saved file {filename} for student: {student.applicant.full_name}")
+            except Exception as e:
+                logger.error(f"Error saving file {filename}: {str(e)}")
+                messages.error(request, f'Error saving photo {filename}.')
+                return redirect('students:upload_photos')
+
+        messages.success(request, f'Successfully uploaded {len(uploaded_files)} photo(s).')
+        return redirect('students:upload_photos')
+
+    # For GET request, render the upload form
+    return render(request, 'upload_photos.html', {
+        'student': student,
+        'student_full_name': student.applicant.full_name,
+        'today_date': datetime.now().date(),
+    })
 def change_password(request):
     """
     Handle password change for the student.
@@ -1315,7 +1409,3 @@ def change_password(request):
         logger.error(f"Error in change_password view: {str(e)}")
         messages.error(request, 'An unexpected error occurred. Please try again later.')
         return redirect('students:settings')
-    
-    
-    
-            

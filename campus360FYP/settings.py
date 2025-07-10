@@ -125,9 +125,9 @@ WSGI_APPLICATION = 'campus360FYP.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'campus360',
+        'NAME': 'campus-360',
         'USER': 'postgres',
-        'PASSWORD': '0000pppp',
+        'PASSWORD': '727422',
         'HOST': 'localhost',
         'PORT': '5432',
         'CONN_MAX_AGE': 600,

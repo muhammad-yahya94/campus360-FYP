@@ -14,7 +14,6 @@ urlpatterns = [
     # ========== 3. Courses ==========
     path('my-courses/', views.my_courses, name='my_courses'),  # 3.1 My Courses
 
-
     # ========== 4. Assignments & Study Material ==========
     path('assignments/<int:course_offering_id>/', views.assignments, name='assignments'),
     path('submit_assignment/<int:assignment_id>/', views.submit_assignment, name='submit_assignment'),
@@ -48,4 +47,7 @@ urlpatterns = [
     
     # ========== 11. Semester Fees ==========
     path('fees/', views.semester_fees, name='semester_fees'),  # 11.1 Semester Fees
+    
+    # ========== 12. Photo Upload ==========
+    path('upload-photos/', views.upload_photos, name='upload_photos'),  # 12.1 Upload Photos
 ]

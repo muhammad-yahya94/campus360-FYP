@@ -16,6 +16,7 @@ from .models import SemesterFee, FeeType, FeeVoucher, StudentFeePayment
 from academics.models import Program
 from admissions.models import AcademicSession
 from fee_management.models import FeeToProgram
+from faculty_staff.models import Office, OfficeStaff
 from students.models import Student
 from decimal import Decimal 
 from django import forms
@@ -625,6 +626,14 @@ def generate_voucher(request):
         
         semester_fee = fee_to_program.SemesterFee
         
+        # Get the office from the request user or use the first available office as fallback
+        office = None
+        if hasattr(request.user, 'office'):
+            office = request.user.office
+        else:
+            # Fallback to the first available office if user doesn't have one
+            office = Office.objects.first()
+            
         # Check or create voucher
         voucher, created = FeeVoucher.objects.get_or_create(
             student=student,
@@ -632,9 +641,14 @@ def generate_voucher(request):
             semester=semester,
             defaults={
                 'due_date': date.today() + timedelta(days=7),
-                'office': request.user.office if hasattr(request.user, 'office') else None
+                'office': office
             }
         )
+        
+        # Update office if it wasn't set during creation
+        if not created and not voucher.office and office:
+            voucher.office = office
+            voucher.save(update_fields=['office'])
         
         # Prepare context for HTML
         generated_at = datetime.now().strftime('%d %B %Y %I:%M %p %Z')  # Current date and time
@@ -661,6 +675,9 @@ def generate_voucher(request):
             'evening_fund_amount': str(semester_fee.evening_fund_amount) if semester_fee.evening_fund else '0',
             'total_amount': str(semester_fee.total_amount),
             'due_date': voucher.due_date.strftime('%d %B %Y'),
+            'office_name': voucher.office.name if voucher.office else 'N/A',
+            'office_address': voucher.office.location if voucher.office else 'N/A',
+            'office_contact': voucher.office.contact_phone if voucher.office else 'N/A',
             'generated_at': generated_at,
         }
         

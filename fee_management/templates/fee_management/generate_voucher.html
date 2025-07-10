@@ -33,7 +33,15 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div>
           <label class="block mb-2 font-semibold text-base-content" for="university_roll_no">University Roll Number</label>
-          <input type="number" id="university_roll_no" name="university_roll_no" class="input input-bordered w-full rounded-lg" min="0" required oninput="fetchSemesters()">
+          <div class="flex gap-2">
+            <input type="number" id="university_roll_no" name="university_roll_no" class="input input-bordered w-full rounded-lg" min="0" required>
+            <button type="button" id="search-btn" class="btn btn-primary rounded-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              Search
+            </button>
+          </div>
         </div>
         <div>
           <label class="block mb-2 font-semibold text-base-content" for="semester">Semester</label>
@@ -43,39 +51,179 @@
           </select>
         </div>
       </div>
-      <button type="submit" class="btn btn-primary w-full rounded-lg">Generate Voucher</button>
+      
+      <!-- Student Information -->
+      <div id="student-info" class="hidden"></div>
+      
+      <!-- Fee Details -->
+      <div id="fee-details" class="hidden"></div>
+      
+      <button type="submit" class="btn btn-primary w-full rounded-lg mt-4" id="generate-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        Generate Voucher
+      </button>
     </form>
   </div>
 </div>
 
 <script>
-
-function fetchSemesters() {
-  const rollNo = document.getElementById('university_roll_no').value;
-  const semesterSelect = document.getElementById('semester');
-  semesterSelect.innerHTML = '<option value="">Select Semester</option>';
-
-  if (rollNo) {
-    fetch(`/fees/get_semesters_by_roll/?roll_no=${rollNo}`)
-      .then(response => response.json())
-      .then(data => {
-        if (data.error) {
-          console.error('Error:', data.error);
-          alert(data.error);
-        } else {
-          data.semesters.forEach(semester => {
-            const option = document.createElement('option');
-            option.value = semester.id;
-            option.textContent = `${semester.name} (${semester.program_name}) (${semester.session})`;
-            semesterSelect.appendChild(option);
-          });
-        }
-      })
-      .catch(error => {
-        console.error('Error fetching semesters:', error);
-        alert('Error fetching semesters.');
-      });
+// Add loading state
+function setLoading(isLoading) {
+  const searchBtn = document.getElementById('search-btn');
+  if (!searchBtn) return;
+  
+  if (isLoading) {
+    searchBtn.disabled = true;
+    searchBtn.innerHTML = `
+      <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      Searching...
+    `;
+  } else {
+    searchBtn.disabled = false;
+    searchBtn.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+      Search
+    `;
   }
 }
+
+async function fetchSemesters() {
+  const rollNo = document.getElementById('university_roll_no').value.trim();
+  const semesterSelect = document.getElementById('semester');
+  const studentInfo = document.getElementById('student-info');
+  
+  if (!rollNo) {
+    alert('Please enter a roll number');
+    return;
+  }
+
+  try {
+    setLoading(true);
+    semesterSelect.innerHTML = '<option value="">Loading semesters...</option>';
+    
+    const response = await fetch(`/fees/get_semesters_by_roll/?roll_no=${rollNo}`);
+    const data = await response.json();
+    
+    if (data.error) {
+      throw new Error(data.error);
+    }
+    
+    // Update student info
+    if (data.student) {
+      studentInfo.innerHTML = `
+        <div class="bg-base-200 p-4 rounded-lg mb-4">
+          <h3 class="font-semibold">Student Information</h3>
+          <p>Name: ${data.student.name}</p>
+          <p>Roll No: ${data.student.roll_no || 'N/A'}</p>
+          <p>Program: ${data.student.program}</p>
+          <p>Session: ${data.student.session}</p>
+        </div>
+      `;
+      studentInfo.classList.remove('hidden');
+    }
+    
+    // Update semester dropdown
+    if (data.available_semesters && data.available_semesters.length > 0) {
+      semesterSelect.innerHTML = '<option value="">Select Semester</option>';
+      
+      data.available_semesters.forEach(semester => {
+        const option = document.createElement('option');
+        option.value = semester.id;
+        option.textContent = `${semester.name} - ${semester.program_name} (${semester.session})`;
+        option.dataset.fees = JSON.stringify(semester.fees);
+        option.dataset.hasUnpaid = semester.has_unpaid_vouchers;
+        semesterSelect.appendChild(option);
+      });
+      
+      // Show fee details when semester is selected
+      semesterSelect.onchange = function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const feeDetails = document.getElementById('fee-details');
+        
+        if (selectedOption.value && selectedOption.dataset.fees) {
+          const fees = JSON.parse(selectedOption.dataset.fees);
+          let feeHtml = '<div class="mt-4 p-4 bg-base-200 rounded-lg">';
+          feeHtml += '<h4 class="font-semibold mb-2">Fee Details:</h4>';
+          
+          fees.forEach(fee => {
+            feeHtml += `
+              <div class="mb-2 p-3 bg-base-100 rounded-lg border border-base-300">
+                <div class="flex justify-between items-center mb-1">
+                  <span class="font-medium">${fee.fee_type}</span>
+                  <span class="badge ${fee.is_paid ? 'badge-success' : 'badge-warning'}">
+                    ${fee.is_paid ? 'Paid' : 'Unpaid'}
+                  </span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-sm">
+                  <div class="text-base-content/70">Amount:</div>
+                  <div class="font-medium text-right">${fee.amount.toLocaleString()} PKR</div>
+                  
+                  <div class="text-base-content/70">Shift:</div>
+                  <div class="text-right">${fee.shift || 'N/A'}</div>
+                  
+                  ${fee.due_date ? `
+                    <div class="text-base-content/70">Due Date:</div>
+                    <div class="text-right">${new Date(fee.due_date).toLocaleDateString()}</div>
+                  ` : ''}
+                </div>
+              </div>
+            `;
+          });
+          
+          feeHtml += '</div>';
+          feeDetails.innerHTML = feeHtml;
+          feeDetails.classList.remove('hidden');
+        } else {
+          feeDetails.classList.add('hidden');
+        }
+      };
+    } else {
+      semesterSelect.innerHTML = '<option value="">No semesters available</option>';
+      document.getElementById('fee-details').classList.add('hidden');
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert(error.message || 'An error occurred while fetching data');
+    semesterSelect.innerHTML = '<option value="">Error loading semesters</option>';
+    document.getElementById('student-info').classList.add('hidden');
+    document.getElementById('fee-details').classList.add('hidden');
+  } finally {
+    setLoading(false);
+  }
+}
+
+// Add event listener for Enter key in roll number field
+document.getElementById('university_roll_no').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    fetchSemesters();
+  }
+});
+
+// Add event listener for search button click when the DOM is fully loaded
+document.addEventListener('DOMContentLoaded', function() {
+  const searchBtn = document.getElementById('search-btn');
+  if (searchBtn) {
+    searchBtn.addEventListener('click', fetchSemesters);
+  }
+  
+  // Add event listener for Enter key in roll number field
+  const rollNoInput = document.getElementById('university_roll_no');
+  if (rollNoInput) {
+    rollNoInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        fetchSemesters();
+      }
+    });
+  }
+});
 </script>
 {% endblock %}

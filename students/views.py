@@ -51,6 +51,8 @@ from courses.models import (
 )
 from faculty_staff.models import Teacher, TeacherDetails
 from students.models import Student, StudentSemesterEnrollment, CourseEnrollment
+from fee_management.models import SemesterFee, StudentFeePayment, FeeToProgram, FeeVoucher
+
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -1194,6 +1196,72 @@ def ide(request):
     return render(request, 'ide.html')
     
     
+def semester_fees(request):
+    """
+    Display student's semester fees with voucher status and total amounts.
+    """
+    try:
+        student = Student.objects.get(user=request.user)
+        
+        # Get all semesters for the student's program and session
+        semesters = Semester.objects.filter(
+            program=student.program,
+            session=student.applicant.session,
+        ).order_by('name')
+        
+        # Get all fee vouchers for this student with related data
+        fee_vouchers = FeeVoucher.objects.filter(
+            student=student
+        ).select_related(
+            'semester', 
+            'semester_fee',
+            'semester_fee__fee_type',
+            'payment'
+        ).order_by('-due_date')
+        
+        # Create a dictionary to store semester data
+        semester_data = {}
+        
+        # Process fee vouchers
+        for voucher in fee_vouchers:
+            if voucher.semester_id not in semester_data:
+                semester_data[voucher.semester_id] = {
+                    'semester': voucher.semester,
+                    'vouchers': [],
+                    'total_amount': 0,
+                    'is_fully_paid': True,
+                    'due_date': voucher.due_date
+                }
+            
+            semester_data[voucher.semester_id]['vouchers'].append(voucher)
+            semester_data[voucher.semester_id]['total_amount'] += voucher.semester_fee.total_amount
+            if not voucher.is_paid:
+                semester_data[voucher.semester_id]['is_fully_paid'] = False
+        
+        # Convert to list and sort by semester name
+        semester_list = sorted(
+            semester_data.values(), 
+            key=lambda x: x['semester'].name
+        )
+        
+        context = {
+            'student': student,
+            'semester_list': semester_list,
+            'student_full_name': student.applicant.full_name,
+            'today_date': timezone.now().date(),
+            'has_payments': any(sem['is_fully_paid'] for sem in semester_list)
+        }
+        
+        return render(request, 'students/semester_fees.html', context)
+        
+    except Student.DoesNotExist:
+        messages.error(request, 'Student profile not found.')
+        return redirect('students:semester_fees')
+    except Exception as e:
+        logger.error(f"Error in semester_fees view: {str(e)}", exc_info=True)
+        messages.error(request, 'An error occurred while loading your fee status.')
+        return redirect('students:semester_fees')
+
 def change_password(request):
     """
     Handle password change for the student.
@@ -1201,44 +1269,44 @@ def change_password(request):
     try:
         student = Student.objects.get(user=request.user)
         user = request.user
-        form = PasswordChangeForm(user, request.POST)
-
-        if form.is_valid():
-            try:
+        
+        if request.method == 'POST':
+            form = PasswordChangeForm(user, request.POST)
+            if form.is_valid():
                 user = form.save()
-                update_session_auth_hash(request, user)  # Keep the user logged in
+                update_session_auth_hash(request, user)
                 messages.success(request, 'Your password was successfully updated!')
                 return redirect('students:settings')
-            except Exception as e:
-                logger.error(f"Error saving password: {str(e)}")
-                messages.error(request, 'An error occurred while saving your new password.')
-                return redirect('students:settings')
+            else:
+                form_errors = {}
+                for field, errors in form.errors.items():
+                    form_errors[field] = errors
         else:
-            # Prepare context to return to the settings page with form errors
+            form = PasswordChangeForm(user)
             form_errors = {}
-            for field, errors in form.errors.items():
-                field_name = field.replace('_', ' ').title()
-                form_errors[field] = [f"{field_name}: {error}" for error in errors]
 
-            # Get current user and applicant data for the form
-            initial_data = {
-                'full_name': student.applicant.full_name,
-                'email': user.email,
-                'contact_no': student.applicant.contact_no or '',
-                'address': student.applicant.permanent_address or '',
-            }
+        # Get current user and applicant data for the form
+        initial_data = {
+            'full_name': student.applicant.full_name,
+            'email': user.email,
+            'contact_no': student.applicant.contact_no or '',
+            'address': student.applicant.permanent_address or '',
+        }
 
-            context = {
-                'student': student,
-                'user': user,
-                'user_form': type('UserForm', (), {'instance': type('Instance', (), initial_data)})(),
-                'password_form': form,
-                'form_errors': form_errors,
-                'password_errors': True,  # Flag to show password tab by default
-                'student_full_name': student.applicant.full_name,
-                'today_date': timezone.now().date(),
-            }
+        context = {
+            'student': student,
+            'user': user,
+            'user_form': type('UserForm', (), {'instance': type('Instance', (), initial_data)})(),
+            'password_form': form,
+            'form_errors': form_errors,
+            'password_errors': True,  # Flag to show password tab by default
+            'student_full_name': student.applicant.full_name,
+            'today_date': timezone.now().date(),
+        }
+        
+        if request.method == 'POST' and form_errors:
             return render(request, 'settings.html', context, status=400)
+        return render(request, 'settings.html', context)
 
     except Student.DoesNotExist:
         messages.error(request, 'Student profile not found.')

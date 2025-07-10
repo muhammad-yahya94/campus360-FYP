@@ -1,6 +1,7 @@
 import os
 import tempfile
 import subprocess
+import logging
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
@@ -11,7 +12,7 @@ from django.http import HttpResponse
 from django.conf import settings
 from django.http import HttpResponse
 
-from .models import SemesterFee, FeeType, FeeVoucher
+from .models import SemesterFee, FeeType, FeeVoucher, StudentFeePayment
 from academics.models import Program
 from admissions.models import AcademicSession
 from fee_management.models import FeeToProgram
@@ -370,35 +371,207 @@ def get_semesters(request):
             return JsonResponse({'semesters': []})
     return JsonResponse({'semesters': []})    
     
+    
 @office_required
 def fee_verification(request):
-    return render(request, 'fee_management/fee_verification.html')
+    context = {}
+    
+    if request.method == 'POST':
+        voucher_id = request.POST.get('voucher_id')
+        action = request.POST.get('action')
+        
+        if not voucher_id:
+            messages.error(request, 'Voucher ID is required.')
+            return redirect('fee_management:fee_verification')
+            
+        try:
+            voucher = FeeVoucher.objects.select_related(
+                'student', 'semester_fee', 'semester'
+            ).get(voucher_id=voucher_id)
+            
+            if action == 'verify':
+                # Check if already paid
+                if voucher.is_paid:
+                    messages.warning(request, 'This voucher has already been marked as paid.')
+                    payment = voucher.payment
+                else:
+                    # Check if payment already exists and is not linked to any other voucher
+                    payment = StudentFeePayment.objects.filter(
+                        student=voucher.student,
+                        semester_fee=voucher.semester_fee
+                    ).exclude(voucher__isnull=False).first()
+                    
+                    try:
+                        if not payment:
+                            # Create new payment record
+                            payment = StudentFeePayment.objects.create(
+                                student=voucher.student,
+                                semester_fee=voucher.semester_fee,
+                                amount_paid=voucher.semester_fee.total_amount,
+                                remarks=f'Payment verified against voucher {voucher_id}'
+                            )
+                        
+                        # Mark voucher as paid and link to payment
+                        if not voucher.is_paid:  # Double check before marking as paid
+                            voucher.mark_as_paid(payment)
+                            messages.success(
+                                request, 
+                                f'Payment of {voucher.semester_fee.total_amount} PKR has been recorded ' 
+                                f'and voucher {voucher_id} marked as paid.'
+                            )
+                    except ValueError as e:
+                        messages.error(request, str(e))
+                        return redirect('fee_management:fee_verification')
+                    
+                    messages.success(
+                        request, 
+                        f'Payment of {voucher.semester_fee.total_amount} PKR has been recorded ' 
+                        f'and voucher {voucher_id} marked as paid.'
+                    )
+            
+            context.update({
+                'voucher': voucher,
+                'student': voucher.student,
+                'semester_fee': voucher.semester_fee,
+                'payment_exists': bool(voucher.payment or (action == 'verify' and payment))
+            })
+            
+        except FeeVoucher.DoesNotExist:
+            messages.error(request, 'Invalid voucher ID. Please check and try again.')
+            return redirect('fee_management:fee_verification')
+    
+    return render(request, 'fee_management/fee_verification.html', context)
+
+
 
 @office_required
 def get_semesters_by_roll(request):
+    # Initialize logger
+    logger = logging.getLogger(__name__)
+    
     roll_no = request.GET.get('roll_no')
-    if roll_no:
-        try:
-            student = Student.objects.get(university_roll_no=roll_no)
-            session = student.applicant.session
-            semesters = Semester.objects.filter(
-                program=student.program,
-                session=session,
-            ).select_related('program')
-            print(semesters)
-            semesters_data = [
-                {
-                    'id': semester.pk,
-                    'name': semester.name,
-                    'program_name': semester.program.name,
-                    'session': semester.session.name,
-                }
-                for semester in semesters
+    if not roll_no:
+        return JsonResponse({'error': 'Roll number is required.'}, status=400)
+    
+    try:
+        # Get the student and their program/session
+        student = Student.objects.get(university_roll_no=roll_no)
+        program = student.program
+        session = student.applicant.session
+        
+        # Get student's shift from applicant
+        student_shift = student.applicant.shift.lower()  # 'morning' or 'evening'
+        
+        # Get fee programs that match the student's program, session, and shift
+        fee_programs = FeeToProgram.objects.filter(
+            programs=program,
+            academic_session=session,
+            SemesterFee__shift__iexact=student_shift
+        ).select_related('SemesterFee').prefetch_related('semester_number')
+        
+        # Debug logging
+        logger.info(f"Student shift: {student_shift}")
+        logger.info(f"Found {fee_programs.count()} fee programs matching program {program.name}, session {session.name}, and shift {student_shift}")
+        
+        # Get all semesters from fee programs
+        semesters = set()
+        for fp in fee_programs:
+            semesters.update(fp.semester_number.all())
+            
+        if not semesters:
+            return JsonResponse(
+                {'error': 'No fee programs found for this student.'}, 
+                status=404
+            )
+            
+        # Get all fee vouchers for this student
+        student_vouchers = FeeVoucher.objects.filter(
+            student=student,
+            semester__in=semesters
+        ).select_related('semester', 'semester_fee')
+        
+        paid_vouchers = student_vouchers.filter(is_paid=True)
+        
+        # Find semesters that have unpaid fee vouchers
+        available_semesters = []
+        
+        for semester in semesters:
+            # Get all fee programs for this semester
+            semester_fee_programs = [
+                fp for fp in fee_programs 
+                if semester in fp.semester_number.all()
             ]
-            return JsonResponse({'semesters': semesters_data})
-        except Student.DoesNotExist:
-            return JsonResponse({'error': 'Student with this roll number does not exist.'})
-    return JsonResponse({'error': 'Roll number is required.'})
+            
+            if not semester_fee_programs:
+                continue  # Skip semesters with no fee programs
+                
+            # Check if there are any unpaid vouchers for this semester
+            has_unpaid_vouchers = student_vouchers.filter(
+                semester=semester,
+                is_paid=False
+            ).exists()
+            
+            # Check if all fee programs for this semester are paid
+            all_paid = all(
+                paid_vouchers.filter(
+                    semester_fee=fp.SemesterFee,
+                    semester=semester
+                ).exists()
+                for fp in semester_fee_programs
+            )
+            
+            # If there are no unpaid vouchers and all fees are paid, skip
+            if not has_unpaid_vouchers and all_paid:
+                continue
+                
+            # Get the fee details for this semester
+            fee_details = []
+            for fp in semester_fee_programs:
+                is_paid = paid_vouchers.filter(
+                    semester_fee=fp.SemesterFee,
+                    semester=semester
+                ).exists()
+                
+                fee_details.append({
+                    'fee_type': fp.SemesterFee.fee_type.name,
+                    'amount': float(fp.SemesterFee.total_amount),
+                    'is_paid': is_paid,
+                    'due_date': fp.due_date.isoformat() if hasattr(fp, 'due_date') else None,
+                    'shift': fp.SemesterFee.get_shift_display() if hasattr(fp.SemesterFee, 'get_shift_display') else 'N/A'
+                })
+            
+            available_semesters.append({
+                'id': semester.id,
+                'name': semester.name,
+                'program_name': program.name,
+                'session': session.name,
+                'fees': fee_details,
+                'has_unpaid_vouchers': has_unpaid_vouchers
+            })
+        
+        return JsonResponse({
+            'student': {
+                'id': student.applicant.id,
+                'name': student.applicant.full_name,
+                'roll_no': student.university_roll_no,
+                'program': program.name,
+                'session': session.name
+            },
+            'available_semesters': available_semesters
+        })
+        
+    except Student.DoesNotExist:
+        return JsonResponse(
+            {'error': 'Student with this roll number does not exist.'}, 
+            status=404
+        )
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in get_semesters_by_roll: {str(e)}", exc_info=True)
+        return JsonResponse(
+            {'error': 'An error occurred while fetching semester data. Please try again later.'}, 
+            status=500
+        )
 
 
 @office_required

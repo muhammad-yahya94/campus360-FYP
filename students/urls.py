@@ -45,4 +45,7 @@ urlpatterns = [
     
     # ========== 10. Online IDE ==========
     path('ide/', views.ide, name='ide'),  # 10.1 Online Code Editor
+    
+    # ========== 11. Semester Fees ==========
+    path('fees/', views.semester_fees, name='semester_fees'),  # 11.1 Semester Fees
 ]

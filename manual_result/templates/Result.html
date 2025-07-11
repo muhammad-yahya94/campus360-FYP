@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% load static %}
+{% load custom_filters %}
+{% load custom_filters_gpa %}
+{% block result_css %}
+<link rel="stylesheet" href="{% static "css/results.css" %}">
+{% comment %} <link rel="stylesheet" href="main/static/css/results.css"> {% endcomment %}
+
+{% endblock  %}
+
+
+{% block upload_result_css %}
+{% endblock  %}
+{% block content %}
+    <div  class="card shadow rounded-3 mb-2 mt-1 w-100">
+       <div class="">
+        <h1  class="text-center text-light  bg-success fw-5 fs-1 pt-5 pb-5">
+        DEPARTMENT OF COMPUTER SCIENCE
+        <strong> <br> <h6 class="text-center text-light mt-3 " style="font-size: 0.8em;">( Developed By Muhammad Yahya )</h6> </strong>
+        </h1>
+       </div>
+    </div>
+    <div class="container">
+
+        <!-- Search Form -->
+        <div class="row mt-3">
+            <div class="col-12">
+                <form action="" method="GET" id="search-form">
+                    <div class="row">
+                        <!-- Search Bar (col-8) -->
+                        <div class="col-8">
+                            <input
+                                type="search"
+                                name="search"
+                                class="form-control"
+                                placeholder="Search by Roll Number"
+                                value="{{ request.GET.search }}"
+                                style="font-size: 0.9em;"
+                                pattern="\d*"
+                                oninput="this.value = this.value.replace(/\D/g, '')"
+                            >
+                        </div>
+
+
+                        <!-- Year Session Dropdown (col-4) -->
+                        <div class="col-4">
+                            <select name="session_id" class="form-select" onchange="this.form.submit()" style="font-size: 0.9em;">
+                                <option value="">Session</option>
+                                {% for session in year_session %}
+                                    <option
+                                        value="{{ session.id }}"
+                                        {% if request.GET.session_id == session.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ session.start_year }} - {{ session.end_year }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+
+
+    {% comment %} {% if msg %}
+        <h2 class="text-center msg-text" id="heading-text" style="font-size: 1em;">  {{ msg }} </h2>
+    {% else %}  {% endcomment %}
+    {% if msg %}
+    <h2 class="text-center msg-text mt-3" id="heading-text" style="font-size: 3em;">  {{ msg }} </h2>
+    </div>
+{% endif %}
+</div>
+{% if not request.GET.search %}
+<h2 class="text-center msg-text mt-2" id="heading-text" style="font-size: 3em;">  Your Results will be shown here </h2>
+{% else %}
+        <div class="container mt-2 printable-area">
+            {% if not msg %}
+            <div class="print-button-container">
+                <!-- Print Button aligned to the right -->
+                <button class="btn btn-secondary" onclick="printPage()" style="font-size: 0.9em;">Print Result</button>
+            </div>
+            {% endif %}
+        {% if student.student_name %}
+            <div class="card mt-3">
+                <div class="card-body">
+                        <!-- Student Name -->
+                    <div class="row align-items-center g-2  data-flex">
+                        <div class="col-6">
+                            <h4><strong class="text-success" style="font-size: 0.9em;">Student:</strong></h4>
+                        </div>
+                        <div class="col-6">
+                            <h3 style="font-size: 1em;">{{ student.student_name }}</h3>
+                        </div>
+                    </div>
+                    <!-- Roll Number -->
+                    <div class="row align-items-center g-2 ">
+                        <div class="col-6">
+                            <h4><strong class="text-success" style="font-size: 0.9em;">Roll Number:</strong></h4>
+                        </div>
+                        <div class="col-6">
+                            <h3 style="font-size: 1em;">{{ student.roll_no }}</h3>
+                        </div>
+                    </div>
+                    <!-- Father Name -->
+                    <div class="row align-items-center g-2 ">
+                        <div class="col-6">
+                            <h4><strong class="text-success" style="font-size: 0.9em;">Father Name:</strong></h4>
+                        </div>
+                        <div class="col-6">
+                            <h3 style="font-size: 1em;">{{ student.father_name }}</h3>
+                        </div>
+                    </div>
+                    <!-- Session -->
+                    <div class="row align-items-center g-2 ">
+                        <div class="col-6">
+                            <h4><strong class="text-success" style="font-size: 0.9em;">Session:</strong></h4>
+                        </div>
+                        <div class="col-6">
+                            <h3 style="font-size: 1em;">{{ student.session }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+                {% for semester_number, semester_results in semester_results.items %}
+                <div class="semester-header  mt-5">
+                    <h4>{{ semester_number }} - GPA: {{ semester_gpas|dictattribute:semester_number }}</h4>
+                </div>
+
+                <div class="table-responsive d-print-table">
+                    <table class="table-success" style="font-size: 0.80em;">
+                        <thead class="table-success">
+                            <tr>
+                                <th class="bg-success">Sr</th>
+                                <th class="bg-success">Course Code</th>
+                                <th class="bg-success">Course Title</th>
+                                <th class="bg-success">Credit Hour</th>
+                                <th class="bg-success">Max. Marks</th>
+                                <th class="bg-success">Internal Marks</th>
+                                <th class="bg-success">Mid Term Marks</th>
+                                <th class="bg-success">Final Term Marks</th>
+                                <th class="bg-success">Practical Work</th>
+                                <th class="bg-success">Total Marks</th>
+                                <th class="bg-success">Percentage %</th>
+                                <th class="bg-success">Q.P</th>
+                                <th class="bg-success">Grade</th>
+                                <th class="bg-success">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for result in semester_results %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ result.course.course_code }}</td>
+                                    <td>{{ result.course.course_title }}</td>
+                                    <td>
+                                        {% if result.special_case %}
+                                            {{ result.course.credit_hour }} (Special Case: {{ result.course.lab_work }} Lab Work)
+                                        {% elif result.effective_credit_hour is not None %}
+                                            {{ result.course.credit_hour }} ({{ result.effective_credit_hour }} - {{ result.course.lab_work }})
+                                        {% else %}
+                                            Data not available
+                                        {% endif %}
+                                    </td>
+                                    <td><h5>{{ result.course_marks }}</h5></td>
+                                    <td>{{ result.internal_marks }}</td>
+                                    <td>{{ result.mid_term_marks }}</td>
+                                    <td>{{ result.final_term_marks }}</td>
+                                    <td>{{ result.practical_work }}</td>
+                                    <td>{{ result.total_obtained_marks | floatformat:2 }}</td>
+                                    <td>{{ result.percentage }}</td>
+                                    <td>{{ result.quality_points }}</td>
+                                    <td>{{ result.grade }}</td>
+                                    <td>{{ result.status }}</td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="14">No results found for this Roll number.</td>
+                                </tr>
+                            {% endfor %}
+                        <tr class="mt-2 border-0">
+                            <td style="border:none"></td>
+                            <td style="border:none"></td>
+                            <td><h5>Semester Total</h5></td>
+                            <td>{{ semester_totals|get_item:semester_number|get_item:"total_credit_hours" }}</td>
+                            <td>{{ semester_totals|get_item:semester_number|get_item:"total_full_marks" }}</td>
+                            <td style="border:none"></td>
+                            <td style="border:none"></td>
+                            <td style="border:none"></td>
+                            <td style="border:none"></td>
+                            <td>{{ semester_totals|get_item:semester_number|get_item:"max_marks" }}</td>
+                            <td>{{ semester_totals|get_item:semester_number|get_item:"average_percentage" }}%</td>
+                            <td>{{ semester_totals|get_item:semester_number|get_item:"total_quality_points" }}</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="gpa-display">
+                    <h3 class="text-center mt-2" style="font-size: 1.1em;">
+                        Semester GPA: {{ semester_gpas|dictattribute:semester_number }} <span class="fs-5">(ERRORS AND OMISSIONS EXPECTED)</span>
+                    </h3>
+                </div>
+            {% endfor %}
+
+
+
+  {% if opt_results %}
+
+            <p class="text-center text-warning" style="font-size: 0.9em;">*This Extra course will not affect result</p>
+            <div class="table-responsive d-print-table">
+                <table class="table-success" style="font-size: 0.80em">
+                    <thead  <thead class="table-success">>
+                        <tr>
+                            <th class="bg-success">Sr</th>
+                            <th class="bg-success">Course Code</th>
+                            <th class="bg-success">Course Title</th>
+                            <th class="bg-success">Credit Hour</th>
+                            <th class="bg-success">Internal Marks</th>
+                            <th class="bg-success">Mid Term Marks</th>
+                            <th class="bg-success">Final Term Marks</th>
+                            <th class="bg-success">Practical Work</th>
+                            <th class="bg-success">Total Marks</th>
+                            <th class="bg-success">Percentage %</th>
+                            <th class="bg-success">Grade</th>
+                            <th class="bg-success">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for opt_result in opt_results %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ opt_result.course.course_code }}</td>
+                            <td>{{ opt_result.course.course_title }}</td>
+                            {% comment %} <td>{{ opt_result.course.credit_hour }}</td> {% endcomment %}
+                           <td>  {{ opt_result.course.credit_hour }} ({{ opt_result.course.credit_hour }} - {{ opt_result.course.lab_work }}) </td>
+                            <td>{{ opt_result.internal_marks }}</td>
+                            <td>{{ opt_result.mid_term_marks }}</td>
+                            <td>{{ opt_result.final_term_marks }}</td>
+                            <td>{{ opt_result.practical_work }}</td>
+                            <td>{{ opt_result.total_obtained_marks | floatformat:2 }}</td>
+                            <td>{{ opt_result.percentage }}</td>
+                            <td>{{ opt_result.grade }}</td>
+                            <td>{{ opt_result.status }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5">No optional courses found.</td>
+                        </tr>
+                        {% endfor %}
+                        <tr>
+                        </tbody>
+                    </table>
+               </div>
+                    {% endif %}
+
+                    <h6 class="text-center mt-2">Developed by <strong class='text-success fs-5 fw-5'>Muhammad Yahya</strong></h6>
+    </div>
+    {% endif %}
+
+    {% endblock content %}
+
+    {% block js_results %}
+<script src="{% static "js/results.js" %}"></script>
+
+{% endblock js_results %}
+
+{% block js_upload_results %}
+{% endblock  %}

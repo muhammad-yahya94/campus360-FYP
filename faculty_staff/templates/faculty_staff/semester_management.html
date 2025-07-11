@@ -4,63 +4,6 @@
 
 {% block content %}
 <style>
-    /* Select2 Styling for DaisyUI */
-    .select2-container .select2-selection--single {
-        height: 2.25rem;
-        border: 1px solid hsl(var(--bc) / 0.2);
-        border-radius: var(--rounded-btn, 0.5rem);
-        background-color: hsl(var(--b1));
-        padding: 0 2rem 0 0.75rem;
-        font-size: 0.875rem;
-        line-height: 2.25rem;
-        transition: all 0.2s ease;
-    }
-    .select2-container--default .select2-selection--single .select2-selection__rendered {
-        color: hsl(var(--nc));
-        line-height: 2.25rem;
-    }
-    .select2-container .select2-selection--single .select2-selection__arrow {
-        height: 2.25rem;
-        right: 0.5rem;
-    }
-    .select2-container--default .select2-selection--single .select2-selection__arrow b {
-        border-color: hsl(var(--bc) / 0.5) transparent transparent transparent;
-    }
-    .select2-container--open .select2-selection--single .select2-selection__arrow b {
-        border-color: transparent transparent hsl(var(--bc) / 0.5) transparent;
-    }
-    .select2-dropdown {
-        background-color: hsl(var(--b1));
-        border: 1px solid hsl(var(--bc) / 0.2);
-        border-radius: var(--rounded-box, 0.5rem);
-        box-shadow: 0 2px 4px hsl(var(--bc) / 0.1);
-        z-index: 10000;
-    }
-    .select2-results__option {
-        padding: 0.5rem 0.75rem;
-        color: hsl(var(--nc));
-        font-size: 0.875rem;
-    }
-    .select2-results__option--highlighted {
-        background-color: hsl(var(--pf) / 0.1);
-        color: hsl(var(--pc));
-    }
-    .select2-container--default .select2-selection--single .select2-selection__placeholder {
-        color: hsl(var(--bc) / 0.5);
-    }
-    .select2-container--default .select2-selection--single:focus {
-        outline: none;
-        border-color: hsl(var(--p));
-        box-shadow: 0 0 0 2px hsl(var(--p) / 0.2);
-    }
-    .select2-container--default .select2-search__field {
-        z-index: 10001;
-        padding: 0.5rem;
-        border-radius: var(--rounded-btn, 0.5rem);
-    }
-    .select2-container--open {
-        z-index: 10000;
-    }
     .modal-box {
         z-index: 9000;
         max-height: 85vh;

@@ -73,6 +73,7 @@ INSTALLED_APPS = [
     'background_task', #ya wesy pakadge k liy add kia gaya hai
     'bgtask',
     'fee_management',
+    'manual_result',
 ]
 
 MIDDLEWARE = [
@@ -125,7 +126,7 @@ WSGI_APPLICATION = 'campus360FYP.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'campus360',
+        'NAME': 'projectdb',
         'USER': 'postgres',
         'PASSWORD': '0000pppp',
         'HOST': 'localhost',

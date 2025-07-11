@@ -1,61 +1,226 @@
-{% extends 'base_student.html' %}
+{% extends "base_student.html" %}
 
-{% block title %}Exam Results - {{ student.applicant.full_name }}{% endblock %}
+{% load static %}
+{% load custom_filters %}
+{% load custom_filters_gpa %}
+{% block result_css %}
+<link rel="stylesheet" href="{% static "css/results.css" %}">
+{% comment %} <link rel="stylesheet" href="main/static/css/results.css"> {% endcomment %}
+
+{% endblock  %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <!-- Hero Section -->
-    <div class="hero bg-primary text-primary-content rounded-lg shadow-lg mb-6">
-        <div class="hero-content text-center py-6">
-            <div class="max-w-md">
-                <h1 class="text-3xl sm:text-4xl font-bold mb-2">Exam Results</h1>
-                <p class="text-base sm:text-lg text-primary-content/90">
-                    View your exam results, {{ student.applicant.full_name }}.
-                </p>
-            </div>
-        </div>
-    </div>
 
-    <!-- Results Table -->
-    <div class="card bg-base-100 shadow-lg rounded-lg mb-6">
-        <div class="card-body">
-            <h2 class="card-title text-2xl text-base-content mb-4">Exam Results</h2>
-            {% if results %}
+    <div class="container">
+
+    {% comment %} {% if msg %}
+        <h2 class="text-center msg-text" id="heading-text" style="font-size: 1em;">  {{ msg }} </h2>
+    {% else %}  {% endcomment %}
+    {% if msg %}
+    <h2 class="text-center mt-3 text-3xl font-semibold">{{ msg }}</h2>
+    </div>
+{% endif %}
+</div>
+{% if not request.GET.search %}
+<h2 class="text-center mt-2 text-3xl font-semibold">Your Results will be shown here</h2>
+{% else %}
+        <div class="container mt-2 printable-area">
+            {% if not msg %}
+            <div class="flex justify-end mb-4">
+                <!-- Print Button aligned to the right -->
+                <button 
+                    class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 text-sm"
+                    onclick="printPage()"
+                >
+                    Print Result
+                </button>
+            </div>
+            {% endif %}
+        {% if student.student_name %}
+            <div class="bg-white rounded-lg shadow-md mt-3 p-6">
+                <div class="space-y-4">
+                    <!-- Student Name -->
+                    <div class="flex items-center">
+                        <div class="w-1/2">
+                            <h4 class="text-green-600 text-sm font-semibold">Student:</h4>
+                        </div>
+                        <div class="w-1/2">
+                            <h3 class="text-base">{{ student.student_name }}</h3>
+                        </div>
+                    </div>
+                    <!-- Roll Number -->
+                    <div class="flex items-center">
+                        <div class="w-1/2">
+                            <h4 class="text-green-600 text-sm font-semibold">Roll Number:</h4>
+                        </div>
+                        <div class="w-1/2">
+                            <h3 class="text-base">{{ student.roll_no }}</h3>
+                        </div>
+                    </div>
+                    <!-- Father Name -->
+                    <div class="flex items-center">
+                        <div class="w-1/2">
+                            <h4 class="text-green-600 text-sm font-semibold">Father Name:</h4>
+                        </div>
+                        <div class="w-1/2">
+                            <h3 class="text-base">{{ student.father_name }}</h3>
+                        </div>
+                    </div>
+                    <!-- Session -->
+                    <div class="flex items-center">
+                        <div class="w-1/2">
+                            <h4 class="text-green-600 text-sm font-semibold">Session:</h4>
+                        </div>
+                        <div class="w-1/2">
+                            <h3 class="text-base">{{ student.session }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+                {% for semester_number, semester_results in semester_results.items %}
+                <div class="mt-8 mb-4">
+                    <h4 class="text-xl font-semibold">{{ semester_number }} - GPA: {{ semester_gpas|dictattribute:semester_number }}</h4>
+                </div>
+
                 <div class="overflow-x-auto">
-                    <table class="table w-full bg-base-100">
-                        <thead class="bg-base-200">
-                            <tr>
-                                <th class="text-sm font-semibold text-base-content/80">Course</th>
-                                <th class="text-sm font-semibold text-base-content/80">Session</th>
-                                <th class="text-sm font-semibold text-base-content/80">Exam Type</th>
-                                <th class="text-sm font-semibold text-base-content/80">Marks Obtained</th>
-                                <th class="text-sm font-semibold text-base-content/80">Total Marks</th>
-                                <th class="text-sm font-semibold text-base-content/80">Remarks</th>
+                    <table class="min-w-full text-xs border border-gray-200">
+                        <thead>
+                            <tr class="bg-green-600 text-white">
+                                <th class="px-4 py-2 border">Sr</th>
+                                <th class="px-4 py-2 border">Course Code</th>
+                                <th class="px-4 py-2 border">Course Title</th>
+                                <th class="px-4 py-2 border">Credit Hour</th>
+                                <th class="px-4 py-2 border">Max. Marks</th>
+                                <th class="px-4 py-2 border">Internal Marks</th>
+                                <th class="px-4 py-2 border">Mid Term Marks</th>
+                                <th class="px-4 py-2 border">Final Term Marks</th>
+                                <th class="px-4 py-2 border">Practical Work</th>
+                                <th class="px-4 py-2 border">Total Marks</th>
+                                <th class="px-4 py-2 border">Percentage %</th>
+                                <th class="px-4 py-2 border">Q.P</th>
+                                <th class="px-4 py-2 border">Grade</th>
+                                <th class="px-4 py-2 border">Status</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for result in results %}
-                                <tr class="hover:bg-base-200/50">
-                                    <td class="text-sm text-base-content">{{ result.course_offering.course.name }}</td>
-                                    <td class="text-sm text-base-content">{{ result.course_offering.academic_session.name }}</td>
-                                    <td class="text-sm text-base-content">{{ result.exam_type|title }}</td>
-                                    <td class="text-sm text-base-content">{{ result.marks_obtained }}</td>
-                                    <td class="text-sm text-base-content">{{ result.total_marks }}</td>
-                                    <td class="text-sm text-base-content">{{ result.remarks|default:"N/A" }}</td>
+                            {% for result in semester_results %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-2 border text-center">{{ forloop.counter }}</td>
+                                    <td class="px-4 py-2 border">{{ result.course.course_code }}</td>
+                                    <td class="px-4 py-2 border">{{ result.course.course_title }}</td>
+                                    <td class="px-4 py-2 border">
+                                        {% if result.special_case %}
+                                            {{ result.course.credit_hour }} (Special Case: {{ result.course.lab_work }} Lab Work)
+                                        {% elif result.effective_credit_hour is not None %}
+                                            {{ result.course.credit_hour }} ({{ result.effective_credit_hour }} - {{ result.course.lab_work }})
+                                        {% else %}
+                                            Data not available
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-4 py-2 border text-center">{{ result.course_marks }}</td>
+                                    <td class="px-4 py-2 border text-center">{{ result.internal_marks }}</td>
+                                    <td class="px-4 py-2 border text-center">{{ result.mid_term_marks }}</td>
+                                    <td class="px-4 py-2 border text-center">{{ result.final_term_marks }}</td>
+                                    <td class="px-4 py-2 border text-center">{{ result.practical_work }}</td>
+                                    <td class="px-4 py-2 border text-center">{{ result.total_obtained_marks | floatformat:2 }}</td>
+                                    <td class="px-4 py-2 border text-center">{{ result.percentage }}</td>
+                                    <td class="px-4 py-2 border text-center">{{ result.quality_points }}</td>
+                                    <td class="px-4 py-2 border text-center">{{ result.grade }}</td>
+                                    <td class="px-4 py-2 border text-center">{{ result.status }}</td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="14">No results found for this Roll number.</td>
                                 </tr>
                             {% endfor %}
+                        <tr class="bg-gray-100 font-semibold">
+                            <td class="border"></td>
+                            <td class="border"></td>
+                            <td class="px-4 py-2 border">Semester Total</td>
+                            <td class="px-4 py-2 border text-center">{{ semester_totals|get_item:semester_number|get_item:"total_credit_hours" }}</td>
+                            <td class="px-4 py-2 border text-center">{{ semester_totals|get_item:semester_number|get_item:"total_full_marks" }}</td>
+                            <td class="border"></td>
+                            <td class="border"></td>
+                            <td class="border"></td>
+                            <td class="border"></td>
+                            <td class="px-4 py-2 border text-center">{{ semester_totals|get_item:semester_number|get_item:"max_marks" }}</td>
+                            <td class="px-4 py-2 border text-center">{{ semester_totals|get_item:semester_number|get_item:"average_percentage" }}%</td>
+                            <td class="px-4 py-2 border text-center">{{ semester_totals|get_item:semester_number|get_item:"total_quality_points" }}</td>
+                            <td class="border" colspan="2"></td>
+                        </tr>
                         </tbody>
                     </table>
                 </div>
-            {% else %}
-                <div class="alert alert-info shadow-lg mt-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <span>No exam results available.</span>
+
+                <div class="gpa-display">
+                    <h3 class="text-center mt-2" style="font-size: 1.1em;">
+                        Semester GPA: {{ semester_gpas|dictattribute:semester_number }} <span class="fs-5">(ERRORS AND OMISSIONS EXPECTED)</span>
+                    </h3>
                 </div>
-            {% endif %}
-        </div>
+            {% endfor %}
+
+
+
+  {% if opt_results %}
+
+            <p class="text-center text-warning" style="font-size: 0.9em;">*This Extra course will not affect result</p>
+            <div class="table-responsive d-print-table">
+                <table class="table-success" style="font-size: 0.80em">
+                    <thead  <thead class="table-success">>
+                        <tr>
+                            <th class="bg-success">Sr</th>
+                            <th class="bg-success">Course Code</th>
+                            <th class="bg-success">Course Title</th>
+                            <th class="bg-success">Credit Hour</th>
+                            <th class="bg-success">Internal Marks</th>
+                            <th class="bg-success">Mid Term Marks</th>
+                            <th class="bg-success">Final Term Marks</th>
+                            <th class="bg-success">Practical Work</th>
+                            <th class="bg-success">Total Marks</th>
+                            <th class="bg-success">Percentage %</th>
+                            <th class="bg-success">Grade</th>
+                            <th class="bg-success">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for opt_result in opt_results %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ opt_result.course.course_code }}</td>
+                            <td>{{ opt_result.course.course_title }}</td>
+                            {% comment %} <td>{{ opt_result.course.credit_hour }}</td> {% endcomment %}
+                           <td>  {{ opt_result.course.credit_hour }} ({{ opt_result.course.credit_hour }} - {{ opt_result.course.lab_work }}) </td>
+                            <td>{{ opt_result.internal_marks }}</td>
+                            <td>{{ opt_result.mid_term_marks }}</td>
+                            <td>{{ opt_result.final_term_marks }}</td>
+                            <td>{{ opt_result.practical_work }}</td>
+                            <td>{{ opt_result.total_obtained_marks | floatformat:2 }}</td>
+                            <td>{{ opt_result.percentage }}</td>
+                            <td>{{ opt_result.grade }}</td>
+                            <td>{{ opt_result.status }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5">No optional courses found.</td>
+                        </tr>
+                        {% endfor %}
+                        <tr>
+                        </tbody>
+                    </table>
+               </div>
+                    {% endif %}
+
+                    <h6 class="text-center mt-2">Developed by <strong class='text-success fs-5 fw-5'>Muhammad Yahya</strong></h6>
     </div>
-</div>
-{% endblock %}
+    {% endif %}
+
+    {% endblock content %}
+
+    {% block js_results %}
+<script src="{% static "js/results.js" %}"></script>
+
+{% endblock js_results %}
+
+{% block js_upload_results %}
+{% endblock  %}

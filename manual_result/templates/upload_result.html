@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block result_css %}
+{% endblock  %}
+
+
+
+{% block upload_result_css %}
+<link rel="stylesheet" href="{% static "css/upload_result.css" %}">
+{% endblock  %}
+
+
+{% block content %}
+    <div class="container mt-3">
+        
+   
+
+        <!-- Card wrapper for form, centered and with adjusted width -->
+        <div class="container d-flex justify-content-center align-items-center min-vh-100">
+            <div class="card shadow-lg w-100" style="max-width: 500px;">
+                <div class="card-header bg-primary text-white text-center">
+                    <h3>Upload Result</h3>
+                </div>
+                {% if messages %}
+                <div id="message" class="alert alert-warning">
+                    {% for message in messages %}
+                        <p>{{ message }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data" id="uploadForm">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="session" class="form-label">Select Session</label>
+                            <div>
+                                {{ form.session }}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="semester" class="form-label">Select Semester</label>
+                            <div>
+                                {{ form.semester }}
+                            </div>
+                        </div>
+                        
+                        
+
+                        <div class="mb-3">
+                            <label for="file" class="form-label">Upload Excel Result File</label>
+                            <div>
+                                {{ form.file }}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="course_title" class="form-label">Course Title</label>
+                            <div >
+                                {{ form.course_title }}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="course_code" class="form-label">Course Code</label>
+                            <div >
+                                {{ form.course_code }}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="opt" class="form-label">Optional</label>
+                            <div>
+                                {{ form.opt }}
+                    
+                                <p class="text-warning">This will not affect GPA</p>
+                            </div>
+                        </div>
+                    
+                        <div class="mb-3">
+                            <label for="credit_hour" class="form-label">Credit Hour</label>
+                            <div >
+                                <div class="d-flex flex-wrap gap-3">
+                                    {% for radio in form.credit_hour %}
+                                        <div class="form-check form-check-inline">
+                                            {{ radio.tag }} <!-- Input tag -->
+                                            <label class="form-check-label" for="{{ radio.id_for_label }}">
+                                                {{ radio.choice_label }}
+                                            </label>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>                        
+
+                        <div class="mb-3">
+                            <label for="lab_work" class="form-label">Lab Work</label>
+                            <div>
+                                <div class="d-flex gap-3">
+                                    {% for radio in form.lab_work %}
+                                        <div class="form-check form-check-inline">
+                                            {{ radio.tag }} <!-- Input tag -->
+                                            <label class="form-check-label" for="{{ radio.id_for_label }}">
+                                                {{ radio.choice_label }}
+                                            </label>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- File upload button -->
+                        <div>
+                            <button type="submit" class="btn  btn-primary w-100" >Submit</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% comment %} <!-- Bootstrap Modal for confirmation -->
+    <div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmationModalLabel">Confirm Submission</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Uploaded File:</strong> <span id="modalFileName"></span></p> <!-- File name -->
+                    <p><strong>Course Title:</strong> <span id="modalCourseTitle"></span></p>
+                    <p><strong>Course Code:</strong> <span id="modalCourseCode"></span></p>
+                    <p><strong>Credit Hour:</strong> <span id="modalCreditHour"></span></p>
+                    <p><strong>Lab Work:</strong> <span id="modalLabWork"></span></p>
+                    <p><strong><h6 class="text-warning">*Please make sure all fields are correct</h6></strong></p>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" form="uploadForm">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div> {% endcomment %}
+
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const sessionSelect = document.getElementById("id_session");
+            const semesterSelect = document.getElementById("id_semester");
+        
+            sessionSelect.addEventListener("change", function () {
+                const sessionId = this.value;
+                console.log("Session ID selected:", sessionId); // Debug statement
+        
+                if (!sessionId) {
+                    semesterSelect.innerHTML = '<option value="">Select Semester</option>';
+                    return;
+                }
+        
+                fetch(`/get-semesters/?session_id=${sessionId}`)
+                    .then(response => {
+                        console.log("Response received:", response); // Debug statement
+                        if (!response.ok) {
+                            throw new Error("Network response was not ok");
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log("Data received:", data); // Debug statement
+                        semesterSelect.innerHTML = '<option value="">Select Semester</option>';
+                        data.semesters.forEach(semester => {
+                            const option = document.createElement("option");
+                            option.value = semester.id;
+                            option.textContent = semester.name;
+                            semesterSelect.appendChild(option);
+                        });
+                    })
+                    .catch(error => {
+                        console.error("Error fetching semesters:", error); // Debug statement
+                    });
+            });
+        });        
+    </script>
+
+
+    {% endblock content %}
+
+
+{% block js_results %}
+{% endblock js_results %}
+
+{% block js_upload_results %}
+
+<script src="{% static "js/upload_result.js" %}"></script>
+{% endblock js_upload_results %}

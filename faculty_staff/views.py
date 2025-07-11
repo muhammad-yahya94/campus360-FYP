@@ -647,6 +647,7 @@ class CourseForm(forms.Form):
     credits = forms.IntegerField(min_value=1, required=True, help_text="Enter the number of credit hours.")
     lab_work = forms.IntegerField(min_value=0, required=False, help_text="Enter the number of lab work.")
     is_active = forms.BooleanField(required=False, initial=True, help_text="Check this if the course is active.")
+    opt = forms.BooleanField(required=False, initial=True, help_text="Check this if the course is just optional")
     description = forms.CharField(widget=forms.Textarea, required=False, help_text="Provide a description.")
 
 
@@ -666,6 +667,7 @@ def add_course(request):
                 credits=form.cleaned_data['credits'],
                 lab_work=form.cleaned_data['lab_work'],
                 is_active=form.cleaned_data['is_active'],
+                opt=form.cleaned_data['opt'],
                 description=form.cleaned_data['description']
             )
             messages.success(request, f'Course {code} added successfully.')
@@ -2419,7 +2421,7 @@ def create_assignment(request):
         description=description,
         due_date=due_date,
         max_points=max_points,
-        resource_file=resource_file
+        resource_file=resource_file  
     )
     logger.info(f"Assignment '{title}' created for course offering {course_offering_id} by {request.user}")
     return JsonResponse({'success': True, 'message': 'Assignment created successfully.'})

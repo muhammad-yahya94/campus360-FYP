@@ -11,6 +11,7 @@ from django.utils import timezone
 
 # ===== Course =====
 class Course(models.Model):
+    opt = models.BooleanField(default=False)
     code = models.CharField(max_length=10, unique=True, help_text="Enter the unique course code (e.g., CS101).")  # e.g., CS101
     name = models.CharField(max_length=200, help_text="Enter the full name of the course (e.g., Introduction to Programming).")  # e.g., Introduction to Programming
     credits = models.PositiveIntegerField(help_text="Enter the number of credit hours for this course.")  # e.g., 3
@@ -288,28 +289,63 @@ class Notice(models.Model):
     
 # ===== Marks After Exams =====
 class ExamResult(models.Model):
-    EXAM_TYPES = [
-        ('midterm', 'Midterm Exam'),
-        ('final', 'Final Exam'),
-        ('sessional', 'Sessoinal'),
-        ('project', 'Project'),
-        ('practical', 'Practical Exam'),
-    ]
-
     course_offering = models.ForeignKey(CourseOffering, on_delete=models.CASCADE, related_name='exam_results', help_text="The course offering this exam result is for.")
     student = models.ForeignKey('students.Student', on_delete=models.CASCADE, related_name='exam_results', help_text="The student this result pertains to.")
-    exam_type = models.CharField(max_length=20, choices=EXAM_TYPES, help_text="The type of exam (e.g., Midterm, Final).")
-    total_marks = models.PositiveIntegerField(default=100, help_text="Total marks for this exam.")
-    marks_obtained = models.PositiveIntegerField(help_text="Marks obtained by the student in this exam.")
+    
+    # Midterm Exam Marks
+    midterm_obtained = models.PositiveIntegerField(null=True, blank=True, help_text="Marks obtained in Midterm Exam.")
+    midterm_total = models.PositiveIntegerField(default=100, help_text="Total marks for Midterm Exam.")
+    
+    # Final Exam Marks
+    final_obtained = models.PositiveIntegerField(null=True, blank=True, help_text="Marks obtained in Final Exam.")
+    final_total = models.PositiveIntegerField(default=100, help_text="Total marks for Final Exam.")
+    
+    # Sessional Marks
+    sessional_obtained = models.PositiveIntegerField(null=True, blank=True, help_text="Marks obtained in Sessional.")
+    sessional_total = models.PositiveIntegerField(default=50, help_text="Total marks for Sessional.")
+    
+    # Project Marks
+    project_obtained = models.PositiveIntegerField(null=True, blank=True, help_text="Marks obtained in Project.")
+    project_total = models.PositiveIntegerField(default=100, help_text="Total marks for Project.")
+    
+    # Practical Exam Marks
+    practical_obtained = models.PositiveIntegerField(null=True, blank=True, help_text="Marks obtained in Practical Exam.")
+    practical_total = models.PositiveIntegerField(default=50, help_text="Total marks for Practical Exam.")
+    
+    # Common fields
     graded_by = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True, related_name='graded_results', help_text="The teacher who graded this exam.")
     graded_at = models.DateTimeField(auto_now_add=True, help_text="The date and time when the result was recorded.")
-    remarks = models.TextField(blank=True,null=True, help_text="Additional remarks or comments on the student's performance.")
+    remarks = models.TextField(blank=True, null=True, help_text="Additional remarks or comments on the student's performance.")
 
     def __str__(self):
-        return f"{self.student} - {self.exam_type} ({self.course_offering})"
+        return f"{self.student} - Exam Results ({self.course_offerin})"
+        
+    def get_total_obtained(self):
+        """Calculate total obtained marks across all exam types"""
+        total = 0
+        for field in ['midterm', 'final', 'sessional', 'project', 'practical']:
+            marks = getattr(self, f"{field}_obtained")
+            if marks is not None:
+                total += marks
+        return total
+        
+    def get_total_max_marks(self):
+        """Calculate total maximum marks across all exam types"""
+        total = 0
+        for field in ['midterm', 'final', 'sessional', 'project', 'practical']:
+            total += getattr(self, f"{field}_total", 0)
+        return total
+        
+    def get_percentage(self):
+        """Calculate overall percentage"""
+        total_obtained = self.get_total_obtained()
+        total_max = self.get_total_max_marks()
+        if total_max > 0:
+            return round((total_obtained / total_max) * 100, 2)
+        return 0.0
 
     class Meta:
-        unique_together = ('course_offering', 'student', 'exam_type')
+        unique_together = ('course_offering', 'student')
         verbose_name = "Exam Result"
         verbose_name_plural = "Exam Results"
         

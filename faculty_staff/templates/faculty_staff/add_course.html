@@ -63,6 +63,15 @@
                         </div>
                         <div class="form-control">
                             <label class="label">
+                                <span class="label-text text-sm text-base-content">Optional</span>
+                            </label>
+                            <select name="opt" id="opt" class="select select-bordered text-sm text-base-content">
+                                <option value="True" {% if form.opt.value|default:'True' %}selected{% endif %}>Yes</option>
+                                <option value="False" {% if not form.opt.value|default:'False' %}selected{% endif %}>No</option>
+                            </select>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
                                 <span class="label-text text-sm text-base-content">Active</span>
                             </label>
                             <select name="is_active" id="is_active" class="select select-bordered text-sm text-base-content">

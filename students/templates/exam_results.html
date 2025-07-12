@@ -1,7 +1,7 @@
 {% extends "base_student.html" %}
 {% load static %}
 {% load custom_filters %}
-{% load custom_filters_gpa %}
+{% load custom_filters_gpa %}   
 {% block content %}
 <div class="container mx-auto p-4">
     <!-- Semester Results -->
@@ -28,7 +28,7 @@
                             <th class="p-3">Total Obtained Marks</th>
                             <th class="p-3">Percentage</th>
                             <th class="p-3">Q.P</th>
-                            <th class="p-3">Status</th>
+                            <th class="p-3">Grade</th>
                             <th class="p-3">Remarks</th>
              
                         </tr>
@@ -107,14 +107,15 @@
                             <th class="p-3">Course Code</th>
                             <th class="p-3">Course Title</th>
                             <th class="p-3">Credit Hour</th>
+                            <th class="p-3">Max Marks</th>
                             <th class="p-3">Sessional</th>
                             <th class="p-3">Midterm</th>
                             <th class="p-3">Final</th>
                             <th class="p-3">Practical</th>
-                            <th class="p-3">Total Marks Obtained Obtained Obtained</th>
+                            <th class="p-3">Total Obtained Marks</th>
                             <th class="p-3">Percentage</th>
                             <th class="p-3">Grade</th>
-                            <th class="p-3">Status</th>
+                            <th class="p-3">Remarks</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -122,10 +123,11 @@
                         <tr class="hover">
                             <td class="p-3 text-center">{{ forloop.counter }}</td>
                             <td class="p-3">{{ opt_result.course_offering.course.code }}</td>
-                            <td class="p-3">{{ opt_result.course_offering.course.title }}</td>
+                            <td class="p-3">{{ opt_result.course_offering.course.name }}</td>
                             <td class="p-3 text-center">
                                 {{ opt_result.course_offering.course.credits }} ({{ opt_result.course_offering.course.credits }} - {{ opt_result.course_offering.course.lab_work }})
                             </td>
+                            <td class="p-3 text-center">{{ opt_result.get_total_max_marks }}</td>
                             <td class="p-3 text-center">{{ opt_result.sessional_obtained }}/{{ opt_result.sessional_total }}</td>
                             <td class="p-3 text-center">{{ opt_result.midterm_obtained }}/{{ opt_result.midterm_total }}</td>
                             <td class="p-3 text-center">{{ opt_result.final_obtained }}/{{ opt_result.final_total }}</td>
@@ -133,24 +135,10 @@
                             <td class="p-3 text-center">{{ opt_result.total_marks|floatformat:2 }}</td>
                             <td class="p-3 text-center">{{ opt_result.percentage|floatformat:2 }}%</td>
                             <td class="p-3 text-center">
-                                {% with percentage=opt_result.percentage|floatformat:0 %}
-                                    {% if percentage >= 85 %}A+
-                                    {% elif percentage >= 80 %}A
-                                    {% elif percentage >= 75 %}B+
-                                    {% elif percentage >= 70 %}B
-                                    {% elif percentage >= 65 %}C+
-                                    {% elif percentage >= 60 %}C
-                                    {% elif percentage >= 50 %}D
-                                    {% else %}F
-                                    {% endif %}
-                                {% endwith %}
+                                {{ opt_result.grade }}
                             </td>
                             <td class="p-3 text-center">
-                                {% if opt_result.percentage >= 50 %}
-                                    <span class="badge badge-success">Pass</span>
-                                {% else %}
-                                    <span class="badge badge-error">Fail</span>
-                                {% endif %}
+                                {{ opt_result.remarks|default:"No Remarks" }}
                             </td>
                         </tr>
                         {% empty %}
@@ -181,12 +169,10 @@
         </div>
     </div>
 
-    <div class="text-center mt-4">
-        <p>Developed by <span class="font-bold text-success">Muhammad Yahya</span></p>
-    </div>
+
 </div>
 {% endblock %}
 
 {% block js_results %}
-<script src="{% static 'js/results.js' %}"></script>
+<script src="{% static 'js/results.js' %}"></div>
 {% endblock %}

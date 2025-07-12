@@ -615,6 +615,9 @@ def exam_results(request):
         )
         print(f"Result: {result.student.university_roll_no}, Quality Points: {result.quality_points}, "
               f"Effective Credit Hours: {result.effective_credit_hour}, Course Marks: {result.course_marks}")
+    # Add grades to optional results
+    for opt_result in opt_results:
+        opt_result.grade = calculate_grade(opt_result.percentage)
 
     # Group non-optional results by semester
     semester_results = defaultdict(list)

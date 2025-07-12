@@ -24,7 +24,7 @@ urlpatterns = [
     path('session/<int:session_id>/students/', views.session_students, name='session_students'),
     path('student/<int:student_id>/', views.student_detail, name='student_detail'),
     path('edit-enrollment-status/', views.edit_enrollment_status, name='edit_enrollment_status'),
-    path('view-students/', views.view_students, name='view_students'),
+    path('view-students/<int:offering_id>', views.view_students, name='view_students'),
     path('student/<int:student_id>/set_role/', views.set_student_role, name='set_student_role'),
 
     # ========== 5. Courses & Offerings ==========
@@ -60,13 +60,13 @@ urlpatterns = [
     path('save-venue/', views.save_venue, name='save_venue'),
 
     # ========== 9. Study Materials ==========
-    path('study-materials/', views.study_materials, name='study_materials'),
+    path('study-materials/<int:offering_id>/', views.study_materials, name='study_materials'),
     path('create-study-material/', views.create_study_material, name='create_study_material'),
     path('edit-study-material/', views.edit_study_material, name='edit_study_material'),
     path('delete-study-material/', views.delete_study_material, name='delete_study_material'),
 
     # ========== 10. Assignments ==========
-    path('assignments/', views.assignments, name='assignments'),
+    path('assignments/<int:offering_id>/', views.assignments, name='assignments'),
     path('create-assignment/', views.create_assignment, name='create_assignment'),
     path('edit-assignment/', views.edit_assignment, name='edit_assignment'),
     path('delete-assignment/', views.delete_assignment, name='delete_assignment'),
@@ -75,19 +75,23 @@ urlpatterns = [
 
 
     # ========== 12. Exam Results ==========
-    path('exam-results/', views.exam_results, name='exam_results'),
+    path('exam-results/<int:course_offering_id>/', views.exam_results, name='exam_results'),
     path('record-exam-results/', views.record_exam_results, name='record_exam_results'),
-    path('delete-exam-result/', views.delete_exam_result, name='delete_exam_result'),
     path('load-students-for-course/', views.load_students_for_course, name='load_students_for_course'),
-    path('update-exam-result/', views.update_exam_result, name='update_exam_result'), 
+    
+    
+    # ==========  student performace ==========
     path('course/<int:course_offering_id>/student/<int:student_id>/performance/', views.student_performance, name='student_performance'),
     path('student/<int:student_id>/performance/', views.student_semester_performance, name='student_semester_performance'),
+ 
+ 
+ 
     # ========== 13. Notice Board ==========
     path('notices/', views.notice_board, name='notice_board'),
     path('notices/toggle-pin/<int:notice_id>/', views.toggle_pin_notice, name='toggle_pin_notice'),
     
     # ========== 14. Attendance ==========
-    path('attendance/', views.attendance, name='attendance'),
+    path('attendance/<int:offering_id>/', views.attendance, name='attendance'),
     path('record-attendance/', views.record_attendance, name='record_attendance'),
     path('load-attendance/', views.load_attendance, name='load_attendance'),
     path('edit-attendance/', views.edit_attendance, name='edit_attendance'),

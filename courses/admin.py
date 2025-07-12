@@ -81,22 +81,14 @@ class NoticeAdmin(admin.ModelAdmin):
     date_hierarchy = 'created_at'
     raw_id_fields = ('created_by',)
 
-# Admin for ExamResult
 @admin.register(ExamResult)
 class ExamResultAdmin(admin.ModelAdmin):
-    list_display = ('course_offering', 'student', 'get_total_marks', 'get_percentage', 'graded_by', 'graded_at')
+    list_display = ('course_offering', 'student', 'remarks', 'graded_by', 'graded_at')
     list_filter = ('course_offering__academic_session', 'course_offering__semester', 'graded_at')
     search_fields = ('student__applicant__full_name', 'course_offering__course__name')
     raw_id_fields = ('course_offering', 'student', 'graded_by')
     date_hierarchy = 'graded_at'
     
-    def get_total_marks(self, obj):
-        return f"{obj.get_total_obtained()}/{obj.get_total_max_marks()}"
-    get_total_marks.short_description = 'Total Marks (Obtained/Total)'
-    
-    def get_percentage(self, obj):
-        return f"{obj.get_percentage()}%"
-    get_percentage.short_description = 'Percentage'
 
 # Admin for Attendance
 @admin.register(Attendance)

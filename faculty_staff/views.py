@@ -2681,12 +2681,12 @@ def search_students(request):
 
 
 
+
 @hod_or_professor_required
 def exam_results(request, course_offering_id):
     course_offerings = CourseOffering.objects.filter(
         teacher=request.user.teacher_profile
     ).select_related('course', 'semester', 'academic_session').order_by('-academic_session__start_year', 'semester__number')
-    
     
     context = {
         'course_offerings': course_offerings,
@@ -2728,17 +2728,24 @@ def exam_results(request, course_offering_id):
             enrollments = CourseEnrollment.objects.filter(
                 course_offering=course_offering,
                 status='enrolled'
-            ).select_related('student_semester_enrollment__student__applicant')
+            ).select_related('student_semester_enrollment__student__applicant').order_by(
+                'student_semester_enrollment__student__university_roll_no'
+            )
             
             students = []
             for enrollment in enrollments:
-                if enrollment.student_semester_enrollment.semester == course_offering.semester:
-                    student_id = enrollment.student_semester_enrollment.student.applicant.id
+                student = enrollment.student_semester_enrollment.student
+                applicant = student.applicant
+                # Filter by matching shift
+                if enrollment.student_semester_enrollment.semester == course_offering.semester and (
+                    course_offering.shift == 'both' or applicant.shift == course_offering.shift
+                ):
+                    student_id = applicant.id
                     student_data = {
                         'id': student_id,
-                        'name': str(enrollment.student_semester_enrollment.student),
-                        'university_roll_no': enrollment.student_semester_enrollment.student.university_roll_no or 'N/A',
-                        'college_roll_no': enrollment.student_semester_enrollment.student.college_roll_no or 'N/A',
+                        'name': str(student),
+                        'university_roll_no': student.university_roll_no or 'N/A',
+                        'college_roll_no': student.college_roll_no or 'N/A',
                         'midterm': None,
                         'sessional': None,
                         'final': None,
@@ -2788,7 +2795,7 @@ def exam_results(request, course_offering_id):
                     'final_obtained': s['final'],
                     'practical_obtained': s['practical'],
                     'total_marks': s['total_marks'],
-                    'percentage':s['percentage'],
+                    'percentage': s['percentage'],
                     'midterm_total': midterm_max,
                     'sessional_total': sessional_max,
                     'final_total': final_max,
@@ -2803,7 +2810,7 @@ def exam_results(request, course_offering_id):
             
             context.update({
                 'course_offering': course_offering,
-                'students': students,  # All enrolled students for the form
+                'students': students,
                 'exam_results': aggregated_results,
                 'midterm_max': midterm_max,
                 'sessional_max': sessional_max,
@@ -2816,78 +2823,6 @@ def exam_results(request, course_offering_id):
             messages.error(request, 'Course offering not found or you do not have permission to access it.')
     
     return render(request, 'faculty_staff/exam_results.html', context)
-
-
-
-
-def load_students_for_course(request):
-    course_offering_id = request.GET.get('course_offering_id')
-    if not course_offering_id:
-        return JsonResponse({'success': False, 'message': 'Course offering ID is required.'})
-    
-    try:
-        course_offering = CourseOffering.objects.get(
-            id=course_offering_id,
-            teacher=request.user.teacher_profile
-        )
-
-        print(f"CourseOffering Shift: {course_offering.shift}")  # 🔍 Print CourseOffering shift
-
-        course_enrollments = CourseEnrollment.objects.filter(
-            course_offering=course_offering,
-            status='enrolled'
-        ).select_related('student_semester_enrollment__student__applicant')
-        
-        # Get existing exam results
-        exam_results = ExamResult.objects.filter(
-            course_offering_id=course_offering_id
-        ).select_related('student')
-        
-        existing_results = {
-            result.student_id: {
-                'midterm': result.midterm_obtained,
-                'sessional': result.sessional_obtained,
-                'final': result.final_obtained,
-                'practical': result.practical_obtained,
-                'remarks': result.remarks or ''
-            }
-            for result in exam_results
-        }
-
-        students = []
-        for ce in course_enrollments:
-            student = ce.student_semester_enrollment.student
-            if ce.student_semester_enrollment.semester != course_offering.semester:
-                continue
-            if student.applicant.shift != course_offering.shift:
-                print(f"Skipped Student: {student.applicant.full_name} | Student Shift: {student.applicant.shift}")  # 🔍 Mismatch shift
-                continue
-
-            print(f"Including Student: {student.applicant.full_name} | Student Shift: {student.applicant.shift}")  # ✅ Matching shift
-
-            students.append({
-                'id': student.applicant.pk,
-                'name': f"{student.applicant.full_name}",
-                'midterm_max': course_offering.course.credits * 4,
-                'sessional_max': course_offering.course.credits * 2,
-                'final_max': course_offering.course.credits * 14,
-                'practical_max': course_offering.course.lab_work * 20,
-                'midterm': existing_results.get(student.applicant.pk, {}).get('midterm', None),
-                'sessional': existing_results.get(student.applicant.pk, {}).get('sessional', None),
-                'final': existing_results.get(student.applicant.pk, {}).get('final', None),
-                'practical': existing_results.get(student.applicant.pk, {}).get('practical', None),
-                'remarks': existing_results.get(student.applicant.pk, {}).get('remarks', '')
-            })
-
-        return JsonResponse({
-            'success': True,
-            'students': students,
-            'total_max': course_offering.course.credits * 20 + (course_offering.course.lab_work * 20 if course_offering.course.lab_work > 0 else 0)
-        })
-    except CourseOffering.DoesNotExist:
-        return JsonResponse({'success': False, 'message': 'Course offering not found or unauthorized.'})
-
-
 
 
 

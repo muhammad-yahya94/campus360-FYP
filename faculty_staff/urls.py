@@ -77,7 +77,8 @@ urlpatterns = [
     # ========== 12. Exam Results ==========
     path('exam-results/<int:course_offering_id>/', views.exam_results, name='exam_results'),
     path('record-exam-results/', views.record_exam_results, name='record_exam_results'),
-    path('load-students-for-course/', views.load_students_for_course, name='load_students_for_course'),
+    
+    
     
     
     # ==========  student performace ==========

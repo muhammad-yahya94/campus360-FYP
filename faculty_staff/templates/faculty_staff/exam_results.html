@@ -48,24 +48,15 @@
                 <p class="text-base-content/70">
                     {{ course_offering.course.code }} - {{ course_offering.course.name }}
                     <br>
-                    <span class="text-sm">Academic Session: {{ course_offering.from_date.year }}</span>
+                    <span class="text-sm">Academic Session: {{ course_offering.academic_session.name }} | {{ course_offering.semester.name }} |  {{ course_offering.shift|title }}</span>
                 </p>
             </div>
         </div>
     </div>
-
-    <!-- Error Message -->
-    {% if error %}
-    <div class="alert alert-error mb-6 shadow-lg">
-        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <span>{{ error }}</span>
-    </div>
-    {% endif %}
     
-    {% if not exam_results %}
+
     <!-- Record Exam Results Form -->
+    {% if not  exam_results %}
     <div class="card bg-base-100 shadow-xl mb-6">
         <div class="card-body">
             <h2 class="card-title">Record Exam Results</h2>
@@ -73,15 +64,16 @@
                 {% csrf_token %}
                 <input type="hidden" name="course_offering_id" value="{{ course_offering_id }}">
                 <div class="overflow-x-auto mt-6">
-                    <table class="table w-full">
+                    <table class="table w-full" id="studentsTable">
                         <thead>
                             <tr>
+                                <th>University Roll No</th>
                                 <th>Student</th>
-                                <th>Midterm (Max: {{ midterm_max }})</th>
-                                <th>Sessional (Max: {{ sessional_max }})</th>
-                                <th>Final (Max: {{ final_max }})</th>
+                                <th>Midterm (Max: <span id="midtermMax">{{ midterm_max|default:0 }}</span>)</th>
+                                <th>Sessional (Max: <span id="sessionalMax">{{ sessional_max|default:0 }}</span>)</th>
+                                <th>Final (Max: <span id="finalMax">{{ final_max|default:0 }}</span>)</th>
                                 {% if course_offering.course.lab_work > 0 %}
-                                <th>Practical (Max: {{ practical_max }})</th>
+                                <th>Practical (Max: <span id="practicalMax">{{ practical_max|default:0 }}</span>)</th>
                                 {% endif %}
                                 <th>Total Obtained Marks</th>
                                 <th>Total Marks</th>
@@ -89,12 +81,13 @@
                                 <th>Remarks</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="studentsTableBody">
                             {% for student in students %}
                             <tr data-student-id="{{ student.id }}">
+                                <td>{{ student.university_roll_no }}</td>
                                 <td>
                                     {{ student.name }}
-                                    <input type="hidden" name="student_ids" value="{{ student.id }}">
+                                    <input type="hidden" name="student_ids[]" value="{{ student.id }}">
                                 </td>
                                 <td>
                                     <input type="number" name="midterm_{{ student.id }}" class="input input-bordered input-sm w-24 marks-input" 
@@ -142,7 +135,9 @@
         </div>
     </div>
     {% endif %}
+
     <!-- Existing Exam Results Table -->
+    {% if course_offering %}
     <div class="card bg-base-100 shadow-xl print-section">
         <div class="card-body">
             <div class="flex justify-between items-center mb-4">
@@ -155,14 +150,16 @@
                 <table class="table w-full">
                     <thead>
                         <tr>
-                            <th>Student Name</th>
                             <th>University Roll No</th>
+                            <th>Student Name</th>
                             <th>College Roll No</th>
                             <th>Course</th>
                             <th>Midterm</th>
                             <th>Sessional</th>
                             <th>Final</th>
+                            {% if course_offering.course.lab_work > 0 %}
                             <th>Practical</th>
+                            {% endif %}
                             <th>Total Obtained Marks</th>
                             <th>Total Marks</th>
                             <th>Percentage</th>
@@ -174,39 +171,40 @@
                     <tbody>
                         {% for result in exam_results %}
                         <tr> 
-                            <td>{{ result.student.applicant.full_name }}</td>
                             <td>{{ result.student.university_roll_no|default:"N/A" }}</td>
+                            <td>{{ result.student.applicant.full_name }}</td>
                             <td>{{ result.student.college_roll_no|default:"N/A" }}</td>
                             <td>{{ result.course_offering.course.code }}</td>
                             <td>{{ result.midterm_obtained|default:"0" }}/{{ result.midterm_total }}</td>
                             <td>{{ result.sessional_obtained|default:"0" }}/{{ result.sessional_total }}</td>
                             <td>{{ result.final_obtained|default:"0" }}/{{ result.final_total }}</td>
+                            {% if course_offering.course.lab_work > 0 %}
                             <td>{{ result.practical_obtained|default:"0" }}/{{ result.practical_total }}</td>
+                            {% endif %}
                             <td>{{ result.total_marks }}</td>
-                            <td>{{ result.midterm_total|default:"0" |add:result.sessional_total|default:"0" |add:result.final_total|default:"0" |add:result.practical_total|default:"0" }}</td>
-                            <td>{{ result.percentage }}%</td>
+                            <td>{{ result.midterm_total|default:0|add:result.sessional_total|default:0|add:result.final_total|default:0|add:result.practical_total|default:0 }}</td>
+                            <td>{{ result.percentage|floatformat:2 }}%</td>
                             <td>{{ result.academic_session }}</td>
                             <td>{{ result.remarks|default:"No Remarks" }}</td>
                             <td class="no-print">
                                 <label for="editResultModal" class="btn btn-warning btn-sm edit-result" 
-                                data-result-id="{{ result.id }}"
-                                data-course-offering-id="{{ result.course_offering.id }}"
-                                data-midterm="{{ result.midterm_obtained|floatformat:0|default_if_none:'0' }}"
-                                data-sessional="{{ result.sessional_obtained|floatformat:0|default_if_none:'0' }}"
-                                data-final="{{ result.final_obtained|floatformat:0|default_if_none:'0' }}"
-                                data-practical="{{ result.practical_obtained|floatformat:0|default_if_none:'0' }}"
-                                data-total-obtained="{{ result.total_obtained|floatformat:0|default_if_none:'0' }}"
-                                data-percentage="{{ result.percentage|floatformat:2|default_if_none:'0.00' }}"
-                                data-remarks="{{ result.remarks|default:''|escapejs }}">
-                             <i class="fas fa-edit"></i>
-                         </label>
-                         
-                        
+                                       data-result-id="{{ result.id }}"
+                                       data-course-offering-id="{{ result.course_offering.id }}"
+                                       data-student-id="{{ result.student.id }}"
+                                       data-midterm="{{ result.midterm_obtained|floatformat:0|default_if_none:'0' }}"
+                                       data-sessional="{{ result.sessional_obtained|floatformat:0|default_if_none:'0' }}"
+                                       data-final="{{ result.final_obtained|floatformat:0|default_if_none:'0' }}"
+                                       data-totalmarks="{{ result.total_marks }}"
+                                       data-percentage="{{ result.percentage }}"
+                                       data-practical="{{ result.practical_obtained|floatformat:0|default_if_none:'0' }}"
+                                       data-remarks="{{ result.remarks|default:''|escapejs }}">
+                                    <i class="fas fa-edit"></i>
+                                </label>
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="14" class="text-center">No exam results found.</td>
+                            <td colspan="{% if course_offering.course.lab_work > 0 %}14{% else %}13{% endif %}" class="text-center">No exam results found.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -214,88 +212,89 @@
             </div>
         </div>
     </div>
-</div>
+    {% endif %}
 
-<!-- Edit Result Modal -->
-<input type="checkbox" id="editResultModal" class="modal-toggle" />
-<div class="modal" role="dialog">
-    <div class="modal-box">
-        <h3 class="font-bold text-lg">Edit Exam Result</h3>
-        <form id="edit-result-form" method="post" action="{% url 'faculty_staff:record_exam_results' %}">
-            {% csrf_token %}
-            <input type="hidden" id="edit_result_id" name="result_id" value="">
-            <input type="hidden" id="edit_course_offering_id" name="course_offering_id" value="">
-            <div class="form-control mb-3">
-                <label class="label" for="edit_midterm">
-                    <span class="label-text">Midterm Marks (Max: {{ midterm_max }})</span>
-                </label>
-                <input type="number" class="input input-bordered marks-input" id="edit_midterm" name="midterm" min="0" max="{{ midterm_max }}" step="1" value="0">
-            </div>
-            <div class="form-control mb-3">
-                <label class="label" for="edit_sessional">
-                    <span class="label-text">Sessional Marks (Max: {{ sessional_max }})</span>
-                </label>
-                <input type="number" class="input input-bordered marks-input" id="edit_sessional" name="sessional" min="0" max="{{ sessional_max }}" step="1" value="0">
-            </div>
-            <div class="form-control mb-3">
-                <label class="label" for="edit_final">
-                    <span class="label-text">Final Marks (Max: {{ final_max }})</span>
-                </label>
-                <input type="number" class="input input-bordered marks-input" id="edit_final" name="final" min="0" max="{{ final_max }}" step="1" value="0">
-            </div>
-            {% if course_offering.course.lab_work > 0 %}
-            <div class="form-control mb-3">
-                <label class="label" for="edit_practical">
-                    <span class="label-text">Practical Marks (Max: {{ practical_max }})</span>
-                </label>
-                <input type="number" class="input input-bordered marks-input" id="edit_practical" name="practical" min="0" max="{{ practical_max }}" step="1" value="0">
-            </div>
-            {% endif %}
-            <div class="form-control mb-3">
-                <label class="label" for="edit_total_obtained">
-                    <span class="label-text">Total Obtained Marks</span>
-                </label>
-                <input type="number" class="input input-bordered" id="edit_total_obtained" name="total_obtained" readonly>
-            </div>
-            <div class="form-control mb-3">
-                <label class="label" for="edit_total_max">
-                    <span class="label-text">Total Marks</span>
-                </label>
-                <input type="number" class="input input-bordered"  id="edit_total_max" name="total_max" value="{{ totalMax }}" readonly>
-            </div>
-            <div class="form-control mb-3">
-                <label class="label" for="edit_percentage">  
-                    <span class="label-text">Percentage</span>
-                </label>
-                <input type="text" class="input input-bordered" id="edit_percentage" name="percentage" readonly>
-            </div>
-            <div class="form-control mb-3">
-                <label class="label" for="edit_remarks">
-                    <span class="label-text">Remarks</span>
-                </label>
-                <textarea class="textarea textarea-bordered" id="edit_remarks" name="remarks" rows="3"></textarea>
-            </div>
-            <div class="modal-action">
-                <label for="editResultModal" class="btn btn-ghost">Close</label>
-                <button type="submit" class="btn btn-primary">Save changes</button>
-            </div>
-        </form>
+    <!-- Edit Result Modal -->
+    <input type="checkbox" id="editResultModal" class="modal-toggle" />
+    <div class="modal" role="dialog">
+        <div class="modal-box">
+            <h3 class="font-bold text-lg">Edit Exam Result</h3>
+            <form id="edit-result-form" method="post" action="{% url 'faculty_staff:record_exam_results' %}">
+                {% csrf_token %}
+                <input type="hidden" id="edit_result_id" name="result_id" value="">
+                <input type="hidden" id="edit_course_offering_id" name="course_offering_id" value="">
+                <input type="hidden" id="edit_student_id" name="student_ids" value="">
+                <div class="form-control mb-3">
+                    <label class="label" for="edit_midterm">
+                        <span class="label-text">Midterm Marks (Max: <span id="edit_midterm_max">{{ midterm_max }}</span>)</span>
+                    </label>
+                    <input type="number" class="input input-bordered marks-input" id="edit_midterm" name="midterm" min="0" max="{{ midterm_max }}" step="1" value="0">
+                </div>
+                <div class="form-control mb-3">
+                    <label class="label" for="edit_sessional">
+                        <span class="label-text">Sessional Marks (Max: <span id="edit_sessional_max">{{ sessional_max }}</span>)</span>
+                    </label>
+                    <input type="number" class="input input-bordered marks-input" id="edit_sessional" name="sessional" min="0" max="{{ sessional_max }}" step="1" value="0">
+                </div>
+                <div class="form-control mb-3">
+                    <label class="label" for="edit_final">
+                        <span class="label-text">Final Marks (Max: <span id="edit_final_max">{{ final_max }}</span>)</span>
+                    </label>
+                    <input type="number" class="input input-bordered marks-input" id="edit_final" name="final" min="0" max="{{ final_max }}" step="1" value="0">
+                </div>
+                {% if course_offering.course.lab_work > 0 %}
+                <div class="form-control mb-3">
+                    <label class="label" for="edit_practical">
+                        <span class="label-text">Practical Marks (Max: <span id="edit_practical_max">{{ practical_max }}</span>)</span>
+                    </label>
+                    <input type="number" class="input input-bordered marks-input" id="edit_practical" name="practical" min="0" max="{{ practical_max }}" step="1" value="0">
+                </div>
+                {% endif %}
+                <div class="form-control mb-3">
+                    <label class="label" for="edit_total_obtained">
+                        <span class="label-text">Total Obtained Marks</span>
+                    </label>
+                    <input type="number" class="input input-bordered" id="edit_total_obtained" name="total_obtained" readonly>
+                </div>
+                <div class="form-control mb-3">
+                    <label class="label" for="edit_total_max">
+                        <span class="label-text">Total Marks</span>
+                    </label>
+                    <input type="number" class="input input-bordered" id="edit_total_max" name="total_max" value="{{ totalMax }}" readonly>
+                </div>
+                <div class="form-control mb-3">
+                    <label class="label" for="edit_percentage">
+                        <span class="label-text">Percentage</span>
+                    </label>
+                    <input type="text" class="input input-bordered" id="edit_percentage" name="percentage" readonly>
+                </div>
+                <div class="form-control mb-3">
+                    <label class="label" for="edit_remarks">
+                        <span class="label-text">Remarks</span>
+                    </label>
+                    <textarea class="textarea textarea-bordered" id="edit_remarks" name="remarks" rows="3"></textarea>
+                </div>
+                <div class="modal-action">
+                    <label for="editResultModal" class="btn btn-ghost">Close</label>
+                    <button type="submit" class="btn btn-primary">Save changes</button>
+                </div>
+            </form>
+        </div>
     </div>
-</div>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-
-
- document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
+    const courseOfferingId = {{ course_offering_id|default:0 }};
     const midtermMax = {{ midterm_max|default:0 }};
     const sessionalMax = {{ sessional_max|default:0 }};
     const finalMax = {{ final_max|default:0 }};
     const practicalMax = {{ practical_max|default:0 }};
     const totalMax = {{ totalMax|default:0 }};
+    const hasPractical = {{ course_offering.course.lab_work|default:0 }} > 0;
 
-    // Debounce function to limit rapid input events
+    // Debounce function
     function debounce(func, wait) {
         let timeout;
         return function executedFunction(...args) {
@@ -308,40 +307,37 @@
         };
     }
 
+    // Calculate totals for a student row
     function calculateTotals(studentId) {
         const row = document.querySelector(`tr[data-student-id="${studentId}"]`);
         if (!row) return;
-    
+
         const getValue = (name) => {
             const el = row.querySelector(`input[name="${name}_${studentId}"]`);
             return el ? parseFloat(el.value) || 0 : 0;
         };
-    
+
         const midterm = getValue("midterm");
         const sessional = getValue("sessional");
         const final = getValue("final");
-        const practical = getValue("practical");  // safely handles missing input
-    
+        const practical = hasPractical ? getValue("practical") : 0;
+
         const total = midterm + sessional + final + practical;
         const percentage = totalMax > 0 ? ((total / totalMax) * 100).toFixed(2) : "0.00";
-    
+
         const totalObtainedInput = row.querySelector(`input[name="total_obtained_${studentId}"]`);
         const percentageInput = row.querySelector(`input[name="percentage_${studentId}"]`);
-    
+
         if (totalObtainedInput) totalObtainedInput.value = total.toFixed(2);
         if (percentageInput) percentageInput.value = `${percentage}%`;
     }
-    
 
+    // Calculate totals for edit modal
     function calculateEditTotals() {
-        const getInputValue = (id) => {
-            const el = document.getElementById(id);
-            return el ? parseFloat(el.value) || 0 : 0;
-        };
-        const midterm = getInputValue("edit_midterm");
-        const sessional = getInputValue("edit_sessional");
-        const final = getInputValue("edit_final");
-        const practical = getInputValue("edit_practical");
+        const midterm = parseFloat(document.getElementById('edit_midterm').value) || 0;
+        const sessional = parseFloat(document.getElementById('edit_sessional').value) || 0;
+        const final = parseFloat(document.getElementById('edit_final').value) || 0;
+        const practical = hasPractical ? parseFloat(document.getElementById('edit_practical')?.value || 0) : 0;
 
         const total = midterm + sessional + final + practical;
         const percentage = totalMax > 0 ? ((total / totalMax) * 100).toFixed(2) : 0;
@@ -354,39 +350,69 @@
     const debouncedCalculateTotals = debounce(calculateTotals, 100);
     const debouncedCalculateEditTotals = debounce(calculateEditTotals, 100);
 
-    document.querySelectorAll('.marks-input').forEach(input => {
-        const studentId = input.getAttribute('data-student-id');
-        ['input', 'change', 'keyup'].forEach(eventType => {
-            input.addEventListener(eventType, () => {
-                if (studentId) {
-                    debouncedCalculateTotals(studentId);
-                }
+    // Attach event listeners to table inputs
+    document.querySelectorAll('#studentsTableBody tr').forEach(row => {
+        const studentId = row.dataset.studentId;
+        row.querySelectorAll('.marks-input').forEach(input => {
+            ['input', 'change', 'keyup'].forEach(eventType => {
+                input.addEventListener(eventType, () => debouncedCalculateTotals(studentId));
             });
         });
-    });
-    
-   // Attach real-time calculation to edit modal inputs
-['edit_midterm', 'edit_sessional', 'edit_final', 'edit_practical'].forEach(id => {
-    const input = document.getElementById(id);
-    if (input) {
-        ['input', 'change', 'keyup'].forEach(eventType => {
-            input.addEventListener(eventType, () => {
-                debouncedCalculateEditTotals();
-            });
-        });
-    }
-});
-  
-    // Initialize totals for existing values
-    document.querySelectorAll('input[name="student_ids"]').forEach(input => {
-        const studentId = input.value;
+        // Calculate initial totals for each row
         calculateTotals(studentId);
+    });
+
+    // Attach real-time calculation to edit modal inputs
+    ['edit_midterm', 'edit_sessional', 'edit_final', 'edit_practical'].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            ['input', 'change', 'keyup'].forEach(eventType => {
+                input.addEventListener(eventType, debouncedCalculateEditTotals);
+            });
+        }
+    });
+
+    // Handle edit button click
+    document.querySelectorAll('.edit-result').forEach(button => {
+        button.addEventListener('click', () => {
+            const resultId = button.dataset.resultId;
+            const courseOfferingId = button.dataset.courseOfferingId;
+            const studentId = button.dataset.studentId;
+            const midterm = button.dataset.midterm || 0;
+            const sessional = button.dataset.sessional || 0;
+            const final = button.dataset.final || 0;
+            const practical = button.dataset.practical || 0;
+            const totalMarks = button.dataset.totalmarks || 0;
+            const percentage = button.dataset.percentage || 0;
+            const remarks = button.dataset.remarks || '';
+
+            document.getElementById('edit_result_id').value = resultId;
+            document.getElementById('edit_course_offering_id').value = courseOfferingId;
+            document.getElementById('edit_student_id').value = studentId;
+            document.getElementById('edit_midterm').value = midterm;
+            document.getElementById('edit_sessional').value = sessional;
+            document.getElementById('edit_final').value = final;
+            if (hasPractical) {
+                document.getElementById('edit_practical').value = practical;
+            }
+            document.getElementById('edit_total_obtained').value = parseFloat(totalMarks).toFixed(2);
+            document.getElementById('edit_percentage').value = parseFloat(percentage).toFixed(2) + '%';
+            document.getElementById('edit_remarks').value = remarks;
+
+            // Update max marks in modal
+            document.getElementById('edit_midterm_max').textContent = midtermMax;
+            document.getElementById('edit_sessional_max').textContent = sessionalMax;
+            document.getElementById('edit_final_max').textContent = finalMax;
+            if (hasPractical) {
+                document.getElementById('edit_practical_max').textContent = practicalMax;
+            }
+        });
     });
 
     // Print functionality
     document.getElementById('printButton').addEventListener('click', () => {
         const printWindow = window.open('', '', 'width=1000,height=600');
-        const tableRows = Array.from(document.querySelectorAll('.card .overflow-x-auto tbody tr'))
+        const tableRows = Array.from(document.querySelectorAll('.print-section .overflow-x-auto tbody tr'))
             .filter(row => row.querySelectorAll('td').length > 1)
             .map((row, index) => `
                 <tr>
@@ -398,12 +424,12 @@
                     <td>${row.querySelector('td:nth-child(5)').textContent}</td>
                     <td>${row.querySelector('td:nth-child(6)').textContent}</td>
                     <td>${row.querySelector('td:nth-child(7)').textContent}</td>
-                    <td>${row.querySelector('td:nth-child(8)').textContent}</td>
-                    <td>${row.querySelector('td:nth-child(9)').textContent}</td>
-                    <td>${row.querySelector('td:nth-child(10)').textContent}</td>
-                    <td>${row.querySelector('td:nth-child(11)').textContent}</td>
-                    <td>${row.querySelector('td:nth-child(12)').textContent}</td>
-                    <td>${row.querySelector('td:nth-child(13)').textContent}</td>
+                    ${hasPractical ? `<td>${row.querySelector('td:nth-child(8)').textContent}</td>` : ''}
+                    <td>${row.querySelector(hasPractical ? 'td:nth-child(9)' : 'td:nth-child(8)').textContent}</td>
+                    <td>${row.querySelector(hasPractical ? 'td:nth-child(10)' : 'td:nth-child(9)').textContent}</td>
+                    <td>${row.querySelector(hasPractical ? 'td:nth-child(11)' : 'td:nth-child(10)').textContent}</td>
+                    <td>${row.querySelector(hasPractical ? 'td:nth-child(12)' : 'td:nth-child(11)').textContent}</td>
+                    <td>${row.querySelector(hasPractical ? 'td:nth-child(13)' : 'td:nth-child(12)').textContent}</td>
                 </tr>
             `).join('');
 
@@ -447,14 +473,14 @@
                     <thead>
                         <tr>
                             <th>PRN</th>
-                            <th>Student Name</th>
                             <th>University Roll No</th>
+                            <th>Student Name</th>
                             <th>College Roll No</th>
                             <th>Course</th>
                             <th>Midterm</th>
                             <th>Sessional</th>
                             <th>Final</th>
-                            <th>Practical</th>
+                            ${hasPractical ? '<th>Practical</th>' : ''}
                             <th>Total Obtained Marks</th>
                             <th>Total Marks</th>
                             <th>Percentage</th>
@@ -498,65 +524,6 @@
             }
         });
     });
-
-    // Handle edit button click
-    document.querySelectorAll('.edit-result').forEach(button => {
-        button.addEventListener('click', () => {
-            const resultId = button.dataset.resultId;
-            const courseOfferingId = button.dataset.courseOfferingId;
-            const midterm = button.dataset.midterm || 0;
-            const sessional = button.dataset.sessional || 0;
-            const final = button.dataset.final || 0;  
-            const practical = button.dataset.practical || 0;
-            const remarks = button.dataset.remarks || '';
-            const total_obtained = button.dataset.total_obtained || 0;
-            const percentage = button.dataset.percentage || '0.00%';
-
-            document.getElementById('edit_result_id').value = resultId;
-            document.getElementById('edit_course_offering_id').value = courseOfferingId;
-            document.getElementById('edit_midterm').value = midterm;
-            document.getElementById('edit_sessional').value = sessional;
-            document.getElementById('edit_final').value = final;
-            if(practical > 0){
-                document.getElementById('edit_practical').value = practical;
-            }
-            document.getElementById('edit_total_obtained').value = total_obtained;
-            document.getElementById('edit_percentage').value = percentage;
-            document.getElementById('edit_remarks').value = remarks;
-
-            calculateEditTotals();
-        });
-    });
-
-    // Handle delete action
-    document.querySelectorAll('.delete-result').forEach(button => {
-        button.addEventListener('click', () => {
-            if (!confirm('Are you sure you want to delete this exam result? This action cannot be undone.')) {
-                return;
-            }
-
-            const resultId = button.dataset.resultId;
-            button.disabled = true;
-            button.innerHTML = '<span class="loading loading-spinner"></span> Deleting...';
-
-            const form = document.createElement('form');  
-
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = 'csrfmiddlewaretoken';
-            csrfInput.value = '{{ csrf_token }}';
-
-            const resultIdInput = document.createElement('input');
-            resultIdInput.type = 'hidden';
-            resultIdInput.name = 'result_id';
-            resultIdInput.value = resultId;
-
-            form.appendChild(csrfInput);
-            form.appendChild(resultIdInput);
-            document.body.appendChild(form);
-            form.submit();
-        });
-    });
-}); 
+});
 </script>
 {% endblock %}

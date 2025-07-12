@@ -5,30 +5,22 @@ import logging
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from faculty_staff.models import OfficeStaff
+from django.core.paginator import Paginator
+from faculty_staff.models import OfficeStaff, Office
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
-from django.http import HttpResponse
-from django.conf import settings
-from django.http import HttpResponse
-
-from .models import SemesterFee, FeeType, FeeVoucher, StudentFeePayment
-from academics.models import Program
-from admissions.models import AcademicSession
-from fee_management.models import FeeToProgram
+from django.http import HttpResponse, JsonResponse
+from .models import SemesterFee, FeeType, FeeVoucher, StudentFeePayment, FeeToProgram
+from admissions.models import Applicant, AcademicSession
+from academics.models import Program, Semester  # Added Semester import
 from students.models import Student
-from decimal import Decimal 
+from decimal import Decimal
 from django import forms
 from django.db.models import Q
 from datetime import date, datetime, timedelta
-import os
-import tempfile
-import subprocess
 
-# Create your views here.
-
+# Existing views (unchanged except for applicant_verification)
 def treasure_office_view(request):
-    # Get the Treasure Office and its staff
     try:
         office = Office.objects.prefetch_related('staff__user').get(slug='treasure-office')
         staff_members = office.staff.all()
@@ -44,9 +36,7 @@ def office_login_view(request):
     if request.method == 'POST':
         email = request.POST.get('email')
         password = request.POST.get('password')
-        print(email, password)
         user = authenticate(request, username=email, password=password)
-        print(user)
         if user is not None:
             try:
                 officestaff_profile = user.officestaff_profile
@@ -81,24 +71,84 @@ def office_required(view_func):
 
 @office_required
 def applicant_verification(request):
-    return render(request, 'fee_management/applicant_verification.html')
+    applicants = Applicant.objects.select_related('program', 'department', 'faculty').all()
+    
+    # Get filter and sort parameters
+    program_id = request.GET.get('program')
+    shift = request.GET.get('shift')
+    sort = request.GET.get('sort')
+    search = request.GET.get('search')
+
+    # Apply filters
+    if program_id:
+        try:
+            applicants = applicants.filter(program__id=program_id)
+        except ValueError:
+            messages.error(request, 'Invalid program selected.')
+    if shift:
+        applicants = applicants.filter(shift__iexact=shift)
+    if search:
+        applicants = applicants.filter(full_name__icontains=search)
+
+    # Apply sorting
+    valid_sort_fields = ['full_name', '-full_name', 'program__name', '-program__name', 'shift', '-shift']
+    if sort in valid_sort_fields:
+        applicants = applicants.order_by(sort)
+    else:
+        applicants = applicants.order_by('full_name')  # Default sort
+
+    # Pagination
+    paginator = Paginator(applicants, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Get programs for dropdown
+    programs = Program.objects.all()
+
+    context = {
+        'applicants': page_obj,
+        'programs': programs,
+        'selected_program': program_id,
+        'selected_shift': shift,
+        'selected_sort': sort,
+        'search_query': search,
+    }
+    return render(request, 'fee_management/applicant_verification.html', context)
 
 @office_required
+def view_applicant(request, applicant_id):
+    applicant = get_object_or_404(Applicant, id=applicant_id)
+    qualifications = applicant.academic_qualifications.all()
+    return render(request, 'fee_management/applicant_detail.html', {
+        'applicant': applicant,
+        'qualifications': qualifications
+    })
+
+@office_required
+def verify_applicant(request, applicant_id):
+    applicant = get_object_or_404(Applicant, id=applicant_id)
+    if request.method == 'POST':
+        status = request.POST.get('status')
+        if status in ['accepted', 'rejected']:
+            applicant.status = status
+            applicant.save()
+            messages.success(request, f'Applicant {applicant.full_name} {status} successfully.')
+        else:
+            messages.error(request, 'Invalid status selected.')
+    return redirect('fee_management:applicant_verification')
+
+
+    applicant = get_object_or_404(Applicant, id=applicant_id)
+    # Add verification logic here
+    messages.success(request, f'Applicant {applicant.full_name} verified successfully')
+    return redirect('fee_management:applicant_verification')
+
 def student_management(request):
     return render(request, 'fee_management/student_management.html')
 
 @office_required
 def admission_fee(request):
     return render(request, 'fee_management/admission_fee.html')
-
-
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib import messages
-from django.db.models import Q
-from .models import SemesterFee, FeeType, AcademicSession, Program, FeeToProgram, Semester
-from django.contrib.auth.decorators import login_required
-from decimal import Decimal
-from django.http import JsonResponse
 
 @office_required
 def semester_fee(request):
@@ -371,7 +421,6 @@ def get_semesters(request):
             return JsonResponse({'semesters': []})
     return JsonResponse({'semesters': []})    
     
-    
 @office_required
 def fee_verification(request):
     context = {}
@@ -441,8 +490,6 @@ def fee_verification(request):
             return redirect('fee_management:fee_verification')
     
     return render(request, 'fee_management/fee_verification.html', context)
-
-
 
 @office_required
 def get_semesters_by_roll(request):
@@ -572,7 +619,6 @@ def get_semesters_by_roll(request):
             {'error': 'An error occurred while fetching semester data. Please try again later.'}, 
             status=500
         )
-
 
 @office_required
 def generate_voucher(request):

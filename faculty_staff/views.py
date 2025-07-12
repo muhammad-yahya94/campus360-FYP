@@ -6,6 +6,7 @@ from datetime import time
 
 # Third-party Imports
 import pytz
+from .Face_Attandence import face_attandence_detection
 
 # Django Core Imports
 from django import forms
@@ -2986,6 +2987,7 @@ def logout_view(request):
 
 
 
+
 @hod_required
 def semester_management(request):
     """
@@ -3967,5 +3969,43 @@ def set_student_role(request, student_id):
     student.save()
     messages.success(request, 'Student role updated successfully.')
     return redirect('faculty_staff:student_detail', student_id=student.pk)
+
+@hod_or_professor_required
+@require_POST
+def face_attendance(request):
+    """Handle face recognition attendance submission"""
+    from .Face_Attandence import face_attandence_detection
+    from courses.models import Attendance
+    from django.utils import timezone
     
+    course_offering_id = request.POST.get('course_offering_id')
+    if not course_offering_id:
+        return JsonResponse({'success': False, 'message': 'Course offering ID is required'})
     
+    try:
+        course_offering = CourseOffering.objects.get(id=course_offering_id)
+        session_name = course_offering.academic_session.name
+        program_name = course_offering.program.name
+        shift = course_offering.shift
+        
+        # Perform face detection
+        detected_faces = face_attandence_detection(session_name, program_name, shift)
+        
+        if not detected_faces:
+            return JsonResponse({'success': False, 'message': 'No faces detected'})
+            
+        # Get students with embeddings
+        from students.models import Student
+        students = Student.objects.filter(
+            applicant__session__name=session_name,
+            program__name=program_name,
+            applicant__shift=shift
+        ).select_related('applicant', 'face_embedding')
+        
+        # Record attendance for detected students
+        teacher = request.user.teacher_profile
+        today = timezone.now().date()
+        attendance_count = 0
+        
+    except Exception as e:
+        pass

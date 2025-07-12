@@ -154,6 +154,11 @@
                     </table>
                     <div class="text-end mt-3">
                         <button type="submit" class="btn btn-primary" {% if not is_active_slot %}disabled{% endif %}>Submit Attendance</button>
+                        <a href="{% url 'faculty_staff:face_attendance' %}?course_offering_id={{ course_offering_id }}" 
+                           class="btn btn-success ms-2" 
+                           {% if not is_active_slot %}disabled{% endif %}>
+                            Through Face
+                        </a>
                     </div>
                 </div>
             </form>

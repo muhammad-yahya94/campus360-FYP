@@ -91,6 +91,7 @@ urlpatterns = [
     path('record-attendance/', views.record_attendance, name='record_attendance'),
     path('load-attendance/', views.load_attendance, name='load_attendance'),
     path('edit-attendance/', views.edit_attendance, name='edit_attendance'),
+    path('face-attendance/', views.face_attendance, name='face_attendance'),
 
     # ========== 14. Semester Management ==========
     path('semester-management/', views.semester_management, name='semester_management'),

@@ -7,6 +7,20 @@ from datetime import time
 import random
 import uuid
 import shutil
+# extra
+import cv2 as cv
+import numpy as np
+from django.core.files.storage import FileSystemStorage
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.conf import settings
+from django.contrib.auth.decorators import login_required
+from django.urls import reverse
+from django.utils import timezone
+from students.models import Student
+from .generate_encodings import generate_embeddings
+import shutil
+import logging
 # Third-Party Imports
 import pytz
 from django.contrib import messages
@@ -38,6 +52,7 @@ from django.contrib.auth import (
     get_user_model
 )
 from django.contrib.auth.decorators import login_required
+from django.urls import reverse
 
 # Local App Imports
 from academics.models import Department, Program, Semester
@@ -52,6 +67,7 @@ from courses.models import (
 from faculty_staff.models import Teacher, TeacherDetails
 from students.models import Student, StudentSemesterEnrollment, CourseEnrollment
 from fee_management.models import SemesterFee, StudentFeePayment, FeeToProgram, FeeVoucher
+from .generate_encodings import generate_embeddings
 
 
 # Set up logging
@@ -1262,100 +1278,6 @@ def semester_fees(request):
         messages.error(request, 'An error occurred while loading your fee status.')
         return redirect('students:semester_fees')
 
-@login_required
-def upload_photos(request):
-    """
-    View for uploading up to 10 photos per student, replacing existing photos.
-    Photos are stored in: media/Attandence/[session]/[program]/[cnic]
-    """
-    try:
-        student = Student.objects.get(user=request.user)
-    except Student.DoesNotExist:
-        logger.error(f"No Student found for user: {request.user}")
-        messages.error(request, 'Student profile not found.')
-        return redirect('students:dashboard')
-    except Exception as e:
-        logger.error(f"Error fetching student for user {request.user}: {str(e)}")
-        messages.error(request, 'An unexpected error occurred. Please try again later.')
-        return redirect('students:dashboard')
-
-    if request.method == 'POST':
-        uploaded_files = request.FILES.getlist('photos')
-        if not uploaded_files:
-            logger.warning(f"No files uploaded by student: {student.applicant.full_name}")
-            messages.error(request, 'No photos were selected.')
-            return redirect('students:upload_photos')
-
-        if len(uploaded_files) > 10:
-            logger.warning(f"Too many files ({len(uploaded_files)}) uploaded by student: {student.applicant.full_name}")
-            messages.error(request, 'You can upload a maximum of 10 photos.')
-            return redirect('students:upload_photos')
-
-        # Validate files
-        for file in uploaded_files:
-            if not file.content_type.startswith('image/'):
-                logger.warning(f"Non-image file {file.name} uploaded by student: {student.applicant.full_name}")
-                messages.error(request, f'File {file.name} is not an image.')
-                return redirect('students:upload_photos')
-            if file.size > 2 * 1024 * 1024:  # 2MB
-                logger.warning(f"File {file.name} exceeds 2MB by student: {student.applicant.full_name}")
-                messages.error(request, f'File {file.name} exceeds 2MB.')
-                return redirect('students:upload_photos')
-
-        # Get dynamic directory components
-        session_name = student.applicant.session.name.replace(" ", "_") if student.applicant.session else "Unknown_Session"
-        program_name = student.program.name.replace(" ", "_") if student.program else "Unknown_Program"
-        cnic = str(student.applicant.cnic) if student.applicant.cnic else "Unknown_CNIC"
-
-        # Define base media path
-        base_path = os.path.join(
-            settings.MEDIA_ROOT,
-            'Attandence',
-            session_name,
-            program_name,
-            cnic
-        )
-
-        # Remove existing directory if it exists
-        if os.path.exists(base_path):
-            try:
-                shutil.rmtree(base_path)
-                logger.info(f"Removed existing directory: {base_path} for student: {student.applicant.full_name}")
-            except Exception as e:
-                logger.error(f"Error removing directory {base_path}: {str(e)}")
-                messages.error(request, 'Error clearing previous photos. Please try again.')
-                return redirect('students:upload_photos')
-
-        # Create directory
-        try:
-            os.makedirs(base_path, exist_ok=True)
-            logger.debug(f"Created directory: {base_path}")
-        except Exception as e:
-            logger.error(f"Error creating directory {base_path}: {str(e)}")
-            messages.error(request, 'Error creating storage directory. Please try again.')
-            return redirect('students:upload_photos')
-
-        # Save new files
-        fs = FileSystemStorage(location=base_path)
-        for index, file in enumerate(uploaded_files, start=1):
-            filename = f"{index}.jpg"
-            try:
-                fs.save(filename, file)
-                logger.info(f"Saved file {filename} for student: {student.applicant.full_name}")
-            except Exception as e:
-                logger.error(f"Error saving file {filename}: {str(e)}")
-                messages.error(request, f'Error saving photo {filename}.')
-                return redirect('students:upload_photos')
-
-        messages.success(request, f'Successfully uploaded {len(uploaded_files)} photo(s).')
-        return redirect('students:upload_photos')
-
-    # For GET request, render the upload form
-    return render(request, 'upload_photos.html', {
-        'student': student,
-        'student_full_name': student.applicant.full_name,
-        'today_date': datetime.now().date(),
-    })
 def change_password(request):
     """
     Handle password change for the student.
@@ -1409,3 +1331,175 @@ def change_password(request):
         logger.error(f"Error in change_password view: {str(e)}")
         messages.error(request, 'An unexpected error occurred. Please try again later.')
         return redirect('students:settings')
+
+@login_required
+def upload_photos(request):
+    """
+    View for uploading up to 10 photos per student, replacing existing photos.
+    Photos are stored in: media/Attandence/[session]/[program]/[cnic]
+    Calls generate_embeddings with NumPy arrays and redirects to profile on success.
+    """
+    try:
+        student = Student.objects.get(user=request.user)
+        logger.info(f"Starting upload_photos for student: {student.applicant.full_name}")
+    except Student.DoesNotExist:
+        logger.error(f"No Student found for user: {request.user}")
+        messages.error(request, 'Student profile not found.')
+        return redirect('students:dashboard')
+    except Exception as e:
+        logger.error(f"Error fetching student for user {request.user}: {str(e)}")
+        messages.error(request, 'An unexpected error occurred. Please try again later.')
+        return redirect('students:dashboard')
+
+    if request.method == 'POST':
+        uploaded_files = request.FILES.getlist('photos')
+        if not uploaded_files:
+            logger.warning(f"No files uploaded by student: {student.applicant.full_name}")
+            messages.error(request, 'No photos were selected.')
+            return render(request, 'upload_photos.html', {
+                'student': student,
+                'student_full_name': student.applicant.full_name,
+                'today_date': timezone.now().date(),
+            })
+
+        if len(uploaded_files) > 10:
+            logger.warning(f"Too many files ({len(uploaded_files)}) uploaded by student: {student.applicant.full_name}")
+            messages.error(request, 'You can upload a maximum of 10 photos.')
+            return render(request, 'upload_photos.html', {
+                'student': student,
+                'student_full_name': student.applicant.full_name,
+                'today_date': timezone.now().date(),
+            })
+
+        # Validate files
+        for file in uploaded_files:
+            if not file.content_type.startswith('image/'):
+                logger.warning(f"Non-image file {file.name} uploaded by student: {student.applicant.full_name}")
+                messages.error(request, f'File {file.name} is not an image.')
+                return render(request, 'upload_photos.html', {
+                    'student': student,
+                    'student_full_name': student.applicant.full_name,
+                    'today_date': timezone.now().date(),
+                })
+            if file.size > 2 * 1024 * 1024:  # 2MB
+                logger.warning(f"File {file.name} exceeds 2MB by student: {student.applicant.full_name}")
+                messages.error(request, f'File {file.name} exceeds 2MB.')
+                return render(request, 'upload_photos.html', {
+                    'student': student,
+                    'student_full_name': student.applicant.full_name,
+                    'today_date': timezone.now().date(),
+                })
+
+        # Get dynamic directory components
+        session_name = student.applicant.session.name.replace(" ", "_") if student.applicant.session else "Unknown_Session"
+        program_name = student.program.name.replace(" ", "_") if student.program else "Unknown_Program"
+        cnic = str(student.applicant.cnic) if student.applicant.cnic else "Unknown_CNIC"
+        shift = student.applicant.shift if hasattr(student.applicant, 'shift') and student.applicant.shift else "Unknown_Shift"
+        logger.debug(f"Directory components - session: {session_name}, program: {program_name}, cnic: {cnic}, shift: {shift}")
+
+        # Define base media path
+        base_path = os.path.join(
+            settings.MEDIA_ROOT,
+            'Attandence',
+            session_name,
+            program_name,
+            cnic
+        )
+
+        # Remove existing directory if it exists
+        if os.path.exists(base_path):
+            try:
+                shutil.rmtree(base_path)
+                logger.info(f"Removed existing directory: {base_path} for student: {student.applicant.full_name}")
+            except Exception as e:
+                logger.error(f"Error removing directory {base_path}: {str(e)}")
+                messages.error(request, 'Error clearing previous photos. Please try again.')
+                return render(request, 'upload_photos.html', {
+                    'student': student,
+                    'student_full_name': student.applicant.full_name,
+                    'today_date': timezone.now().date(),
+                })
+
+        # Create directory
+        try:
+            os.makedirs(base_path, exist_ok=True)
+            logger.debug(f"Created directory: {base_path}")
+        except Exception as e:
+            logger.error(f"Error creating directory {base_path}: {str(e)}")
+            messages.error(request, 'Error creating storage directory. Please try again.')
+            return render(request, 'upload_photos.html', {
+                'student': student,
+                'student_full_name': student.applicant.full_name,
+                'today_date': timezone.now().date(),
+            })
+
+        # Convert uploaded files to NumPy arrays and save files
+        photos = []
+        fs = FileSystemStorage(location=base_path)
+        for index, file in enumerate(uploaded_files, start=1):
+            filename = f"{index}.jpg"
+            try:
+                # Save file to disk
+                fs.save(filename, file)
+                logger.info(f"Saved file {filename} for student: {student.applicant.full_name}")
+                
+                # Read file content for NumPy conversion
+                file.seek(0)  # Reset file pointer
+                file_content = file.read()
+                nparr = np.frombuffer(file_content, np.uint8)
+                img = cv.imdecode(nparr, cv.IMREAD_COLOR)
+                if img is None:
+                    logger.error(f"Failed to decode image {filename} for student: {student.applicant.full_name}")
+                    messages.error(request, f'Failed to process image {filename}.')
+                    return render(request, 'upload_photos.html', {
+                        'student': student,
+                        'student_full_name': student.applicant.full_name,
+                        'today_date': timezone.now().date(),
+                    })
+                photos.append(img)
+            except Exception as e:
+                logger.error(f"Error processing file {filename}: {str(e)}")
+                messages.error(request, f'Error processing photo {filename}.')
+                return render(request, 'upload_photos.html', {
+                    'student': student,
+                    'student_full_name': student.applicant.full_name,
+                    'today_date': timezone.now().date(),
+                })
+
+        # Call generate_embeddings with NumPy arrays
+        try:
+            logger.debug(f"Calling generate_embeddings with {len(photos)} photos")
+            success, error = generate_embeddings(photos, session_name, program_name, shift, cnic)
+            if not success:
+                logger.warning(f"Face extraction or embedding storage failed for student: {student.applicant.full_name}: {error}")
+                messages.warning(request, f'Unable to process photos: {error}')
+                return render(request, 'upload_photos.html', {
+                    'student': student,
+                    'student_full_name': student.applicant.full_name,
+                    'today_date': timezone.now().date(),
+                })
+            else:
+                logger.info(f"Face extraction and embedding storage successful for student: {student.applicant.full_name}")
+                messages.success(request, f'Successfully uploaded {len(uploaded_files)} photo(s) and processed embeddings.')
+                try:
+                    return redirect(reverse('students:profile'))
+                except NoReverseMatch as e:
+                    logger.error(f"URL reverse failed for students:profile: {str(e)}")
+                    messages.warning(request, 'Photos processed successfully, but redirect to profile page failed. Returning to dashboard.')
+                    return redirect('students:dashboard')
+        except Exception as e:
+            logger.error(f"Unexpected error in generate_embeddings for student {student.applicant.full_name}: {str(e)}")
+            messages.error(request, f'Unexpected error processing photos: {str(e)}')
+            return render(request, 'upload_photos.html', {
+                'student': student,
+                'student_full_name': student.applicant.full_name,
+                'today_date': timezone.now().date(),
+            })
+
+    # For GET request, render the upload form
+    logger.debug(f"Rendering upload_photos.html for student: {student.applicant.full_name}")
+    return render(request, 'upload_photos.html', {
+        'student': student,
+        'student_full_name': student.applicant.full_name,
+        'today_date': timezone.now().date(),
+    })

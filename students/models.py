@@ -3,6 +3,11 @@ from users.models import CustomUser
 from academics.models import Program, Department, Faculty , Semester
 from admissions.models import Applicant, AcademicSession
 from faculty_staff.models import Teacher
+import logging
+import pickle
+
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logger = logging.getLogger(__name__)
 
 
 
@@ -117,3 +122,61 @@ class CourseEnrollment(models.Model):
 
     def __str__(self):
         return f"{self.student_semester_enrollment.student.applicant.full_name} - {self.course_offering}"
+    
+class EmbeddingsEncode(models.Model):
+    session = models.CharField(max_length=50, help_text="Academic session (e.g., 2022-2026)")
+    program = models.CharField(max_length=50, help_text="Program name (e.g., BSCS)")
+    shift = models.CharField(
+        max_length=20,
+        choices=[('Morning', 'morning'), ('Evening', 'evening')],
+        default='Morning',
+        help_text="Shift of the program (e.g., Morning, Evening)"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, help_text="Timestamp of creation")
+
+    class Meta:
+        verbose_name = "Embedding Encode"
+        verbose_name_plural = "Embedding Encodes"
+        indexes = [
+            models.Index(fields=['session', 'program', 'shift']),
+        ]
+
+    def __str__(self):
+        return f"{self.session} - {self.program} - {self.shift}"
+    
+class FaceEmbedding(models.Model):
+    ecode = models.ForeignKey(
+        EmbeddingsEncode,
+        on_delete=models.CASCADE,
+        help_text="Reference to EmbeddingsEncode record"
+    )
+    cnic = models.CharField(max_length=15, help_text="Unique CNIC of the student (e.g., 12345-6789012-3)")
+    embeddings = models.BinaryField(help_text="Serialized face embedding data")
+    created_at = models.DateTimeField(auto_now_add=True, help_text="Timestamp of creation")
+    updated_at = models.DateTimeField(auto_now=True, help_text="Timestamp of last update")
+
+    def set_embedding(self, embedding_array):
+        """Convert numpy array to binary for storage"""
+        try:
+            self.embeddings = pickle.dumps(embedding_array)
+        except Exception as e:
+            logger.error(f"Serialization error for embedding: {e}")
+            raise
+
+    def get_embedding(self):
+        """Deserialize binary data to numpy array"""
+        try:
+            return pickle.loads(self.embeddings)
+        except Exception as e:
+            logger.warning(f"Deserialization error: {e}")
+            return None
+
+    class Meta:
+        verbose_name = "Face Embedding"
+        verbose_name_plural = "Face Embeddings"
+        indexes = [
+            models.Index(fields=['ecode', 'cnic']),
+        ]
+
+    def __str__(self):
+        return f"FaceEmbedding for ecode {self.ecode.id} and cnic {self.cnic.cnic}"

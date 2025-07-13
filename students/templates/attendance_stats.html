@@ -5,7 +5,6 @@
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
   <!-- Hero Section -->
-
   <div class="hero bg-base-200 rounded-lg shadow-lg mb-6">
     <div class="hero-content text-center">
       <div class="max-w-md">
@@ -92,8 +91,21 @@
                     <td class="text-sm">
                       <span class="badge bg-warning text-warning-content">{{ stat.leave }}</span>
                     </td>
-                    <td class="text-sm font-bold text-primary">{{ stat.percentage|floatformat:2 }}%</td>
+                    <td class="text-sm">
+                      <div class="flex items-center gap-2">
+                        <span class="font-bold text-primary">{{ stat.percentage|floatformat:2 }}%</span>
+                      </div>
+                    </td>
                   </tr>
+                  <tr>
+                    <td colspan="6" class="text-sm text-base-content/50">
+                      <div class="flex items-center gap-2">
+                        <div class="w-full bg-base-200 rounded-full h-2.5">
+                          <div class="bg-primary h-2.5 rounded-full" style="width: {{ stat.percentage }}%"></div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>  
                 {% endfor %}
               </tbody>
             </table>

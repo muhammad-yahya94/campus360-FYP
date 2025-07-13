@@ -57,7 +57,7 @@
     <div class="card-body">
       <h2 class="card-title text-2xl text-base-content mb-4">Quick Actions</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <a href="#" class="btn btn-primary">View Settings</a>
+        <a href="{% url "students:settings" %}" class="btn btn-primary">View Settings</a>
         <a href="{% url 'students:my_courses' %}" class="btn btn-success">My Courses</a>
         <a href="{% url 'students:attendance_stats' %}" class="btn btn-accent">Attendance Stats</a>
       </div>

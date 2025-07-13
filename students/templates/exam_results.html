@@ -4,6 +4,15 @@
 {% load custom_filters_gpa %}   
 {% block content %}
 <div class="container mx-auto p-4">
+
+    <div class="hero bg-base-200 rounded-lg shadow-lg mb-6">
+        <div class="hero-content text-center">
+          <div class="max-w-md">
+            <h1 class="text-3xl sm:text-4xl font-bold text-base-content mb-2">Exam Results</h1>
+            <p class="text-base sm:text-lg text-base-content/90"> Your exam results  </p>
+          </div>
+        </div>
+      </div>
     <!-- Semester Results -->
     {% for semester_number, semester_results in semester_results.items %}
     <div class="card bg-base-100 shadow-xl mb-8">

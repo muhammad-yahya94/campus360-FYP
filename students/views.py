@@ -89,13 +89,12 @@ def student_login(request):
 
     return render(request, 'login.html')
 
-
-@login_required
 def student_dashboard(request):
     logger.info("Starting student_dashboard view for user: %s", request.user)
-
+    
     try:
         student = Student.objects.get(user=request.user)
+        current_session = student.applicant.session
         logger.debug(
             "Found student: %s (User ID: %s, Program: %s, Program ID: %s)",
             student.applicant.full_name,
@@ -108,59 +107,48 @@ def student_dashboard(request):
         messages.error(request, 'You are not authorized as a student.')
         return redirect('students:login')
 
-    current_session = AcademicSession.objects.filter(is_active=True).first()
-
-    if not current_session:
-        logger.warning("No active academic session found.")
-        return render(request, 'dashboard.html', {
-            'student': student,
-            'active_semester': None,
-            'enrollments': [],
-        })
-
-    # Get active semester in current session for student's program
+    # Get the most recent active semester for the student's program and session
     active_semester = Semester.objects.filter(
         program=student.program,
         session=current_session,
         is_active=True
-    ).order_by('-number')
+    ).order_by('-number').first()
 
     if not active_semester:
-        logger.warning(
-            "No active semester found for student: %s in session: %s",
-            student.applicant.full_name,
-            current_session.name
-        )
         return render(request, 'dashboard.html', {
             'student': student,
             'active_semester': None,
             'enrollments': [],
         })
 
-    # logger.debug(
-    #     "Active semester found: %s (Semester ID: %s) in session: %s",
-    #     active_semester.name,
-    #     active_semester.id,
-    #     current_session.name
-    # )
+    # Get the student's enrollment for the active semester
+    try:
+        enrolled = StudentSemesterEnrollment.objects.get(
+            student=student,
+            semester=active_semester
+        )
+    except StudentSemesterEnrollment.DoesNotExist:
+        logger.warning("Student is not enrolled in active semester: %s", active_semester)
+        enrolled = None
 
-    current_session = AcademicSession.objects.filter(is_active=True).first()
-    enrollments = CourseEnrollment.objects.filter(
-        student_semester_enrollment__student=student,
-        course_offering__academic_session=current_session,
-        course_offering__semester__is_active=True  # Filter only active semester courses
-    ).select_related(
-        'course_offering__course',
-        'course_offering__semester',
-        'course_offering__teacher__user'
-    )
+    if enrolled:
+        enrollments = CourseEnrollment.objects.filter(
+            student_semester_enrollment=enrolled,
+            status='enrolled'  # show only enrolled courses
+        ).select_related(
+            'course_offering__course',
+            'course_offering__semester',
+            'course_offering__teacher__user'
+        )
+    else:
+        enrollments = []
 
-    logger.debug("Found %d course(s) in active semester", enrollments.count())
+    logger.debug("Found %d course(s) in active semester", len(enrollments))
 
     return render(request, 'dashboard.html', {
         'student': student,
         'active_semester': active_semester,
-        'enrollments': enrollments,
+        'enrollments': enrollments,  
     })
 
 def my_courses(request):
@@ -172,7 +160,7 @@ def my_courses(request):
         messages.error(request, 'You are not authorized as a student.')
         return redirect('students:login')
 
-    current_session = AcademicSession.objects.filter(is_active=True).first()
+    current_session = student.applicant.session.name
     academic_sessions = AcademicSession.objects.all().order_by('-start_year')
 
     # Get the selected semester number from the query parameter
@@ -183,7 +171,6 @@ def my_courses(request):
             print(f"Selected semester number: {selected_semester_number}")
             enrollments = CourseEnrollment.objects.filter(
                 student_semester_enrollment__student=student,
-                course_offering__academic_session=current_session,
                 course_offering__semester__number=selected_semester_number
             ).select_related('course_offering__course', 'course_offering__semester', 'course_offering__teacher__user')
         except ValueError:
@@ -194,13 +181,11 @@ def my_courses(request):
     else:
         # Default to the first semester number if no selection
         first_semester_number = CourseOffering.objects.filter(
-            academic_session=current_session
         ).values_list('semester__number', flat=True).order_by('semester__number').first()
         print(f"First semester number: {first_semester_number}")
         if first_semester_number:
             enrollments = CourseEnrollment.objects.filter(
                 student_semester_enrollment__student=student,
-                course_offering__academic_session=current_session,
                 course_offering__semester__number=first_semester_number
             ).select_related('course_offering__course', 'course_offering__semester', 'course_offering__teacher__user')
         else:
@@ -208,6 +193,7 @@ def my_courses(request):
 
     semester_numbers = Semester.objects.filter(
         program=student.program,
+        session=student.applicant.session,
     ).order_by('number').values_list('number', flat=True).distinct()
     print(f'this is queery set only numbers --  {semester_numbers}')
     context = {

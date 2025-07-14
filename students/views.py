@@ -47,7 +47,7 @@ from admissions.models import (
 from courses.models import (  
     Course, CourseOffering, ExamResult, StudyMaterial, Assignment,
     AssignmentSubmission, Notice, Attendance, Venue, TimetableSlot,
-    Quiz, Question, Option, QuizSubmission, 
+    Quiz, Question, Option, QuizSubmission, LectureReplacement
 )
 from faculty_staff.models import Teacher, TeacherDetails
 from students.models import Student, StudentSemesterEnrollment, CourseEnrollment
@@ -1004,13 +1004,14 @@ def student_attendance_stats(request):
 
 
 
+
 def student_timetable(request):
     logger.info("Starting student_timetable view for user: %s", request.user)
-    
+
     # Get the student
     try:
         student = Student.objects.get(user=request.user)
-        logger.debug("Found student: %s (ID: %s)", student.applicant.full_name, student.user.id)
+        logger.debug("Step 1: Found student: %s (ID: %s)", student.applicant.full_name, student.user.id)
     except Student.DoesNotExist:
         logger.error("No Student found for user: %s", request.user)
         return render(request, 'timetable.html', {
@@ -1019,45 +1020,60 @@ def student_timetable(request):
             'active_session': None,
         })
 
-    # Get the active semester enrollment (latest active semester)
-    active_enrollment = StudentSemesterEnrollment.objects.filter(
-        student=student,
-        semester__is_active=True
-    ).order_by('-semester__start_time').first()
-
-    if not active_enrollment:
-        logger.warning("No active semester enrollment found for student: %s", student.applicant.full_name)
+    # Get the active semester enrollment
+    try:
+        active_enrollment = StudentSemesterEnrollment.objects.filter(
+            student=student,
+            semester__is_active=True
+        ).order_by('-semester__start_time').first()
+        if not active_enrollment:
+            logger.warning("Step 2: No active semester enrollment found for student: %s", student.applicant.full_name)
+            return render(request, 'timetable.html', {
+                'student': student,
+                'timetable_data': [],
+                'active_session': None,
+            })
+        active_semester = active_enrollment.semester
+        active_session = active_semester.session
+        logger.debug("Step 3: Active semester: %s, Session: %s", active_semester.name, active_session.name)
+    except Exception as e:
+        logger.error("Error querying active enrollment: %s", str(e))
         return render(request, 'timetable.html', {
             'student': student,
             'timetable_data': [],
             'active_session': None,
         })
 
-    active_semester = active_enrollment.semester
-    active_session = active_semester.session
-    logger.debug("Active semester: %s, Session: %s", active_semester.name, active_session.name)
-
     # Get course enrollments for the active semester
-    enrollments = CourseEnrollment.objects.filter(
-        student_semester_enrollment__student=student,
-        student_semester_enrollment__semester=active_semester
-    ).select_related('course_offering__course', 'course_offering__program', 'course_offering__semester', 'course_offering__teacher')
-    logger.debug("Found %d course enrollments for student in semester %s", enrollments.count(), active_semester.name)
+    try:
+        enrollments = CourseEnrollment.objects.filter(
+            student_semester_enrollment__student=student,
+            student_semester_enrollment__semester=active_semester
+        ).select_related('course_offering__course', 'course_offering__program', 'course_offering__semester', 'course_offering__teacher', 'course_offering__replacement_teacher')
+        logger.debug("Step 4: Found %d course enrollments for student in semester %s", enrollments.count(), active_semester.name)
+    except Exception as e:
+        logger.error("Error querying course enrollments: %s", str(e))
+        enrollments = CourseEnrollment.objects.none()
 
     # Get timetable slots for enrolled courses
-    course_offerings = enrollments.values_list('course_offering', flat=True)
-    timetable_slots = TimetableSlot.objects.filter(
-        course_offering__in=course_offerings
-    ).filter(
-        Q(course_offering__shift=student.applicant.shift) | Q(course_offering__shift='both')
-    ).select_related(
-        'course_offering__course',
-        'course_offering__teacher',
-        'venue',
-        'course_offering__program',
-        'course_offering__semester'
-    )
-    logger.debug("Retrieved %d timetable slots for student", timetable_slots.count())
+    try:
+        course_offerings = enrollments.values_list('course_offering', flat=True)
+        timetable_slots = TimetableSlot.objects.filter(
+            course_offering__in=course_offerings
+        ).filter(
+            Q(course_offering__shift=student.applicant.shift) | Q(course_offering__shift='both')
+        ).select_related(
+            'course_offering__course',
+            'course_offering__teacher',
+            'course_offering__replacement_teacher',
+            'venue',
+            'course_offering__program',
+            'course_offering__semester'
+        )
+        logger.debug("Step 5: Retrieved %d timetable slots for student", timetable_slots.count())
+    except Exception as e:
+        logger.error("Error querying timetable slots: %s", str(e))
+        timetable_slots = TimetableSlot.objects.none()
 
     # Organize slots by day
     days = [
@@ -1069,13 +1085,58 @@ def student_timetable(request):
         {'day_value': 'saturday', 'day_label': 'Saturday'},
     ]
     timetable_data = []
+    current_date = timezone.now().date()
     for day in days:
         day_slots = timetable_slots.filter(day=day['day_value'])
-        slots = [
-            {
+        slots = []
+        for slot in day_slots:
+            # Check for replacement teacher
+            replacement = None
+            original_teacher_name = None
+            try:
+                replacement = LectureReplacement.objects.filter(
+                    course_offering=slot.course_offering,
+                    replacement_date__lte=current_date
+                ).filter(
+                    Q(replacement_type='permanent') |
+                    Q(replacement_type='temporary', replacement_date__lte=current_date)
+                ).select_related('replacement_teacher', 'original_teacher').first()
+                if replacement:
+                    original_teacher_name = f"{replacement.original_teacher.user.first_name} {replacement.original_teacher.user.last_name}"
+                    logger.debug(
+                        "Step 6a: Found LectureReplacement for CourseOffering %s: Replacement Teacher ID=%s, Original Teacher=%s, Type=%s, Date=%s",
+                        slot.course_offering.id, replacement.replacement_teacher.id, original_teacher_name, replacement.replacement_type, replacement.replacement_date
+                    )
+            except Exception as e:
+                logger.error("Step 6b: Error querying LectureReplacement for CourseOffering %s: %s", slot.course_offering.id, str(e))
+
+            # Check CourseOffering.replacement_teacher if no LectureReplacement
+            if not replacement and slot.course_offering.replacement_teacher:
+                original_teacher_name = f"{slot.course_offering.teacher.user.first_name} {slot.course_offering.teacher.user.last_name}"
+                logger.debug(
+                    "Step 6c: CourseOffering %s has replacement_teacher ID=%s, Original Teacher=%s",
+                    slot.course_offering.id, slot.course_offering.replacement_teacher.id, original_teacher_name
+                )
+
+            # Determine teacher to display
+            teacher = (
+                replacement.replacement_teacher if replacement else
+                slot.course_offering.replacement_teacher or
+                slot.course_offering.teacher
+            )
+            teacher_name = f"{teacher.user.first_name} {teacher.user.last_name}" if teacher else 'N/A'
+            replaced_for = original_teacher_name if (replacement or slot.course_offering.replacement_teacher) else None
+
+            logger.debug(
+                "Step 6d: Slot for %s, Course: %s (ID: %s), Teacher: %s, Replaced for: %s",
+                day['day_label'], slot.course_offering.course.code, slot.course_offering.id, teacher_name, replaced_for or 'None'
+            )
+
+            slots.append({
                 'course_code': slot.course_offering.course.code,
                 'course_name': slot.course_offering.course.name,
-                'teacher_name': f"{slot.course_offering.teacher.user.first_name} {slot.course_offering.teacher.user.last_name}",
+                'teacher_name': teacher_name,
+                'replaced_for': replaced_for,
                 'venue': slot.venue.name,
                 'room_no': slot.venue.capacity,
                 'start_time': slot.start_time.strftime('%H:%M'),
@@ -1083,27 +1144,23 @@ def student_timetable(request):
                 'shift': slot.course_offering.get_shift_display(),
                 'program': slot.course_offering.program.name if slot.course_offering.program else 'N/A',
                 'semester': slot.course_offering.semester.name,
-            }
-            for slot in day_slots
-        ]
-        if slots:  # Only include days with slots
+            })
+        if slots:
             timetable_data.append({
                 'day_value': day['day_value'],
                 'day_label': day['day_label'],
                 'slots': slots
             })
-            logger.debug("Added %d slots for %s", len(slots), day['day_label'])
+            logger.debug("Step 7: Added %d slots for %s", len(slots), day['day_label'])
 
-    logger.info("Timetable data prepared for student: %s, with %d days", student.applicant.full_name, len(timetable_data))
+    logger.info("Step 8: Timetable data prepared for student: %s, with %d days", student.applicant.full_name, len(timetable_data))
 
     context = {
         'student': student,
         'timetable_data': timetable_data,
         'active_session': active_session,
     }
-    return render(request, 'timetable.html', context)   
-
-
+    return render(request, 'timetable.html', context)
 
 
 @login_required

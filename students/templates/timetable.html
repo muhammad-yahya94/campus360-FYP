@@ -1,13 +1,11 @@
 {% extends 'base_student.html' %}
-
+{% load humanize %}
 {% block title %}My Timetable - {{ student.applicant.full_name }}{% endblock %}
 
 {% block content %}
-
 <div class="container mx-auto p-4">
 <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
   <!-- Header -->
-
   <div class="hero bg-base-200 rounded-lg shadow-lg mb-6">
     <div class="hero-content text-center">
       <div class="max-w-md">
@@ -36,7 +34,10 @@
                   <div class="card shadow-md transition duration-200 {% if slot.shift == 'Morning' %}bg-primary/10 border-primary/20 hover:bg-primary/20{% elif slot.shift == 'Evening' %}bg-secondary/10 border-secondary/20 hover:bg-secondary/20{% else %}bg-accent/10 border-accent/20 hover:bg-accent/20{% endif %}" data-tooltip="Program: {{ slot.program }}  Semester: {{ slot.semester }}">
                     <div class="card-body">
                       <p class="font-semibold text-lg {% if slot.shift == 'Morning' %}text-primary{% elif slot.shift == 'Evening' %}text-secondary{% else %}text-accent{% endif %}">{{ slot.course_code }} - {{ slot.course_name }}</p>
-                      <p class="text-sm text-base-content/70"><i class="fas fa-user-tie mr-1"></i>Teacher: {{ slot.teacher_name }}</p>
+                      <p class="text-sm text-base-content/70">
+                        <i class="fas fa-user-tie mr-1"></i>
+                        Teacher: {{ slot.teacher_name }}{% if slot.replaced_for %} (for {{ slot.replaced_for }}){% endif %}
+                      </p>
                       <p class="text-sm text-base-content/70"><i class="fas fa-map-marker-alt mr-1"></i>{{ slot.venue }} - Room {{ slot.room_no }}</p>
                       <p class="text-sm text-base-content/70"><i class="fas fa-clock mr-1"></i>{{ slot.start_time }}–{{ slot.end_time }}</p>
                     </div>
@@ -59,6 +60,7 @@
     </div>
   </div>
 </div>
+{% endblock %}
 
 {% block extra_js %}
 <script>
@@ -92,5 +94,4 @@ document.querySelectorAll('[data-tooltip]').forEach(el => {
   display: block;
 }
 </style>
-{% endblock %}
 {% endblock %}

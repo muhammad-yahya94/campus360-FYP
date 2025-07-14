@@ -25,17 +25,17 @@
               <p class="text-sm text-gray-600">Program: {{ offering.program.name }}</p>
               <p class="text-sm text-gray-600">Session: {{ offering.academic_session.name }}</p>
               <div class="mt-4 grid grid-cols-2 gap-2 text-sm">
-                <a href="{% url 'faculty_staff:exam_results' course_offering_id={{ offering.id }}"
+                <a href="{% url 'faculty_staff:exam_results' offering.id %}"
                    class="btn btn-sm btn-primary w-full">Results</a>
-                <a href="{% url 'faculty_staff:attendance' course_offering_id={{ offering.id }}"
+                <a href="{% url 'faculty_staff:attendance' offering.id %}"
                    class="btn btn-sm btn-info w-full">Attendance</a>
-                <a href="{% url 'faculty_staff:study_materials' course_offering_id={{ offering.id }}"
+                <a href="{% url 'faculty_staff:study_materials' offering.id %}"
                    class="btn btn-sm btn-success col-span-2">Course Content</a>
-                <a href="{% url 'faculty_staff:assignments' course_offering_id={{ offering.id }}"
+                <a href="{% url 'faculty_staff:assignments' offering.id %}"
                    class="btn btn-sm btn-warning w-full">Assignments</a>
-                <a href="{% url 'faculty_staff:view_students' course_offering_id={{ offering.id }}"
+                <a href="{% url 'faculty_staff:view_students' offering.id %}"
                    class="btn btn-sm btn-secondary w-full">Students</a>
-                <a href="{% url 'faculty_staff:create_quiz' course_offering_id=offering.id %}"
+                <a href="{% url 'faculty_staff:create_quiz' offering.id %}"
                    class="btn btn-sm btn-accent w-full">Quiz</a>
               </div>
             </div>

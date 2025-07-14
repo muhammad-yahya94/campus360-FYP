@@ -2,7 +2,7 @@
 import os
 import logging
 import datetime
-from datetime import time
+from datetime import time, date
 
 # Third-party Imports
 import pytz
@@ -21,6 +21,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db import transaction
 from django.db.models import Sum, Q, Count, Max, Subquery, OuterRef, F, Value
 from django.db.utils import IntegrityError
+from django.db.models.functions import ExtractYear
 from django.forms.models import inlineformset_factory
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
@@ -42,7 +43,7 @@ from courses.models import (
     Course, CourseOffering, ExamResult, StudyMaterial,
     Assignment, AssignmentSubmission, Notice,
     Attendance, Venue, TimetableSlot,
-    Quiz, Question, QuizSubmission, Option
+    Quiz, Question, QuizSubmission, Option, LectureReplacement
 )
 from faculty_staff.models import Teacher, TeacherDetails, OfficeStaff, Office
 from students.models import Student, StudentSemesterEnrollment, CourseEnrollment
@@ -433,33 +434,128 @@ def delete_staff(request, staff_id):
 
 
 
+import calendar  
+from datetime import date
+import logging
+
+
+def hod_required(view_func):
+    from django.contrib.auth.decorators import login_required
+    return login_required(view_func)
+
 @hod_required
 def teacher_lecture_details(request, teacher_id):
+    # Ensure teacher_id is an integer
+    try:
+        teacher_id = int(teacher_id)
+    except (ValueError, TypeError):
+        logger.error(f"Invalid teacher_id: {teacher_id}")
+        return render(request, 'faculty_staff/error.html', {
+            'message': 'Invalid teacher ID provided.'
+        }, status=400)
+
     # Ensure the teacher is in the HOD's department
     hod_department = request.user.teacher_profile.department
     teacher = get_object_or_404(Teacher, id=teacher_id, department=hod_department)
+    logger.debug(f"Step 1: Teacher retrieved: {teacher}, ID: {teacher_id}, Type: {type(teacher)}")
 
-    # Get all attendance records recorded by this teacher
-    from courses.models import Attendance
-    lectures = Attendance.objects.filter(recorded_by=teacher).order_by('-date')
-    lecture_count = lectures.count()
+    # Step 1: Get total course offerings for active sessions
+    try:
+        current_year = timezone.now().year
+        active_sessions = AcademicSession.objects.filter(
+            Q(is_active=True) | Q(end_year__gte=current_year)
+        ).values_list('id', flat=True)
+        logger.debug(f"Step 2: Active sessions: {list(active_sessions)}")
 
-    # Get teacher details for salary calculation
+        course_offerings = CourseOffering.objects.filter(
+            teacher=teacher,
+            academic_session__id__in=active_sessions
+        ).select_related('course', 'semester', 'program', 'academic_session')
+        course_offering_ids = course_offerings.values_list('id', flat=True)
+        logger.debug(f"Step 3: Total course offerings: {list(course_offering_ids)}")
+    except Exception as e:
+        logger.error(f"Error querying CourseOffering: {str(e)}")
+        return render(request, 'faculty_staff/error.html', {
+            'message': f'Error retrieving course offerings: {str(e)}'
+        }, status=500)
+
+    # Step 2: Get replacement course offerings
+    try:
+        replacement_course_offerings = CourseOffering.objects.filter(
+            Q(replacement_teacher=teacher) |
+            Q(id__in=LectureReplacement.objects.filter(
+                replacement_teacher=teacher,
+                course_offering__academic_session__id__in=active_sessions
+            ).values_list('course_offering__id', flat=True))
+        ).select_related('course', 'semester', 'program', 'academic_session')
+        replacement_course_offering_ids = replacement_course_offerings.values_list('id', flat=True)
+        logger.debug(f"Step 4: Replacement course offerings: {list(replacement_course_offering_ids)}")
+    except Exception as e:
+        logger.error(f"Error querying replacement CourseOffering: {str(e)}")
+        replacement_course_offerings = CourseOffering.objects.none()
+        replacement_course_offering_ids = []
+
+    # Step 3: Get original (normal) lectures
+    try:
+        normal_lectures = Attendance.objects.filter(
+            recorded_by=teacher,
+            course_offering__teacher=teacher,
+            course_offering__academic_session__id__in=active_sessions
+        ).select_related('course_offering__course', 'course_offering__semester')
+        logger.debug(f"Step 5: Normal lectures (recorded_by and original teacher): {normal_lectures.count()}")
+    except Exception as e:
+        logger.error(f"Error querying normal lectures: {str(e)}")
+        normal_lectures = Attendance.objects.none()
+
+    # Step 4: Get replacement lectures
+    try:
+        replacement_lectures = Attendance.objects.filter(
+            recorded_by=teacher,
+            course_offering__id__in=replacement_course_offering_ids,
+            course_offering__academic_session__id__in=active_sessions
+        ).select_related('course_offering__course', 'course_offering__semester')
+        logger.debug(f"Step 6: Replacement lectures (recorded_by and replacement): {replacement_lectures.count()}")
+    except Exception as e:
+        logger.error(f"Error querying replacement lectures: {str(e)}")
+        replacement_lectures = Attendance.objects.none()
+
+    # Combine lectures for total count
+    try:
+        all_lectures = (normal_lectures | replacement_lectures).distinct().order_by('-date')
+        logger.debug(f"Step 7: Total lectures: {all_lectures.count()}")
+    except Exception as e:
+        logger.error(f"Error combining lectures: {str(e)}")
+        return render(request, 'faculty_staff/error.html', {
+            'message': f'Error combining lecture data: {str(e)}'
+        }, status=500)
+
+    # Step 5: Calculate lecture counts and salary
+    normal_lecture_count = normal_lectures.count()  # Each Attendance = 1 lecture
+    replacement_lecture_count = replacement_lectures.count()
+    total_lecture_count = all_lectures.count()
+    salary_lecture_count = normal_lecture_count + replacement_lecture_count  # Salary based on recorded_by
+
     teacher_details = teacher.details if hasattr(teacher, 'details') else None
     salary_per_lecture = teacher_details.salary_per_lecture if teacher_details else 0
+    total_salary = salary_lecture_count * salary_per_lecture
+    logger.debug(f"Step 8: Lecture counts - Normal: {normal_lecture_count}, Replacement: {replacement_lecture_count}, Total: {total_lecture_count}, Salary lectures: {salary_lecture_count}, Total salary: {total_salary}")
 
-    # Calculate total salary
-    total_salary = lecture_count * salary_per_lecture if salary_per_lecture else 0
+    # Prepare lecture details
+    lecture_details = []
+    for lecture in all_lectures:
+        is_replacement = lecture.course_offering.id in replacement_course_offering_ids
+        role = 'Replacement' if is_replacement else 'Normal'
+        lecture_details.append({
+            'lecture': lecture,
+            'role': role,
+            'course_code': lecture.course_offering.course.code,
+            'course_name': lecture.course_offering.course.name,
+            'shift': lecture.shift,
+            'date': lecture.date
+        })
 
-    # Year selection
-    from django.db.models.functions import ExtractYear
-    from django.db.models import Count, Sum, F, Value
-    from django.utils import timezone
-    from datetime import datetime
-    import calendar
-
-    # Get all years with attendance data
-    years_qs = lectures.annotate(year=ExtractYear('date')).values_list('year', flat=True).distinct().order_by('-year')
+    # Get all years for filtering
+    years_qs = all_lectures.annotate(year=ExtractYear('date')).values_list('year', flat=True).distinct().order_by('-year')
     years = list(years_qs)
     current_year = timezone.now().year
     selected_year = request.GET.get('year')
@@ -469,82 +565,83 @@ def teacher_lecture_details(request, teacher_id):
             selected_year = current_year
     except (TypeError, ValueError):
         selected_year = current_year
+    logger.debug(f"Step 9: Selected year: {selected_year}, Available years: {years}")
 
-    # Monthly statistics for selected year
+    # Monthly statistics
     monthly_stats = []
     current_month = timezone.now().month if selected_year == current_year else 1
     for month in range(1, 13):
-        month_lectures = lectures.filter(
-            date__year=selected_year,
-            date__month=month
+        month_lectures = all_lectures.filter(date__year=selected_year, date__month=month)
+        month_normal = month_lectures.filter(
+            recorded_by=teacher,
+            course_offering__teacher=teacher,
+            course_offering__replacement_teacher__isnull=True
         )
-        month_count = month_lectures.count()
-        month_salary = month_count * salary_per_lecture if salary_per_lecture else 0
+        month_replacement = month_lectures.filter(
+            recorded_by=teacher,
+            course_offering__id__in=replacement_course_offering_ids
+        )
+        month_salary = (month_normal.count() + month_replacement.count()) * salary_per_lecture
         monthly_stats.append({
             'month': calendar.month_name[month],
-            'lecture_count': month_count,
+            'normal_count': month_normal.count(),
+            'replacement_count': month_replacement.count(),
             'salary': month_salary,
             'is_current': (month == current_month and selected_year == current_year)
         })
+    logger.debug(f"Step 10: Monthly stats generated for {selected_year}")
 
     # Course-wise statistics
-    if salary_per_lecture and salary_per_lecture > 0:
-        course_stats = lectures.values(
-            'course_offering__course__code',
-            'course_offering__course__name',
-            'course_offering__semester__name',
-            'course_offering__program__name'
-        ).annotate(
-            lecture_count=Count('id'),
-            total_salary=Count('id') * Value(salary_per_lecture)
-        ).order_by('-lecture_count')
-    else:
-        course_stats = lectures.values(
-            'course_offering__course__code',
-            'course_offering__course__name',
-            'course_offering__semester__name',
-            'course_offering__program__name'
-        ).annotate(
-            lecture_count=Count('id'),
-            total_salary=Value(0)
-        ).order_by('-lecture_count')
-
-    # Semester-wise statistics
-    if salary_per_lecture and salary_per_lecture > 0:
-        semester_stats = lectures.values(
-            'course_offering__semester__name',
-            'course_offering__academic_session__name'
-        ).annotate(
-            lecture_count=Count('id'),
-            total_salary=Count('id') * Value(salary_per_lecture)
-        ).order_by('-lecture_count')
-    else:
-        semester_stats = lectures.values(
-            'course_offering__semester__name',
-            'course_offering__academic_session__name'
-        ).annotate(
-            lecture_count=Count('id'),
-            total_salary=Value(0)
-        ).order_by('-lecture_count')
+    course_stats = all_lectures.filter(date__year=selected_year).values(
+        'course_offering__course__code',
+        'course_offering__course__name'
+    ).annotate(
+        normal_count=Count('id', filter=Q(
+            recorded_by=teacher,
+            course_offering__teacher=teacher,
+            course_offering__replacement_teacher__isnull=True
+        )),
+        replacement_count=Count('id', filter=Q(
+            recorded_by=teacher,
+            course_offering__id__in=replacement_course_offering_ids
+        )),
+        salary=Count('id', filter=Q(recorded_by=teacher)) * Value(salary_per_lecture)
+    ).order_by('-normal_count', '-replacement_count')
+    logger.debug(f"Step 11: Course stats generated")
 
     # Recent lectures (last 10)
-    recent_lectures = lectures[:10]
+    recent_lectures = lecture_details[:10]
+    logger.debug(f"Step 12: Recent lectures prepared (count: {len(recent_lectures)})")
 
     context = {
         'teacher': teacher,
-        'lectures': lectures,
-        'lecture_count': lecture_count,
+        'course_offerings': course_offerings,
+        'replacement_course_offerings': replacement_course_offerings,
+        'normal_lecture_count': normal_lecture_count,
+        'replacement_lecture_count': replacement_lecture_count,
+        'total_lecture_count': total_lecture_count,
+        'salary_lecture_count': salary_lecture_count,
         'salary_per_lecture': salary_per_lecture,
         'total_salary': total_salary,
         'monthly_stats': monthly_stats,
         'course_stats': course_stats,
-        'semester_stats': semester_stats,
         'recent_lectures': recent_lectures,
         'years': years,
         'selected_year': selected_year,
         'current_year': current_year,
     }
     return render(request, 'faculty_staff/teacher_lecture_details.html', context)
+
+# Fix for UnorderedObjectListWarning in staff_management view
+def staff_management(request):
+    hod_department = request.user.teacher_profile.department
+    staff_list = Teacher.objects.filter(department=hod_department).order_by('user__first_name')  # Add ordering
+    paginator = Paginator(staff_list, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'faculty_staff/staff_management.html', {'page_obj': page_obj})
+
+
 
 
 
@@ -1772,53 +1869,35 @@ def delete_timetable_slot(request):
         })
 
 
+
 @hod_required
 def weekly_timetable(request):
-    if not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
-        return render(request, 'faculty_staff/error.html', {
-            'message': 'You do not have permission to view the weekly timetable.'
-        }, status=403)
-
     department = request.user.teacher_profile.department
-    # Get all active sessions for the filter
     academic_sessions = AcademicSession.objects.filter(is_active=True).order_by('-start_year')
     selected_session_id = request.GET.get('session_id')
 
-    # Determine the current session
     if selected_session_id:
         current_session = AcademicSession.objects.filter(id=selected_session_id, is_active=True).first()
     else:
         current_session = AcademicSession.objects.filter(is_active=True).order_by('-start_year').first()
-    
+
     if not current_session:
         return render(request, 'faculty_staff/error.html', {
             'message': 'No active academic session found.'
         }, status=404)
 
-    # Debug: Log active and inactive semesters per program for the selected session
     programs = Program.objects.filter(department=department).distinct()
-    for program in programs:
-        semesters = Semester.objects.filter(program=program, session=current_session)
-        active_semesters = semesters.filter(is_active=True).count()
-        inactive_semesters = semesters.count() - active_semesters
-        logger.debug(f"Program: {program.name}, Active Semesters: {active_semesters}, Inactive Semesters: {inactive_semesters}")
-        for semester in semesters:
-            logger.debug(f"  Semester: {semester.name}, Is Active: {semester.is_active}")
-
-    # Get shift filter from GET parameter (default: all)
     shift_filter = request.GET.get('shift', 'all').lower()
     valid_shifts = ['morning', 'evening', 'both', 'all']
     if shift_filter not in valid_shifts:
         shift_filter = 'all'
 
-    # Fetch timetable slots, filtering for active semesters
     queryset = TimetableSlot.objects.filter(
         course_offering__department=department,
         course_offering__academic_session=current_session,
-        course_offering__semester__is_active=True  # Filter for active semesters only
-    ).select_related('course_offering__course', 'course_offering__teacher', 'course_offering__program', 'venue')
+        course_offering__semester__is_active=True
+    ).select_related('course_offering__course', 'course_offering__teacher', 'course_offering__replacement_teacher', 'course_offering__program', 'venue')
 
-    # Apply shift filter
     if shift_filter != 'all':
         if shift_filter == 'morning':
             queryset = queryset.filter(Q(course_offering__shift='morning') | 
@@ -1826,12 +1905,11 @@ def weekly_timetable(request):
         elif shift_filter == 'evening':
             queryset = queryset.filter(Q(course_offering__shift='evening') | 
                                      (Q(course_offering__shift='both') & Q(start_time__gte='12:00:00')))
-        else:  # both
+        else:
             queryset = queryset.filter(course_offering__shift='both')
 
-    # Organize slots by day
     timetable_data = []
-    days_of_week = TimetableSlot.DAYS_OF_WEEK  # [('monday', 'Monday'), ...]
+    days_of_week = TimetableSlot.DAYS_OF_WEEK
     for day_value, day_label in days_of_week:
         day_slots = sorted(
             [
@@ -1846,8 +1924,19 @@ def weekly_timetable(request):
                         slot.course_offering.shift.capitalize() if slot.course_offering.shift != 'both'
                         else ('Morning' if slot.start_time.hour < 12 else 'Evening')
                     ),
-                    'teacher': f"{slot.course_offering.teacher.user.first_name} {slot.course_offering.teacher.user.last_name}",
-                    'program': slot.course_offering.program.name,
+                    'teacher': (
+                        f"{slot.course_offering.replacement_teacher.user.get_full_name()}"
+                        if slot.course_offering.replacement_teacher
+                        else f"{slot.course_offering.teacher.user.get_full_name()}"
+                    ),
+                    'teacher_id': (
+                        slot.course_offering.replacement_teacher.id
+                        if slot.course_offering.replacement_teacher
+                        else slot.course_offering.teacher.id
+                    ),
+                    'original_teacher_id': slot.course_offering.teacher.id,
+                    'program': slot.course_offering.program.name if slot.course_offering.program else 'No Program',
+                    'course_offering_id': slot.course_offering.id,
                 }
                 for slot in queryset.filter(day=day_value)
             ],
@@ -1856,15 +1945,16 @@ def weekly_timetable(request):
         timetable_data.append({
             'day_value': day_value,
             'day_label': day_label,
-            'slots': day_slots  
+            'slots': day_slots
         })
 
-    # Fetch unique programs for the current session and department (only active semesters)
     programs = TimetableSlot.objects.filter(
         course_offering__department=department,
         course_offering__academic_session=current_session,
         course_offering__semester__is_active=True
     ).values('course_offering__program__name').distinct()
+
+    teachers = Teacher.objects.filter(department=department, is_active=True)
 
     return render(request, 'faculty_staff/weekly_timetable.html', {
         'timetable_data': timetable_data,
@@ -1873,11 +1963,58 @@ def weekly_timetable(request):
         'shift_filter': shift_filter,
         'shift_options': [('all', 'All'), ('morning', 'Morning'), ('evening', 'Evening'), ('both', 'Both')],
         'academic_sessions': academic_sessions,
-        'programs': programs,  # Pass the list of programs with active semesters
+        'programs': programs,
+        'teachers': teachers,
     })
-    
-    
+@hod_required
+def lecture_replacement_create(request):
+    if request.method == 'POST':
+        course_offering_id = request.POST.get('course_offering')
+        original_teacher_id = request.POST.get('original_teacher')
+        replacement_teacher_id = request.POST.get('replacement_teacher')
+        replacement_type = request.POST.get('replacement_type')
+        replacement_date = request.POST.get('replacement_date') or None
 
+        try:
+            course_offering = CourseOffering.objects.get(id=course_offering_id)
+            original_teacher = Teacher.objects.get(id=original_teacher_id)
+            replacement_teacher = Teacher.objects.get(id=replacement_teacher_id)
+
+            # Create LectureReplacement instance
+            replacement = LectureReplacement(
+                course_offering=course_offering,
+                original_teacher=original_teacher,
+                replacement_teacher=replacement_teacher,
+                replacement_type=replacement_type,
+                replacement_date=replacement_date
+            )
+            replacement.full_clean()
+            replacement.save()
+
+            # Update CourseOffering.replacement_teacher
+            if replacement_type == 'permanent':
+                course_offering.replacement_teacher = replacement_teacher
+                course_offering.save()
+            elif replacement_type == 'temporary' and replacement_date:
+                if date.today() >= date.fromisoformat(replacement_date):
+                    course_offering.replacement_teacher = replacement_teacher
+                    course_offering.save()
+                else:
+                    course_offering.replacement_teacher = None  # Clear if not yet active
+                    course_offering.save()
+
+            messages.success(request, 'Lecture replacement created successfully.')
+            return redirect('faculty_staff:weekly_timetable')
+        except CourseOffering.DoesNotExist:
+            messages.error(request, 'Invalid course offering selected.')
+        except Teacher.DoesNotExist:
+            messages.error(request, 'Invalid teacher selected.')
+        except ValidationError as e:
+            messages.error(request, f'Error creating replacement: {e}')
+        except Exception as e:
+            messages.error(request, f'An unexpected error occurred: {e}')
+
+    return redirect('faculty_staff:weekly_timetable')
 
 
 @hod_or_professor_required
@@ -3300,31 +3437,28 @@ def delete_semester(request):
 
 
 @hod_or_professor_required
-def attendance(request, offering_id):
+def attendance(request, offering_id=None):
     students = []
     course_offering_id = offering_id
     course_shift = None
     is_active_slot = False
     today_date = timezone.now().astimezone(pytz.timezone('Asia/Karachi')).date()
     current_datetime = timezone.now().astimezone(pytz.timezone('Asia/Karachi'))
-    current_time = current_datetime.time()  # Should be ~10:29 AM PKT
-    current_day = today_date.strftime('%A').lower()  # 'thursday'
+    current_time = current_datetime.time()
+    current_day = today_date.strftime('%A').lower()
 
-    # Log UTC and PKT times for clarity
-    utc_datetime = timezone.now()
     logger.info(
         f"Processing attendance request. "
-        f"UTC: {utc_datetime} ({utc_datetime.tzinfo}), "
-        f"PKT: {current_datetime} ({current_datetime.tzinfo}), "
-        f"Timezone-aware: {timezone.is_aware(current_datetime)}, "
-        f"Current time (PKT): {current_time}, Day: {current_day}"
+        f"UTC: {timezone.now()}, PKT: {current_datetime}, "
+        f"Current time (PKT): {current_time}, Day: {current_day}, "
+        f"Course Offering ID: {course_offering_id}"
     )
 
     if course_offering_id:
         try:
             course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
             course_shift = course_offering.shift
-            logger.info(f"Course offering ID: {course_offering_id}, Shift: {course_shift}")
+            logger.info(f"Course offering found: {course_offering.course.code}, Shift: {course_shift}, Semester: {course_offering.semester}")
 
             # Check for active timetable slot
             timetable_slots = TimetableSlot.objects.filter(
@@ -3335,15 +3469,13 @@ def attendance(request, offering_id):
             )
             is_active_slot = timetable_slots.exists()
 
-            # Log timetable slot details
             if is_active_slot:
                 for slot in timetable_slots:
                     logger.info(
-                        f"Active timetable slot found: Course: {course_offering.course.code}, "
+                        f"Active timetable slot: Course: {course_offering.course.code}, "
                         f"Day: {slot.day}, Start: {slot.start_time}, End: {slot.end_time}"
                     )
             else:
-                # Log all slots for debugging
                 all_slots = TimetableSlot.objects.filter(course_offering=course_offering)
                 if all_slots.exists():
                     logger.warning(
@@ -3355,33 +3487,46 @@ def attendance(request, offering_id):
                             f"Slot: Day: {slot.day}, Start: {slot.start_time}, End: {slot.end_time}"
                         )
                 else:
+                    logger.warning(f"No timetable slots defined for Course Offering ID: {course_offering_id}")
+
+            # Fetch students (relaxed semester check to debug)
+            enrollments = CourseEnrollment.objects.filter(
+                course_offering=course_offering,
+                status='enrolled'
+            ).select_related('student_semester_enrollment__student__applicant')
+            logger.info(f"Initial enrollment query returned {enrollments.count()} records")
+
+            students = []
+            for enrollment in enrollments:
+                student = enrollment.student_semester_enrollment.student
+                # Log semester mismatch if any
+                if enrollment.student_semester_enrollment.semester != course_offering.semester:
                     logger.warning(
-                        f"No timetable slots defined for Course Offering ID: {course_offering_id}"
+                        f"Enrollment skipped: Student {student.applicant.full_name}, "
+                        f"Enrollment semester {enrollment.student_semester_enrollment.semester} "
+                        f"does not match course offering semester {course_offering.semester}"
                     )
-
-            # Log is_active_slot flag status
-            logger.info(f"is_active_slot: {is_active_slot}")
-
-            enrollments = StudentSemesterEnrollment.objects.filter(
-                semester=course_offering.semester
-            ).select_related('student')
-            students = [
-                {
-                    'id': enrollment.student.applicant.id,
-                    'name': str(enrollment.student),
-                    'college_roll_no': enrollment.student.college_roll_no,
-                    'university_roll_no': enrollment.student.university_roll_no
-                } for enrollment in enrollments
-            ]
-            logger.info(f"Fetched {len(students)} students for semester: {course_offering.semester}")
+                    continue
+                students.append({
+                    'id': student.applicant.id,
+                    'name': student.applicant.full_name,
+                    'college_roll_no': student.college_roll_no or 'N/A',
+                    'university_roll_no': student.university_roll_no or 'N/A',
+                    'role': student.applicant.role if hasattr(student.applicant, 'role') else None
+                })
+            logger.info(f"Fetched {len(students)} students for course offering: {course_offering_id}")
 
         except Exception as e:
-            logger.error(f"Error processing course offering ID {course_offering_id}: {str(e)}")
-            raise
-
-    else:
-        logger.info("No course_offering_id provided in request")
-
+            logger.error(f"Error processing course offering ID {course_offering_id}: {str(e)}", exc_info=True)
+            return render(request, 'faculty_staff/attendance.html', {
+                'students': [],
+                'course_offering_id': course_offering_id,
+                'course_shift': None,
+                'today_date': today_date,
+                'is_active_slot': False,
+                'error_message': f"Error loading course offering: {str(e)}"
+            })
+    print(f'slot is : {is_active_slot}')
     context = {
         'students': students,
         'course_offering_id': course_offering_id,

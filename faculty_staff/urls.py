@@ -44,7 +44,7 @@ urlpatterns = [
     path('weekly-timetable/', views.weekly_timetable, name='weekly_timetable'),
     path('search-timetable-slots/', views.search_timetable_slots, name='search_timetable_slots'),
     path('my-timetable/', views.my_timetable, name='my_timetable'),
-
+    path('timetable/replacement/create/', views.lecture_replacement_create, name='lecture_replacement_create'),
     # ========== 7. Search APIs ==========
     path('search-courses/', views.search_courses, name='search_courses'),
     path('search-teachers/', views.search_teachers, name='search_teachers'),
@@ -93,6 +93,7 @@ urlpatterns = [
     
     # ========== 14. Attendance ==========
     path('attendance/<int:offering_id>/', views.attendance, name='attendance'),
+    path('load-students-for-course/', views.load_students_for_course, name='load_students_for_course'),
     path('record-attendance/', views.record_attendance, name='record_attendance'),
     path('load-attendance/', views.load_attendance, name='load_attendance'),
     path('edit-attendance/', views.edit_attendance, name='edit_attendance'),

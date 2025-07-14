@@ -1,6 +1,10 @@
 from django.contrib import admin
-from .models import Course, CourseOffering, Venue, TimetableSlot, StudyMaterial, Assignment, AssignmentSubmission, Notice, ExamResult, Attendance, Quiz, Question, Option, QuizSubmission
-
+from .models import (
+    Course, CourseOffering, Venue, TimetableSlot, 
+    StudyMaterial, Assignment, AssignmentSubmission, 
+    Notice, ExamResult, Attendance, LectureReplacement,
+    Quiz, Question, Option, QuizSubmission
+)
 # Inline for Options in Question
 class OptionInline(admin.TabularInline):
     model = Option
@@ -133,3 +137,8 @@ class QuizSubmissionAdmin(admin.ModelAdmin):
     search_fields = ('student__applicant__full_name', 'quiz__title')
     date_hierarchy = 'submitted_at'
     raw_id_fields = ('student', 'quiz')
+    
+    
+    
+admin.site.register(LectureReplacement)
+   

@@ -1,244 +1,200 @@
 {% extends 'faculty_staff/base_dashboard.html' %}
-
+{% load humanize %}
 {% block title %}Lecture Details - {{ teacher.user.get_full_name }}{% endblock %}
 
+{% block extra_css %}
+<style>
+  .stats-card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+  .stats-card:hover { transform: translateY(-5px); box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+  .table-responsive { overflow-x: auto; }
+  @media print {
+    body * { visibility: hidden; }
+    .print-section, .print-section * { visibility: visible; }
+    .print-section { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; }
+    .no-print { display: none !important; }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 py-6">
-    <!-- Header -->
-    <div class="mb-6">
-        <h1 class="text-3xl font-bold mb-2">Lecture Details for {{ teacher.user.get_full_name }}</h1>
-        <p class="text-base-content/70 mb-4">{{ teacher.designation }} - {{ teacher.department.name }}</p>
-        <a href="{% url 'faculty_staff:staff_management' %}" class="btn btn-sm btn-secondary">
-            <i class="fas fa-arrow-left mr-2"></i>Back to Staff Management
-        </a>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <!-- Header -->
+  <div class="bg-indigo-600 text-white rounded-lg shadow-md mb-6">
+    <div class="text-center py-6">
+      <h1 class="text-3xl font-bold">{{ teacher.user.get_full_name }} - Lecture Details</h1>
+      <p class="text-lg">
+        {{ teacher.department.name }} | 
+        {% if teacher.designation == 'visitor' %}Visitor
+        {% elif teacher.designation == 'contract' %}Contract Based
+        {% elif teacher.designation == 'permanent' %}Permanent
+        {% else %}{{ teacher.designation|capfirst }}{% endif %}
+      </p>
     </div>
+  </div>
 
-    <!-- Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div class="card bg-primary text-primary-content">
-            <div class="card-body">
-                <h3 class="card-title text-lg">
-                    <i class="fas fa-chalkboard-teacher mr-2"></i>
-                    Total Lectures
-                </h3>
-                <p class="text-3xl font-bold">{{ lecture_count }}</p>
-            </div>
-        </div>
-        
-        <div class="card bg-success text-success-content">
-            <div class="card-body">
-                <h3 class="card-title text-lg">
-                    <i class="fas fa-money-bill-wave mr-2"></i>
-                    Salary per Lecture
-                </h3>
-                <p class="text-3xl font-bold">{{ salary_per_lecture|default:"0" }}</p>
-            </div>
-        </div>
-        
-        <div class="card bg-info text-info-content">
-            <div class="card-body">
-                <h3 class="card-title text-lg">
-                    <i class="fas fa-calculator mr-2"></i>
-                    Total Salary
-                </h3>
-                <p class="text-3xl font-bold">{{ total_salary|default:"0" }}</p>
-            </div>
-        </div>
-        
-        <div class="card bg-warning text-warning-content">
-            <div class="card-body">
-                <h3 class="card-title text-lg">
-                    <i class="fas fa-calendar-alt mr-2"></i>
-                    This Month
-                </h3>
-                {% for month in monthly_stats %}
-                    {% if month.is_current %}
-                        <p class="text-2xl font-bold">{{ month.lecture_count }}</p>
-                        <p class="text-sm">{{ month.salary }}</p>
-                    {% endif %}
-                {% endfor %}
-            </div>
-        </div>
+  <!-- Summary Cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 print-section">
+    <div class="stats-card bg-white p-4 rounded-lg shadow-md border-l-4 border-indigo-600">
+      <h3 class="text-sm font-semibold text-gray-700">Course Offerings</h3>
+      <p class="text-xl font-bold text-indigo-600">{{ course_offerings.count|intcomma }}</p>
     </div>
+    <div class="stats-card bg-white p-4 rounded-lg shadow-md border-l-4 border-purple-600">
+      <h3 class="text-sm font-semibold text-gray-700">Replacement Courses</h3>
+      <p class="text-xl font-bold text-purple-600">{{ replacement_course_offerings.count|intcomma }}</p>
+    </div>
+    <div class="stats-card bg-white p-4 rounded-lg shadow-md border-l-4 border-blue-600">
+      <h3 class="text-sm font-semibold text-gray-700">Total Lectures</h3>
+      <p class="text-xl font-bold text-blue-600">{{ total_lecture_count|intcomma }} (Normal: {{ normal_lecture_count|intcomma }}, Replacement: {{ replacement_lecture_count|intcomma }})</p>
+    </div>
+    <div class="stats-card bg-white p-4 rounded-lg shadow-md border-l-4 border-green-600">
+      <h3 class="text-sm font-semibold text-gray-700">Total Salary</h3>
+      <p class="text-xl font-bold text-green-600">PKR {{ total_salary|intcomma }} ({{ salary_lecture_count|intcomma }} lectures)</p>
+    </div>
+  </div>
 
-    <!-- Year Selector -->
-    <div class="mb-4 flex flex-wrap gap-2 items-center">
-        <span class="font-semibold mr-2">Select Year:</span>
+  <!-- Year Filter -->
+  <div class="flex justify-between items-center mb-4 no-print">
+    <a href="{% url 'faculty_staff:staff_management' %}" class="inline-flex items-center px-3 py-2 border border-indigo-500 text-indigo-500 bg-white hover:bg-indigo-50 rounded-md">
+      <i class="fas fa-arrow-left mr-2"></i>Back to Staff Management
+    </a>
+    <div class="flex items-center gap-3">
+      <label for="year-filter" class="text-sm font-medium text-gray-700">Year:</label>
+      <select id="year-filter" onchange="window.location.href='?year=' + this.value" class="border border-gray-300 rounded-md p-2">
         {% for year in years %}
-            <a href="?year={{ year }}" class="btn btn-xs {% if year == selected_year %}btn-primary{% else %}btn-outline{% endif %}">{{ year }}</a>
+          <option value="{{ year }}" {% if selected_year == year %}selected{% endif %}>{{ year }}</option>
         {% endfor %}
+      </select>
     </div>
+  </div>
 
-    <!-- Monthly Statistics -->
-    <div class="card bg-base-100 shadow-lg mb-6">
-        <div class="card-body">
-            <h2 class="card-title text-xl mb-4">
-                <i class="fas fa-chart-line mr-2"></i>
-                Monthly Statistics ({{ selected_year }})
-            </h2>
-            <div class="overflow-x-auto">
-                <table class="table table-sm w-full">
-                    <thead class="bg-base-200">
-                        <tr>
-                            <th>Month</th>
-                            <th>Lectures</th>
-                            <th>Salary</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for month in monthly_stats %}
-                        <tr class="{% if month.is_current %}bg-primary/10{% endif %}">
-                            <td class="font-medium">{{ month.month }}</td>
-                            <td>{{ month.lecture_count }}</td>
-                            <td>{{ month.salary }}</td>
-                            <td>
-                                {% if month.is_current %}
-                                    <span class="badge badge-primary">Current</span>
-                                {% elif month.lecture_count > 0 %}
-                                    <span class="badge badge-success">Active</span>
-                                {% else %}
-                                    <span class="badge badge-neutral">No Lectures</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+  <!-- Course Offerings -->
+  <div class="bg-white shadow-md rounded-lg p-4 mb-6 print-section">
+    <h2 class="text-xl font-semibold mb-3">Course Offerings</h2>
+    <div class="table-responsive">
+      <table class="min-w-full table-auto">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Course Code</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Course Name</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Semester</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Program</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Type</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for co in course_offerings %}
+            <tr class="bg-white hover:bg-gray-50">
+              <td class="px-3 py-2 text-sm text-gray-600">{{ co.course.code }}</td>
+              <td class="px-3 py-2 text-sm text-gray-600">{{ co.course.name }}</td>
+              <td class="px-3 py-2 text-sm text-gray-600">{{ co.semester.name }}</td>
+              <td class="px-3 py-2 text-sm text-gray-600">{{ co.program.name|default:'N/A' }}</td>
+              <td class="px-3 py-2 text-sm {% if co.id in replacement_course_offering_ids %}text-purple-600{% else %}text-blue-600{% endif %}">
+                {% if co.id in replacement_course_offering_ids %}Replacement{% else %}Normal{% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="5" class="px-3 py-2 text-center text-gray-500">No course offerings found.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
+  </div>
 
-    <!-- Course-wise Statistics -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div class="card bg-base-100 shadow-lg">
-            <div class="card-body">
-                <h2 class="card-title text-xl mb-4">
-                    <i class="fas fa-book mr-2"></i>
-                    Course-wise Statistics
-                </h2>
-                {% if course_stats %}
-                <div class="overflow-x-auto">
-                    <table class="table table-sm w-full">
-                        <thead class="bg-base-200">
-                            <tr>
-                                <th>Course</th>
-                                <th>Program</th>
-                                <th>Semester</th>
-                                <th>Lectures</th>
-                                <th>Salary</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for course in course_stats %}
-                            <tr>
-                                <td>
-                                    <div class="font-medium">{{ course.course_offering__course__code }}</div>
-                                    <div class="text-xs text-base-content/70">{{ course.course_offering__course__name }}</div>
-                                </td>
-                                <td>{{ course.course_offering__program__name }}</td>
-                                <td>{{ course.course_offering__semester__name }}</td>
-                                <td>{{ course.lecture_count }}</td>
-                                <td>{{ course.total_salary }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <div class="alert alert-info">No course statistics available.</div>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Semester-wise Statistics -->
-        <div class="card bg-base-100 shadow-lg">
-            <div class="card-body">
-                <h2 class="card-title text-xl mb-4">
-                    <i class="fas fa-graduation-cap mr-2"></i>
-                    Semester-wise Statistics
-                </h2>
-                {% if semester_stats %}
-                <div class="overflow-x-auto">
-                    <table class="table table-sm w-full">
-                        <thead class="bg-base-200">
-                            <tr>
-                                <th>Semester</th>
-                                <th>Session</th>
-                                <th>Lectures</th>
-                                <th>Salary</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for semester in semester_stats %}
-                            <tr>
-                                <td class="font-medium">{{ semester.course_offering__semester__name }}</td>
-                                <td>{{ semester.course_offering__academic_session__name }}</td>
-                                <td>{{ semester.lecture_count }}</td>
-                                <td>{{ semester.total_salary }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <div class="alert alert-info">No semester statistics available.</div>
-                {% endif %}
-            </div>
-        </div>
+  <!-- Monthly Statistics -->
+  <div class="bg-white shadow-md rounded-lg p-4 mb-6 print-section">
+    <h2 class="text-xl font-semibold mb-3">Monthly Statistics ({{ selected_year }})</h2>
+    <div class="table-responsive">
+      <table class="min-w-full table-auto">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Month</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Normal Lectures</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Replacement Lectures</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Salary (PKR)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for stat in monthly_stats %}
+            <tr class="{% if stat.is_current %}bg-indigo-50{% else %}bg-white{% endif %} hover:bg-gray-50">
+              <td class="px-3 py-2 text-sm text-gray-600">{{ stat.month }}</td>
+              <td class="px-3 py-2 text-sm text-blue-600">{{ stat.normal_count|intcomma }}</td>
+              <td class="px-3 py-2 text-sm text-purple-600">{{ stat.replacement_count|intcomma }}</td>
+              <td class="px-3 py-2 text-sm text-green-600">{{ stat.salary|intcomma }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="4" class="px-3 py-2 text-center text-gray-500">No lecture data for {{ selected_year }}.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
+  </div>
 
-    <!-- Recent Lectures -->
-    <div class="card bg-base-100 shadow-lg">
-        <div class="card-body">
-            <h2 class="card-title text-xl mb-4">
-                <i class="fas fa-history mr-2"></i>
-                Recent Lectures (Last 10)
-            </h2>
-            {% if recent_lectures %}
-            <div class="overflow-x-auto">
-                <table class="table table-sm w-full">
-                    <thead class="bg-base-200">
-                        <tr>
-                            <th>Date</th>
-                            <th>Course</th>
-                            <th>Program</th>
-                            <th>Semester</th>
-                            <th>Shift</th>
-                            {% comment %} <th>Status</th> {% endcomment %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for lecture in recent_lectures %}
-                        <tr>
-                            <td>{{ lecture.date|date:"M d, Y" }}</td>
-                            <td>
-                                <div class="font-medium">{{ lecture.course_offering.course.code }}</div>
-                                <div class="text-xs text-base-content/70">{{ lecture.course_offering.course.name }}</div>
-                            </td>
-                            <td>{{ lecture.course_offering.program.name }}</td>
-                            <td>{{ lecture.course_offering.semester.name }}</td>
-                            <td>
-                                {% if lecture.shift %}
-                                    <span class="badge badge-sm badge-outline">{{ lecture.shift|title }}</span>
-                                {% else %}
-                                    <span class="badge badge-sm badge-neutral">N/A</span>
-                                {% endif %}
-                            </td>
-                            {% comment %} <td>
-                                <span class="badge badge-sm {% if lecture.status == 'present' %}badge-success{% elif lecture.status == 'absent' %}badge-error{% else %}badge-warning{% endif %}">
-                                    {{ lecture.status|title }}
-                                </span>
-                            </td> {% endcomment %}
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="alert alert-info">No recent lectures found.</div>
-            {% endif %}
-        </div>
+  <!-- Course-wise Statistics -->
+  <div class="bg-white shadow-md rounded-lg p-4 mb-6 print-section">
+    <h2 class="text-xl font-semibold mb-3">Course-wise Statistics ({{ selected_year }})</h2>
+    <div class="table-responsive">
+      <table class="min-w-full table-auto">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Course Code</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Course Name</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Normal Lectures</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Replacement Lectures</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Salary (PKR)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for stat in course_stats %}
+            <tr class="bg-white hover:bg-gray-50">
+              <td class="px-3 py-2 text-sm text-gray-600">{{ stat.course_offering__course__code }}</td>
+              <td class="px-3 py-2 text-sm text-gray-600">{{ stat.course_offering__course__name }}</td>
+              <td class="px-3 py-2 text-sm text-blue-600">{{ stat.normal_count|intcomma }}</td>
+              <td class="px-3 py-2 text-sm text-purple-600">{{ stat.replacement_count|intcomma }}</td>
+              <td class="px-3 py-2 text-sm text-green-600">{{ stat.salary|intcomma }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="5" class="px-3 py-2 text-center text-gray-500">No course data for {{ selected_year }}.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
+  </div>
+
+  <!-- Recent Lectures -->
+  <div class="bg-white shadow-md rounded-lg p-4 print-section">
+    <h2 class="text-xl font-semibold mb-3">Recent Lectures (Last 10)</h2>
+    <div class="table-responsive">
+      <table class="min-w-full table-auto">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Date</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Course</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Shift</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Type</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in recent_lectures %}
+            <tr class="bg-white hover:bg-gray-50">
+              <td class="px-3 py-2 text-sm text-gray-600">{{ item.date }}</td>
+              <td class="px-3 py-2 text-sm text-gray-600">{{ item.course_code }} - {{ item.course_name }}</td>
+              <td class="px-3 py-2 text-sm text-gray-600">{{ item.shift|capfirst|default:'N/A' }}</td>
+              <td class="px-3 py-2 text-sm {% if item.role == 'Normal' %}text-blue-600{% else %}text-purple-600{% endif %}">{{ item.role }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="4" class="px-3 py-2 text-center text-gray-500">No recent lectures found.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
 {% endblock %}

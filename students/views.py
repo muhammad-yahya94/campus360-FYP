@@ -145,11 +145,26 @@ def student_dashboard(request):
 
     logger.debug("Found %d course(s) in active semester", len(enrollments))
 
+    # Start with base queryset
+    from django.utils import timezone
+    
+    notices = Notice.objects.filter(
+        Q(programs__in=[student.program]) | Q(programs__isnull=True)
+    ).filter(
+        is_active=True,
+        valid_from__lte=timezone.now(),
+    ).distinct().order_by('-created_at')[:3]
+
+    print(notices)
     return render(request, 'dashboard.html', {
         'student': student,
         'active_semester': active_semester,
-        'enrollments': enrollments,  
+        'enrollments': enrollments,
+        'notices': notices
     })
+
+
+
 
 def my_courses(request):
     user = request.user

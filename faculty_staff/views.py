@@ -149,18 +149,17 @@ def professor_dashboard(request):
 
 
 
-@hod_required
 def staff_management(request):
     hod_department = request.user.teacher_profile.department
     staff_list = Teacher.objects.filter(department=hod_department)
-
+    print(f"this is staff -- {staff_list}")
     search_query = request.GET.get('search', '')
     if search_query:
         staff_list = staff_list.filter(
-            Q(user__first_name__icontains=search_query) |
-            Q(user__last_name__icontains=search_query) |
-            Q(user__email__icontains=search_query)
-        )
+            Q(user_first_name_icontains=search_query) |
+            Q(user_last_name_icontains=search_query) |
+            Q(user_email_icontains=search_query)
+        )  
 
     status = request.GET.get('status')
     if status == 'active':
@@ -180,6 +179,7 @@ def staff_management(request):
         'status_choices': TeacherDetails.STATUS_CHOICES,
     }
     return render(request, 'faculty_staff/staff_management.html', context)
+
 
 @hod_required
 def add_staff(request):
@@ -632,15 +632,6 @@ def teacher_lecture_details(request, teacher_id):
     }
     return render(request, 'faculty_staff/teacher_lecture_details.html', context)
 
-# Fix for UnorderedObjectListWarning in staff_management view
-def staff_management(request):
-    hod_department = request.user.teacher_profile.department
-    staff_list = Teacher.objects.filter(department=hod_department).order_by('user__first_name')  # Add ordering
-    paginator = Paginator(staff_list, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    return render(request, 'faculty_staff/staff_management.html', {'page_obj': page_obj})
-
 
 
 
@@ -742,10 +733,16 @@ class CourseForm(forms.Form):
     code = forms.CharField(max_length=10, required=True, help_text="Enter the unique course code (e.g., CS101).")
     name = forms.CharField(max_length=200, required=True, help_text="Enter the full name of the course.")
     credits = forms.IntegerField(min_value=1, required=True, help_text="Enter the number of credit hours.")
-    lab_work = forms.IntegerField(min_value=0, required=False, help_text="Enter the number of lab work.")
+    lab_work = forms.IntegerField(min_value=0, required=False, help_text="Enter the number of lab hours per week for this course (if applicable).")
     is_active = forms.BooleanField(required=False, initial=True, help_text="Check this if the course is active.")
     opt = forms.BooleanField(required=False, initial=True, help_text="Check this if the course is just optional")
-    description = forms.CharField(widget=forms.Textarea, required=False, help_text="Provide a description.")
+    description = forms.CharField(widget=forms.Textarea, required=False, help_text="Provide a brief description or syllabus summary for the course.")
+    prerequisites = forms.ModelMultipleChoiceField(
+        queryset=Course.objects.all(),
+        required=False,
+        widget=forms.SelectMultiple(attrs={'class': 'form-control'}),
+        help_text="Select any courses that are required to be completed before taking this course (optional)."
+    )
 
 
 @hod_required
@@ -758,7 +755,8 @@ def add_course(request):
         if Course.objects.filter(code=code).exists():
             form.add_error('code', 'This course code already exists.')
         else:
-            Course.objects.create(
+            # Create the course first
+            course = Course.objects.create(
                 code=code,
                 name=form.cleaned_data['name'],
                 credits=form.cleaned_data['credits'],
@@ -767,6 +765,12 @@ def add_course(request):
                 opt=form.cleaned_data['opt'],
                 description=form.cleaned_data['description']
             )
+            
+            # Add prerequisites if any selected
+            prerequisites = form.cleaned_data['prerequisites']
+            if prerequisites:
+                course.prerequisites.set(prerequisites)
+            
             messages.success(request, f'Course {code} added successfully.')
             return redirect('faculty_staff:course_offerings')
 
@@ -807,8 +811,8 @@ def course_offerings(request):
     course_offerings = CourseOffering.objects.filter(
         department=hod_department,
         semester__is_active=True,
-        program__is_active=True
-    )
+        program__is_active=True   
+    ).order_by('academic_session__start_year', 'program__name', 'semester__name', 'course__code')
     if session_id:
         course_offerings = course_offerings.filter(academic_session_id=session_id)
     if program_id:
@@ -826,7 +830,7 @@ def course_offerings(request):
         course_offering__department=hod_department,
         course_offering__semester__is_active=True,
         course_offering__program__is_active=True
-    )
+    ).order_by('course_offering__academic_session__start_year', 'course_offering__program__name', 'course_offering__semester__name', 'day', 'start_time')
     if session_id:
         timetable_slots = timetable_slots.filter(course_offering__academic_session_id=session_id)
     if program_id:

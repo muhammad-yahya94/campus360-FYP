@@ -1966,6 +1966,9 @@ def weekly_timetable(request):
         'programs': programs,
         'teachers': teachers,
     })
+    
+    
+    
 @hod_required
 def lecture_replacement_create(request):
     if request.method == 'POST':
@@ -1991,16 +1994,19 @@ def lecture_replacement_create(request):
             replacement.full_clean()
             replacement.save()
 
-            # Update CourseOffering.replacement_teacher
+            # Update CourseOffering.replacement_teacher and teacher
             if replacement_type == 'permanent':
                 course_offering.replacement_teacher = replacement_teacher
+                course_offering.teacher = replacement_teacher
                 course_offering.save()
             elif replacement_type == 'temporary' and replacement_date:
                 if date.today() >= date.fromisoformat(replacement_date):
                     course_offering.replacement_teacher = replacement_teacher
+                    course_offering.teacher = replacement_teacher
                     course_offering.save()
                 else:
                     course_offering.replacement_teacher = None  # Clear if not yet active
+                    course_offering.teacher = None
                     course_offering.save()
 
             messages.success(request, 'Lecture replacement created successfully.')

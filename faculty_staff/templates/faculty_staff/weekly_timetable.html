@@ -14,7 +14,7 @@
     .timetable-slot { page-break-inside: avoid; }
   }
   .group:hover .group-hover\:block { display: block !important; }
-</style>
+</style>  
 {% endblock %}
 
 {% block content %}
@@ -116,7 +116,6 @@
                         <span class="mx-1">•</span>
                         Room {{ slot.room_no }}
                       </span>
-                      <button class="no-print text-indigo-600 hover:text-indigo-800" onclick="openReplacementModal('{{ slot.course_offering_id|addslashes }}', '{{ slot.original_teacher_id|addslashes }}', '{{ slot.course_code|addslashes }}', '{{ slot.teacher|addslashes }}')">Replace Teacher</button>
                     </div>
                     <!-- Display Existing Replacements -->
                     {% if replacements %}

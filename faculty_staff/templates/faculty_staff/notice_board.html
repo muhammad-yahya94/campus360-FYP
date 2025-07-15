@@ -19,20 +19,24 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Header -->
+        <div class="hero bg-primary text-primary-content rounded-lg shadow-lg mb-6">
+            <div class="hero-content text-center py-6">
+                <div class="max-w-md">
+                    <h1 class="text-3xl sm:text-4xl font-bold mb-2">Notice Board</h1>
+                   <p class="text-base sm:text-lg text-primary-content/90">View and manage notices for programs and sessions</p>
+                </div>
+            </div>
+        </div>
     <!-- Header with Add Notice Button -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Notice Board</h1>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                View and manage notices for programs and sessions
-            </p>
+     
         </div>
-        {% if request.user.teacher_profile.designation == 'head_of_department' %}
         <button onclick="document.getElementById('create-notice-modal').showModal()" 
                 class="btn btn-primary">
             <i class="fas fa-plus mr-2"></i> Add Notice
         </button>
-        {% endif %}
     </div>
 
     <!-- Notices Table -->
@@ -60,7 +64,7 @@
                             <td>{{ notice.created_at|date:"M d, Y" }}</td>
                             <td>{{ notice.valid_until }}</td>
                             <td>
-                                {% if request.user.teacher_profile and request.user.teacher_profile.designation == 'head_of_department' %}
+                                {% if request.user.teacher_profile  %}
                                     <div class="dropdown dropdown-end">
                                         <label tabindex="0" class="btn btn-sm btn-ghost">
                                             <i class="fas fa-ellipsis-v"></i>
@@ -207,7 +211,7 @@
                                     </div>
                                 {% endif %}
                             </td>
-                        </tr>
+                        </tr>   
                     {% endfor %}
                 {% else %}
                     <tr>
@@ -216,14 +220,14 @@
                                 <i class="fas fa-inbox text-4xl"></i>
                             </div>
                             <h3 class="text-lg font-medium text-gray-500">No notices found</h3>
-                            {% if request.user.teacher_profile.designation == 'head_of_department' %}
+                          
                                 <p class="mt-1 text-sm text-gray-400">
                                     <button onclick="document.getElementById('create-notice-modal').showModal()" 
                                             class="text-primary hover:underline">
                                         Create a new notice
                                     </button>
                                 </p>
-                            {% endif %}
+                
                         </td>
                     </tr>
                 {% endif %}

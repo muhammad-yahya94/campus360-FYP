@@ -73,7 +73,6 @@ INSTALLED_APPS = [
     'background_task', #ya wesy pakadge k liy add kia gaya hai
     'bgtask',
     'fee_management',
-    'manual_result',
 ]
 
 MIDDLEWARE = [

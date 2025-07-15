@@ -398,7 +398,7 @@ $(document).ready(function() {
     function loadMaterials(courseOfferingId) {
         console.log('Loading materials for course_offering_id:', courseOfferingId);
         $.ajax({
-            url: "{% url 'faculty_staff:study_materials' %}",
+            url: "/faculty/study-materials/" + courseOfferingId + "/",
             type: 'GET',
             data: { course_offering_id: courseOfferingId },
             success: function(response) {

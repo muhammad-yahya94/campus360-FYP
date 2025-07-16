@@ -150,16 +150,19 @@ def professor_dashboard(request):
 
 
 
+
+
+
 def staff_management(request):
     hod_department = request.user.teacher_profile.department
-    staff_list = Teacher.objects.filter(department=hod_department)
+    staff_list = Teacher.objects.filter(department=hod_department).order_by('user__last_name', 'user__first_name')
     print(f"this is staff -- {staff_list}")
     search_query = request.GET.get('search', '')
     if search_query:
         staff_list = staff_list.filter(
-            Q(user_first_name_icontains=search_query) |
-            Q(user_last_name_icontains=search_query) |
-            Q(user_email_icontains=search_query)
+            Q(user__first_name__icontains=search_query) |
+            Q(user__last_name__icontains=search_query) |
+            Q(user__email__icontains=search_query)
         )  
 
     status = request.GET.get('status')
@@ -178,9 +181,9 @@ def staff_management(request):
         'designation_choices': Teacher.DESIGNATION_CHOICES,
         'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
         'status_choices': TeacherDetails.STATUS_CHOICES,
+        'gender_choices': Teacher.GENDER_CHOICES,
     }
     return render(request, 'faculty_staff/staff_management.html', context)
-
 
 @hod_required
 def add_staff(request):
@@ -191,6 +194,7 @@ def add_staff(request):
         last_name = request.POST.get('last_name')
         email = request.POST.get('email')
         designation = request.POST.get('designation')
+        gender = request.POST.get('gender')  # New field
         contact_no = request.POST.get('contact_no', '')
         qualification = request.POST.get('qualification', '')
         hire_date = request.POST.get('hire_date', None)
@@ -204,19 +208,21 @@ def add_staff(request):
         fixed_salary = request.POST.get('fixed_salary', None)
         status = request.POST.get('status', '')
 
-        if not all([first_name, last_name, email, designation]):
-            messages.error(request, 'Please fill in all required fields (First Name, Last Name, Email, Designation).')
+        if not all([first_name, last_name, email, designation, gender]):
+            messages.error(request, 'Please fill in all required fields (First Name, Last Name, Email, Designation, Gender).')
             return render(request, 'faculty_staff/staff_management.html', {
                 'department': hod_department,
                 'staff_members': Teacher.objects.filter(department=hod_department),
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
                 'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
                 'status_choices': TeacherDetails.STATUS_CHOICES,
+                'gender_choices': Teacher.GENDER_CHOICES,  # Add gender choices
                 'form_errors': {
                     'first_name': not first_name,
                     'last_name': not last_name,
                     'email': not email,
                     'designation': not designation,
+                    'gender': not gender,  # Add gender to form errors
                 },
             })
 
@@ -228,6 +234,7 @@ def add_staff(request):
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
                 'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
                 'status_choices': TeacherDetails.STATUS_CHOICES,
+                'gender_choices': Teacher.GENDER_CHOICES,  # Add gender choices
                 'form_errors': {'email': 'exists'},
             })
 
@@ -239,7 +246,20 @@ def add_staff(request):
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
                 'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
                 'status_choices': TeacherDetails.STATUS_CHOICES,
+                'gender_choices': Teacher.GENDER_CHOICES,  # Add gender choices
                 'form_errors': {'designation': True},
+            })
+
+        if gender not in dict(Teacher.GENDER_CHOICES).keys():
+            messages.error(request, 'Invalid gender selected.')
+            return render(request, 'faculty_staff/staff_management.html', {
+                'department': hod_department,
+                'staff_members': Teacher.objects.filter(department=hod_department),
+                'designation_choices': Teacher.DESIGNATION_CHOICES,
+                'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
+                'status_choices': TeacherDetails.STATUS_CHOICES,
+                'gender_choices': Teacher.GENDER_CHOICES,  # Add gender choices
+                'form_errors': {'gender': True},
             })
 
         try:
@@ -256,6 +276,7 @@ def add_staff(request):
                 user=user,
                 department=hod_department,
                 designation=designation,
+                gender=gender,  # Add gender
                 contact_no=contact_no,
                 qualification=qualification,
                 hire_date=hire_date if hire_date else None,
@@ -286,6 +307,7 @@ def add_staff(request):
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
                 'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
                 'status_choices': TeacherDetails.STATUS_CHOICES,
+                'gender_choices': Teacher.GENDER_CHOICES,  # Add gender choices
                 'form_errors': {},
             })
 
@@ -295,8 +317,11 @@ def add_staff(request):
         'designation_choices': Teacher.DESIGNATION_CHOICES,
         'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
         'status_choices': TeacherDetails.STATUS_CHOICES,
+        'gender_choices': Teacher.GENDER_CHOICES,  # Add gender choices
     })
-
+    
+    
+    
 @hod_required
 def edit_staff(request, staff_id):
     hod_department = request.user.teacher_profile.department
@@ -308,6 +333,7 @@ def edit_staff(request, staff_id):
         last_name = request.POST.get('last_name')
         email = request.POST.get('email')
         designation = request.POST.get('designation')
+        gender = request.POST.get('gender')  # New field
         contact_no = request.POST.get('contact_no', '')
         qualification = request.POST.get('qualification', '')
         hire_date = request.POST.get('hire_date', None)
@@ -321,19 +347,21 @@ def edit_staff(request, staff_id):
         fixed_salary = request.POST.get('fixed_salary', None)
         status = request.POST.get('status', '')
 
-        if not all([first_name, last_name, email, designation]):
-            messages.error(request, 'Please fill in all required fields (First Name, Last Name, Email, Designation).')
+        if not all([first_name, last_name, email, designation, gender]):
+            messages.error(request, 'Please fill in all required fields (First Name, Last Name, Email, Designation, Gender).')
             return render(request, 'faculty_staff/staff_management.html', {
                 'department': hod_department,
                 'staff_members': Teacher.objects.filter(department=hod_department),
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
                 'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
                 'status_choices': TeacherDetails.STATUS_CHOICES,
+                'gender_choices': Teacher.GENDER_CHOICES,  # Add gender choices
                 'form_errors': {
                     'first_name': not first_name,
                     'last_name': not last_name,
                     'email': not email,
                     'designation': not designation,
+                    'gender': not gender,  # Add gender to form errors
                 },
             })
 
@@ -345,6 +373,7 @@ def edit_staff(request, staff_id):
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
                 'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
                 'status_choices': TeacherDetails.STATUS_CHOICES,
+                'gender_choices': Teacher.GENDER_CHOICES,  # Add gender choices
                 'form_errors': {'email': 'exists'},
             })
 
@@ -356,7 +385,20 @@ def edit_staff(request, staff_id):
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
                 'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
                 'status_choices': TeacherDetails.STATUS_CHOICES,
+                'gender_choices': Teacher.GENDER_CHOICES,  # Add gender choices
                 'form_errors': {'designation': True},
+            })
+
+        if gender not in dict(Teacher.GENDER_CHOICES).keys():
+            messages.error(request, 'Invalid gender selected.')
+            return render(request, 'faculty_staff/staff_management.html', {
+                'department': hod_department,
+                'staff_members': Teacher.objects.filter(department=hod_department),
+                'designation_choices': Teacher.DESIGNATION_CHOICES,
+                'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
+                'status_choices': TeacherDetails.STATUS_CHOICES,
+                'gender_choices': Teacher.GENDER_CHOICES,  # Add gender choices
+                'form_errors': {'gender': True},
             })
 
         try:
@@ -366,6 +408,7 @@ def edit_staff(request, staff_id):
             teacher.user.save()
 
             teacher.designation = designation
+            teacher.gender = gender  # Update gender
             teacher.contact_no = contact_no
             teacher.qualification = qualification
             teacher.hire_date = hire_date if hire_date else None
@@ -403,17 +446,21 @@ def edit_staff(request, staff_id):
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
                 'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
                 'status_choices': TeacherDetails.STATUS_CHOICES,
+                'gender_choices': Teacher.GENDER_CHOICES,  # Add gender choices
                 'form_errors': {},
             })
-    print(f'this is {TeacherDetails.EMPLOYMENT_TYPE_CHOICES} and {TeacherDetails.STATUS_CHOICES}')        
+
     return render(request, 'faculty_staff/staff_management.html', {
         'department': hod_department,
         'staff_members': Teacher.objects.filter(department=hod_department),
         'designation_choices': Teacher.DESIGNATION_CHOICES,
         'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
         'status_choices': TeacherDetails.STATUS_CHOICES,
+        'gender_choices': Teacher.GENDER_CHOICES,  # Add gender choices
     })
     
+    
+        
 @hod_required
 def delete_staff(request, staff_id):
     hod_department = request.user.teacher_profile.department
@@ -4183,7 +4230,7 @@ def department_funds_management(request):
             student__program__department=hod.department,
         )
         
-        # Apply filters if they exist
+        # Apply filters if they exist  
         if request.GET.get('academic_session'):
             enrollments = enrollments.filter(semester__session_id=request.GET.get('academic_session'))
         if request.GET.get('program'):

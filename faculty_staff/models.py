@@ -15,6 +15,12 @@ class Teacher(models.Model):
         ('head_of_department', 'Head of Department'),
         ('professor', 'Professor'),
     ]
+    
+    # Gender Choices
+    GENDER_CHOICES = [
+        ('male', 'Male'),
+        ('female', 'Female'),
+    ]
 
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='teacher_profile', help_text="Select the user account associated with this teacher.")
     department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name='teachers', help_text="Select the department this teacher belongs to.")

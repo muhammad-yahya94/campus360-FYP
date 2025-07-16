@@ -9,7 +9,7 @@ from academics.models import Faculty, Department, Program
 from admissions.models import AcademicSession, AdmissionCycle, Applicant, AcademicQualification, ExtraCurricularActivity
 from users.models import CustomUser
 from payment.models import Payment 
-import json
+import json   
 import logging
 from datetime import datetime  
 from site_elements.models import Alumni, Gallery
@@ -371,6 +371,7 @@ def submit_application(request):
             dob=request.POST.get('dob'),
             contact_no=request.POST.get('contact_no'),
             identification_mark=request.POST.get('identification_mark'),
+            gender=request.POST.get('gender'),
             father_name=request.POST.get('father_name'),
             father_occupation=request.POST.get('father_occupation'),
             father_cnic=request.POST.get('father_cnic'),

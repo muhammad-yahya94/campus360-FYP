@@ -177,6 +177,14 @@
             <input type="number" id="amount" name="amount" class="input input-bordered w-full rounded-lg" step="0.01" min="0" value="{% if edit_fee %}{{ edit_fee.amount }}{% endif %}" required oninput="calculateTotal()">
           </div>
           <div>
+            <label class="block mb-2 font-semibold text-base-content" for="admission_fee">Admission Fee</label>
+            <input type="checkbox" id="admission_fee" name="admission_fee" class="checkbox checkbox-primary" {% if edit_fee.admission_fee %}checked{% endif %} onchange="toggleAmountField('admission_fee', 'admission_fee_amount'); calculateTotal()">
+          </div>
+          <div id="admission_fee_amount_div" {% if not edit_fee.admission_fee %}class="hidden"{% endif %}>
+            <label class="block mb-2 font-semibold text-base-content" for="admission_fee_amount">Admission Fee Amount</label>
+            <input type="number" id="admission_fee_amount" name="admission_fee_amount" class="input input-bordered w-full rounded-lg" step="0.01" min="0" value="{% if edit_fee %}{{ edit_fee.admission_fee_amount|default_if_none:'0' }}{% endif %}" {% if edit_fee.admission_fee %}required{% endif %} oninput="calculateTotal()">
+          </div>
+          <div>
             <label class="block mb-2 font-semibold text-base-content" for="computer_fee">Computer Fee</label>
             <input type="checkbox" id="computer_fee" name="computer_fee" class="checkbox checkbox-primary" {% if edit_fee.computer_fee %}checked{% endif %} onchange="toggleAmountField('computer_fee', 'computer_fee_amount'); calculateTotal()">
           </div>
@@ -473,14 +481,6 @@ function openDeleteFeeTypeModal(id) {
   const feetypeIdInput = document.getElementById('delete_feetype_id');
   feetypeIdInput.value = id;
   modal.showModal();
-}
-
-function calculateTotal() {
-  const amount = parseFloat(document.getElementById('amount').value) || 0;
-  const computerFeeChecked = document.getElementById('computer_fee').checked;
-  const computerFeeAmount = computerFeeChecked ? parseFloat(document.getElementById('computer_fee_amount').value) || 0 : 0;
-  const examinationFundChecked = document.getElementById('examination_fund').checked;
-  const examinationFundAmount = examinationFundChecked ? parseFloat(document.getElementById('examination_fund_amount').value) || 0 : 0;
   const tuitionFeeChecked = document.getElementById('tuition_fee').checked;
   const tuitionFeeAmount = tuitionFeeChecked ? parseFloat(document.getElementById('tuition_fee_amount').value) || 0 : 0;
   const othersChecked = document.getElementById('others').checked;

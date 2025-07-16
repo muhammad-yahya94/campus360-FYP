@@ -2,6 +2,7 @@ import os
 import tempfile
 import subprocess
 import logging
+from django.urls import reverse 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
@@ -10,14 +11,104 @@ from faculty_staff.models import OfficeStaff, Office
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.http import HttpResponse, JsonResponse
-from .models import SemesterFee, FeeType, FeeVoucher, StudentFeePayment, FeeToProgram
-from admissions.models import Applicant, AcademicSession
+from .models import SemesterFee, FeeType, FeeVoucher, StudentFeePayment, FeeToProgram, MeritList, MeritListEntry
+from admissions.models import Applicant, AcademicSession, AcademicQualification, ExtraCurricularActivity
 from academics.models import Program, Semester  # Added Semester import
 from students.models import Student
 from decimal import Decimal
 from django import forms
-from django.db.models import Q
+from django.db.models import Q, F
 from datetime import date, datetime, timedelta
+from urllib.parse import urlencode
+from admissions.models import AcademicSession
+from payment.models import Payment
+from django.forms import modelformset_factory
+from admissions.forms import ApplicantForm, AcademicQualificationForm, ExtraCurricularActivityForm
+
+@login_required
+def add_student_manually(request):
+    AcademicQualificationFormSet = modelformset_factory(AcademicQualification, form=AcademicQualificationForm, extra=1)
+    ExtraCurricularActivityFormSet = modelformset_factory(ExtraCurricularActivity, form=ExtraCurricularActivityForm, extra=1)
+
+    if request.method == 'POST':
+        applicant_form = ApplicantForm(request.POST, request.FILES)
+        qualification_formset = AcademicQualificationFormSet(request.POST, request.FILES, prefix='qualifications')
+        activity_formset = ExtraCurricularActivityFormSet(request.POST, request.FILES, prefix='activities')
+
+        if applicant_form.is_valid() and qualification_formset.is_valid() and activity_formset.is_valid():
+            # Save applicant
+            applicant = applicant_form.save(commit=False)
+            applicant.user = request.user  # Or however you want to assign the user
+            applicant.status = 'accepted'  # Set status to accepted
+            applicant.save()
+
+            # Save qualifications
+            for form in qualification_formset:
+                if form.cleaned_data:
+                    qualification = form.save(commit=False)
+                    qualification.applicant = applicant
+                    qualification.save()
+
+            # Save activities
+            for form in activity_formset:
+                if form.cleaned_data:
+                    activity = form.save(commit=False)
+                    activity.applicant = applicant
+                    activity.save()
+            
+            # Create Student record
+            student = Student.objects.create(
+                applicant=applicant,
+                user=applicant.user,
+                program=applicant.program,
+                enrollment_date=date.today()
+            )
+            
+            # Generate roll numbers
+            # University roll number format: last 2 digits of start year + program id (2 digits) + applicant id (4 digits)
+            student.university_roll_no = int(f"{str(applicant.session.start_year)[-2:]}{applicant.program.id:02}{applicant.id:04}")
+            
+            # Registration number format: start year-GGCJ-university roll number
+            student.Registration_number = f"{applicant.session.start_year}-GGCJ-{student.university_roll_no}"
+            
+            # College roll number format: (program_id + 3) followed by sequential number
+            # Base prefix is (program_id + 3)
+            roll_prefix = applicant.program.id + 3
+            
+            # Find the highest existing college roll number with this prefix
+            highest_roll = Student.objects.filter(
+                college_roll_no__startswith=str(roll_prefix)
+            ).order_by('-college_roll_no').first()
+            
+            if highest_roll and highest_roll.college_roll_no:
+                # Extract the numeric part and increment
+                try:
+                    # Get the last two digits and increment
+                    last_digits = int(str(highest_roll.college_roll_no)[-2:])
+                    student.college_roll_no = int(f"{roll_prefix}{(last_digits + 1):02d}")
+                except (ValueError, IndexError):
+                    # Fallback if parsing fails
+                    student.college_roll_no = int(f"{roll_prefix}00")
+            else:
+                # No existing students with this prefix, start with 00
+                student.college_roll_no = int(f"{roll_prefix}00")
+            
+            student.save()
+            
+            messages.success(request, f'Student {applicant.full_name} added successfully with University Roll No: {student.university_roll_no}')
+            return redirect('fee_management:student_management')  # Redirect to student management page
+
+    else:
+        applicant_form = ApplicantForm()
+        qualification_formset = AcademicQualificationFormSet(queryset=AcademicQualification.objects.none(), prefix='qualifications')
+        activity_formset = ExtraCurricularActivityFormSet(queryset=ExtraCurricularActivity.objects.none(), prefix='activities')
+
+    context = {
+        'applicant_form': applicant_form,
+        'qualification_formset': qualification_formset,
+        'activity_formset': activity_formset,
+    }
+    return render(request, 'fee_management/add_student_manually.html', context)
 
 # Existing views (unchanged except for applicant_verification)
 def treasure_office_view(request):
@@ -73,36 +164,45 @@ def office_required(view_func):
 def applicant_verification(request):
     applicants = Applicant.objects.select_related('program', 'department', 'faculty').all()
     
-    # Get filter and sort parameters
-    program_id = request.GET.get('program')
-    shift = request.GET.get('shift')
-    sort = request.GET.get('sort')
-    search = request.GET.get('search')
+    # Get query parameters
+    program_id = request.GET.get('program', '')
+    shift = request.GET.get('shift', '')
+    sort = request.GET.get('sort', '')
+    search = request.GET.get('search', '')
+    per_page = request.GET.get('per_page', '10')
 
     # Apply filters
     if program_id:
         try:
-            applicants = applicants.filter(program__id=program_id)
-        except ValueError:
+            applicants = applicants.filter(program__id=int(program_id))
+        except (ValueError, TypeError):
             messages.error(request, 'Invalid program selected.')
     if shift:
-        applicants = applicants.filter(shift__iexact=shift)
+        applicants = applicants.filter(shift__iexact=shift.lower())
     if search:
-        applicants = applicants.filter(full_name__icontains=search)
+        applicants = applicants.filter(full_name__icontains=search.strip())
 
     # Apply sorting
     valid_sort_fields = ['full_name', '-full_name', 'program__name', '-program__name', 'shift', '-shift']
     if sort in valid_sort_fields:
         applicants = applicants.order_by(sort)
     else:
-        applicants = applicants.order_by('full_name')  # Default sort
+        applicants = applicants.order_by('full_name')
 
     # Pagination
-    paginator = Paginator(applicants, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    try:
+        per_page = int(per_page)
+        if per_page not in [25, 50,100]:
+            per_page = 100
+    except (ValueError, TypeError):
+        per_page = 50
+    paginator = Paginator(applicants, per_page)
+    page_number = request.GET.get('page',"1")
+    try:
+        page_obj = paginator.page(page_number)
+    except:
+        page_obj = paginator.page(1)
 
-    # Get programs for dropdown
     programs = Program.objects.all()
 
     context = {
@@ -112,39 +212,103 @@ def applicant_verification(request):
         'selected_shift': shift,
         'selected_sort': sort,
         'search_query': search,
+        'per_page': str(per_page),
     }
     return render(request, 'fee_management/applicant_verification.html', context)
-
-@office_required
-def view_applicant(request, applicant_id):
-    applicant = get_object_or_404(Applicant, id=applicant_id)
-    qualifications = applicant.academic_qualifications.all()
-    return render(request, 'fee_management/applicant_detail.html', {
-        'applicant': applicant,
-        'qualifications': qualifications
-    })
 
 @office_required
 def verify_applicant(request, applicant_id):
     applicant = get_object_or_404(Applicant, id=applicant_id)
     if request.method == 'POST':
         status = request.POST.get('status')
-        if status in ['accepted', 'rejected']:
+        rejection_reason = request.POST.get('rejection_reason', '').strip()
+        valid_statuses = ['accepted', 'rejected']
+        if status in valid_statuses:
             applicant.status = status
+            if status == 'rejected':
+                applicant.rejection_reason = rejection_reason
+            else:
+                applicant.rejection_reason = ''
             applicant.save()
             messages.success(request, f'Applicant {applicant.full_name} {status} successfully.')
         else:
             messages.error(request, 'Invalid status selected.')
-    return redirect('fee_management:applicant_verification')
 
+        # Redirect back to the applicant detail page
+        return redirect('fee_management:view_applicant', applicant_id=applicant_id)
 
+    return redirect('fee_management:view_applicant', applicant_id=applicant_id)
+@office_required
+def view_applicant(request, applicant_id):
     applicant = get_object_or_404(Applicant, id=applicant_id)
-    # Add verification logic here
-    messages.success(request, f'Applicant {applicant.full_name} verified successfully')
-    return redirect('fee_management:applicant_verification')
+    qualifications = applicant.academic_qualifications.all()
+    
+    # Get payment details for this applicant
+    payments = Payment.objects.filter(user=applicant)
+    
+    # Get extracurricular activities for this applicant
+    # (Assuming ExtracurricularActivity model exists with FK to Applicant)
+    try:
+        from admissions.models import ExtracurricularActivity
+        extracurriculars = ExtracurricularActivity.objects.filter(applicant=applicant)
+    except ImportError:
+        extracurriculars = None
+    
+    return render(request, 'fee_management/applicant_detail.html', {
+        'applicant': applicant,
+        'qualifications': qualifications,
+        'payments': payments,
+        'extracurriculars': extracurriculars
+    })
 
+
+
+from academics.models import Department
+
+@office_required
 def student_management(request):
-    return render(request, 'fee_management/student_management.html')
+    students = Student.objects.select_related('applicant', 'program').all()
+    
+    # Get query parameters
+    session_id = request.GET.get('session', '')
+    department_id = request.GET.get('department', '')
+    program_id = request.GET.get('program', '')
+    search = request.GET.get('search', '')
+    
+    # Apply filters
+    if session_id:
+        students = students.filter(applicant__session__id=session_id)
+    if department_id:
+        students = students.filter(program__department__id=department_id)
+    if program_id:
+        students = students.filter(program__id=program_id)
+    if search:
+        students = students.filter(
+            Q(applicant__full_name__icontains=search) |
+            Q(university_roll_no__icontains=search) |
+            Q(Registration_number__icontains=search)
+        )
+        
+    # Pagination
+    paginator = Paginator(students, 25)  # Show 25 students per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    sessions = AcademicSession.objects.all()
+    departments = Department.objects.all()
+    programs = Program.objects.all()
+    
+    context = {
+        'students': page_obj,
+        'sessions': sessions,
+        'departments': departments,
+        'programs': programs,
+        'selected_session': session_id,
+        'selected_department': department_id,
+        'selected_program': program_id,
+        'search_query': search,
+    }
+    return render(request, 'fee_management/student_management.html', context)
 
 @office_required
 def admission_fee(request):
@@ -407,7 +571,7 @@ def get_semesters(request):
             semesters = Semester.objects.filter(
                 session_id=session_id,
                 program_id__in=program_ids
-            ).select_related('program')
+            ).select_related('program').distinct()
             semesters_data = [
                 {
                     'id': semester.pk,
@@ -620,6 +784,7 @@ def get_semesters_by_roll(request):
             status=500
         )
 
+
 @office_required
 def generate_voucher(request):
     errors = []
@@ -713,3 +878,272 @@ def generate_voucher(request):
         return render(request, 'fee_management/voucher.html', context)
     
     return render(request, 'fee_management/generate_voucher.html', {'errors': errors})
+
+@office_required
+def generate_merit_list(request):
+    programs = Program.objects.all()
+    errors = []
+    
+    if request.method == 'POST':
+        program_id = request.POST.get('program')
+        list_number = request.POST.get('list_number')
+        valid_until = request.POST.get('valid_until')
+        notes = request.POST.get('notes', '')
+        shift = request.POST.get('shift')
+
+        # Validation
+        if not program_id:
+            errors.append("Program is required")
+        if not list_number:
+            errors.append("List number is required")
+        if not valid_until:
+            errors.append("Valid until date is required")
+        if not shift or shift not in ['morning', 'evening']:
+            errors.append("Shift (morning or evening) is required")
+
+        # Additional validation
+        list_num = None
+        if program_id:
+            try:
+                program = Program.objects.get(pk=program_id)
+                if list_number:
+                    list_num = int(list_number)
+                    if MeritList.objects.filter(program=program, list_number=list_num, shift=shift).exists():
+                        errors.append(f"Merit list #{list_number} already exists for {program.name} and shift {shift}")
+            except Program.DoesNotExist:
+                errors.append("Invalid program selected")
+            except (ValueError, TypeError):
+                errors.append("List number must be a valid number")
+
+        if list_number and not list_num:
+            try:
+                list_num = int(list_number)
+                if list_num <= 0:
+                    errors.append("List number must be a positive integer")
+            except (ValueError, TypeError):
+                errors.append("List number must be a valid number")
+
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        
+        selected_program = Program.objects.get(pk=program_id)
+        
+        # Determine session duration based on program name
+        # Get program duration from academics model
+        required_duration = selected_program.duration_years
+        active_session = AcademicSession.objects.filter(
+            is_active=True,
+            end_year=F('start_year') + required_duration
+        ).order_by('-start_year').first()
+        
+        # Handle missing duration
+        if not required_duration:
+            errors.append(f"Program {selected_program.name} has no duration set.")
+            if is_ajax:
+                return JsonResponse({'success': False, 'errors': errors})
+            return render(request, 'fee_management/generate_merit_list.html', {'errors': errors, 'programs': programs})
+
+        if not active_session:
+            errors.append(f"No active admission session found for a {required_duration}-year program.")
+            if is_ajax:
+                return JsonResponse({'success': False, 'errors': errors})
+            return render(request, 'fee_management/generate_merit_list.html', {'errors': errors, 'programs': programs})
+
+
+        if not errors:
+            try:
+                program = Program.objects.get(pk=program_id)
+                # Get IDs of applicants who have paid the challan.
+                # The 'user' field on the Payment model is a ForeignKey to Applicant.
+                paid_applicant_ids = Payment.objects.values_list('user_id', flat=True).distinct()
+
+                # Filter by academic session and payment status
+                applicants = Applicant.objects.filter(
+                    id__in=paid_applicant_ids,
+                    program=program,
+                    status='accepted',
+                    shift__iexact=shift,
+                    session=active_session,  # Add academic session filter
+                ).select_related('program').prefetch_related('academic_qualifications')
+
+
+                relevant_applicants = []
+                for applicant in applicants:
+                    # Get latest qualification by passing year
+                    qualification = applicant.academic_qualifications.order_by('-passing_year').first()
+                    
+                    # Only include applicants with valid qualifications
+                    if qualification and qualification.marks_obtained and qualification.total_marks:
+                        percentage = (qualification.marks_obtained / qualification.total_marks) * 100
+                        relevant_applicants.append((applicant, qualification, percentage))
+
+                relevant_applicants.sort(key=lambda x: x[2], reverse=True)
+
+                total_seats = 50
+                admitted_count = 0
+                relevant_applicants_for_current = []
+                if list_num > 1:
+                    prev_list_num = list_num - 1
+                    try:
+                        previous_list = MeritList.objects.get(program=program, list_number=prev_list_num, shift=shift)
+                        
+                        # New check: Ensure the previous list's valid_until date has passed.
+                        if previous_list.valid_until >= date.today():
+                            errors.append(
+                                f"Cannot generate list #{list_num} because the previous list is still valid until "
+                                f"{previous_list.valid_until.strftime('%d-%b-%Y')}."
+                            )
+                        else:
+                            # Previous list has expired, proceed with calculating remaining seats.
+                            admitted_count = MeritListEntry.objects.filter(
+                                merit_list__program=program,
+                                merit_list__shift=shift,
+                                applicant__status='admitted'
+                            ).count()
+                
+                            seats_for_current_list = total_seats - admitted_count
+                            if seats_for_current_list <= 0:
+                                errors.append("No seats available for the second merit list.")
+                            else:
+                                relevant_applicants_for_current = relevant_applicants[admitted_count:admitted_count + seats_for_current_list]
+
+                    except MeritList.DoesNotExist:
+                        errors.append(f"Merit list #{prev_list_num} for {program.name} ({shift} shift) does not exist. Please generate it first.")
+                else:
+                    relevant_applicants_for_current = relevant_applicants[:50]
+
+
+                if not errors:
+                    merit_list = MeritList.objects.create(
+                    program=selected_program,
+                    list_number=list_num,
+                    shift=shift,
+                    academic_session=active_session,  # <-- set the filtered session here
+                    total_seats=total_seats,
+                    seccured_seats=0,
+                    valid_until=valid_until,
+                    notes=notes,
+                    is_active=True,
+                )
+                    entries_created = 0 
+                    start_position = 1 if list_num == 1 else admitted_count + 1
+                    for idx, (applicant, qualification, percentage) in enumerate(relevant_applicants_for_current, start=start_position):
+                            entry = MeritListEntry.objects.create(
+                                merit_list=merit_list,
+                                applicant=applicant,
+                                merit_position=idx,
+                                relevant_percentage=percentage,
+                                qualification_used=qualification,
+                                status='selected',
+                                passing_year=getattr(qualification, 'passing_year', None),
+                                marks_obtained=getattr(qualification, 'marks_obtained', None),
+                            )
+                            entries_created += 1
+
+                    success_message = f'Merit list #{list_num} generated successfully with {entries_created} students.'
+                    if is_ajax:
+                        return JsonResponse({'success': True, 'message': success_message, 'merit_list_id': merit_list.id})
+                    else:
+                        messages.success(request, success_message)
+                        return redirect('fee_management:view_merit_list', merit_list_id=merit_list.id)
+
+            except (Program.DoesNotExist, ValueError, TypeError) as e:
+                errors.append(f"An error occurred: {e}")
+            except Exception as e:
+                errors.append(f"An unexpected error occurred: {str(e)}")
+
+        if errors:
+            if is_ajax:
+                return JsonResponse({'success': False, 'errors': errors})
+
+
+
+    return render(request, 'fee_management/generate_merit_list.html', {
+        'programs': programs,
+        'errors': errors
+    })
+
+@office_required
+def view_merit_list(request, merit_list_id):
+    merit_list = get_object_or_404(MeritList.objects.select_related('program'), pk=merit_list_id)
+    entries = merit_list.entries.select_related('applicant', 'qualification_used').order_by('merit_position')
+    
+    return render(request, 'fee_management/view_merit_list.html', {
+        'merit_list': merit_list,
+        'entries': entries
+    })
+ 
+@office_required
+def manage_merit_lists(request):
+    program_id = request.GET.get('program')
+    sort = request.GET.get('sort', '-generation_date')
+    
+    merit_lists = MeritList.objects.select_related('program').all()
+    
+    if program_id:
+        merit_lists = merit_lists.filter(program_id=program_id)
+    
+    merit_lists = merit_lists.order_by(sort)
+    programs = Program.objects.all()
+    
+    return render(request, 'fee_management/manage_merit_lists.html', {
+        'merit_lists': merit_lists,
+        'programs': programs,
+        'selected_program': program_id,
+        'selected_sort': sort
+    })
+
+
+@office_required
+def grant_admission_single(request, entry_id):
+    print("Granting admission for entry ID:", entry_id)
+    entry = get_object_or_404(MeritListEntry, pk=entry_id)
+    applicant = entry.applicant
+    print(applicant.status)
+    if applicant.status != 'admitted':        
+        # Create Student record
+        student, created = Student.objects.get_or_create(
+            applicant=applicant,
+            defaults={
+                'user': applicant.user,
+                'program': applicant.program,
+                'enrollment_date': date.today(),
+            }
+        )
+
+        if created:
+            # Generate roll numbers for new student
+            student.university_roll_no = int(f"{str(applicant.session.start_year)[-2:]}{applicant.program.id:02}{applicant.id:04}")
+            student.Registration_number = f"{applicant.session.start_year}-GGCJ-{student.university_roll_no}"
+            if applicant.shift == 'morning':
+                student.college_roll_no = f"{applicant.program.id:02}{entry.merit_list.seccured_seats + 1:02}"
+                print(student.college_roll_no )
+            else:
+                student.college_roll_no = f"{applicant.program.id:02}{entry.merit_list.seccured_seats+ 51:02}"
+                print(student.college_roll_no )
+            student.save()
+        # Update entry status
+        entry.status = 'admitted'
+        entry.save()
+        
+        # Increment secured seats
+        merit_list = entry.merit_list
+        merit_list.seccured_seats += 1
+        merit_list.save()
+
+        return JsonResponse({
+            'success': True,
+            'message': f"Admission granted to {applicant.full_name}.",
+            'student': {
+                'full_name': student.applicant.full_name,
+                'university_roll_no': student.university_roll_no,
+                'college_roll_no': student.college_roll_no,
+                'registration_no':student.Registration_number,
+                'program': student.program.name,
+                'shift': student.applicant.shift,
+            }
+        })
+    else:
+        return JsonResponse({
+            'success': False,
+            'message': f"{applicant.full_name} is already admitted."
+        })

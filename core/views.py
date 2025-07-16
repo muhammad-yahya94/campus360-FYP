@@ -9,9 +9,10 @@ from academics.models import Faculty, Department, Program
 from admissions.models import AcademicSession, AdmissionCycle, Applicant, AcademicQualification, ExtraCurricularActivity
 from users.models import CustomUser
 from payment.models import Payment 
+from fee_management.models import MeritList, MeritListEntry
 import json
 import logging
-from datetime import datetime  
+from datetime import datetime , timedelta
 from site_elements.models import Alumni, Gallery
 from faculty_staff.models import Teacher, Office, OfficeStaff
 from django.core.exceptions import ObjectDoesNotExist
@@ -22,6 +23,13 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.conf import settings
 from django.urls import reverse
+
+# meritlist related
+from django.template.loader import render_to_string
+from xhtml2pdf import pisa
+from django.db.models import F, FloatField, ExpressionWrapper, Max
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -207,7 +215,6 @@ def read_more_news(request, slug):
     })
 
 
-
 def team(request):
     return render(request, 'team.html')
 
@@ -337,7 +344,6 @@ def get_programs(request):
         return JsonResponse(data, safe=False)
     except Department.DoesNotExist:
         return JsonResponse({'error': 'Department not found'}, status=404)
-
 
 
 @require_POST
@@ -477,7 +483,6 @@ def application_success(request):
 
 
 
-
 @login_required
 def my_applications(request):
     logger.info(f"My applications page accessed for user {request.user.id}")
@@ -534,6 +539,104 @@ def faculty_detail_view(request, slug):
     }
     return render(request, 'faculty_detail.html', context)
 
+def merit_list_view(request):
+    # Get all academic sessions
+    sessions = AcademicSession.objects.all()
+    selected_session = request.GET.get('session')
+    selected_department = request.GET.get('department')
+    selected_program = request.GET.get('program')
+    selected_shift = request.GET.get('shift')
+    
+    departments = None
+    programs = None
+    shifts = None
+    merit_lists = None
+    
+    if selected_session:
+        # Get departments for selected session
+        departments = Department.objects.filter(
+            id__in=Applicant.objects.filter(session_id=selected_session).values_list('department_id', flat=True)
+        ).distinct()
+        
+        if selected_department:
+            # Get programs for selected department
+            programs = Program.objects.filter(
+                department_id=selected_department,
+                id__in=Applicant.objects.filter(
+                    session_id=selected_session,
+                    department_id=selected_department
+                ).values_list('program_id', flat=True)
+            ).distinct()
+            if selected_program:
+                # Get shifts for selected program
+                shifts = MeritList.objects.filter(
+                    program_id=selected_program
+                ).values_list('shift', flat=True).distinct()
+                if selected_shift:
+                    # Get all merit lists for the selected criteria
+                    merit_lists = MeritList.objects.filter(
+                        academic_session_id=selected_session,
+                        program_id=selected_program,
+                        shift=selected_shift
+                    ).prefetch_related('entries__applicant').order_by('list_number')
+
+    context = {
+        'sessions': sessions,
+        'departments': departments,
+        'programs': programs,
+        'shifts': shifts,
+        'merit_lists': merit_lists,
+        'selected_session': selected_session,
+        'selected_department': selected_department,
+        'selected_program': selected_program,
+        'selected_shift': selected_shift,
+    }
+    return render(request, 'merit_lists.html', context)
+
+def merit_list_pdf(request):
+    session = request.GET.get('session')
+    department = request.GET.get('department')
+    program = request.GET.get('program')
+    shift = request.GET.get('shift')
+    list_number = request.GET.get('list_number')
+
+    # Get the specific merit list for this program, shift, and list number
+    merit_list = MeritList.objects.filter(
+        program_id=program,
+        shift=shift,
+        list_number=list_number
+    ).first()
+
+    if not merit_list:
+        return HttpResponse("No active merit list found for this program and shift")
+
+    # Get all entries for this merit list ordered by position
+    entries = MeritListEntry.objects.filter(
+        merit_list=merit_list
+    ).select_related('applicant', 'qualification_used').order_by('merit_position')
+
+    # Fetch related objects for display names
+    department_obj = Department.objects.filter(id=department).first()
+    program_obj = Program.objects.filter(id=program).first()
+
+    context = {
+        'applicants': [entry.applicant for entry in entries],
+        'merit_entries': entries,
+        'department': department_obj.name if department_obj else '',
+        'program': program_obj.name if program_obj else '',
+        'shift': shift,
+        'total_candidates': entries.count(),
+        'valid_until': merit_list.valid_until.strftime('%d-%b-%Y'),
+        'current_date': datetime.now().strftime('%d-%b-%Y'),
+        'merit_list': merit_list,
+    }
+
+    html = render_to_string('merit_list_pdf_template.html', context)
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'filename="merit_list.pdf"'
+    pisa.CreatePDF(html, dest=response)
+    return response
+
 def verify_email_view(request, uidb64, token):
     try:
         uid = force_str(urlsafe_base64_decode(uidb64))
@@ -555,7 +658,6 @@ def verify_email_view(request, uidb64, token):
 # Add the email verification success view
 def email_verification_success(request):
     return render(request, 'email_verification_success.html')
-
 
 
 @login_required

@@ -1,0 +1,213 @@
+{% extends 'fee_management/office_base.html' %}
+{% block title %}Merit List #{{ merit_list.list_number }} - {{ merit_list.program.name }}{% endblock %}
+{% block content %}
+<div class="hero bg-base-200 rounded-xl shadow-lg mb-8 py-6">
+  <div class="hero-content text-center">
+    <div class="max-w-md">
+      <h1 class="text-3xl sm:text-4xl font-bold text-base-content">Merit List #{{ merit_list.list_number }}</h1>
+      <p class="text-lg text-base-content/70">{{ merit_list.program.name }}</p>
+    </div>
+  </div>
+</div>
+
+<div class="max-w-6xl mx-auto bg-base-100 rounded-xl shadow-lg p-8">
+  <!-- Merit List Information -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="stat bg-base-200 rounded-lg">
+      <div class="stat-title">Program</div>
+      <div class="stat-value text-lg">{{ merit_list.program.name }}--{{merit_list.shift}}</div>
+    </div>
+    <div class="stat bg-base-200 rounded-lg">
+      <div class="stat-title">Total Applicants</div>
+      <div class="stat-value text-2xl">{{ merit_list.total_applicants }}</div>
+    </div>
+    <div class="stat bg-base-200 rounded-lg">
+      <div class="stat-title">Selected Students</div>
+      <div class="stat-value text-2xl text-success">{{ merit_list.seccured_seats }}</div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <div class="card bg-base-200 p-4">
+      <h3 class="font-semibold mb-2">Generation Date</h3>
+      <p>{{ merit_list.generation_date|date:"F d, Y" }}</p>
+    </div>
+    <div class="card bg-base-200 p-4">
+      <h3 class="font-semibold mb-2">Valid Until</h3>
+      <p>{{ merit_list.valid_until|date:"F d, Y" }}</p>
+    </div>
+  </div>
+
+  {% if merit_list.notes %}
+  <div class="card bg-base-200 p-4 mb-8">
+    <h3 class="font-semibold mb-2">Notes</h3>
+    <p>{{ merit_list.notes }}</p>
+  </div>
+  {% endif %}
+
+  <!-- Selected Students List -->
+  <div class="card bg-base-100 shadow-md">
+    <div class="card-header p-6 border-b">
+      <h2 class="text-2xl font-semibold">Selected Students (Top {{ entries.count }})</h2>
+    </div>
+    <div class="card-body p-0">
+      {% if entries %}
+      <div class="overflow-x-auto">
+        <table class="table w-full">
+          <thead class="bg-base-200">
+            <tr>
+              <th class="text-left">Merit Position</th>
+              <th class="text-left">Student Name</th>
+              <th class="text-left">CNIC</th>
+              <th class="text-left">Relevant Percentage</th>
+              <th class="text-left">Qualification Used</th>
+              <th class="text-left">Obtained Marks</th>
+              <th class="text-left">passing year</th>
+              <th class="text-left">Status</th>
+              <th class="text-left">Selection Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in entries %}
+            <tr class="hover:bg-base-50">
+              <td class="font-bold text-primary">{{ entry.merit_position }}</td>
+              <td>{{ entry.applicant.full_name }}</td>
+              <td>{{ entry.applicant.cnic|default:"N/A" }}</td>
+              <td>
+                <span class="badge badge-success">{{ entry.relevant_percentage }}%</span>
+              </td>
+              <td>{{ entry.qualification_used.exam_passed|default:"N/A" }}</td>
+              <td>{{ entry.marks_obtained|default:"N/A" }}</td>
+              <td>{{entry.passing_year}}</td>
+              <td>
+                <span class="badge 
+                  {% if entry.status == 'selected' %}badge-primary
+                  {% elif entry.status == 'admitted' %}badge-success
+                  {% elif entry.status == 'waiting' %}badge-warning
+                  {% elif entry.status == 'declined' %}badge-error
+                  {% else %}badge-neutral{% endif %}">
+                  {{ entry.get_status_display }}
+                </span>
+              </td>
+              <td>{{ entry.selection_date|date:"M d, Y" }}</td>
+              <td>
+                {% if entry.status != 'admitted' %}
+                  {% if merit_list.valid_until|date:"Y-m-d" >= now|date:"Y-m-d" %}
+                    <button class="btn btn-xs btn-success" data-url="{% url 'fee_management:grant_admission_single' entry.id %}" data-applicant-name="{{ entry.applicant.full_name }}" onclick="grantAdmission(this, false)">
+                      Grant
+                    </button>
+                  {% else %}
+                    <button class="btn btn-xs btn-disabled" disabled>Expired</button>
+                  {% endif %}
+                {% else %}
+                  <span class="text-success">Admitted</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="p-8 text-center">
+        <p class="text-base-content/70">No students selected in this merit list.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="mt-8 flex justify-between">
+    <a href="{% url 'fee_management:manage_merit_lists' %}" class="btn btn-outline">Back to Merit Lists</a>
+    <div class="space-x-2">
+      <button onclick="window.print()" class="btn btn-primary">Print Merit List</button>
+      <a href="{% url 'fee_management:generate_merit_list' %}" class="btn btn-secondary">Generate New List</a>
+    </div>
+  </div>
+</div>
+
+<!-- Admission Result Modal -->
+<dialog id="admissionResultModal" class="modal">
+  <div class="modal-box">
+    <h3 class="font-bold text-lg" id="admission-modal-title"></h3>
+    <div id="admission-modal-body"></div>
+    
+    <div class="modal-action">
+      <button class="btn" onclick="document.getElementById('admissionResultModal').close()">Close</button>
+    </div>
+  </div>
+</dialog>
+
+<style>
+@media print {
+  .btn, .hero, nav, footer {
+    display: none !important;
+  }
+  .card {
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+  }
+}
+</style>
+
+<script>
+function grantAdmission(element, isBulk) {
+  const url = element.dataset.url;
+  const applicantName = element.dataset.applicantName;
+  let confirmationMessage = isBulk
+    ? "Are you sure you want to grant admission to all selected applicants in this merit list?"
+    : `Grant admission to ${applicantName}?`;
+
+  if (confirm(confirmationMessage)) {
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          const modal = document.getElementById('admissionResultModal');
+          const title = document.getElementById('admission-modal-title');
+          const body = document.getElementById('admission-modal-body');
+          
+          title.textContent = "Admission Granted Successfully";
+          let studentInfo = '';
+          if (isBulk) {
+            studentInfo = data.admitted_students.map(student => `
+              <p><strong>${student.full_name}</strong></p>
+              <ul>
+                <li>University Roll No: ${student.university_roll_no}</li>
+                <li>College Roll No: ${student.college_roll_no}</li>
+                <li>Registration No: ${student.registration_no}</li>
+                <li>Program: ${student.program}</li>
+                <li>Shift: ${student.shift}</li>
+                
+              </ul>
+            `).join('');
+          } else {
+            studentInfo = `
+              <p><strong>${data.student.full_name}</strong></p>
+              <ul>
+                <li>University Roll No: ${data.student.university_roll_no}</li>
+                <li>College Roll No: ${data.student.college_roll_no}</li>
+                <li>Registration No: ${data.student.registration_no}</li>
+                <li>Program: ${data.student.program}</li>
+                <li>Shift: ${data.student.shift}</li>
+              </ul>
+            `;
+          }
+          body.innerHTML = studentInfo;
+          modal.showModal();
+          modal.addEventListener('close', () => {
+            window.location.reload();
+          });
+        } else {
+          alert(data.message);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while granting admission.');
+      });
+  }
+}
+</script>
+{% endblock %}

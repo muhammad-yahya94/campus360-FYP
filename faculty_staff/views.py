@@ -153,7 +153,7 @@ def professor_dashboard(request):
 def staff_management(request):
     hod_department = request.user.teacher_profile.department
     staff_list = Teacher.objects.filter(department=hod_department)
-
+    print(f"this is staff -- {staff_list}")
     search_query = request.GET.get('search', '')
     if search_query:
         staff_list = staff_list.filter(
@@ -2763,35 +2763,6 @@ def exam_results(request):
 
 
 
-def load_students_for_course(request):
-    course_offering_id = request.GET.get('course_offering_id')
-    if not course_offering_id:
-        return JsonResponse({'success': False, 'message': 'Course offering ID is required.'})
-    
-    try:
-        course_offering = CourseOffering.objects.get(
-            id=course_offering_id,
-            teacher=request.user.teacher_profile
-        )
-        course_enrollments = CourseEnrollment.objects.filter(
-            course_offering=course_offering,
-            status='enrolled'
-        ).select_related('student_semester_enrollment__student__applicant')
-        students = [
-            {
-                'id': course_enrollment.student_semester_enrollment.student.applicant.pk,
-                'name': f"{course_enrollment.student_semester_enrollment.student.applicant.full_name}"
-            }
-            for course_enrollment in course_enrollments
-            if course_enrollment.student_semester_enrollment.semester == course_offering.semester
-        ]
-        return JsonResponse({
-            'success': True,
-            'students': students
-        })
-    except CourseOffering.DoesNotExist:
-        return JsonResponse({'success': False, 'message': 'Course offering not found or unauthorized.'})
-
 @login_required
 def record_exam_results(request):  
     if request.method == "POST":
@@ -3284,7 +3255,7 @@ def attendance(request):
     students = []
     course_offering_id = request.GET.get('course_offering_id')
     course_shift = None
-    is_active_slot = False
+    is_active_slot = True
     today_date = timezone.now().astimezone(pytz.timezone('Asia/Karachi')).date()
     current_datetime = timezone.now().astimezone(pytz.timezone('Asia/Karachi'))
     current_time = current_datetime.time()  # Should be ~10:29 AM PKT
@@ -3367,9 +3338,43 @@ def attendance(request):
         'course_offering_id': course_offering_id,
         'course_shift': course_shift,
         'today_date': today_date,
-        'is_active_slot': is_active_slot,
+        'is_active_slot': True,
     }
     return render(request, 'faculty_staff/attendance.html', context)
+
+
+def load_students_for_course(request):
+    course_offering_id = request.GET.get('course_offering_id')
+    if not course_offering_id:
+        return JsonResponse({'success': False, 'message': 'Course offering ID is required.'})
+    
+    try:
+        course_offering = CourseOffering.objects.get(
+            id=course_offering_id,
+            teacher=request.user.teacher_profile
+        )
+        course_enrollments = CourseEnrollment.objects.filter(
+            course_offering=course_offering,
+            status='enrolled'
+        ).select_related('student_semester_enrollment__student__applicant')
+        students = [
+            {
+                'id': course_enrollment.student_semester_enrollment.student.applicant.pk,
+                'name': f"{course_enrollment.student_semester_enrollment.student.applicant.full_name}"
+            }
+            for course_enrollment in course_enrollments
+            if course_enrollment.student_semester_enrollment.semester == course_offering.semester
+        ]
+        return JsonResponse({
+            'success': True,
+            'students': students
+        })
+    except CourseOffering.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Course offering not found or unauthorized.'})
+
+
+
+
 
 @hod_or_professor_required
 def record_attendance(request):

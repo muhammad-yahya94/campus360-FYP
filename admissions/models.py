@@ -95,6 +95,9 @@ class Applicant(models.Model):
     # Declaration
     declaration = models.BooleanField(default=False, help_text="Check this box to confirm that the applicant agrees to the terms and conditions.")
 
+    # Rejection reason
+    rejection_reason = models.TextField(blank=True, null=True, help_text="Reason for rejection if application is rejected.")
+
     created_at = models.DateTimeField(auto_now_add=True, help_text="The date and time this applicant record was created.")
 
     def __str__(self):

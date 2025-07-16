@@ -9,7 +9,7 @@
   </div>
 </div>
 
-<div class="max-w-4xl mx-auto bg-base-100 rounded-xl shadow-lg p-8">
+<div id="printable-content" class="max-w-4xl mx-auto bg-base-100 rounded-xl shadow-lg p-8">
   {% if applicant %}
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <div class="card bg-base-100 shadow-md p-6">
@@ -138,11 +138,131 @@
     {% endif %}
   </div>
 
-  <div class="mt-8 flex justify-end gap-4">
+  <!-- Payment Details Section -->
+  <div class="mt-8 card bg-base-100 shadow-md p-6">
+    <h2 class="text-2xl font-semibold mb-4 text-base-content">Payment Details</h2>
+    <hr class="mb-4 border-base-300">
+    {% if payments %}
+    <div class="overflow-x-auto">
+      <table class="table w-full">
+        <thead>
+          <tr>
+            <th scope="col">Amount</th>
+            <th scope="col">Status</th>
+            <th scope="col">Date</th>
+            <th scope="col">Receipt</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for payment in payments %}
+          <tr>
+            <td>{{ payment.amount|default:"N/A" }}</td>
+            <td>{{ payment.status|title|default:"N/A" }}</td>
+            <td>{{ payment.payment_date|default:"N/A" }}</td>
+            <td>{{ payment.receipt_number|default:"N/A" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-base-content">No payment records found.</p>
+    {% endif %}
+  </div>
+
+  <!-- Extracurricular Activities Section -->
+  <div class="mt-8 card bg-base-100 shadow-md p-6">
+    <h2 class="text-2xl font-semibold mb-4 text-base-content">Extracurricular Activities</h2>
+    <hr class="mb-4 border-base-300">
+    {% if extracurriculars %}
+    <div class="overflow-x-auto">
+      <table class="table w-full">
+        <thead>
+          <tr>
+            <th scope="col">Activity</th>
+            <th scope="col">Duration</th>
+            <th scope="col">Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for activity in extracurriculars %}
+          <tr>
+            <td>{{ activity.activity_type|default:"N/A" }}</td>
+            <td>{{ activity.duration|default:"N/A" }}</td>
+            <td>{{ activity.description|default:"N/A" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-base-content">
+      {% if extracurriculars is None %}
+      Extracurricular activities not available.
+      {% else %}
+      No extracurricular activities found.
+      {% endif %}
+    </p>
+    {% endif %}
+  </div>
+
+  <div class="mt-8 flex justify-end gap-4 no-print">
+    <button onclick="window.print()" class="btn btn-secondary">Print</button>
     <a href="{% url 'fee_management:applicant_verification' %}" class="btn btn-primary">Back to List</a>
   </div>
+
+  {% if applicant.status == 'pending' %}
+  <div class="mt-8 card bg-base-100 shadow-md p-6">
+    <h2 class="text-2xl font-semibold mb-4 text-base-content">Approve or Reject Application</h2>
+    <form method="post" action="{% url 'fee_management:verify_applicant' applicant.id %}">
+      {% csrf_token %}
+      <div class="flex flex-col gap-4">
+        <select name="status" id="status" class="select select-bordered w-full max-w-xs" aria-label="Select application status" onchange="toggleRejectionReason()">
+          <option value="accepted">Approve</option>
+          <option value="rejected">Reject</option>
+        </select>
+        <textarea name="rejection_reason" id="rejection_reason" class="textarea textarea-bordered hidden" placeholder="Enter reason for rejection" aria-label="Reason for rejection"></textarea>
+        <button type="submit" class="btn btn-primary w-full max-w-xs">Submit</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
   {% else %}
   <p class="text-error text-center">Applicant data not found.</p>
   {% endif %}
 </div>
+
+<style>
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        #printable-content, #printable-content * {
+            visibility: visible;
+        }
+        #printable-content {
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+        .no-print {
+            display: none;
+        }
+    }
+</style>
+
+<script>
+  function toggleRejectionReason() {
+    var statusSelect = document.getElementById('status');
+    var reasonTextarea = document.getElementById('rejection_reason');
+    if (statusSelect.value === 'rejected') {
+      reasonTextarea.classList.remove('hidden');
+      reasonTextarea.setAttribute('required', 'required');
+    } else {
+      reasonTextarea.classList.add('hidden');
+      reasonTextarea.removeAttribute('required');
+    }
+  }
+</script>
 {% endblock %}

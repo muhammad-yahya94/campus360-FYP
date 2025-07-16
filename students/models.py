@@ -29,6 +29,9 @@ class Student(models.Model):
         help_text="Select the user account linked to this student profile (optional, automatically linked if available)."
     )
     university_roll_no = models.IntegerField(blank=True,null=True, help_text="Enter the student's official university roll number.")
+    Registration_number = models.CharField(
+        unique=True,blank=True,null=True,help_text="Enter the student's unique registration number (e.g., 2023-CS-001)."
+    )
     college_roll_no = models.IntegerField(blank=True,null=True, help_text="Enter the student's college roll number (if applicable).")
     enrollment_date = models.DateField(help_text="Select the official date when the student was enrolled.")
     graduation_date = models.DateField(null=True, blank=True, help_text="Select the date when the student graduated (optional).")
@@ -55,13 +58,6 @@ class Student(models.Model):
         blank=True,
         help_text="Select the student's role (CR/GR) if applicable."
     )
-    
-    class Meta:
-        verbose_name = "Student"
-        verbose_name_plural = "Students"
-
-    def __str__(self):
-        return f"{self.applicant.full_name} ({self.university_roll_no})"
         
 
 class StudentSemesterEnrollment(models.Model):

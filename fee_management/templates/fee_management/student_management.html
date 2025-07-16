@@ -1,15 +1,113 @@
 {% extends 'fee_management/office_base.html' %}
 {% block title %}Student Management{% endblock %}
 {% block content %}
-<div class="hero bg-base-200 rounded-lg shadow-lg mb-6">
-  <div class="hero-content text-center">
-    <div class="max-w-md">
-      <h1 class="text-3xl sm:text-4xl font-bold text-base-content mb-2">Student Management</h1>
-      <p class="text-base sm:text-lg text-base-content/90">Here office staff can manage student records, view details, and update information.</p>
+<div class="container mx-auto px-4">
+    <h1 class="text-2xl font-bold mb-4">Student Management</h1>
+
+    <!-- Filter Form -->
+    <form method="get" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label for="session" class="block text-gray-700 text-sm font-bold mb-2">Session</label>
+                <select name="session" id="session" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                    <option value="">All Sessions</option>
+                    {% for session in sessions %}
+                        <option value="{{ session.id }}" {% if session.id == selected_session|add:0 %}selected{% endif %}>{{ session.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="department" class="block text-gray-700 text-sm font-bold mb-2">Department</label>
+                <select name="department" id="department" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                    <option value="">All Departments</option>
+                    {% for department in departments %}
+                        <option value="{{ department.id }}" {% if department.id == selected_department|add:0 %}selected{% endif %}>{{ department.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="program" class="block text-gray-700 text-sm font-bold mb-2">Program</label>
+                <select name="program" id="program" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                    <option value="">All Programs</option>
+                    {% for program in programs %}
+                        <option value="{{ program.id }}" {% if program.id == selected_program|add:0 %}selected{% endif %}>{{ program.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="search" class="block text-gray-700 text-sm font-bold mb-2">Search</label>
+                <input type="text" name="search" id="search" value="{{ search_query }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Name, Roll No, etc.">
+            </div>
+        </div>
+        <div class="mt-4 flex space-x-4">
+            <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                Filter
+            </button>
+            <a href="{% url 'fee_management:add_student_manually' %}" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                Add Students
+            </a>
+        </div>
+    </form>
+
+    <!-- Student Table -->
+    <div class="bg-white shadow-md rounded my-6">
+        <table class="min-w-full table-auto">
+            <thead class="bg-gray-200">
+                <tr>
+                    <th class="px-6 py-3 border-b-2 border-gray-300 text-left text-xs leading-4 font-medium text-gray-600 uppercase tracking-wider">Name</th>
+                    <th class="px-6 py-3 border-b-2 border-gray-300 text-left text-xs leading-4 font-medium text-gray-600 uppercase tracking-wider">University Roll No</th>
+                    <th class="px-6 py-3 border-b-2 border-gray-300 text-left text-xs leading-4 font-medium text-gray-600 uppercase tracking-wider">Registration No</th>
+                    <th class="px-6 py-3 border-b-2 border-gray-300 text-left text-xs leading-4 font-medium text-gray-600 uppercase tracking-wider">College Roll No</th>
+                    <th class="px-6 py-3 border-b-2 border-gray-300 text-left text-xs leading-4 font-medium text-gray-600 uppercase tracking-wider">Program</th>
+                    <th class="px-6 py-3 border-b-2 border-gray-300 text-left text-xs leading-4 font-medium text-gray-600 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 border-b-2 border-gray-300 text-left text-xs leading-4 font-medium text-gray-600 uppercase tracking-wider">Action</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white">
+                {% for student in students %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">{{ student.applicant.full_name }}</td>
+                        <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">{{ student.university_roll_no }}</td>
+                        <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">{{ student.Registration_number }}</td>
+                        <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">{{ student.college_roll_no }}</td>
+                        <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">{{ student.program.name }}</td>
+                        <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">{{ student.get_current_status_display }}</td>
+                        <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">
+                            <a href="{% url 'fee_management:view_applicant' student.applicant.id %}" class="text-indigo-600 hover:text-indigo-900">View</a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4">No students found.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
-  </div>
+
+    <!-- Pagination -->
+    <div class="flex justify-center">
+        <nav class="relative z-0 inline-flex shadow-sm">
+            {% if students.has_previous %}
+                <a href="?page=1" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm leading-5 font-medium text-gray-500 hover:text-gray-400 focus:z-10 focus:outline-none focus:border-blue-300 focus:shadow-outline-blue active:bg-gray-100 active:text-gray-500 transition ease-in-out duration-150">
+                    &laquo; First
+                </a>
+                <a href="?page={{ students.previous_page_number }}" class="relative inline-flex items-center px-4 py-2 border-t border-b border-gray-300 bg-white text-sm leading-5 font-medium text-gray-700 hover:text-gray-500 focus:z-10 focus:outline-none focus:border-blue-300 focus:shadow-outline-blue active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150">
+                    Previous
+                </a>
+            {% endif %}
+            <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm leading-5 font-medium text-gray-700">
+                Page {{ students.number }} of {{ students.paginator.num_pages }}
+            </span>
+            {% if students.has_next %}
+                <a href="?page={{ students.next_page_number }}" class="relative inline-flex items-center px-4 py-2 border-t border-b border-gray-300 bg-white text-sm leading-5 font-medium text-gray-700 hover:text-gray-500 focus:z-10 focus:outline-none focus:border-blue-300 focus:shadow-outline-blue active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150">
+                    Next
+                </a>
+                <a href="?page={{ students.paginator.num_pages }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm leading-5 font-medium text-gray-500 hover:text-gray-400 focus:z-10 focus:outline-none focus:border-blue-300 focus:shadow-outline-blue active:bg-gray-100 active:text-gray-500 transition ease-in-out duration-150">
+                    Last &raquo;
+                </a>
+            {% endif %}
+        </nav>
+    </div>
 </div>
-<div class="max-w-100 mx-auto bg-base-100 rounded-lg shadow p-6">
-    <!-- Workflow content goes here -->
-</div>
-{% endblock %} 
+{% endblock %}

@@ -46,5 +46,10 @@ urlpatterns = [
 
     # Faculty detail page
     path('faculties/<slug:slug>/', views.faculty_detail_view, name='faculty_detail'),
+    
+    # Merit list page
+    path('merit-lists/', views.merit_list_view, name='merit_lists'),
+    path('merit-list/pdf/',views.merit_list_pdf, name='merit_list_pdf'),
+    
     path('accounts/logout/', views.logout_view, name='logout')
 ]

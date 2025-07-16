@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Merit List - Government Graduate College Jhang</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11pt;
+            color: #222;
+            margin: 0;
+            padding: 0;
+            background: #fff;
+        }
+        .container {
+            width: 98%;
+            margin: 20px auto;
+            padding: 10px;
+            background: #fff;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .header img.logo {
+            max-width: 45px;
+            margin-bottom: 5px;
+        }
+
+        h1 {
+            color: #1a3c5e;
+            font-size: 20pt;
+            margin: 0 0 2px 0;
+            font-weight: bold;
+        }
+        h2 {
+            color: #2c3e50;
+            font-size: 11pt;
+            margin: 0 0 8px 0;
+        }
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+        .details-table td {
+            padding: 2px 4px;
+            font-size: 10pt;
+        }
+        .details-table td.label {
+            font-weight: bold;
+            color: #1a3c5e;
+            width: 25%;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+            font-size: 10pt;
+        }
+        th, td {
+            border: 1px solid #bbb;
+            padding: 3px 2px;
+            text-align: left;
+        }
+        th.srno, td.srno { width: 50px; text-align: center; }
+        th.percent, td.percent { width: 100px; text-align: center; }
+        th.marks, td.marks { width: 80px; text-align: center; }
+        th.year, td.year { width: 80px; text-align: center; }
+        th.cnic, td.cnic { width: 130px; text-align: left; }
+        th.name , td.name{width : 210 ; text-align: left}
+        th {
+            background: #f0f0f0;
+            color: #1a3c5e;
+            font-weight: bold;
+        }
+        tr:nth-child(even) td {
+            background: #fafafa;
+        }
+        .instructions {
+            margin-top: 8px;
+            font-size: 9.5pt;
+            background: #fff;
+            padding: 7px 8px;
+        }
+        .instructions h3 {
+            margin: 0 0 4px 0;
+            color: #1a3c5e;
+            font-size: 10pt;
+        }
+        .instructions ul {
+            margin: 4px 0 0 14px;
+            padding: 0;
+        }
+        .instructions li {
+            margin-bottom: 2px;
+        }
+        .footer {
+            text-align: center;
+            font-size: 8pt;
+            color: #666;
+            margin-top: 8px;
+        }
+    </style> 
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="logo-placeholder.png" alt="College Logo" class="logo">
+            <h1>Government Graduate College Jhang</h1>
+            <h2>Merit List</h2>
+        </div>
+        <table class="details-table">
+            <tr>
+                <td class="label">Department:</td>
+                <td>{{ department }}</td>
+                <td class="label">Program:</td>
+                <td>{{ program }}</td>
+            </tr>
+            <tr>
+                <td class="label">Shift:</td>
+                <td>{{ shift }}</td>
+                <td class="label">Total Candidates:</td>
+                <td>{{ total_candidates }}</td>
+            </tr>
+            <tr>
+                <td class="label">Valid Until:</td>
+                <td>{{ valid_until }}</td>
+                <td class="label">Date:</td>
+                <td>{{ current_date }}</td>
+            </tr>
+        </table>
+        <table>
+            <thead>
+                <tr>
+                    <th class="srno">Sr No</th>
+                    <th class="name">Student Full Name</th>
+                    <th class="cnic">CNIC</th>
+                    <th class="marks">Marks</th>
+                    <th class="percent">Percentage</th>
+                    <th class="year">Year</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in merit_entries %}
+                <tr>
+                    <td class="srno">{{ forloop.counter }}</td>
+                    <td class="name">{{ entry.applicant.full_name }}</td>
+                    <td class="cnic">{{ entry.applicant.cnic }}</td>
+                    <td class="marks">{{ entry.qualification_used.marks_obtained }} / {{ entry.qualification_used.total_marks }}</td>
+                    <td class="percent">{{ entry.relevant_percentage|floatformat:2 }}%</td>
+                    <td class="year">{{ entry.qualification_used.passing_year }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5">No applicants found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="instructions">
+            <h3>Instructions</h3>
+            <ul>
+                <li>Verify documents at the admission office by {{ valid_until }}.</li>
+                <li>Submit original certificates, CNIC, and two attested photocopies.</li>
+                <li>Pay admission fees within 48 hours to confirm enrollment.</li>
+                <li>Inaccurate information may lead to admission cancellation.</li>
+                <li>Contact administration for queries (9 AM - 3 PM).</li>
+            </ul>
+        </div>
+        <div class="footer">
+            <p>Generated on {{ current_date }} by Government Graduate College Jhang</p>
+        </div>
+    </div>
+    </body>
+</html>

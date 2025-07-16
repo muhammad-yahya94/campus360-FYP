@@ -43,6 +43,9 @@
                     <li><a href="{% url 'faculty_staff:staff_management' %}" class="{% if request.resolver_match.url_name == 'staff_management' %}active{% endif %} text-base">
                         <i class="fas fa-users"></i> Staff Management
                     </a></li>
+                    <li><a href="{% url 'faculty_staff:department_funds_management' %}" class="{% if request.resolver_match.url_name == 'department_funds_management' %}active{% endif %} text-base">
+                        <i class="fas fa-money-bill-wave"></i> Department Funds
+                    </a></li>
                     <li>
                         <details>
                             <summary class="text-base"><i class="fas fa-graduation-cap"></i> Session Students</summary>
@@ -284,6 +287,9 @@
                                 <i class="fas fa-users text-lg w-6"></i> Staff Management
                             </a>
                         </li>
+                        <li><a href="{% url 'faculty_staff:department_funds_management' %}" class="{% if request.resolver_match.url_name == 'department_funds_management' %}active{% endif %} text-lg py-3">
+                            <i class="fas fa-money-bill-wave"></i> Department Funds
+                        </a></li>
                         <li>
                             <details {% if 'session_students' in request.resolver_match.url_name %}open{% endif %}>
                                 <summary class="text-lg py-3">

@@ -1,0 +1,123 @@
+{% extends 'faculty_staff/base_dashboard.html' %}
+{% block title %}Fund Details{% endblock %}
+{% block content %}
+<style>
+  .section-content {
+    transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+    overflow: hidden;
+  }
+  .section-content.hidden {
+    max-height: 0;
+    opacity: 0;    
+  }
+  .section-content:not(.hidden) {
+    height: auto;
+    opacity: 1;
+  }
+</style>
+
+<!-- Hero Section -->
+<div class="mb-6">
+  <div id="hero-section" class="hero bg-base-200 rounded-lg shadow-lg py-8 section-content">
+    <div class="hero-content text-center">
+      <div class="max-w-md">
+        <h1 class="text-3xl sm:text-4xl font-bold text-base-content mb-2">Fund Details</h1>
+        <p class="text-base sm:text-lg text-base-content/90">View details of the department fund and affected students.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Fund Details Section -->
+<div class="mb-6">
+  <div class="max-w-full mx-auto bg-base-100 rounded-xl shadow-xl p-8 mb-8 section-content">
+    <h2 class="text-2xl font-bold text-base-content mb-6">{{ fund.description }}</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div>
+        <p><strong>Department:</strong> {{ fund.department.name }}</p>
+        <p><strong>Fund Type:</strong> {{ fund.fundtype }}</p>
+        <p><strong>Amount:</strong> {{ fund.amount }}</p>
+        <p><strong>Due Date:</strong> {{ fund.due_date|date:'Y-m-d' }}</p>
+        <p><strong>Active:</strong> {{ fund.is_active|yesno:"Yes,No" }}</p>
+      </div>
+      <div>
+        <p><strong>Academic Sessions:</strong> 
+          {% for session in fund.academic_sessions.all %}
+            {{ session.name }}{% if not forloop.last %}, {% endif %}
+          {% empty %}
+            None
+          {% endfor %}
+        </p>
+        <p><strong>Programs:</strong> 
+          {% for program in fund.programs.all %}
+            {{ program.name }}{% if not forloop.last %}, {% endif %}
+          {% empty %}
+            None
+          {% endfor %}
+        </p>
+        <p><strong>Semesters:</strong> 
+          {% for semester in fund.semesters.all %}
+            {{ semester.name }} ({{ semester.program.name }}){% if not forloop.last %}, {% endif %}
+          {% empty %}
+            None
+          {% endfor %}
+        </p>
+      </div>
+    </div>
+    <p class="mt-4"><strong>Description:</strong> {{ fund.description }}</p>
+  </div>
+</div>
+
+<!-- Affected Students Section -->
+<div class="mb-6">
+  <div class="flex justify-between items-center mb-2">
+    <h2 class="text-xl font-semibold text-base-content">Affected Students</h2>
+    <span class="toggle-icon cursor-pointer" onclick="toggleSection('students-section')">
+      <i class="fas fa-chevron-down text-base-content"></i>
+    </span>
+  </div>
+  <div id="students-section" class="max-w-full mx-auto bg-base-100 rounded-xl shadow-xl p-8 mb-8 section-content">
+    <div class="overflow-x-auto">
+      <table class="table w-full">
+        <thead>
+          <tr>
+            <th class="text-base-content">Student Name</th>
+            <th class="text-base-content">Program</th>
+            <th class="text-base-content">Semester</th>
+            <th class="text-base-content">Academic Session</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for student in students %}
+          <tr>
+            <td>{{ student.applicant.full_name }}</td>
+            <td>{{ student.program.name }}</td>
+            <td>{{ student.semester_enrollments.last.semester.name }}</td>
+            <td>{{ student.semester_enrollments.last.semester.session.name }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="4" class="text-center text-base-content">No students affected by this fund.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Back Button -->
+<div class="mb-6">
+  <a href="{% url 'faculty_staff:department_funds_management' %}" class="btn btn-primary rounded-lg">Back to Funds Management</a>
+</div>
+
+<script>
+function toggleSection(sectionId) {
+  const section = document.getElementById(sectionId);
+  const toggleIcon = document.querySelector(`[onclick="toggleSection('${sectionId}')"] i`);
+  section.classList.toggle('hidden');
+  toggleIcon.classList.toggle('fa-chevron-down');
+  toggleIcon.classList.toggle('fa-chevron-up');
+}
+</script>
+{% endblock %}

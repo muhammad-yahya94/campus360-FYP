@@ -1,0 +1,555 @@
+{% extends 'faculty_staff/base_dashboard.html' %}
+{% block title %}Department Funds Management{% endblock %}
+{% block content %}
+<style>
+  .section-content {
+    transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+    overflow: hidden;
+  }
+  .section-content.hidden {
+    max-height: 0;
+    opacity: 0;    
+  }
+  .section-content:not(.hidden) {
+    height: auto;
+    opacity: 1;
+  }
+  .toggle-icon i {
+    transition: transform 0.3s ease;   
+  }
+  .toggle-icon.hidden i {
+    transform: rotate(180deg);
+  }
+  .shift-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    color: white;
+    font-size: 0.875rem;
+  }
+</style>
+
+<!-- Hero Section -->
+<div class="mb-6">
+  <div id="hero-section" class="hero bg-base-200 rounded-lg shadow-lg py-8 section-content">
+    <div class="hero-content text-center">
+      <div class="max-w-md">
+        <h1 class="text-3xl sm:text-4xl font-bold text-base-content mb-2">Department Funds Management</h1>
+        <p class="text-base sm:text-lg text-base-content/90">Manage and track department funds for students.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Fund Form Section -->
+<div class="mb-6">
+  <div class="flex justify-between items-center mb-2">
+    <h2 class="text-xl font-semibold text-base-content">{% if fund %}Edit Department Fund{% else %}Add Department Fund{% endif %}</h2>
+    <span class="toggle-icon cursor-pointer" onclick="toggleSection('fund-form-section')">
+      <i class="fas fa-chevron-down text-base-content"></i>
+    </span>
+  </div>
+  <div id="fund-form-section" class="max-w-full mx-auto bg-base-100 rounded-xl shadow-xl p-8 mb-8 section-content">
+    <form method="post" action="{% url 'faculty_staff:department_funds_management' %}{% if fund %}?edit={{ fund.id }}{% endif %}" class="space-y-6">
+      {% csrf_token %}
+      <input type="hidden" name="form_type" value="fund">
+      {% if fund %}
+      <input type="hidden" name="fund_id" value="{{ fund.id }}">
+      {% endif %}
+      {% comment %} {% if messages %}
+      <div class="bg-error/10 border border-error rounded-lg p-4 text-error">
+        {% for message in messages %}
+        <p>{{ message }}</p>
+        {% endfor %}
+      </div>
+      {% endif %} {% endcomment %}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Left Section: Fund Details -->
+        <div class="space-y-6">
+          <div>
+            <label class="block mb-2 font-semibold text-base-content" for="department">Department</label>
+            <input type="hidden" name="department" value="{{ hod.department.id }}">
+            <input type="text" id="department" class="input input-bordered w-full rounded-lg" value="{{ hod.department.name }}" disabled>
+          </div>
+          <div>
+            <label class="block mb-2 font-semibold text-base-content" for="amount">Amount</label>
+            <input type="number" id="amount" name="amount" class="input input-bordered w-full rounded-lg" step="0.01" min="0" value="{% if fund %}{{ fund.amount }}{% endif %}" required>
+          </div>
+          <div>
+            <label class="block mb-2 font-semibold text-base-content" for="fundtype">Fund Type</label>
+            <input type="text" id="fundtype" name="fundtype" class="input input-bordered w-full rounded-lg" value="{% if fund %}{{ fund.fundtype }}{% endif %}" required>
+          </div>
+          <div>
+            <label class="block mb-2 font-semibold text-base-content" for="description">Description</label>
+            <textarea id="description" name="description" class="textarea textarea-bordered w-full rounded-lg" required>{% if fund %}{{ fund.description }}{% endif %}</textarea>
+          </div>
+          <div>
+            <label class="block mb-2 font-semibold text-base-content" for="due_date">Due Date</label>
+            <input type="date" id="due_date" name="due_date" class="input input-bordered w-full rounded-lg" value="{% if fund %}{{ fund.due_date|date:'Y-m-d' }}{% endif %}" required>
+          </div>
+          <div>
+            <label class="block mb-2 font-semibold text-base-content" for="is_active">Active</label>
+            <input type="checkbox" id="is_active" name="is_active" class="checkbox checkbox-primary" {% if fund.is_active|default_if_none:True %}checked{% endif %}>
+          </div>
+        </div>
+        <!-- Right Section: Session, Program, Semesters -->
+        <div class="space-y-6">
+          <div>
+            <label class="block mb-2 font-semibold text-base-content" for="academic_sessions">Academic Sessions</label>
+            <select id="academic_sessions" name="academic_sessions" class="select select-bordered w-full rounded-lg h-32" size="5" multiple required>
+              {% for session in academic_sessions %}
+              <option value="{{ session.pk }}" {% if fund and session in fund.academic_sessions.all %}selected{% endif %}>{{ session.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block mb-2 font-semibold text-base-content" for="programs">Programs</label>
+            <select id="programs" name="programs" class="select select-bordered w-full rounded-lg h-32" size="5" multiple required>
+              {% if fund %}
+              {% for program in fund.programs.all %}
+              <option value="{{ program.pk }}" selected>{{ program.name }}</option>
+              {% endfor %}
+              {% else %}
+              <option value="" disabled>Select a session first</option>
+              {% endif %}
+            </select>
+          </div>
+          <div>
+            <label class="block mb-2 font-semibold text-base-content" for="semesters">Semesters</label>
+            <select id="semesters" name="semesters" class="select select-bordered w-full rounded-lg h-32" size="5" multiple required>
+              {% if fund %}
+              {% for semester in fund.semesters.all %}
+              <option value="{{ semester.pk }}" selected>{{ semester.name }} ({{ semester.program.name }})</option>
+              {% endfor %}
+              {% else %}
+              <option value="" disabled>Select a program first</option>
+              {% endif %}
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="flex gap-4 mt-6">
+        <button type="submit" class="btn btn-primary w-full rounded-lg">{% if fund %}Update{% else %}Add{% endif %} Fund</button>
+        {% if fund %}
+        <a href="{% url 'faculty_staff:department_funds_management' %}" class="btn btn-ghost w-full rounded-lg">Cancel Edit</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Fund Table Section -->
+<div class="mb-6">
+  <div class="flex justify-between items-center mb-2">
+    <h2 class="text-xl font-semibold text-base-content">Department Funds</h2>
+    <span class="toggle-icon cursor-pointer" onclick="toggleSection('fund-table-section')">
+      <i class="fas fa-chevron-down text-base-content"></i>
+    </span>
+  </div>
+  <div id="fund-table-section" class="max-w-full mx-auto bg-base-100 rounded-xl shadow-xl p-8 mb-8 section-content">
+    <div class="overflow-x-auto">
+      <table class="table w-full">
+        <thead>
+          <tr>
+            <th class="text-base-content">Department</th>
+            <th class="text-base-content">Fund Type</th>
+            <th class="text-base-content">Description</th>
+            <th class="text-base-content">Amount</th>
+            <th class="text-base-content">Due Date</th>
+            <th class="text-base-content">Active</th>
+            <th class="text-base-content">Sessions</th>
+            <th class="text-base-content">Programs</th>
+            <th class="text-base-content">Semesters</th>
+            <th class="text-base-content">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fund in active_funds %}
+          <tr>
+            <td>{{ fund.department.name }}</td>
+            <td>{{ fund.fundtype }}</td>
+            <td>{{ fund.description|truncatechars:50 }}</td>
+            <td>{{ fund.amount }}</td>
+            <td>{{ fund.due_date|date:'Y-m-d' }}</td>
+            <td>{{ fund.is_active|yesno:"Yes,No" }}</td>
+            <td>
+              {% for session in fund.academic_sessions.all %}
+                {{ session.name }}{% if not forloop.last %}, {% endif %}
+              {% empty %}
+                -
+              {% endfor %}
+            </td>
+            <td>
+              {% for program in fund.programs.all %}
+                {{ program.name }}{% if not forloop.last %}, {% endif %}
+              {% empty %}
+                -
+              {% endfor %}
+            </td>
+            <td>
+              {% for semester in fund.semesters.all %}
+                {{ semester.name }} ({{ semester.program.name }}){% if not forloop.last %}, {% endif %}
+              {% empty %}
+                -
+              {% endfor %}
+            </td>
+            <td class="flex flex-wrap gap-1">
+              <a href="{% url 'faculty_staff:department_funds_management' %}?edit={{ fund.id }}" class="btn btn-xs btn-outline rounded-lg">Edit</a>
+              <a href="{% url 'faculty_staff:view_department_fund' fund.id %}" class="btn btn-xs btn-info rounded-lg">View</a>
+              <button onclick="openDeleteFundModal({{ fund.id }})" class="btn btn-xs btn-error rounded-lg">Delete</button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="10" class="text-center text-base-content">No active funds found.</td>
+          </tr>
+          {% endfor %}
+          {% for fund in inactive_funds %}
+          <tr class="bg-base-200">
+            <td>{{ fund.department.name }}</td>
+            <td>{{ fund.fundtype }}</td>
+            <td>{{ fund.description|truncatechars:50 }}</td>
+            <td>{{ fund.amount }}</td>
+            <td>{{ fund.due_date|date:'Y-m-d' }}</td>
+            <td>{{ fund.is_active|yesno:"Yes,No" }}</td>
+            <td>
+              {% for session in fund.academic_sessions.all %}
+                {{ session.name }}{% if not forloop.last %}, {% endif %}
+              {% empty %}
+                -
+              {% endfor %}
+            </td>
+            <td>
+              {% for program in fund.programs.all %}
+                {{ program.name }}{% if not forloop.last %}, {% endif %}
+              {% empty %}
+                -
+              {% endfor %}
+            </td>
+            <td>
+              {% for semester in fund.semesters.all %}
+                {{ semester.name }} ({{ semester.program.name }}){% if not forloop.last %}, {% endif %}
+              {% empty %}
+                -
+              {% endfor %}
+            </td>
+            <td>
+              <a href="{% url 'faculty_staff:department_funds_management' %}?edit={{ fund.id }}" class="btn btn-xs btn-outline rounded-lg">Edit</a>
+              <a href="{% url 'faculty_staff:view_department_fund' fund.id %}" class="btn btn-xs btn-info rounded-lg">View</a>
+              <button onclick="openDeleteFundModal({{ fund.id }})" class="btn btn-xs btn-error rounded-lg">Delete</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Fund Delete Confirmation Modal -->
+<dialog id="deleteFundModal" class="modal">
+  <div class="modal-box bg-base-100 rounded-xl shadow-xl p-8 max-w-md w-full">
+    <h2 class="text-2xl font-bold text-error mb-6">Delete Department Fund</h2>
+    <p class="mb-6 text-base-content">Are you sure you want to delete this department fund?</p>
+    <form method="post" action="{% url 'faculty_staff:department_funds_management' %}">
+      {% csrf_token %}
+      <input type="hidden" name="form_type" value="delete_fund">
+      <input type="hidden" name="fund_id" id="delete_fund_id">
+      <button type="submit" class="btn btn-error w-full rounded-lg">Yes, Delete</button>
+    </form>
+    <button type="button" class="btn btn-ghost w-full rounded-lg mt-2" onclick="document.getElementById('deleteFundModal').close()">Cancel</button>
+  </div>
+</dialog>
+
+<!-- View Submissions Section -->
+<div class="mb-6">
+  <div class="flex justify-between items-center mb-2">
+    <h2 class="text-xl font-semibold text-base-content">View Student Submissions</h2>
+    <span class="toggle-icon cursor-pointer" onclick="toggleSection('submissions-section')">
+      <i class="fas fa-chevron-down text-base-content"></i>
+    </span>
+  </div>
+  <div id="submissions-section" class="max-w-full mx-auto bg-base-100 rounded-xl shadow-xl p-8 mb-8 section-content">
+    <form method="get" class="mb-6 flex flex-col sm:flex-row gap-4 flex-wrap" id="student-filter-form">
+      <select name="academic_session" id="student_academic_session" class="select select-bordered w-full sm:w-64 rounded-lg">
+        <option value="">Select Academic Session</option>
+        {% for session in academic_sessions %}
+        <option value="{{ session.pk }}" {% if request.GET.academic_session == session.pk|stringformat:"s" %}selected{% endif %}>{{ session.name }}</option>
+        {% endfor %}
+      </select>
+      <select name="program" id="student_program" class="select select-bordered w-full sm:w-64 rounded-lg">
+        <option value="">Select Program</option>
+        {% for program in programs %}
+        <option value="{{ program.pk }}" {% if request.GET.program == program.pk|stringformat:"s" %}selected{% endif %}>{{ program.name }}</option>
+        {% endfor %}
+      </select>
+      <select name="semester" id="student_semester" class="select select-bordered w-full sm:w-64 rounded-lg">
+        <option value="">Select Semester</option>
+        {% for semester in semesters %}
+        <option value="{{ semester.pk }}" {% if request.GET.semester == semester.pk|stringformat:"s" %}selected{% endif %}>{{ semester.name }} ({{ semester.program.name }})</option>
+        {% endfor %}
+      </select>
+      <select name="fundtype" id="student_fundtype" class="select select-bordered w-full sm:w-64 rounded-lg">
+        <option value="">Select Fund Type</option>
+        {% for fund_type in fund_types %}
+        <option value="{{ fund_type }}" {% if request.GET.fundtype == fund_type %}selected{% endif %}>{{ fund_type }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-primary rounded-lg">Filter</button>
+    </form>
+    {% if enrollments %}
+    <div class="overflow-x-auto">
+      <table class="table w-full">
+        <thead>
+          <tr>
+            <th class="text-base-content">Student Name</th>
+            <th class="text-base-content">Program</th>
+            <th class="text-base-content">Semester</th>
+            <th class="text-base-content">Academic Session</th>
+            <th class="text-base-content">Shift</th>
+            <th class="text-base-content">Funds</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for enrollment in enrollments %}
+          <tr>
+            <td>
+              {{ enrollment.student.applicant.full_name }}
+              {% if enrollment.student.role == 'CR' %}
+                <span class="badge badge-primary ml-2">CR</span>
+              {% elif enrollment.student.role == 'GR' %}
+                <span class="badge badge-secondary ml-2">GR</span>
+              {% endif %}
+            </td>
+            <td>{{ enrollment.student.program.name }}</td>
+            <td>{{ enrollment.semester.name }}</td>
+            <td>{{ enrollment.semester.session.name }}</td>
+            <td>
+              {% if enrollment.student.applicant.shift %}
+                <span class="shift-badge {% if enrollment.student.applicant.shift|lower == 'morning' %}bg-green-500{% elif enrollment.student.applicant.shift|lower == 'evening' %}bg-blue-500{% else %}bg-gray-500{% endif %}">
+                  {{ enrollment.student.applicant.shift }}
+                </span>
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>
+              {% for fund in enrollment.student.department_funds.all %}
+                {{ fund.description|truncatechars:30 }} ({{ fund.amount }}){% if not forloop.last %}, {% endif %}
+              {% empty %}
+                -
+              {% endfor %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="text-center text-base-content">No students found for the selected criteria.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-center text-base-content">Please apply at least one filter to view students.</p>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+function toggleSection(sectionId) {
+  const section = document.getElementById(sectionId);
+  const toggleIcon = document.querySelector(`[onclick="toggleSection('${sectionId}')"] i`);
+  section.classList.toggle('hidden');
+  toggleIcon.classList.toggle('fa-chevron-down');
+  toggleIcon.classList.toggle('fa-chevron-up');
+}
+
+function openDeleteFundModal(id) {
+  const modal = document.getElementById('deleteFundModal');
+  const fundIdInput = document.getElementById('delete_fund_id');
+  fundIdInput.value = id;
+  modal.showModal();
+}
+
+// AJAX for Fund Form Dropdowns
+function populatePrograms() {
+  const sessionIds = Array.from(document.getElementById('academic_sessions').selectedOptions).map(option => option.value);
+  const programSelect = document.getElementById('programs');
+  const semesterSelect = document.getElementById('semesters');
+
+  // Clear programs and semesters
+  programSelect.innerHTML = '<option value="" disabled>Select a session first</option>';
+  semesterSelect.innerHTML = '<option value="" disabled>Select a program first</option>';
+
+  if (sessionIds.length > 0) {
+    fetch('{% url 'faculty_staff:get_programs_fund' %}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}'
+      },
+      body: JSON.stringify({ academic_sessions: sessionIds })
+    })
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return response.json();
+    })
+    .then(data => {
+      programSelect.innerHTML = '';
+      data.programs.forEach(program => {
+        const option = document.createElement('option');
+        option.value = program.id;
+        option.textContent = program.name;
+        {% if fund %}
+        if (data.preselected_programs && data.preselected_programs.includes(program.id.toString())) {
+          option.selected = true;
+        }
+        {% endif %}
+        programSelect.appendChild(option);
+      });
+      {% if fund %}
+      populateSemesters();
+      {% endif %}
+    })
+    .catch(error => console.error('Error fetching programs:', error));
+  }
+}
+
+function populateSemesters() {
+  const programIds = Array.from(document.getElementById('programs').selectedOptions).map(option => option.value);
+  const sessionIds = Array.from(document.getElementById('academic_sessions').selectedOptions).map(option => option.value);
+  const semesterSelect = document.getElementById('semesters');
+
+  // Clear semesters
+  semesterSelect.innerHTML = '<option value="" disabled>Select a program first</option>';
+
+  if (programIds.length > 0 && sessionIds.length > 0) {
+    let url = '{% url 'faculty_staff:get_semesters_fund' %}';
+    {% if fund %}
+    url += '?edit={{ fund.id }}';
+    {% endif %}
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}'
+      },
+      body: JSON.stringify({ programs: programIds, academic_sessions: sessionIds })
+    })
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return response.json();
+    })
+    .then(data => {
+      semesterSelect.innerHTML = '';
+      data.semesters.forEach(semester => {
+        const option = document.createElement('option');
+        option.value = semester.id;
+        option.textContent = `${semester.name} (${semester.program_name})`;
+        {% if fund %}
+        if (data.preselected_semesters && data.preselected_semesters.includes(semester.id.toString())) {
+          option.selected = true;
+        }
+        {% endif %}
+        semesterSelect.appendChild(option);
+      });
+    })
+    .catch(error => console.error('Error fetching semesters:', error));
+  }
+}
+
+// AJAX for Student Filter Dropdowns
+function updatePrograms() {
+  const sessionSelect = document.getElementById('student_academic_session');
+  const programSelect = document.getElementById('student_program');
+  const semesterSelect = document.getElementById('student_semester');
+  const selectedSession = sessionSelect.value;
+
+  // Clear programs and semesters
+  programSelect.innerHTML = '<option value="">Select Program</option>';
+  semesterSelect.innerHTML = '<option value="">Select Semester</option>';
+
+  if (selectedSession) {
+    fetch('{% url 'faculty_staff:get_programs_fund' %}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}'
+      },
+      body: JSON.stringify({ academic_sessions: [selectedSession] })
+    })
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return response.json();
+    })
+    .then(data => {
+      data.programs.forEach(program => {
+        const option = document.createElement('option');
+        option.value = program.id;
+        option.textContent = program.name;
+        if (program.id.toString() === '{{ request.GET.program }}') {
+          option.selected = true;
+        }
+        programSelect.appendChild(option);
+      });
+      updateSemesters();
+    })
+    .catch(error => console.error('Error fetching programs:', error));
+  }
+}
+
+function updateSemesters() {
+  const programSelect = document.getElementById('student_program');
+  const semesterSelect = document.getElementById('student_semester');
+  const sessionSelect = document.getElementById('student_academic_session');
+  const selectedProgram = programSelect.value;
+  const selectedSession = sessionSelect.value;
+
+  // Clear semesters
+  semesterSelect.innerHTML = '<option value="">Select Semester</option>';
+
+  if (selectedProgram && selectedSession) {
+    fetch('{% url 'faculty_staff:get_semesters_fund' %}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}'
+      },
+      body: JSON.stringify({ programs: [selectedProgram], academic_sessions: [selectedSession] })
+    })
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return response.json();
+    })
+    .then(data => {
+      data.semesters.forEach(semester => {
+        const option = document.createElement('option');
+        option.value = semester.id;
+        option.textContent = `${semester.name} (${semester.program_name})`;
+        if (semester.id.toString() === '{{ request.GET.semester }}') {
+          option.selected = true;
+        }
+        semesterSelect.appendChild(option);
+      });
+    })
+    .catch(error => console.error('Error fetching semesters:', error));
+  }
+}
+
+// Event Listeners
+document.getElementById('academic_sessions').addEventListener('change', populatePrograms);
+document.getElementById('programs').addEventListener('change', populateSemesters);
+document.getElementById('student_academic_session').addEventListener('change', updatePrograms);
+document.getElementById('student_program').addEventListener('change', updateSemesters);
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+  {% if fund %}
+  populatePrograms();
+  {% endif %}
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.has('academic_session')) {
+    updatePrograms();
+  }
+});
+</script>
+{% endblock %}

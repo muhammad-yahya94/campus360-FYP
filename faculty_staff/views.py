@@ -2,6 +2,7 @@
 import os
 import logging
 import datetime
+import json
 from datetime import time, date
 
 # Third-party Imports
@@ -45,7 +46,7 @@ from courses.models import (
     Attendance, Venue, TimetableSlot,
     Quiz, Question, QuizSubmission, Option, LectureReplacement
 )
-from faculty_staff.models import Teacher, TeacherDetails, OfficeStaff, Office
+from faculty_staff.models import Teacher, TeacherDetails, OfficeStaff, Office, DepartmentFund
 from students.models import Student, StudentSemesterEnrollment, CourseEnrollment
 
 # Forms
@@ -4146,3 +4147,219 @@ def set_student_role(request, student_id):
     return redirect('faculty_staff:student_detail', student_id=student.pk)
     
     
+    
+    
+    
+    
+# In faculty_staff/views.py
+
+@login_required
+def department_funds_management(request):
+    if request.user.teacher_profile.designation != 'head_of_department':
+        return redirect('faculty_staff:hod_dashboard')
+
+    hod = request.user.teacher_profile
+    active_funds = DepartmentFund.objects.filter(hod=hod, is_active=True)
+    inactive_funds = DepartmentFund.objects.filter(hod=hod, is_active=False)
+    
+    # Get all academic sessions, programs, semesters, and fund types for the HOD's department
+    academic_sessions = AcademicSession.objects.all()
+    programs = Program.objects.filter(department=hod.department)
+    semesters = Semester.objects.filter(program__in=programs)
+    fund_types = DepartmentFund.objects.filter(hod=hod).values_list('fundtype', flat=True).distinct()
+
+    # Handle form submissions
+    if request.method == 'POST':
+        form_type = request.POST.get('form_type')
+        if form_type == 'fund':
+            return handle_fund_form(request, hod)
+        elif form_type == 'delete_fund':
+            return handle_delete_fund(request)
+
+    # Handle student submissions filtering
+    enrollments = StudentSemesterEnrollment.objects.none()  # Start with empty queryset
+    if any(request.GET.get(param) for param in ['academic_session', 'program', 'semester', 'fundtype']):
+        enrollments = StudentSemesterEnrollment.objects.filter(
+            student__program__department=hod.department,
+        )
+        
+        # Apply filters if they exist
+        if request.GET.get('academic_session'):
+            enrollments = enrollments.filter(semester__session_id=request.GET.get('academic_session'))
+        if request.GET.get('program'):
+            enrollments = enrollments.filter(student__program_id=request.GET.get('program'))
+        if request.GET.get('semester'):
+            enrollments = enrollments.filter(semester_id=request.GET.get('semester'))
+      
+    
+        # Apply fund type filter if it exists
+        fundtype = request.GET.get('fundtype')
+        if fundtype:
+            # Get enrollments that match the fund's programs and semesters
+            fund_filters = {
+                'fundtype': fundtype,
+                'hod': hod,
+                'is_active': True
+            }
+            
+            # If we have program/semester filters, apply them to the fund query
+            if request.GET.get('program'):
+                fund_filters['programs__id'] = request.GET.get('program')
+            if request.GET.get('semester'):
+                fund_filters['semesters__id'] = request.GET.get('semester')
+            
+            # Get matching funds
+            funds = DepartmentFund.objects.filter(**fund_filters).distinct()
+            
+            if funds.exists():
+                # Get programs and semesters from matching funds
+                program_ids = funds.values_list('programs__id', flat=True).distinct()
+                semester_ids = funds.values_list('semesters__id', flat=True).distinct()
+                
+                # Filter enrollments by these programs and semesters
+                enrollments = enrollments.filter(
+                    student__program_id__in=program_ids,
+                    semester_id__in=semester_ids
+                )
+
+    # Handle edit fund
+    fund = None
+    if 'edit' in request.GET:
+        fund_id = request.GET.get('edit')
+        fund = get_object_or_404(DepartmentFund, id=fund_id, hod=hod)
+
+    context = {
+        'hod': hod,
+        'active_funds': active_funds,
+        'inactive_funds': inactive_funds,
+        'academic_sessions': academic_sessions,
+        'programs': programs,
+        'semesters': semesters,
+        'fund_types': fund_types,  # List of distinct fund types
+        'enrollments': enrollments,
+        'fund': fund,
+    }
+    return render(request, 'faculty_staff/department_fund_management.html', context)
+
+def handle_fund_form(request, hod):
+    fund_id = request.POST.get('fund_id')
+    department = request.POST.get('department')
+    academic_sessions = request.POST.getlist('academic_sessions')
+    programs = request.POST.getlist('programs')
+    semesters = request.POST.getlist('semesters')
+    amount = request.POST.get('amount')
+    fundtype = request.POST.get('fundtype')
+    description = request.POST.get('description')
+    due_date = request.POST.get('due_date')
+    is_active = request.POST.get('is_active') == 'on'
+
+    if not all([department, amount, fundtype, description, due_date]):
+        messages.error(request, 'All fields are required')
+        return redirect('faculty_staff:department_funds_management')
+
+    try:
+        if fund_id:  # Edit existing fund
+            fund = get_object_or_404(DepartmentFund, id=fund_id, hod=hod)
+            fund.department_id = department
+            fund.amount = amount
+            fund.fundtype = fundtype
+            fund.description = description
+            fund.due_date = due_date
+            fund.is_active = is_active
+            fund.save()
+            messages.success(request, 'Department fund updated successfully')
+        else:  # Create new fund
+            fund = DepartmentFund.objects.create(
+                hod=hod,
+                department_id=department,
+                amount=amount,
+                fundtype=fundtype,
+                description=description,
+                due_date=due_date,
+                is_active=is_active
+            )
+            messages.success(request, 'Department fund created successfully')
+
+        fund.academic_sessions.set(academic_sessions)
+        fund.programs.set(programs)
+        fund.semesters.set(semesters)
+        return redirect('faculty_staff:department_funds_management')
+
+    except Exception as e:
+        messages.error(request, f'Error processing fund: {str(e)}')
+        return redirect('faculty_staff:department_funds_management')
+
+def handle_delete_fund(request):
+    fund_id = request.POST.get('fund_id')
+    fund = get_object_or_404(DepartmentFund, id=fund_id, hod=request.user.teacher_profile)
+    try:
+        fund.delete()
+        messages.success(request, 'Department fund deleted successfully')
+    except Exception as e:
+        messages.error(request, f'Error deleting fund: {str(e)}')
+    return redirect('faculty_staff:department_funds_management')
+
+@login_required
+def view_department_fund(request, fund_id):
+    if request.user.teacher_profile.designation != 'head_of_department':
+        return redirect('faculty_staff:hod_dashboard')
+
+    fund = get_object_or_404(DepartmentFund, id=fund_id, hod=request.user.teacher_profile)
+    enrollments = StudentSemesterEnrollment.objects.filter(
+        semester__in=fund.semesters.all(),
+        semester__session__in=fund.academic_sessions.all(),
+        student__program__in=fund.programs.all(),
+        status='enrolled'
+    )
+    students = Student.objects.filter(
+        semester_enrollments__in=enrollments
+    ).distinct()
+
+    return render(request, 'faculty_staff/fund_details.html', {
+        'fund': fund,
+        'students': students
+    })
+
+@login_required
+def get_programs_fund(request):
+    if request.method == 'POST':
+        hod = request.user.teacher_profile
+        programs = Program.objects.filter(department=hod.department).values('id', 'name')
+        preselected_programs = []
+        if 'edit' in request.GET:
+            fund_id = request.GET.get('edit')
+            fund = get_object_or_404(DepartmentFund, id=fund_id, hod=hod)
+            preselected_programs = list(fund.programs.values_list('id', flat=True))
+        return JsonResponse({
+            'programs': list(programs),
+            'preselected_programs': preselected_programs
+        })
+    return JsonResponse({'error': 'Invalid request'}, status=400)
+
+@login_required
+def get_semesters_fund(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            program_ids = data.get('programs', [])
+            session_ids = data.get('academic_sessions', [])
+            semesters = Semester.objects.filter(
+                program__id__in=program_ids,
+                session__id__in=session_ids
+            ).values('id', 'name', 'program__name')
+            semesters = [{'id': s['id'], 'name': s['name'], 'program_name': s['program__name']} for s in semesters]
+            preselected_semesters = []
+            if 'edit' in request.GET:
+                fund_id = request.GET.get('edit')
+                fund = get_object_or_404(DepartmentFund, id=fund_id, hod=request.user.teacher_profile)
+                preselected_semesters = list(fund.semesters.values_list('id', flat=True))
+            return JsonResponse({
+                'semesters': semesters,
+                'preselected_semesters': preselected_semesters
+            })
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+        except Exception as e:
+            print(f"Error in get_semesters_fund: {str(e)}")
+            return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)
+    return JsonResponse({'error': 'Invalid request'}, status=400)

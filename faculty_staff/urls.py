@@ -2,9 +2,17 @@
 from django.urls import path
 from . import views
 
+
 app_name = 'faculty_staff'
 
 urlpatterns = [
+    # ========== 8. Department Funds ==========
+    path('department-funds/', views.department_funds_management, name='department_funds_management'),
+    path('department-funds/view/<int:fund_id>/', views.view_department_fund, name='view_department_fund'),
+    path('department-funds/get-programs/', views.get_programs_fund, name='get_programs_fund'),
+    path('department-funds/get-semesters/', views.get_semesters_fund, name='get_semesters_fund'),
+    
+    # ========== 1. Authentication ==========
 
     # ========== 1. Authentication ==========
     path('login/', views.login_view, name='login'),

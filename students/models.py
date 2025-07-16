@@ -3,7 +3,7 @@ from users.models import CustomUser
 from academics.models import Program, Department, Faculty , Semester
 from admissions.models import Applicant, AcademicSession
 from faculty_staff.models import Teacher
-
+from django.utils import timezone
 
 
 # ===== Student Model =====

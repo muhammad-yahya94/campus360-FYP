@@ -48,4 +48,6 @@ urlpatterns = [
     
     # ========== 11. Semester Fees ==========
     path('fees/', views.semester_fees, name='semester_fees'),  # 11.1 Semester Fees
+    
+    path('fund_payments/', views.fund_payments, name='fund_payments'),
 ]

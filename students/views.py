@@ -32,7 +32,7 @@ import os
 from django.contrib import messages
 from django.db import transaction
 from django.db.models import Sum, Q, Count, Max
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.exceptions import ObjectDoesNotExist, ValidationError, PermissionDenied
 from django.contrib.auth import (
     authenticate, login, logout, update_session_auth_hash,
     get_user_model
@@ -49,11 +49,13 @@ from courses.models import (
     AssignmentSubmission, Notice, Attendance, Venue, TimetableSlot,
     Quiz, Question, Option, QuizSubmission, LectureReplacement
 )
-from faculty_staff.models import Teacher, TeacherDetails
-from students.models import Student, StudentSemesterEnrollment, CourseEnrollment
+from faculty_staff.models import Teacher, TeacherDetails, DepartmentFund
+from students.models import Student, StudentSemesterEnrollment, CourseEnrollment, StudentFundPayment
 from fee_management.models import SemesterFee, StudentFeePayment, FeeToProgram, FeeVoucher
 from collections import defaultdict
 import math
+from django.core.exceptions import PermissionDenied
+
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -1695,4 +1697,231 @@ def change_password(request):
     
     
     
+@login_required
+def fund_payments(request):
+    student = get_object_or_404(Student, user=request.user)
+    print(f'student is -- {student}, Session: {student.applicant.session}, Program: {student.program}, Shift: {student.applicant.shift}, Role: {student.role}, Gender: {student.applicant.gender}')
+    
+    # Get funds associated with the student's program (and optionally session, if model supports)
+    funds = DepartmentFund.objects.filter(
+        programs=student.program,
+        is_active=True
+    ).distinct()
+    print(f'funds are -- {funds}')
+
+    # Get payment records for the student
+    payments = StudentFundPayment.objects.filter(student=student)
+    print(f'payments are -- {payments}')
+
+    # Determine if the student can verify payments
+    is_cr = student.role == 'CR'
+    is_gr = student.role == 'GR'
+    verifiable_payments = []
+    show_verification = False
+    all_pending_payments = []
+    
+    try:
+        # Check if filter form was submitted
+        filter_submitted = 'apply_filters' in request.GET
+        fund_filter = request.GET.get('fund', '')
+        
+        # Base query for all pending payments in the same session, program, and shift
+        all_pending_payments = StudentFundPayment.objects.filter(
+            student__applicant__session=student.applicant.session,  # Same session
+            student__program=student.program,                      # Same program
+            student__applicant__shift=student.applicant.shift,     # Same shift
+            status='pending'
+        )
+        
+        # Apply gender filter for CR/GR
+        if is_cr:
+            all_pending_payments = all_pending_payments.filter(
+                student__applicant__gender='male'
+            )
+        elif is_gr:
+            all_pending_payments = all_pending_payments.filter(
+                student__applicant__gender='female'
+            )
             
+        all_pending_payments = all_pending_payments.select_related('student__applicant', 'fund')
+        
+        # Apply fund filter if selected
+        if fund_filter and fund_filter != 'all':
+            all_pending_payments = all_pending_payments.filter(fund_id=fund_filter)
+        
+        # For CR/GR, show verifiable payments when filters are applied
+        if is_cr or is_gr:
+            show_verification = filter_submitted
+            if show_verification:
+                # Get or create payment records for all students in the same session, program, and shift
+                if fund_filter and fund_filter != 'all':
+                    fund = get_object_or_404(DepartmentFund, id=fund_filter)
+                    # Get students in the same session, program, and shift
+                    students_in_program = Student.objects.filter(
+                        applicant__session=student.applicant.session,  # Same session
+                        program=student.program,                      # Same program
+                        applicant__shift=student.applicant.shift       # Same shift
+                    )
+                    if is_cr:
+                        students_in_program = students_in_program.filter(
+                            applicant__gender='male'
+                        )
+                    elif is_gr:
+                        students_in_program = students_in_program.filter(
+                            applicant__gender='female'
+                        )
+                    
+                    # Create payment records for students who don't have one for this fund
+                    for std in students_in_program:
+                        StudentFundPayment.objects.get_or_create(
+                            student=std,
+                            fund=fund,
+                            defaults={
+                                'status': 'pending',
+                                'amount_paid': 0,
+                                'notes': 'Auto-created for verification'
+                            }
+                        )
+                    
+                    # Get all payments for this fund, filtered by session, program, shift, and gender
+                    verifiable_payments = StudentFundPayment.objects.filter(
+                        fund=fund,
+                        student__applicant__session=student.applicant.session,  # Same session
+                        student__program=student.program,                      # Same program
+                        student__applicant__shift=student.applicant.shift      # Same shift
+                    )
+                    
+                    if is_cr:
+                        verifiable_payments = verifiable_payments.filter(
+                            student__applicant__gender='male'
+                        )
+                    elif is_gr:
+                        verifiable_payments = verifiable_payments.filter(
+                            student__applicant__gender='female'
+                        )
+                else:
+                    # If no specific fund is selected, show all payments for the session, program, and shift
+                    verifiable_payments = StudentFundPayment.objects.filter(
+                        student__applicant__session=student.applicant.session,  # Same session
+                        student__program=student.program,                      # Same program
+                        student__applicant__shift=student.applicant.shift      # Same shift
+                    )
+                    
+                    if is_cr:
+                        verifiable_payments = verifiable_payments.filter(
+                            student__applicant__gender='male'
+                        )
+                    elif is_gr:
+                        verifiable_payments = verifiable_payments.filter(
+                            student__applicant__gender='female'
+                        )
+                
+                verifiable_payments = verifiable_payments.distinct()
+                print(f'Verifiable payments: {verifiable_payments.query}')
+                print(f'Verifiable payments count: {verifiable_payments.count()}')
+            
+            # Always show all pending payments for CR/GR
+            all_pending_payments = all_pending_payments.distinct()
+        
+    except Exception as e:
+        messages.error(request, f'Error fetching payments: {str(e)}')
+        import traceback
+        print(traceback.format_exc())
+        verifiable_payments = []
+        all_pending_payments = []
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'upload_payment':
+            fund_id = request.POST.get('fund_id')
+            fund = get_object_or_404(DepartmentFund, id=fund_id)
+            amount_paid = request.POST.get('amount_paid')
+            payment_date = request.POST.get('payment_date')
+            notes = request.POST.get('notes')
+            proof = request.FILES.get('proof')
+
+            try:
+                payment, created = StudentFundPayment.objects.get_or_create(
+                    student=student,
+                    fund=fund,
+                    defaults={
+                        'status': 'pending',
+                        'amount_paid': amount_paid or 0,
+                        'payment_date': payment_date or None,
+                        'notes': notes or '',
+                        'proof': proof
+                    }
+                )
+                if not created:
+                    payment.amount_paid = amount_paid or payment.amount_paid
+                    payment.payment_date = payment_date or payment.payment_date
+                    payment.notes = notes or payment.notes
+                    if proof:
+                        payment.proof = proof
+                    payment.status = 'pending'
+                    payment.save()
+                messages.success(request, 'Payment details uploaded successfully.')
+            except Exception as e:
+                messages.error(request, f'Error uploading payment: {str(e)}')
+            return redirect('students:fund_payments')
+
+        elif action == 'verify_payment':
+            payment_id = request.POST.get('payment_id')
+            payment = get_object_or_404(StudentFundPayment, id=payment_id)
+            
+            # Allow students to update their own payment status
+            if payment.student == student:
+                new_status = request.POST.get('new_status')
+                if new_status in ['paid', 'pending', 'partial', 'unpaid']:
+                    payment.status = new_status
+                    if new_status == 'pending':
+                        payment.verified_by = None
+                    payment.save()
+                    messages.success(request, f'Your payment status has been updated to {new_status}.')
+                else:
+                    messages.error(request, 'Invalid payment status.')
+                return redirect('students:fund_payments')
+            
+            # CR/GR verification for other students
+            elif is_cr or is_gr:
+                # Check session, program, shift, and gender restrictions
+                if payment.student.applicant.session != student.applicant.session:
+                    raise PermissionDenied("You can only verify payments for students in your academic session.")
+                if payment.student.program != student.program:
+                    raise PermissionDenied("You can only verify payments for students in your program.")
+                if payment.student.applicant.shift != student.applicant.shift:
+                    raise PermissionDenied("You can only verify payments for students in your shift.")
+                if is_cr and payment.student.applicant.gender != 'male':
+                    raise PermissionDenied("CR can only verify payments for male students.")
+                if is_gr and payment.student.applicant.gender != 'female':
+                    raise PermissionDenied("GR can only verify payments for female students.")
+                
+                new_status = request.POST.get('new_status')
+                if new_status not in ['paid', 'partial', 'unpaid']:
+                    messages.error(request, 'Invalid payment status.')
+                    return redirect('students:fund_payments')
+                    
+                payment.status = new_status
+                payment.verified_by = student
+                payment.save()
+                messages.success(request, f'Payment for {payment.student.applicant.full_name} verified as {new_status}.')
+                return redirect('students:fund_payments')
+            else:
+                raise PermissionDenied("You are not authorized to verify this payment.")
+
+    # Get current date in Asia/Karachi timezone
+    karachi_tz = pytz.timezone('Asia/Karachi')
+    current_date = timezone.now().astimezone(karachi_tz).date()
+    
+    context = {
+        'student': student,
+        'funds': funds,
+        'payments': payments,
+        'is_cr': is_cr,
+        'is_gr': is_gr,
+        'verifiable_payments': verifiable_payments,
+        'all_pending_payments': all_pending_payments,
+        'show_verification': show_verification,
+        'now': current_date,
+    }
+    return render(request, 'fund_payments.html', context)

@@ -117,3 +117,71 @@ class CourseEnrollment(models.Model):
 
     def __str__(self):
         return f"{self.student_semester_enrollment.student.applicant.full_name} - {self.course_offering}"
+    
+    
+    
+# Add this new model for tracking payment status
+class StudentFundPayment(models.Model):
+    PAYMENT_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('paid', 'Paid'),
+        ('unpaid', 'Unpaid'),
+        ('partial', 'Partially Paid'),
+    ]
+
+    student = models.ForeignKey(
+        'students.Student',
+        on_delete=models.CASCADE,
+        related_name='fund_payments'
+    )
+    fund = models.ForeignKey(
+        'faculty_staff.DepartmentFund',
+        on_delete=models.CASCADE,
+        related_name='student_payments'
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=PAYMENT_STATUS_CHOICES,
+        default='pending',
+        help_text="Payment status for this fund"
+    )
+    amount_paid = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Amount paid by the student"
+    )
+    payment_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the payment was made"
+    )
+    notes = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Any additional notes about the payment"
+    )
+    proof = models.FileField(
+        upload_to='payment_proofs/%Y/%m/%d/',
+        null=True,
+        blank=True,
+        help_text="Upload proof of payment (PDF, JPG, or PNG)"
+    )
+    verified_by = models.ForeignKey(
+        'students.Student',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='verified_payments',
+        help_text="Student who verified this payment (CR/GR)"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('student', 'fund')
+        verbose_name = "Student Fund Payment"
+        verbose_name_plural = "Student Fund Payments"
+
+    def __str__(self):
+        return f"{self.student} - {self.fund}: {self.get_status_display()}"    

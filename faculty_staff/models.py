@@ -23,6 +23,10 @@ class Teacher(models.Model):
     qualification = models.TextField(help_text="Enter the highest academic qualification of the teacher (e.g., PhD in Computer Science).")  # e.g., PhD in Computer Science
     hire_date = models.DateField(help_text="Select the date when the teacher was hired.")
     is_active = models.BooleanField(default=True, help_text="Check this if the teacher's profile is currently active.")
+    gender = models.CharField(
+        max_length=6,
+        choices=[('male', 'Male'), ('female', 'Female')],
+        help_text="Select the gender of the teacher.")
     # New fields for social media and experience
     linkedin_url = models.URLField(max_length=200, blank=True, null=True, help_text="Enter the LinkedIn profile URL for the teacher (optional).")
     twitter_url = models.URLField(max_length=200, blank=True, null=True, help_text="Enter the Twitter profile URL for the teacher (optional).")
@@ -47,6 +51,14 @@ class DepartmentFund(models.Model):
         limit_choices_to={'designation': 'head_of_department'},
         help_text="Select the HOD who created this fund"
     )
+    students = models.ManyToManyField(
+    'students.Student',
+    through='students.StudentFundPayment',
+    through_fields=('fund', 'student'),
+    related_name='department_funds',
+    blank=True,
+    help_text="Students associated with this fund and their payment status"
+)
     department = models.ForeignKey(
         Department,
         on_delete=models.CASCADE,
@@ -160,6 +172,10 @@ class OfficeStaff(models.Model):
     office = models.ForeignKey(Office, on_delete=models.CASCADE, related_name='staff', help_text="Select the office this staff member belongs to.")
     position = models.CharField(max_length=100, help_text="Enter the position or role of the staff member within the office.")
     contact_no = models.CharField(max_length=15, blank=True, null=True, help_text="Enter the contact phone number for the office staff member (optional).")
+    gender = models.CharField(
+        max_length=6,
+        choices=[('male', 'Male'), ('female', 'Female')],
+        help_text="Select the gender of the office staff member.")
 
     def __str__(self):
         return f"{(self.user.get_full_name() or self.user.first_name)} ({self.position})"

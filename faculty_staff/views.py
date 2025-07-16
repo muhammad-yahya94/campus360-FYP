@@ -4279,6 +4279,35 @@ def handle_fund_form(request, hod):
                 is_active=is_active
             )
             messages.success(request, 'Department fund created successfully')
+            
+            # Get all students in the selected programs and semesters
+            from students.models import Student, StudentSemesterEnrollment, StudentFundPayment
+            
+            # Get active enrollments that match the fund's programs and semesters
+            enrollments = StudentSemesterEnrollment.objects.filter(
+                student__program__in=programs,
+                semester__in=semesters,
+                status='enrolled'
+            ).select_related('student')
+            
+            # Create pending payment records for each student
+            created_count = 0
+            for enrollment in enrollments.distinct('student'):
+                # Create or update payment record
+                _, created = StudentFundPayment.objects.get_or_create(
+                    student=enrollment.student,
+                    fund=fund,
+                    defaults={
+                        'status': 'pending',
+                        'amount_paid': 0,
+                        'notes': 'Auto-created pending payment'
+                    }
+                )
+                if created:
+                    created_count += 1
+            
+            if created_count > 0:
+                messages.success(request, f'Created pending payment records for {created_count} students')
 
         fund.academic_sessions.set(academic_sessions)
         fund.programs.set(programs)

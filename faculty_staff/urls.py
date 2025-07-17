@@ -3,7 +3,7 @@ from django.urls import path
 from . import views
 
 
-app_name = 'faculty_staff'
+app_name = 'faculty_staff'   
 
 urlpatterns = [
     # ========== 8. Department Funds ==========

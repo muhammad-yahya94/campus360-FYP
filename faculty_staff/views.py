@@ -3581,7 +3581,7 @@ def attendance(request, offering_id=None):
                 'course_offering_id': course_offering_id,
                 'course_shift': None,
                 'today_date': today_date,
-                'is_active_slot': False,
+                'is_active_slot': True,
                 'error_message': f"Error loading course offering: {str(e)}"
             })
     print(f'slot is : {is_active_slot}')

@@ -30,14 +30,14 @@ ALLOWED_HOSTS = ['.trycloudflare.com', 'localhost', '127.0.0.1']
 
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://characters-persons-la-ln.trycloudflare.com',
+    'https://hold-depression-offline-launch.trycloudflare.com/',
 ]
 
 
 STRIPE_PUBLIC_KEY = 'pk_test_51RVc14DCFgsH63aPMLiGzlXEuqSGbyxbqTXyWsnqFbx6IXnTjDF0crV3RB3Avil0rAeRU7KVQsrA369EZdzQWmUx00numghDOP'
 STRIPE_SECRET_KEY = 'sk_test_51RVc14DCFgsH63aPcCG3IteORSTlv0oPziVNNsLZkB3cx9Wtb9q7InvToT8CRHZf5wJ1pqsJGGdGe9LjOuzVAZ1P00STSNm7U3'
 STRIPE_ENDPOINT_SECRET = 'whsec_etRtmwacOWudfKX2BIHNHgBgn6jb4djo'
-SITE_URL = 'https://characters-persons-la-ln.trycloudflare.com'
+SITE_URL = 'https://hold-depression-offline-launch.trycloudflare.com/'
 PAYMENT_SUCCESS_URL = f'{SITE_URL}/payments/success/?session_id={{CHECKOUT_SESSION_ID}}'
 PAYMENT_CANCEL_URL = f'{SITE_URL}/payments/cancel/?session_id={{CHECKOUT_SESSION_ID}}'
 
@@ -110,6 +110,10 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'campus360FYP.wsgi.application'
+
+
+# Redirect after logout
+LOGOUT_REDIRECT_URL = '//' 
 
 
 # Database

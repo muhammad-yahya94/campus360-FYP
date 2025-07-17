@@ -13,7 +13,7 @@
     .timetable-day { page-break-inside: avoid; margin-bottom: 20px; }
     .timetable-slot { page-break-inside: avoid; }
   }
-  .group:hover .group-hover\:block { display: block !important; }
+
 </style>  
 {% endblock %}
 
@@ -25,7 +25,7 @@
       <h1 class="text-4xl font-bold mb-2">Weekly Timetable</h1>
       <p class="text-lg opacity-90">{{ department.name }} - <span class="academic-session">{{ academic_session.name|default:'No Active Session' }}</span></p>
     </div>
-  </div>
+  </div>  
 
   <!-- Controls -->
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
@@ -55,7 +55,7 @@
     <h2 class="text-2xl font-semibold mb-4">
       <i class="fas fa-calendar-week mr-2"></i>Timetable Overview
     </h2>
-    {% if timetable_data %}
+    {% if timetable_data %}  
       <div class="space-y-4">
         {% for day in timetable_data %}
           <div class="border border-gray-200 rounded-lg timetable-day">
@@ -63,17 +63,10 @@
               <span class="text-lg font-semibold text-gray-800">{{ day.day_label }}</span>
               <i id="toggle-icon-{{ day.day_value }}" class="fas fa-chevron-down text-gray-600"></i>
             </button>
-            <div id="slots-{{ day.day_value }}" class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+             <div id="slots-{{ day.day_value }}" class="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
               {% for slot in day.slots %}
                 {% with replacements=slot.course_offering_id|lookup_replacements %}
-                <div 
-                  class="relative overflow-hidden rounded-xl shadow-lg transition-all duration-300 transform hover:scale-[1.02] timetable-slot {% if slot.shift == 'Morning' %}bg-gradient-to-br from-blue-50 to-blue-100 border-l-4 border-blue-400{% elif slot.shift == 'Evening' %}bg-gradient-to-br from-purple-50 to-purple-100 border-l-4 border-purple-400{% else %}bg-gradient-to-br from-green-50 to-green-100 border-l-4 border-green-400{% endif %} hover:shadow-xl" 
-                  data-tooltip="Teacher: {{ slot.teacher|addslashes }}<br>Program: {{ slot.program|addslashes }}{% if replacements %}<br>Replacements: {% for r in replacements %}{{ r.replacement_teacher|addslashes }} ({{ r.replacement_type|capfirst }} {% if r.replacement_date %}on {{ r.replacement_date }}{% endif %}, Original: {{ r.original_teacher|addslashes }}){% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}"
-                  data-teacher="{{ slot.teacher|addslashes }}"
-                  data-course-code="{{ slot.course_code|addslashes }}"
-                  data-course-name="{{ slot.course_name|addslashes }}"
-                  data-program="{{ slot.program|addslashes }}"
-                >
+                <div class="rounded-xl shadow-lg transition-all duration-300 transform hover:scale-[1.02] {% if slot.shift == 'Morning' %}bg-gradient-to-br from-blue-50 to-blue-100 border-l-4 border-blue-400{% elif slot.shift == 'Evening' %}bg-gradient-to-br from-purple-50 to-purple-100 border-l-4 border-purple-400{% else %}bg-gradient-to-br from-green-50 to-green-100 border-l-4 border-green-400{% endif %} hover:shadow-xl">
                   <div class="p-5">
                     <!-- Course Header -->
                     <div class="flex items-start justify-between mb-3">
@@ -116,6 +109,12 @@
                         <span class="mx-1">•</span>
                         Room {{ slot.room_no }}
                       </span>
+                      <button 
+                        onclick="openReplacementModal('{{ slot.course_offering_id }}', '{{ slot.teacher_id }}', '{{ slot.course_code|addslashes }}', '{{ slot.teacher|addslashes }}')"
+                        class="px-3 py-1 text-xs font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <i class="fas fa-exchange-alt mr-1"></i>Replace
+                      </button>
                     </div>
                     <!-- Display Existing Replacements -->
                     {% if replacements %}
@@ -295,15 +294,52 @@
         replacementDate.value = '';
       }
     }
+    function toggleDay(dayId) {
+      const slots = document.getElementById('slots-' + dayId);
+      const icon = document.getElementById('toggle-icon-' + dayId);
+      
+      if (slots.style.display === 'none' || !slots.style.display) {
+        slots.style.display = 'grid';
+        icon.classList.remove('fa-chevron-down');
+        icon.classList.add('fa-chevron-up');
+      } else {
+        slots.style.display = 'none';
+        icon.classList.remove('fa-chevron-up');
+        icon.classList.add('fa-chevron-down');
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
       console.log('DOMContentLoaded fired');
-      document.querySelectorAll('[id^="slots-"]').forEach(el => {
-        if (el) el.classList.remove('hidden');
+      // Get current day
+      const currentDay = new Date().getDay();
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const currentDayName = dayNames[currentDay];
+      
+      // Initialize all days
+      document.querySelectorAll('.timetable-day').forEach(day => {
+        const dayLabel = day.querySelector('.text-lg.font-semibold').textContent;
+        const dayValue = dayLabel.toLowerCase();
+        const slots = document.getElementById('slots-' + dayValue);
+        const icon = document.getElementById('toggle-icon-' + dayValue);
+        
+        if (dayLabel === currentDayName) {
+          // Move current day to top and expand it
+          day.parentNode.insertBefore(day, day.parentNode.firstChild);
+          slots.style.display = 'grid';
+          icon.classList.remove('fa-chevron-down');
+          icon.classList.add('fa-chevron-up');
+        } else {
+          // Collapse other days
+          slots.style.display = 'none';
+          icon.classList.remove('fa-chevron-up');
+          icon.classList.add('fa-chevron-down');
+        }
       });
       document.querySelectorAll('[data-tooltip]').forEach(el => {
         const tooltip = document.createElement('div');
         tooltip.innerHTML = sanitize(el.dataset.tooltip);
-        tooltip.className = 'absolute hidden group-hover:block bg-gray-800 text-white text-xs rounded p-2 -top-10 left-1/2 transform -translate-x-1/2 z-10';
+        tooltip.className = 'tooltip hidden group-hover:block bg-gray-800 text-white text-xs rounded p-2';
         el.classList.add('group', 'relative');
         el.appendChild(tooltip);
       });
@@ -311,7 +347,7 @@
         const modal = document.getElementById('replacementModal');
         if (event.target === modal) {
           closeReplacementModal();
-        }
+        }  
       });
     });
   </script>

@@ -17,15 +17,29 @@
     padding: 0;
     margin: auto;
     overflow: hidden;
+    box-sizing: border-box;
   }
 
   @media print {
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
     dialog {
       border: none;
-      width: 100%;
+      width: 297mm; /* A4 landscape width */
       height: 187mm; /* A4 landscape height minus margins */
       margin: 0;
       padding: 0;
+      box-sizing: border-box;
+      display: block;
+      page-break-before: auto;
+      page-break-after: auto;
+      page-break-inside: avoid;
     }
 
     .voucher-container {
@@ -34,38 +48,52 @@
       justify-content: space-between !important;
       width: 100% !important;
       height: 100% !important;
-      gap: 5mm !important;
+      gap: 3mm !important;
+      margin: 0 !important;
+      padding: 5mm !important;
+      box-sizing: border-box;
       page-break-inside: avoid !important;
       break-inside: avoid !important;
-      margin: 0;
-      padding: 0;
+      transform: scale(0.95); /* Slight scaling to prevent overflow */
+      transform-origin: top left;
     }
 
     .voucher-copy {
       page-break-inside: avoid !important;
+      break-inside: avoid !important;
       height: 100% !important;
-      min-height: 0 !important;
+      width: 32% !important;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      width: 32% !important;
-      break-inside: avoid !important;
-      overflow: hidden !important;
-      font-size: 0.85em !important;
+      padding: 3mm !important;
       border: 1px solid #000 !important;
       background: #fff !important;
+      font-size: 0.75em !important; /* Reduced font size for better fit */
+      overflow: hidden !important;
+      box-sizing: border-box;
     }
 
     .office-details {
       display: block !important;
       visibility: visible !important;
-      font-size: 0.75em !important;
-      margin-top: 10px !important;
-      padding-top: 5px !important;
+      font-size: 0.65em !important; /* Smaller font for office details */
+      margin-top: 5px !important;
+      padding-top: 3px !important;
+      border-top: 1px dashed #000;
     }
 
     .modal-actions {
       display: none !important;
+    }
+
+    table {
+      font-size: 0.75em !important; /* Smaller table font size */
+      line-height: 1.2 !important;
+    }
+
+    th, td {
+      padding: 2px !important; /* Reduced padding for tables */
     }
   }
 
@@ -73,8 +101,9 @@
     display: flex;
     justify-content: space-between;
     gap: 5mm;
-    height: 187mm; /* Match A4 landscape height */
+    height: 187mm;
     padding: 10px;
+    box-sizing: border-box;
   }
 
   .voucher-copy {
@@ -86,6 +115,7 @@
     border: 1px solid #000;
     position: relative;
     page-break-inside: avoid;
+    box-sizing: border-box;
   }
 
   .office-details {
@@ -102,6 +132,7 @@
     width: 100%;
     border-collapse: collapse;
     font-size: 0.85em;
+    line-height: 1.4;
   }
 
   th, td {
@@ -174,7 +205,6 @@
           <label class="block mb-2 font-semibold text-base-content" for="semester">Semester</label>
           <select id="semester" name="semester" class="select select-bordered w-full rounded-lg" required>
             <option value="">Select Semester</option>
-            <!-- Populated by AJAX -->
           </select>
         </div>
       </div>
@@ -244,7 +274,6 @@ async function fetchSemesters() {
       throw new Error(data.error);
     }
     
-    // Update student info
     if (data.student) {
       studentInfo.innerHTML = `
         <div class="bg-base-200 p-4 rounded-lg mb-4">
@@ -258,7 +287,6 @@ async function fetchSemesters() {
       studentInfo.classList.remove('hidden');
     }
     
-    // Update semester dropdown
     if (data.available_semesters && data.available_semesters.length > 0) {
       semesterSelect.innerHTML = '<option value="">Select Semester</option>';
       
@@ -271,7 +299,6 @@ async function fetchSemesters() {
         semesterSelect.appendChild(option);
       });
       
-      // Show fee details when semester is selected
       semesterSelect.onchange = function() {
         const selectedOption = this.options[this.selectedIndex];
         const feeDetails = document.getElementById('fee-details');
@@ -293,10 +320,8 @@ async function fetchSemesters() {
                 <div class="grid grid-cols-2 gap-2 text-sm">
                   <div class="text-base-content/70">Amount:</div>
                   <div class="font-medium text-right">${fee.amount.toLocaleString()} PKR</div>
-                  
                   <div class="text-base-content/70">Shift:</div>
                   <div class="text-right">${fee.shift || 'N/A'}</div>
-                  
                   ${fee.due_date ? `
                     <div class="text-base-content/70">Due Date:</div>
                     <div class="text-right">${new Date(fee.due_date).toLocaleDateString()}</div>
@@ -331,7 +356,8 @@ async function fetchSemesters() {
 document.addEventListener('DOMContentLoaded', function() {
   const form = document.getElementById('voucher-form');
   const modal = document.getElementById('voucherModal');
-  
+  let isPrinting = false;
+
   form.addEventListener('submit', async function(e) {
     e.preventDefault();
     
@@ -370,13 +396,19 @@ document.addEventListener('DOMContentLoaded', function() {
       modal.innerHTML = data.voucher_html;
       modal.showModal();
       
-      // Trigger print immediately
-      setTimeout(() => window.print(), 500);
+      if (!isPrinting) {
+        isPrinting = true;
+        // Ensure modal is fully rendered before printing
+        setTimeout(() => {
+          window.print();
+          window.onafterprint = () => {
+            modal.close();
+            isPrinting = false;
+            window.onafterprint = null;
+          };
+        }, 1000); // Increased delay to ensure rendering
+      }
       
-      // Close modal after printing
-      window.onafterprint = () => {
-        modal.close();
-      };
     } catch (error) {
       console.error('Error:', error);
       const errorDiv = document.createElement('div');

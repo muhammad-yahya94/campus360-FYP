@@ -14,31 +14,19 @@
   <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
     <div class="flex flex-col md:flex-row gap-4">
       <!-- Program Filter -->
-      <form method="get" class="flex gap-2">
-        <select name="program" class="select select-bordered" onchange="this.form.submit()">
-          <option value="">All Programs</option>
-          {% for program in programs %}
-          <option value="{{ program.id }}" {% if selected_program == program.id|stringformat:"s" %}selected{% endif %}>
-            {{ program.name }}
-          </option>
-          {% endfor %}
-        </select>
+     <form method="get" class="flex gap-2">
+          <select name="program" class="select select-bordered" onchange="this.form.submit()">
+            <option value="">All Programs</option>
+            {% for program in programs %}
+            <option value="{{ program.id }}" {% if selected_program == program.id|stringformat:"s" %}selected{% endif %}>
+              {{ program.name }}
+            </option>
+            {% endfor %}
+          </select>
+        </form>
         
-        <!-- Sort Filter -->
-        <select name="sort" class="select select-bordered" onchange="this.form.submit()">
-          <option value="-generation_date" {% if selected_sort == "-generation_date" %}selected{% endif %}>Newest First</option>
-          <option value="generation_date" {% if selected_sort == "generation_date" %}selected{% endif %}>Oldest First</option>
-          <option value="list_number" {% if selected_sort == "list_number" %}selected{% endif %}>List Number (Asc)</option>
-          <option value="-list_number" {% if selected_sort == "-list_number" %}selected{% endif %}>List Number (Desc)</option>
-        </select>
-        
-        <!-- Hidden fields to preserve other filters -->
-        {% if selected_program %}
-        <input type="hidden" name="program" value="{{ selected_program }}">
-        {% endif %}
-      </form>
+        </form>
     </div>
-    
     <a href="{% url 'fee_management:generate_merit_list' %}" class="btn btn-primary">
       <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -149,16 +137,7 @@
         {{ program_groups|length }}
       </div>
     </div>
-    <div class="stat bg-base-200 rounded-lg">
-      <div class="stat-title">Total Selected</div>
-      <div class="stat-value text-2xl text-primary">
-        {% for merit_list in merit_lists %}
-        {% if forloop.first %}{{ merit_list.seccured_seats }}{% endif %}
-        {% endfor %}
-        {% if merit_lists.count > 1 %}+{% endif %}
-      </div>
     </div>
   </div>
   {% endif %}
-</div>
 {% endblock %}

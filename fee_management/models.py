@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils.timezone import now
 from django.utils import timezone
 from students.models import Student
 from academics.models import Program, Semester
@@ -134,7 +135,7 @@ class MeritList(models.Model):
     generation_date = models.DateField(auto_now_add=True)
     total_seats = models.PositiveIntegerField(default=0, help_text="Total number of applicants in this merit list")
     seccured_seats = models.PositiveIntegerField(default=0, help_text="Number of seats secured from this merit list")
-    valid_until = models.DateField(help_text="Date until which this merit list is valid")
+    valid_until = models.DateTimeField(help_text="Date until which this merit list is valid")
     is_active = models.BooleanField(default=True, help_text="Is this the currently active merit list?")
     notes = models.TextField(blank=True, help_text="Any additional notes about this merit list")
 
@@ -144,7 +145,6 @@ class MeritList(models.Model):
 
     def __str__(self):
         return f"Merit List #{self.list_number} - {self.program} ({self.shift})"
-
     def save(self, *args, **kwargs):
         # Ensure only one active merit list per program and shift
         if self.is_active:

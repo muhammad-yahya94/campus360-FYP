@@ -20,46 +20,45 @@
   </div>
   {% endif %}
 
-  <form method="post" class="space-y-6">
-    {% csrf_token %}
-    
-    <div class="form-control">
-      <label class="label" for="program">
-        <span class="label-text">Program</span>
-      </label>
-      <select name="program" id="program" class="select select-bordered w-full" required>
-        <option value="">Select a program</option>
-        {% for program in programs %}
+  <form method="post" autocomplete="off" class="space-y-6">
+  {% csrf_token %}
+  
+  <div class="form-control">
+    <label class="label" for="id_program">
+      <span class="label-text">Program</span>
+    </label>
+    <select name="program" id="id_program" class="select select-bordered w-full" required>
+      <option value="">Select a program</option>
+      {% for program in programs %}
         <option value="{{ program.id }}">{{ program.name }}</option>
-        {% endfor %}
-      </select>
-    </div>
+      {% endfor %}
+    </select>
+  </div>
 
-    <div class="form-control">
-      <label class="label" for="list_number">
-        <span class="label-text">Merit List Number</span>
-      </label>
-      <input type="number" name="list_number" id="list_number" class="input input-bordered w-full" min="1" required>
-    </div>
+  <div class="form-control">
+    <label class="label" for="id_shift">
+      <span class="label-text">Shift</span>
+    </label>
+    <select name="shift" id="id_shift" class="select select-bordered w-full" required>
+      <option value="">Select shift</option>
+      <option value="morning">Morning</option>
+      <option value="evening">Evening</option>
+    </select>
+  </div>
 
+  <div class="form-control">
+    <label class="label" for="id_list_number">
+      <span class="label-text">Merit List Number</span>
+    </label>
+    <input type="number" name="list_number" id="id_list_number" class="input input-bordered w-full" readonly>
+  </div>
     <div class="form-control">
       <label class="label" for="valid_until">
         <span class="label-text">Valid Until</span>
       </label>
-      <input type="date" name="valid_until" id="valid_until" class="input input-bordered w-full" required>
+      <input type="datetime-local" name="valid_until" id="valid_until" class="input input-bordered w-full" required>
     </div>
-
-    <div class="form-control">
-      <label class="label" for="shift">
-        <span class="label-text">Shift</span>
-      </label>
-      <select name="shift" id="shift" class="select select-bordered w-full" required>
-        <option value="">Select shift</option>
-        <option value="morning">Morning</option>
-        <option value="evening">Evening</option>
-      </select>
-    </div>
-
+ 
     <div class="form-control">
       <label class="label" for="notes">
         <span class="label-text">Notes (Optional)</span>
@@ -68,7 +67,7 @@
     </div>
 
     <div class="form-control mt-6">
-      <button type="submit" class="btn btn-primary w-full">Generate Merit List (Top 50 Students)</button>
+      <button type="submit" class="btn btn-primary w-full">Generate Merit List</button>
     </div>
   </form>
 
@@ -88,4 +87,28 @@
     <li>Each selected student gets a merit position and status tracking</li>
   </ul>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const programSelect = document.getElementById('id_program');
+  const shiftSelect = document.getElementById('id_shift');
+  const listNumberInput = document.getElementById('id_list_number');
+
+  function updateListNumber() {
+    const programId = programSelect.value;
+    const shift = shiftSelect.value;
+
+    if (programId && shift) {
+      fetch(`{% url 'fee_management:get_next_list_number' %}?program=${programId}&shift=${shift}`)
+        .then(response => response.json())
+        .then(data => {
+          listNumberInput.value = data.next_list_number;
+        })
+        .catch(error => console.error('Error:', error));
+    }
+  }
+
+  programSelect.addEventListener('change', updateListNumber);
+  shiftSelect.addEventListener('change', updateListNumber);
+});
+</script>
 {% endblock %}

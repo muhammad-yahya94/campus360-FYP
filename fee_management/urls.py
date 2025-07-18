@@ -26,4 +26,6 @@ urlpatterns = [
     # path('grant-admission/<极list_id>/', views.grant_admission, name='grant_admission'),
     path('grant-admission-single/<int:entry_id>/', views.grant_admission_single, name='grant_admission_single'),
     path('add-student/', views.add_student_manually, name='add_student_manually'),
+    path('get-next-list-number/', views.get_next_list_number, name='get_next_list_number'),
 ]
+

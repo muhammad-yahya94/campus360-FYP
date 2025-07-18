@@ -18,10 +18,6 @@
       <div class="stat-value text-lg">{{ merit_list.program.name }}--{{merit_list.shift}}</div>
     </div>
     <div class="stat bg-base-200 rounded-lg">
-      <div class="stat-title">Total Applicants</div>
-      <div class="stat-value text-2xl">{{ merit_list.total_applicants }}</div>
-    </div>
-    <div class="stat bg-base-200 rounded-lg">
       <div class="stat-title">Selected Students</div>
       <div class="stat-value text-2xl text-success">{{ merit_list.seccured_seats }}</div>
     </div>
@@ -34,7 +30,7 @@
     </div>
     <div class="card bg-base-200 p-4">
       <h3 class="font-semibold mb-2">Valid Until</h3>
-      <p>{{ merit_list.valid_until|date:"F d, Y" }}</p>
+      <p>{{ merit_list.valid_until|date:"F d, Y" }}      __   {{merit_list.valid_until.time}}</p>
     </div>
   </div>
 
@@ -92,18 +88,18 @@
               </td>
               <td>{{ entry.selection_date|date:"M d, Y" }}</td>
               <td>
-                {% if entry.status != 'admitted' %}
-                  {% if merit_list.valid_until|date:"Y-m-d" >= now|date:"Y-m-d" %}
-                    <button class="btn btn-xs btn-success" data-url="{% url 'fee_management:grant_admission_single' entry.id %}" data-applicant-name="{{ entry.applicant.full_name }}" onclick="grantAdmission(this, false)">
-                      Grant
-                    </button>
+                  {% if entry.status != 'admitted' %}
+                    {% if merit_list.is_active %}
+                      <button class="btn btn-xs btn-success" data-url="{% url 'fee_management:grant_admission_single' entry.id %}" data-applicant-name="{{ entry.applicant.full_name }}" onclick="grantAdmission(this, false)">
+                        Grant
+                      </button>
+                    {% else %}
+                      <button class="btn btn-xs btn-success" disabled>Grant</button>
+                    {% endif %}
                   {% else %}
-                    <button class="btn btn-xs btn-disabled" disabled>Expired</button>
+                    <span class="text-success">Admitted</span>
                   {% endif %}
-                {% else %}
-                  <span class="text-success">Admitted</span>
-                {% endif %}
-              </td>
+                </td>
             </tr>
             {% endfor %}
           </tbody>

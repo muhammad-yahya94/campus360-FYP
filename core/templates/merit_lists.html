@@ -5,7 +5,6 @@
 {% block core_content %}
 <div class="container py-5">
     <h1 class="mb-4">Merit Lists</h1>
-    
     <form method="get" class="mb-4">
         <div class="row g-3">
             <div class="col-md-3">
@@ -64,8 +63,8 @@
         </div>
     </form>
     
-    {% if merit_lists %}
-        {% for merit_list in merit_lists %}
+    {% if page_obj %}
+        {% for merit_list in page_obj %}
             <div class="card mb-4">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                     <h2 class="mb-0">Merit List #{{ merit_list.list_number }}</h2>
@@ -74,33 +73,73 @@
                     </a>
                 </div>
                 <div class="card-body">
-                    <table class="table table-striped table-hover">
-                        <thead>
-                            <tr>
-                                <th scope="col">#</th>
-                                <th scope="col">Applicant Name</th>
-                                <th scope="col">CNIC</th>
-                                <th scope="col">Percentage</th>
-                                <th scope="col">Marks</th>
-                                <th scope="col">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for entry in merit_list.entries.all %}
+                    <p><strong>Debug: Entries count = {{ merit_list.entries.count }}</strong></p>
+                    {% if merit_list.entries.exists %}
+                        <table class="table table-striped table-hover">
+                            <thead>
                                 <tr>
-                                    <th scope="row">{{ entry.merit_position }}</th>
-                                    <td>{{ entry.applicant.full_name }}</td>
-                                    <td>{{ entry.applicant.cnic }}</td>
-                                    <td>{{ entry.relevant_percentage|floatformat:2 }}%</td>
-                                    <td>{{ entry.marks_obtained }}</td>
-                                    <td><span class="badge bg-success">{{ entry.get_status_display }}</span></td>
+                                    <th scope="col">#</th>
+                                    <th scope="col">Applicant Name</th>
+                                    <th scope="col">CNIC</th>
+                                    <th scope="col">Percentage</th>
+                                    <th scope="col">Marks</th>
+                                    <th scope="col">Status</th>
                                 </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {% for entry in merit_list.entries.all %}
+                                    <tr>
+                                        <th scope="row">{{ entry.merit_position }}</th>
+                                        <td>{{ entry.applicant.full_name }}</td>
+                                        <td>{{ entry.applicant.cnic }}</td>
+                                        <td>{{ entry.relevant_percentage|floatformat:2 }}%</td>
+                                        <td>{{ entry.marks_obtained }}</td>
+                                        <td><span class="badge bg-success">{{ entry.get_status_display }}</span></td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="alert alert-warning">No entries found for Merit List #{{ merit_list.list_number }}.</p>
+                    {% endif %}
                 </div>
             </div>
+        {% empty %}
+            <p class="alert alert-warning">No merit lists in this page.</p>
         {% endfor %}
+
+        <!-- Pagination Controls -->
+        <nav aria-label="Merit List Pagination">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?
+
+System: page={{ page_obj.previous_page_number }}&session={{ selected_session }}&department={{ selected_department }}&program={{ selected_program }}&shift={{ selected_shift }}">Previous</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Previous</span>
+                    </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                        <a class="page-link" href="?page={{ num }}&session={{ selected_session }}&department={{ selected_department }}&program={{ selected_program }}&shift={{ selected_shift }}">{{ num }}</a>
+                    </li>
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}&session={{ selected_session }}&department={{ selected_department }}&program={{ selected_program }}&shift={{ selected_shift }}">Next</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Next</span>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
     {% elif selected_shift %}
         <div class="alert alert-warning mt-4">
             <p>No active merit list found for the selected criteria. Please check back later or contact the admission office.</p>
@@ -122,17 +161,60 @@
             <p>Please select an academic session to view merit lists.</p>
         </div>
     {% endif %}
+
+    <!-- Fallback for Debugging -->
+    {% if merit_lists and not page_obj %}
+        <div class="alert alert-warning mt-4">
+            <p>Debug: Pagination failed, showing all merit lists directly.</p>
+        </div>
+        {% for merit_list in merit_lists %}
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-0">Merit List #{{ merit_list.list_number }}</h2>
+                </div>
+                <div class="card-body">
+                    <p>Debug: Entries count = {{ merit_list.entries.count }}</p>
+                    {% if merit_list.entries.exists %}
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th scope="col">#</th>
+                                    <th scope="col">Applicant Name</th>
+                                    <th scope="col">CNIC</th>
+                                    <th scope="col">Percentage</th>
+                                    <th scope="col">Marks</th>
+                                    <th scope="col">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for entry in merit_list.entries.all %}
+                                    <tr>
+                                        <th scope="row">{{ entry.merit_position }}</th>
+                                        <td>{{ entry.applicant.full_name }}</td>
+                                        <td>{{ entry.applicant.cnic }}</td>
+                                        <td>{{ entry.relevant_percentage|floatformat:2 }}%</td>
+                                        <td>{{ entry.marks_obtained }}</td>
+                                        <td><span class="badge bg-success">{{ entry.get_status_display }}</span></td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="alert alert-warning">No entries found for Merit List #{{ merit_list.list_number }}.</p>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    {% endif %}
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Get references to the dropdowns
     const sessionSelect = document.getElementById('session');
     const departmentSelect = document.getElementById('department');
     const programSelect = document.getElementById('program');
     const shiftSelect = document.getElementById('shift');
     
-    // When session changes, reset dependent dropdowns
     sessionSelect.addEventListener('change', function() {
         departmentSelect.value = '';
         programSelect.value = '';
@@ -140,38 +222,29 @@ document.addEventListener('DOMContentLoaded', function() {
         departmentSelect.disabled = !this.value;
         programSelect.disabled = true;
         shiftSelect.disabled = true;
-        
-        // Auto-submit form when session is selected
         if (this.value) {
             this.form.submit();
         }
     });
     
-    // When department changes, reset dependent dropdowns
     departmentSelect.addEventListener('change', function() {
         programSelect.value = '';
         shiftSelect.value = '';
         programSelect.disabled = !this.value;
         shiftSelect.disabled = true;
-        
-        // Auto-submit form when department is selected
         if (this.value) {
             this.form.submit();
         }
     });
     
-    // When program changes, reset shift dropdown
     programSelect.addEventListener('change', function() {
         shiftSelect.value = '';
         shiftSelect.disabled = !this.value;
-        
-        // Auto-submit form when program is selected
         if (this.value) {
             this.form.submit();
         }
     });
     
-    // Auto-submit form when shift is selected
     shiftSelect.addEventListener('change', function() {
         if (this.value) {
             this.form.submit();

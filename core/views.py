@@ -539,8 +539,14 @@ def faculty_detail_view(request, slug):
     }
     return render(request, 'faculty_detail.html', context)
 
+from django.shortcuts import render
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from admissions.models import AcademicSession
+from admissions.models import Applicant
+from academics.models import Department, Program
+from fee_management.models import   MeritList , MeritListEntry
+
 def merit_list_view(request):
-    # Get all academic sessions
     sessions = AcademicSession.objects.all()
     selected_session = request.GET.get('session')
     selected_department = request.GET.get('department')
@@ -551,15 +557,14 @@ def merit_list_view(request):
     programs = None
     shifts = None
     merit_lists = None
+    page_obj = None
     
     if selected_session:
-        # Get departments for selected session
         departments = Department.objects.filter(
             id__in=Applicant.objects.filter(session_id=selected_session).values_list('department_id', flat=True)
         ).distinct()
         
         if selected_department:
-            # Get programs for selected department
             programs = Program.objects.filter(
                 department_id=selected_department,
                 id__in=Applicant.objects.filter(
@@ -568,24 +573,41 @@ def merit_list_view(request):
                 ).values_list('program_id', flat=True)
             ).distinct()
             if selected_program:
-                # Get shifts for selected program
                 shifts = MeritList.objects.filter(
                     program_id=selected_program
                 ).values_list('shift', flat=True).distinct()
                 if selected_shift:
-                    # Get all merit lists for the selected criteria
                     merit_lists = MeritList.objects.filter(
                         academic_session_id=selected_session,
                         program_id=selected_program,
                         shift=selected_shift
-                    ).prefetch_related('entries__applicant').order_by('list_number')
+                    ).order_by('list_number')
+                    if merit_lists.exists():
+                        paginator = Paginator(merit_lists, 1)  # 1 merit list per page
+                        page_number = request.GET.get('page', 1)
+                        try:
+                            page_obj = paginator.page(page_number)
+                        except (PageNotAnInteger, EmptyPage):
+                            page_obj = paginator.page(1)  # Default to first page
+                    else:
+                        print("No merit lists found for the selected criteria.")
+    
+    print(f"Selected session: {selected_session}")
+    print(f"Selected department: {selected_department}")
+    print(f"Selected program: {selected_program}")
+    print(f"Selected shift: {selected_shift}")
+    print(f"merit_lists: {merit_lists}")
+    print(f"page_obj: {page_obj}")
+    if page_obj:
+        for merit_list in page_obj:
+            print(f"Merit List #{merit_list.list_number} entries: {merit_list.entries.count()}")
 
     context = {
         'sessions': sessions,
         'departments': departments,
         'programs': programs,
         'shifts': shifts,
-        'merit_lists': merit_lists,
+        'page_obj': page_obj,
         'selected_session': selected_session,
         'selected_department': selected_department,
         'selected_program': selected_program,
@@ -667,5 +689,4 @@ def logout_view(request):
     """
     user = request.user
     logger.info(f'User logout: user={user.first_name}, id={user.id}')
-    logout(request)
     return HttpResponseRedirect(reverse('home'))

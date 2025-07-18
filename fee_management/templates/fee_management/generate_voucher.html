@@ -1,7 +1,134 @@
 {% extends 'fee_management/office_base.html' %}
 {% block title %}Generate Fee Voucher{% endblock %}
 {% block content %}
+<style>
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+    orphans: 0;
+    widows: 0;
+  }
 
+  dialog {
+    width: 90%;
+    max-width: 1000px;
+    border: 2px solid #000;
+    background: #fff;
+    padding: 0;
+    margin: auto;
+    overflow: hidden;
+  }
+
+  @media print {
+    dialog {
+      border: none;
+      width: 100%;
+      height: 187mm; /* A4 landscape height minus margins */
+      margin: 0;
+      padding: 0;
+    }
+
+    .voucher-container {
+      display: flex !important;
+      flex-direction: row !important;
+      justify-content: space-between !important;
+      width: 100% !important;
+      height: 100% !important;
+      gap: 5mm !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      margin: 0;
+      padding: 0;
+    }
+
+    .voucher-copy {
+      page-break-inside: avoid !important;
+      height: 100% !important;
+      min-height: 0 !important;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      width: 32% !important;
+      break-inside: avoid !important;
+      overflow: hidden !important;
+      font-size: 0.85em !important;
+      border: 1px solid #000 !important;
+      background: #fff !important;
+    }
+
+    .office-details {
+      display: block !important;
+      visibility: visible !important;
+      font-size: 0.75em !important;
+      margin-top: 10px !important;
+      padding-top: 5px !important;
+    }
+
+    .modal-actions {
+      display: none !important;
+    }
+  }
+
+  .voucher-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 5mm;
+    height: 187mm; /* Match A4 landscape height */
+    padding: 10px;
+  }
+
+  .voucher-copy {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    padding: 10px;
+    border: 1px solid #000;
+    position: relative;
+    page-break-inside: avoid;
+  }
+
+  .office-details {
+    margin-top: 10px;
+    padding-top: 5px;
+    border-top: 1px dashed #000;
+    font-size: 0.75em;
+    position: relative;
+    bottom: 0;
+    width: 100%;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85em;
+  }
+
+  th, td {
+    padding: 4px;
+    border: 1px solid #000;
+    text-align: left;
+  }
+
+  th {
+    font-weight: bold;
+  }
+
+  .modal-actions {
+    text-align: center;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #000;
+  }
+
+  .modal-actions button {
+    padding: 8px 16px;
+    margin: 0 5px;
+    border: 1px solid #000;
+    background: #fff;
+    cursor: pointer;
+  }
+</style>
 
 <!-- Hero Section -->
 <div class="mb-6">
@@ -21,7 +148,7 @@
     <h2 class="text-xl font-semibold text-base-content">Enter Voucher Details</h2>
   </div>
   <div id="voucher-form-section" class="max-w-full mx-auto bg-base-100 rounded-xl shadow-xl p-8 mb-8 section-content">
-    <form method="post" class="space-y-6">
+    <form id="voucher-form" method="post" class="space-y-6">
       {% csrf_token %}
       {% if errors %}
       <div class="bg-error/10 border border-error rounded-lg p-4 text-error">
@@ -68,8 +195,10 @@
   </div>
 </div>
 
+<!-- Voucher Modal -->
+<dialog id="voucherModal" class="modal"></dialog>
+
 <script>
-// Add loading state
 function setLoading(isLoading) {
   const searchBtn = document.getElementById('search-btn');
   if (!searchBtn) return;
@@ -199,22 +328,78 @@ async function fetchSemesters() {
   }
 }
 
-// Add event listener for Enter key in roll number field
-document.getElementById('university_roll_no').addEventListener('keypress', function(e) {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    fetchSemesters();
-  }
-});
-
-// Add event listener for search button click when the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('voucher-form');
+  const modal = document.getElementById('voucherModal');
+  
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(form);
+    const generateBtn = document.getElementById('generate-btn');
+    
+    generateBtn.disabled = true;
+    generateBtn.innerHTML = `
+      <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      Generating...
+    `;
+    
+    try {
+      const response = await fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.errors) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'bg-error/10 border border-error rounded-lg p-4 text-error';
+        errorDiv.innerHTML = data.errors.map(error => `<p>${error}</p>`).join('');
+        form.querySelector('.bg-error')?.remove();
+        form.prepend(errorDiv);
+        return;
+      }
+      
+      modal.innerHTML = data.voucher_html;
+      modal.showModal();
+      
+      // Trigger print immediately
+      setTimeout(() => window.print(), 500);
+      
+      // Close modal after printing
+      window.onafterprint = () => {
+        modal.close();
+      };
+    } catch (error) {
+      console.error('Error:', error);
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'bg-error/10 border border-error rounded-lg p-4 text-error';
+      errorDiv.innerHTML = '<p>An error occurred while generating the voucher.</p>';
+      form.querySelector('.bg-error')?.remove();
+      form.prepend(errorDiv);
+    } finally {
+      generateBtn.disabled = false;
+      generateBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        Generate Voucher
+      `;
+    }
+  });
+  
   const searchBtn = document.getElementById('search-btn');
   if (searchBtn) {
     searchBtn.addEventListener('click', fetchSemesters);
   }
   
-  // Add event listener for Enter key in roll number field
   const rollNoInput = document.getElementById('university_roll_no');
   if (rollNoInput) {
     rollNoInput.addEventListener('keypress', function(e) {

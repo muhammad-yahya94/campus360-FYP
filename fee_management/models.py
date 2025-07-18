@@ -14,25 +14,22 @@ class FeeType(models.Model):
     def __str__(self):
         return self.name
 
+# JSONField import compatible with different Django versions
+try:
+    from django.db.models import JSONField
+except ImportError:
+    from django.contrib.postgres.fields import JSONField
+
 class SemesterFee(models.Model):
     fee_type = models.ForeignKey(FeeType, on_delete=models.CASCADE, related_name='semester_fees')
     is_active = models.BooleanField(default=True)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    computer_fee = models.BooleanField(default=False)
-    computer_fee_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    examination_fund = models.BooleanField(default=False)
-    examination_fund_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    tuition_fee = models.BooleanField(default=False)
-    tuition_fee_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    others = models.BooleanField(default=False)
-    others_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    evening_fund = models.BooleanField(default=False)
-    evening_fund_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     shift = models.CharField(max_length=10, choices=[
         ('morning', 'Morning'),
         ('evening', 'Evening'),
     ], help_text="Select the preferred shift for the students.")
+    dynamic_fees = JSONField(default=dict)  # Store dynamic fee heads and amounts
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
     def __str__(self):
         return f"Semester {self.fee_type.name} - {self.fee_type}: {self.total_amount}"
     
@@ -62,7 +59,11 @@ class StudentFeePayment(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.receipt_number:
-            self.receipt_number = f"A{uuid.uuid4().hex[:7].upper()}"
+            from datetime import datetime
+            now = datetime.now()    
+            # Format: YYYYMMDDHHMMSS
+            timestamp = now.strftime("%Y%m%d%H%M%S")
+            self.receipt_number = f"{timestamp}"
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -98,7 +99,11 @@ class FeeVoucher(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.voucher_id:
-            self.voucher_id = f"EDU{uuid.uuid4().hex[:8].upper()}"
+            from datetime import datetime
+            now = datetime.now()
+            # Format: YYYYMMDDHHMMSS
+            timestamp = now.strftime("%Y%m%d%H%M%S")
+            self.voucher_id = f"{timestamp}"
         super().save(*args, **kwargs)
 
     def mark_as_paid(self, payment, commit=True):

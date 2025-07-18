@@ -1,168 +1,339 @@
 {% extends 'faculty_staff/base_dashboard.html' %}
+{% load static %}
 
-{% block title %}Session Students - {{ session.name }}{% endblock %}
+{% block title %}Session Students{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+{% endblock %}
 
 {% block content %}
+<style>
+    .selecter_form{
+            border: 2px solid #000;
+            padding: 10px;
+    }
+</style>
 <div class="">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <!-- Header -->
         <div class="hero bg-primary text-primary-content rounded-lg shadow-lg mb-6">
             <div class="hero-content text-center py-6">
                 <div class="max-w-md">
-                    <h1 class="text-3xl sm:text-4xl font-bold mb-2">Students in Session: {{ session.name }}</h1>
-                    <p class="text-base sm:text-lg text-primary-content/90">Manage students enrolled in this session for {{ department.name }}</p>
+                    <h1 class="text-3xl sm:text-4xl font-bold mb-2">Session Students</h1>
+                    <p class="text-base sm:text-lg text-primary-content/90">View and manage students by academic session</p>
                 </div>
             </div>
         </div>
 
-        <!-- Search Form -->
-        <div class="card bg-base-100 shadow-lg">
+        <!-- Session Selector -->
+        <div class="card bg-base-100 shadow-lg mb-6">
             <div class="card-body">
                 <h2 class="card-title text-xl text-base-content mb-4">
-                    <i class="fas fa-search mr-2"></i>
-                    Search Students
+                    <i class="fas fa-calendar-alt mr-2"></i>
+                    Select Academic Session
                 </h2>
-                <form method="get" action="" class="space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="form-control">
-                            <label class="label">
-                                <span class="label-text text-sm text-base-content">Search by Roll No or Name</span>
-                            </label>
-                            <input type="text" name="q" class="input input-bordered text-sm text-base-content" placeholder="Search by Roll No or Name" value="{{ request.GET.q|default:'' }}">
-                        </div>
-                        <div class="form-control flex gap-2">
-                            <button type="submit" class="btn btn-sm btn-primary">
-                                <i class="fas fa-search mr-2"></i>
-                                Search
-                            </button>
-                            <a href="{% url 'faculty_staff:session_students' session.id %}" class="btn btn-sm btn-outline">
-                                <i class="fas fa-times mr-2"></i>
-                                Clear
-                            </a>
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="col-span-2">
+                        <div class="form-control   selecter_form">
+                            <select id="session-selector" class="select select-bordered w-full " style="width: 70% !important">
+                                <option value="">Select a session...</option>
+                                {% for session in academic_sessions %}
+                                    <option value="{{ session.id }}" {% if session.id == session.id %}selected{% endif %}>
+                                        {{ session.name }} ({{ session.start_year }} - {{ session.end_year }})
+                                    </option>
+                                {% endfor %}
+                            </select>
                         </div>
                     </div>
-                </form>
+                    <div>
+                        <div class="form-control">
+                            <select id="program-selector" class="select select-bordered w-full">
+                                <option value="all">All Programs</option>
+                                {% for program in programs %}
+                                    <option value="{{ program.id }}" {% if forloop.first %}selected{% endif %}>{{ program.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Students Table -->
-        <div class="card bg-base-100 shadow-lg">
+        {% comment %} <!-- Session and Program Filters -->
+        <div id="filter-container" class="card bg-base-100 shadow-lg mb-6">
             <div class="card-body">
                 <h2 class="card-title text-xl text-base-content mb-4">
-                    <i class="fas fa-users mr-2"></i>
-                    Students
+                    <i class="fas fa-filter mr-2"></i>
+                    Filter Students
                 </h2>
-                {% if students %}
-                    <!-- Table for sm and above -->
-                    <div class="overflow-x-auto hidden sm:block">
-                        <table class="table table-sm w-full">
-                            <thead class="bg-base-200">
-                                <tr>
-                                    <th class="text-xs text-base-content/80">Name</th>
-                                    <th class="text-xs text-base-content/80">University Roll No</th>
-                                    <th class="text-xs text-base-content/80 hidden sm:table-cell">College Roll No</th>
-                                    <th class="text-xs text-base-content/80 hidden sm:table-cell">Program</th>
-                                    <th class="text-xs text-base-content/80">Status</th>
-                                    <th class="text-xs text-base-content/80 hidden sm:table-cell">Enrollment Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for student in students %}
-                                <tr class="hover:bg-base-200/50">
-                                    <td class="text-xs text-base-content truncate max-w-[150px]">
-                                        <a href="{% url 'faculty_staff:student_detail' student.pk %}" class="link link-primary">
-                                            {{ student.applicant.full_name }}
-                                        </a>
-                                        {% if student.role == 'CR' %}
-                                            <span class="badge badge-warning ml-1">CR</span>
-                                        {% elif student.role == 'GR' %}
-                                            <span class="badge badge-secondary ml-1" style="background-color:#f472b6; color:white;">GR</span>
-                                        {% endif %}
-                                        <br>
-                                        <a href="{% url 'faculty_staff:student_semester_performance' student.pk %}" class="link link-secondary text-xs">
-                                            View Semester Performance
-                                        </a>
-                                    </td>
-                                    <td class="text-xs text-base-content">{{ student.university_roll_no|default:"N/A" }}</td>
-                                    <td class="text-xs text-base-content hidden sm:table-cell">{{ student.college_roll_no|default:"N/A" }}</td>
-                                    <td class="text-xs text-base-content hidden sm:table-cell">{{ student.program.name }}</td>
-                                    <td class="text-xs text-base-content">
-                                        <span class="badge badge-xs {% if student.current_status == 'active' %}badge-success{% elif student.current_status == 'graduated' %}badge-info{% else %}badge-error{% endif %}">
-                                            {{ student.current_status|title }}
-                                        </span>
-                                    </td>
-                                    <td class="text-xs text-base-content hidden sm:table-cell">{{ student.enrollment_date|date:"Y-m-d" }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Session</span>
+                        </label>
+                        <select id="session-selector" class="select select-bordered w-full">
+                            {% for session in academic_sessions %}
+                                <option value="{{ session.id }}" {% if session.id == session.id %}selected{% endif %}>
+                                    {{ session.name }} ({{ session.start_year }}-{{ session.end_year }})
+                                </option>
+                            {% endfor %}
+                        </select>
                     </div>
-                    <!-- Cards for mobile -->
-                    <div class="block sm:hidden space-y-4">
-                        {% for student in students %}
-                        <div class="card bg-base-100 shadow-md">
-                            <div class="card-body p-4">
-                                <div class="flex justify-between items-center">
-                                    <h3 class="text-sm font-semibold text-base-content truncate max-w-[200px]">
-                                        <a href="{% url 'faculty_staff:student_detail' student.pk %}" class="link link-primary">
-                                            {{ student.applicant.full_name }}
-                                        </a>
-                                        {% if student.role == 'CR' %}
-                                            <span class="badge badge-warning ml-1">CR</span>
-                                        {% elif student.role == 'GR' %}
-                                            <span class="badge badge-secondary ml-1" style="background-color:#f472b6; color:white;">GR</span>
-                                        {% endif %}
-                                        <br>
-                                        <a href="{% url 'faculty_staff:student_semester_performance' student.pk %}" class="link link-secondary text-xs">
-                                            View Semester Performance
-                                        </a>
-                                    </h3>
-                                    <span class="badge badge-xs {% if student.current_status == 'active' %}badge-success{% elif student.current_status == 'graduated' %}badge-info{% else %}badge-error{% endif %}">
-                                        {{ student.current_status|title }}
-                                    </span>
-                                </div>
-                                <p class="text-xs text-base-content">Roll No: {{ student.university_roll_no|default:"N/A" }}</p>
-                                <div class="collapse collapse-arrow">
-                                    <input type="checkbox" />
-                                    <div class="collapse-title text-xs text-base-content/70">More Details</div>
-                                    <div class="collapse-content text-xs text-base-content space-y-1">
-                                        <p><strong>College Roll No:</strong> {{ student.college_roll_no|default:"N/A" }}</p>
-                                        <p><strong>Program:</strong> {{ student.program.name }}</p>
-                                        <p><strong>Enrollment Date:</strong> {{ student.enrollment_date|date:"Y-m-d" }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Program</span>
+                        </label>
+                        <select id="program-selector" class="select select-bordered w-full">
+                            <option value="all">All Programs</option>
+                            {% for program in programs %}
+                                <option value="{{ program.id }}" {% if forloop.first %}selected{% endif %}>{{ program.name }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
-                {% else %}
-                    <div class="alert alert-info shadow-sm mt-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                </div>
+            </div>
+        </div> {% endcomment %}
+
+        <!-- Students Container -->
+        <div id="students-container" class="space-y-6">
+
+
+
+            {% if students_by_program %}
+                {% include 'faculty_staff/includes/student_list.html' %}
+            {% else %}
+                <div class="alert alert-info shadow-lg">
+                    <div>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current flex-shrink-0 w-6 h-6">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
-                        <div class="text-center">
-                            <h3 class="text-lg font-semibold text-base-content/70 mb-2">No Students Found</h3>
-                            <p class="text-base-content/50">No students are enrolled in {{ session.name }} for {{ department.name }}. Check the session or add new applicants.</p>
-                        </div>
+                        <span>Please select an academic session to view students.</span>
                     </div>
-                {% endif %}
-
-                <!-- Pagination -->
-                {% if students.has_other_pages %}
-                <div class="join mt-4 flex justify-center">
-                    {% if students.has_previous %}
-                    <a href="?page={{ students.previous_page_number }}&q={{ request.GET.q|default:'' }}" class="btn btn-sm btn-outline join-item">Previous</a>
-                    {% endif %}
-                    {% for num in students.paginator.page_range %}
-                    <a href="?page={{ num }}&q={{ request.GET.q|default:'' }}" class="btn btn-sm btn-outline join-item {% if students.number == num %}btn-active{% endif %}">{{ num }}</a>
-                    {% endfor %}
-                    {% if students.has_next %}
-                    <a href="?page={{ students.next_page_number }}&q={{ request.GET.q|default:'' }}" class="btn btn-sm btn-outline join-item">Next</a>
-                    {% endif %}
-                </div>
                 {% endif %}
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    $(document).ready(function() {
+        // Initialize Select2
+        $('#session-selector').select2({
+            placeholder: 'Select a session...',
+            allowClear: true,
+            width: '100%'
+        });
+
+        // Handle session selection change
+        $('#session-selector').on('change', function() {
+            const sessionId = $(this).val();
+            
+            if (sessionId) {
+                $('#program-filter').removeClass('hidden');
+                loadStudents(sessionId);
+            } else {
+                $('#students-container').html(`
+                    <div class="alert alert-info shadow-lg">
+                        <div>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current flex-shrink-0 w-6 h-6">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span>Please select an academic session to view students.</span>
+                        </div>
+                    </div>
+                `);
+                $('#program-filter').addClass('hidden');
+            }
+        });
+
+        // Initialize session and program selection on page load
+        $(document).ready(function() {
+            const sessionId = $('#session-selector').val();
+            if (sessionId) {
+                // Load students with first program selected
+                const firstProgram = $('#program-selector option[value!="all"]:first').val();
+                if (firstProgram) {
+                    $('#program-selector').val(firstProgram);
+                    loadStudents(sessionId);
+                }
+            }
+            
+            // Initialize Select2 only for session selector
+            $('#session-selector').select2({
+                width: '100%',
+                theme: 'bootstrap-5',
+                placeholder: 'Select Session'
+            });
+        });
+
+        // Handle program selection change
+        $('#program-selector').on('change', function() {
+            const sessionId = $('#session-selector').val();
+            if (sessionId) {
+                loadStudents(sessionId);
+            }
+        });
+
+        // Handle search input
+        let searchTimeout;
+        $('#search-input').on('input', function() {
+            clearTimeout(searchTimeout);
+            const sessionId = $('#session-selector').val();
+            const programId = $('#program-selector').val();
+            const searchQuery = $(this).val();
+            
+            if (sessionId) {
+                searchTimeout = setTimeout(() => {
+                    $.ajax({
+                        url: `/faculty/session/${sessionId}/students/`,
+                        type: 'GET',
+                        data: {
+                            program_id: programId,
+                            search: searchQuery
+                        },
+                        success: function(response) {
+                            if (response.html) {
+                                $('#students-container').html(response.html);
+                            }
+                        }
+                    });
+                }, 300);
+            }
+        });
+
+        // Function to load students via AJAX
+        function loadStudents(sessionId) {
+            const programId = $('#program-selector').val();
+            const url = `/faculty/session/${sessionId}/students/`;
+            
+            console.log('AJAX Request:', {
+                url: url,
+                program_id: programId,
+                session_id: sessionId
+            });
+            
+            // Show loading state
+            $('#students-container').html(`
+                <div class="flex justify-center items-center p-8">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                    <span class="ml-4">Loading students...</span>
+                </div>
+            `);
+            
+            $.ajax({
+                url: url,
+                type: 'GET',
+                data: {
+                    program_id: programId
+                },
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                beforeSend: function() {
+                    $('#students-container').html(`
+                        <div class="flex justify-center items-center py-8">
+                            <span class="loading loading-spinner loading-lg"></span>
+                        </div>
+                    `);
+                },
+                success: function(response) {
+                    console.log('AJAX Response:', response);
+                    
+                    if (response.html) {
+                        console.log('HTML Content:', response.html);
+                        $('#students-container').html(response.html);
+                        
+                        // Check if there are any table rows with student data
+                        const $studentRows = $('#students-container').find('tbody tr');
+                        console.log('Number of student rows:', $studentRows.length);
+                        
+                        // If no student rows found
+                        if ($studentRows.length === 0) {
+                            console.log('No student data rows found in the response');
+                            const noStudentsHtml = `
+                                <div class="alert alert-info shadow-lg">
+                                    <div>
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current flex-shrink-0 w-6 h-6">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <div>
+                                            <p>No students found for the selected criteria.</p>
+                                            <p class="text-sm opacity-75 mt-1">Session ID: ${sessionId} | Program ID: ${programId || 'All'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            $('#students-container').html(noStudentsHtml);
+                        } else {
+                            console.log('Found student rows:', $studentRows.length);
+                        }
+                    } else {
+                        console.error('Empty or invalid response received');
+                        const errorHtml = `
+                            <div class="alert alert-error shadow-lg">
+                                <div>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <div>
+                                        <p>Error loading students. Please try again.</p>
+                                        <p class="text-sm opacity-75 mt-1">Session ID: ${sessionId} | Program ID: ${programId || 'All'}</p>
+                                        <p class="text-xs opacity-50 mt-1">Check browser console for details</p>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        $('#students-container').html(errorHtml);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX Error:', {
+                        status: status,
+                        error: error,
+                        response: xhr.responseText,
+                        statusCode: xhr.status
+                    });
+                    
+                    let errorMessage = 'An error occurred while loading students.';
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMessage = xhr.responseJSON.error;
+                    } else if (xhr.status === 0) {
+                        errorMessage = 'Network error. Please check your connection.';
+                    } else if (xhr.status === 404) {
+                        errorMessage = 'The requested resource was not found.';
+                    } else if (xhr.status >= 500) {
+                        errorMessage = 'Server error. Please try again later.';
+                    }
+                    
+                    const errorHtml = `
+                        <div class="alert alert-error shadow-lg">
+                            <div>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <div>
+                                    <p>${errorMessage}</p>
+                                    <p class="text-sm opacity-75 mt-1">Status: ${xhr.status} ${status}</p>
+                                    <p class="text-xs opacity-50 mt-1">Check browser console for details</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    $('#students-container').html(errorHtml);
+                }
+            });
+        }
+
+        // If a session is pre-selected (from URL), trigger the change event
+        if ($('#session-selector').val()) {
+            $('#session-selector').trigger('change');
+        }
+    });
+</script>
 {% endblock %}

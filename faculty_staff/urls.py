@@ -29,7 +29,8 @@ urlpatterns = [
     path('staff/delete/<int:staff_id>/', views.delete_staff, name='delete_staff'),
 
     # ========== 4. Students & Enrollment ==========
-    path('session/<int:session_id>/students/', views.session_students, name='session_students'),
+    path('students/', views.session_students, name='session_students'),
+    path('session/<int:session_id>/students/', views.session_students, name='session_students_by_id'),
     path('student/<int:student_id>/', views.student_detail, name='student_detail'),
     path('edit-enrollment-status/', views.edit_enrollment_status, name='edit_enrollment_status'),
     path('view-students/<int:offering_id>', views.view_students, name='view_students'),

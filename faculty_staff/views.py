@@ -25,7 +25,8 @@ from django.db.utils import IntegrityError
 from django.db.models.functions import ExtractYear
 from django.forms.models import inlineformset_factory
 from django.http import JsonResponse
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
+from django.template.loader import get_template, render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
@@ -321,7 +322,7 @@ def add_staff(request):
     })
     
     
-    
+        
 @hod_required
 def edit_staff(request, staff_id):
     hod_department = request.user.teacher_profile.department
@@ -685,37 +686,71 @@ def teacher_lecture_details(request, teacher_id):
 
 
 @hod_required
-def session_students(request, session_id):
+def session_students(request, session_id=None):
     hod_department = request.user.teacher_profile.department
-    session = get_object_or_404(AcademicSession, id=session_id)
     programs = Program.objects.filter(department=hod_department)
-    applicants = Applicant.objects.filter(program__in=programs, session=session)  # Filter applicants by session
-    students = Student.objects.filter(
-        applicant__in=applicants,
-        program__in=programs
-    ).select_related('applicant', 'program')
-
-    search_query = request.GET.get('q', '').strip()
-    if search_query:
-        students = students.filter(
-            Q(university_roll_no__icontains=search_query) |
-            Q(applicant__full_name__icontains=search_query) |
-            Q(college_roll_no__icontains=search_query)
-        )
-
-    paginator = Paginator(students, 10)
-    page_number = request.GET.get('page')
-    page_students = paginator.get_page(page_number)
-
     academic_sessions = AcademicSession.objects.all().order_by('-start_year')
-
+    
+    students = Student.objects.none()
+    session = None
+    students_by_program = {}
+    
+    if session_id:
+        # Get the selected session
+        session = get_object_or_404(AcademicSession, id=session_id)
+        print(f"Debug - Selected Session: {session}")
+        print(f"Debug - Programs in department: {list(programs.values_list('name', flat=True))}")
+        
+        # Get students for this session and department's programs
+        students = Student.objects.filter(
+            applicant__session=session,
+            program__in=programs
+        ).select_related('applicant', 'program').order_by('program__name', 'university_roll_no')
+        
+        # Debug: Print initial student count and query
+        print(f"Debug - Initial student count: {students.count()}")
+        print(f"Debug - SQL Query: {str(students.query)}")
+        
+        # Get the selected program filter if any
+        program_id = request.GET.get('program_id')
+        print(f"Debug - Program ID from request: {program_id}")
+        
+        if program_id and program_id != 'all':
+            students = students.filter(program_id=program_id)
+            print(f"Debug - Filtered by program ID {program_id}, student count: {students.count()}")
+        
+        # Group students by program
+        for program in programs:
+            program_students = students.filter(program=program)
+            print(f"Debug - Program: {program.name}, Student count: {program_students.count()}")
+            if program_students.exists():
+                students_by_program[program] = program_students
+        
+        print(f"Debug - Final students_by_program keys: {list(students_by_program.keys())}")
+        print(f"Debug - Total students found: {sum(len(s) for s in students_by_program.values())}")
+    
+    # Handle AJAX requests
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        if not session_id:
+            return JsonResponse({'error': 'Session ID is required'}, status=400)
+            
+        html = render_to_string('faculty_staff/includes/student_list.html', {
+            'students_by_program': students_by_program,
+            'session': session,
+            'programs': programs,  # Add programs to AJAX context
+        })
+        return JsonResponse({'html': html})
+    
+    # For regular GET requests
     context = {
         'session': session,
-        'students': page_students,
         'department': hod_department,
         'academic_sessions': academic_sessions,
+        'students_by_program': students_by_program,
+        'programs': programs,  # Add programs to regular context
     }
     return render(request, 'faculty_staff/session_students.html', context)
+
 
 @hod_required
 def student_detail(request, student_id):

@@ -1,0 +1,46 @@
+{% for program, students in students_by_program.items %}
+<div class="card bg-base-100 shadow-lg mb-6">
+    <div class="card-body">
+        <h3 class="text-lg font-bold mb-4">{{ program.name }} Students</h3>
+        <div class="overflow-x-auto">
+            <table class="table table-sm w-full">
+                <thead class="bg-base-200">
+                    <tr>
+                        <th class="text-xs text-base-content/80">Name</th>
+                        <th class="text-xs text-base-content/80">University Roll No</th>
+                        <th class="text-xs text-base-content/80 hidden sm:table-cell">College Roll No</th>
+                        <th class="text-xs text-base-content/80">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in students %}
+                    <tr class="hover:bg-base-200/50">
+                        <td class="text-sm">
+                            <div class="flex items-center gap-2">
+                                <a href="{% url 'faculty_staff:student_detail' student.pk %}" class="link link-primary">
+                                    {{ student.user.get_full_name }}
+                                </a>
+                                {% if student.role %}
+                                    <span class="badge badge-secondary ml-1" style="background-color:#f472b6; color:white;">{{ student.role }}</span>
+                                {% endif %}
+                                <a href="{% url 'faculty_staff:student_semester_performance' student.pk %}" class="btn btn-sm btn-outline">
+                                    <i class="fas fa-chart-line mr-1"></i>
+                                    Performance
+                                </a>
+                            </div>
+                        </td>
+                        <td class="text-sm">{{ student.university_roll_no }}</td>
+                        <td class="text-sm hidden sm:table-cell">{{ student.college_roll_no }}</td>
+                        <td class="text-sm">
+                            <span class="badge badge-xs {% if student.current_status == 'active' %}badge-success{% else %}badge-warning{% endif %}">
+                                {{ student.get_current_status_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endfor %}

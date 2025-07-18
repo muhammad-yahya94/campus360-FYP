@@ -1,7 +1,165 @@
 {% extends 'fee_management/office_base.html' %}
 {% block title %}Generate Fee Voucher{% endblock %}
 {% block content %}
+<style>
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+    orphans: 0;
+    widows: 0;
+  }
 
+  dialog {
+    width: 90%;
+    max-width: 1000px;
+    border: 2px solid #000;
+    background: #fff;
+    padding: 0;
+    margin: auto;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  @media print {
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    dialog {
+      border: none;
+      width: 297mm; /* A4 landscape width */
+      height: 187mm; /* A4 landscape height minus margins */
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      display: block;
+      page-break-before: auto;
+      page-break-after: auto;
+      page-break-inside: avoid;
+    }
+
+    .voucher-container {
+      display: flex !important;
+      flex-direction: row !important;
+      justify-content: space-between !important;
+      width: 100% !important;
+      height: 100% !important;
+      gap: 3mm !important;
+      margin: 0 !important;
+      padding: 5mm !important;
+      box-sizing: border-box;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      transform: scale(0.95); /* Slight scaling to prevent overflow */
+      transform-origin: top left;
+    }
+
+    .voucher-copy {
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      height: 100% !important;
+      width: 32% !important;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 3mm !important;
+      border: 1px solid #000 !important;
+      background: #fff !important;
+      font-size: 0.75em !important; /* Reduced font size for better fit */
+      overflow: hidden !important;
+      box-sizing: border-box;
+    }
+
+    .office-details {
+      display: block !important;
+      visibility: visible !important;
+      font-size: 0.65em !important; /* Smaller font for office details */
+      margin-top: 5px !important;
+      padding-top: 3px !important;
+      border-top: 1px dashed #000;
+    }
+
+    .modal-actions {
+      display: none !important;
+    }
+
+    table {
+      font-size: 0.75em !important; /* Smaller table font size */
+      line-height: 1.2 !important;
+    }
+
+    th, td {
+      padding: 2px !important; /* Reduced padding for tables */
+    }
+  }
+
+  .voucher-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 5mm;
+    height: 187mm;
+    padding: 10px;
+    box-sizing: border-box;
+  }
+
+  .voucher-copy {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    padding: 10px;
+    border: 1px solid #000;
+    position: relative;
+    page-break-inside: avoid;
+    box-sizing: border-box;
+  }
+
+  .office-details {
+    margin-top: 10px;
+    padding-top: 5px;
+    border-top: 1px dashed #000;
+    font-size: 0.75em;
+    position: relative;
+    bottom: 0;
+    width: 100%;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85em;
+    line-height: 1.4;
+  }
+
+  th, td {
+    padding: 4px;
+    border: 1px solid #000;
+    text-align: left;
+  }
+
+  th {
+    font-weight: bold;
+  }
+
+  .modal-actions {
+    text-align: center;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #000;
+  }
+
+  .modal-actions button {
+    padding: 8px 16px;
+    margin: 0 5px;
+    border: 1px solid #000;
+    background: #fff;
+    cursor: pointer;
+  }
+</style>
 
 <!-- Hero Section -->
 <div class="mb-6">
@@ -21,7 +179,7 @@
     <h2 class="text-xl font-semibold text-base-content">Enter Voucher Details</h2>
   </div>
   <div id="voucher-form-section" class="max-w-full mx-auto bg-base-100 rounded-xl shadow-xl p-8 mb-8 section-content">
-    <form method="post" class="space-y-6">
+    <form id="voucher-form" method="post" class="space-y-6">
       {% csrf_token %}
       {% if errors %}
       <div class="bg-error/10 border border-error rounded-lg p-4 text-error">
@@ -47,7 +205,6 @@
           <label class="block mb-2 font-semibold text-base-content" for="semester">Semester</label>
           <select id="semester" name="semester" class="select select-bordered w-full rounded-lg" required>
             <option value="">Select Semester</option>
-            <!-- Populated by AJAX -->
           </select>
         </div>
       </div>
@@ -68,8 +225,10 @@
   </div>
 </div>
 
+<!-- Voucher Modal -->
+<dialog id="voucherModal" class="modal"></dialog>
+
 <script>
-// Add loading state
 function setLoading(isLoading) {
   const searchBtn = document.getElementById('search-btn');
   if (!searchBtn) return;
@@ -115,7 +274,6 @@ async function fetchSemesters() {
       throw new Error(data.error);
     }
     
-    // Update student info
     if (data.student) {
       studentInfo.innerHTML = `
         <div class="bg-base-200 p-4 rounded-lg mb-4">
@@ -129,7 +287,6 @@ async function fetchSemesters() {
       studentInfo.classList.remove('hidden');
     }
     
-    // Update semester dropdown
     if (data.available_semesters && data.available_semesters.length > 0) {
       semesterSelect.innerHTML = '<option value="">Select Semester</option>';
       
@@ -142,7 +299,6 @@ async function fetchSemesters() {
         semesterSelect.appendChild(option);
       });
       
-      // Show fee details when semester is selected
       semesterSelect.onchange = function() {
         const selectedOption = this.options[this.selectedIndex];
         const feeDetails = document.getElementById('fee-details');
@@ -164,10 +320,8 @@ async function fetchSemesters() {
                 <div class="grid grid-cols-2 gap-2 text-sm">
                   <div class="text-base-content/70">Amount:</div>
                   <div class="font-medium text-right">${fee.amount.toLocaleString()} PKR</div>
-                  
                   <div class="text-base-content/70">Shift:</div>
                   <div class="text-right">${fee.shift || 'N/A'}</div>
-                  
                   ${fee.due_date ? `
                     <div class="text-base-content/70">Due Date:</div>
                     <div class="text-right">${new Date(fee.due_date).toLocaleDateString()}</div>
@@ -199,22 +353,85 @@ async function fetchSemesters() {
   }
 }
 
-// Add event listener for Enter key in roll number field
-document.getElementById('university_roll_no').addEventListener('keypress', function(e) {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    fetchSemesters();
-  }
-});
-
-// Add event listener for search button click when the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('voucher-form');
+  const modal = document.getElementById('voucherModal');
+  let isPrinting = false;
+
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(form);
+    const generateBtn = document.getElementById('generate-btn');
+    
+    generateBtn.disabled = true;
+    generateBtn.innerHTML = `
+      <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      Generating...
+    `;
+    
+    try {
+      const response = await fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.errors) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'bg-error/10 border border-error rounded-lg p-4 text-error';
+        errorDiv.innerHTML = data.errors.map(error => `<p>${error}</p>`).join('');
+        form.querySelector('.bg-error')?.remove();
+        form.prepend(errorDiv);
+        return;
+      }
+      
+      modal.innerHTML = data.voucher_html;
+      modal.showModal();
+      
+      if (!isPrinting) {
+        isPrinting = true;
+        // Ensure modal is fully rendered before printing
+        setTimeout(() => {
+          window.print();
+          window.onafterprint = () => {
+            modal.close();
+            isPrinting = false;
+            window.onafterprint = null;
+          };
+        }, 1000); // Increased delay to ensure rendering
+      }
+      
+    } catch (error) {
+      console.error('Error:', error);
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'bg-error/10 border border-error rounded-lg p-4 text-error';
+      errorDiv.innerHTML = '<p>An error occurred while generating the voucher.</p>';
+      form.querySelector('.bg-error')?.remove();
+      form.prepend(errorDiv);
+    } finally {
+      generateBtn.disabled = false;
+      generateBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        Generate Voucher
+      `;
+    }
+  });
+  
   const searchBtn = document.getElementById('search-btn');
   if (searchBtn) {
     searchBtn.addEventListener('click', fetchSemesters);
   }
   
-  // Add event listener for Enter key in roll number field
   const rollNoInput = document.getElementById('university_roll_no');
   if (rollNoInput) {
     rollNoInput.addEventListener('keypress', function(e) {

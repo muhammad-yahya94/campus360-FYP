@@ -96,10 +96,13 @@ def admission_fee(request):
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.db.models import Q
+from django.template.loader import render_to_string
 from .models import SemesterFee, FeeType, AcademicSession, Program, FeeToProgram, Semester
 from django.contrib.auth.decorators import login_required
 from decimal import Decimal
 from django.http import JsonResponse
+
+import json
 
 @office_required
 def semester_fee(request):
@@ -115,7 +118,6 @@ def semester_fee(request):
     if query:
         semester_fees = semester_fees.filter(
             Q(fee_type__name__icontains=query) |
-            Q(amount__icontains=query) |
             Q(total_amount__icontains=query)
         )
     
@@ -134,9 +136,6 @@ def semester_fee(request):
         form_type = request.POST.get('form_type')
         
         if form_type == 'fee_type':
-            print('feetype_id:', request.POST.get('feetype_id'))
-            
-            # Convert empty string to None for ID fields
             feetype_id = int(request.POST.get('feetype_id')) if request.POST.get('feetype_id') and request.POST.get('feetype_id').isdigit() else None
             name = request.POST.get('fee_type_name')
             description = request.POST.get('fee_type_description', '')
@@ -150,7 +149,6 @@ def semester_fee(request):
             if not fee_type_errors:
                 try:
                     if feetype_id is not None:
-                        # Update existing FeeType
                         fee_type = get_object_or_404(FeeType, pk=feetype_id)
                         fee_type.name = name
                         fee_type.description = description
@@ -158,7 +156,6 @@ def semester_fee(request):
                         fee_type.save()
                         messages.success(request, 'Fee Type updated successfully.')
                     else:
-                        # Create new FeeType
                         FeeType.objects.create(
                             name=name,
                             description=description,
@@ -187,33 +184,21 @@ def semester_fee(request):
         
         elif form_type == 'semester_fee':
             fee_type_id = request.POST.get('fee_type')
-            amount = request.POST.get('amount')
             total_amount = request.POST.get('total_amount')
             shift = request.POST.get('shift')
-            computer_fee = request.POST.get('computer_fee') == 'on'
-            computer_fee_amount = request.POST.get('computer_fee_amount', '0')
-            examination_fund = request.POST.get('examination_fund') == 'on'
-            examination_fund_amount = request.POST.get('examination_fund_amount', '0')
-            tuition_fee = request.POST.get('tuition_fee') == 'on'
-            tuition_fee_amount = request.POST.get('tuition_fee_amount', '0')
-            others = request.POST.get('others') == 'on'
-            others_amount = request.POST.get('others_amount', '0')
-            evening_fund = request.POST.get('evening_fund') == 'on'
-            evening_fund_amount = request.POST.get('evening_fund_amount', '0')
             is_active = request.POST.get('is_active') == 'on'
             academic_session_id = request.POST.get('academic_session')
             program_ids = request.POST.getlist('programs')
             semester_ids = request.POST.getlist('semester_number')
+            dynamic_fees_json = request.POST.get('dynamic_fees')
             
             # Validation
             if not fee_type_id:
                 errors.append("Fee Type is required.")
-            if not amount:
-                errors.append("Amount is required.")
-            if not shift:
-                errors.append("Shift is required.")
             if not total_amount:
                 errors.append("Total Amount is required.")
+            if not shift:
+                errors.append("Shift is required.")
             if not academic_session_id:
                 errors.append("Academic Session is required.")
             if not program_ids:
@@ -222,26 +207,16 @@ def semester_fee(request):
                 errors.append("At least one Semester is required.")
             
             try:
-                amount = Decimal(amount) if amount else None
                 total_amount = Decimal(total_amount) if total_amount else None
-                computer_fee_amount = Decimal(computer_fee_amount) if computer_fee_amount else Decimal('0')
-                examination_fund_amount = Decimal(examination_fund_amount) if examination_fund_amount else Decimal('0')
-                tuition_fee_amount = Decimal(tuition_fee_amount) if tuition_fee_amount else Decimal('0')
-                others_amount = Decimal(others_amount) if others_amount else Decimal('0')
-                evening_fund_amount = Decimal(evening_fund_amount) if evening_fund_amount else Decimal('0')
-            except (ValueError, TypeError):
-                errors.append("Numeric fields must be valid numbers.")
-            
-            if computer_fee and computer_fee_amount <= 0:
-                errors.append("Computer Fee Amount must be greater than 0 when Computer Fee is checked.")
-            if examination_fund and examination_fund_amount <= 0:
-                errors.append("Examination Fund Amount must be greater than 0 when Examination Fund is checked.")
-            if tuition_fee and tuition_fee_amount <= 0:
-                errors.append("Tuition Fee Amount must be greater than 0 when Tuition Fee is checked.")
-            if others and others_amount <= 0:
-                errors.append("Others Amount must be greater than 0 when Others is checked.")
-            if evening_fund and evening_fund_amount <= 0:
-                errors.append("Evening Fund Amount must be greater than 0 when Evening Fund is checked.")
+                dynamic_fees = json.loads(dynamic_fees_json) if dynamic_fees_json else {}
+                # Validate dynamic fees
+                for head, amount in dynamic_fees.items():
+                    if not head:
+                        errors.append("Fee head name cannot be empty.")
+                    if not isinstance(amount, (int, float)) or amount < 0:
+                        errors.append(f"Invalid amount for {head}. Amount must be a non-negative number.")
+            except (ValueError, TypeError, json.JSONDecodeError):
+                errors.append("Invalid fee data provided.")
             
             try:
                 fee_type = FeeType.objects.get(pk=fee_type_id) if fee_type_id else None
@@ -258,19 +233,9 @@ def semester_fee(request):
                     # Update existing SemesterFee
                     edit_fee = get_object_or_404(SemesterFee, pk=request.POST['edit_id'])
                     edit_fee.fee_type = fee_type
-                    edit_fee.amount = amount
                     edit_fee.total_amount = total_amount
                     edit_fee.shift = shift
-                    edit_fee.computer_fee = computer_fee
-                    edit_fee.computer_fee_amount = computer_fee_amount
-                    edit_fee.examination_fund = examination_fund
-                    edit_fee.examination_fund_amount = examination_fund_amount
-                    edit_fee.tuition_fee = tuition_fee
-                    edit_fee.tuition_fee_amount = tuition_fee_amount
-                    edit_fee.others = others
-                    edit_fee.others_amount = others_amount
-                    edit_fee.evening_fund = evening_fund
-                    edit_fee.evening_fund_amount = evening_fund_amount
+                    edit_fee.dynamic_fees = dynamic_fees
                     edit_fee.is_active = is_active
                     edit_fee.save()
                     
@@ -295,19 +260,9 @@ def semester_fee(request):
                     # Create new SemesterFee
                     semester_fee = SemesterFee.objects.create(
                         fee_type=fee_type,
-                        amount=amount,
                         total_amount=total_amount,
                         shift=shift,
-                        computer_fee=computer_fee,
-                        computer_fee_amount=computer_fee_amount,
-                        examination_fund=examination_fund,
-                        examination_fund_amount=examination_fund_amount,
-                        tuition_fee=tuition_fee,
-                        tuition_fee_amount=tuition_fee_amount,
-                        others=others,
-                        others_amount=others_amount,
-                        evening_fund=evening_fund,
-                        evening_fund_amount=evening_fund_amount,
+                        dynamic_fees=dynamic_fees,
                         is_active=is_active
                     )
                     
@@ -382,6 +337,8 @@ def fee_verification(request):
         action = request.POST.get('action')
         
         if not voucher_id:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'error': 'Voucher ID is required.'}, status=400)
             messages.error(request, 'Voucher ID is required.')
             return redirect('fee_management:fee_verification')
             
@@ -391,12 +348,12 @@ def fee_verification(request):
             ).get(voucher_id=voucher_id)
             
             if action == 'verify':
-                # Check if already paid
                 if voucher.is_paid:
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({'error': 'This voucher has already been marked as paid.'}, status=400)
                     messages.warning(request, 'This voucher has already been marked as paid.')
                     payment = voucher.payment
                 else:
-                    # Check if payment already exists and is not linked to any other voucher
                     payment = StudentFeePayment.objects.filter(
                         student=voucher.student,
                         semester_fee=voucher.semester_fee
@@ -404,7 +361,6 @@ def fee_verification(request):
                     
                     try:
                         if not payment:
-                            # Create new payment record
                             payment = StudentFeePayment.objects.create(
                                 student=voucher.student,
                                 semester_fee=voucher.semester_fee,
@@ -412,32 +368,42 @@ def fee_verification(request):
                                 remarks=f'Payment verified against voucher {voucher_id}'
                             )
                         
-                        # Mark voucher as paid and link to payment
-                        if not voucher.is_paid:  # Double check before marking as paid
+                        if not voucher.is_paid:
                             voucher.mark_as_paid(payment)
-                            messages.success(
-                                request, 
+                            success_message = (
                                 f'Payment of {voucher.semester_fee.total_amount} PKR has been recorded ' 
                                 f'and voucher {voucher_id} marked as paid.'
                             )
+                            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                                context.update({
+                                    'voucher': voucher,
+                                    'student': voucher.student,
+                                    'semester_fee': voucher.semester_fee,
+                                    'payment_exists': bool(voucher.payment)
+                                })
+                                html = render_to_string('fee_management/voucher_details.html', context, request)
+                                return JsonResponse({'html': html, 'message': success_message})
+                            messages.success(request, success_message)
                     except ValueError as e:
+                        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                            return JsonResponse({'error': str(e)}, status=400)
                         messages.error(request, str(e))
                         return redirect('fee_management:fee_verification')
-                    
-                    messages.success(
-                        request, 
-                        f'Payment of {voucher.semester_fee.total_amount} PKR has been recorded ' 
-                        f'and voucher {voucher_id} marked as paid.'
-                    )
             
             context.update({
                 'voucher': voucher,
                 'student': voucher.student,
                 'semester_fee': voucher.semester_fee,
-                'payment_exists': bool(voucher.payment or (action == 'verify' and payment))
+                'payment_exists': bool(voucher.payment)
             })
             
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                html = render_to_string('fee_management/voucher_details.html', context, request)
+                return JsonResponse({'html': html})
+                
         except FeeVoucher.DoesNotExist:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'error': 'Invalid voucher ID. Please check and try again.'}, status=404)
             messages.error(request, 'Invalid voucher ID. Please check and try again.')
             return redirect('fee_management:fee_verification')
     
@@ -588,22 +554,31 @@ def generate_voucher(request):
         if not semester_id:
             errors.append("Semester is required.")
         
+        if errors:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'errors': errors}, status=400)
+            return render(request, 'fee_management/generate_voucher.html', {'errors': errors})
+        
         try:
             student = Student.objects.get(university_roll_no=roll_no)
         except Student.DoesNotExist:
             errors.append("Student with this roll number does not exist.")
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'errors': errors}, status=400)
             return render(request, 'fee_management/generate_voucher.html', {'errors': errors})
         
         try:
             semester = Semester.objects.get(pk=semester_id)
         except Semester.DoesNotExist:
             errors.append("Invalid semester selected.")
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'errors': errors}, status=400)
             return render(request, 'fee_management/generate_voucher.html', {'errors': errors})
         
         # Get student's shift from their program or applicant info
         student_shift = getattr(student.applicant, 'shift', None) or 'morning'  # Default to morning if shift not set
         
-        # Find matching SemesterFee for student's program, semester, shift and active session
+        # Find matching SemesterFee for student's program, semester, shift, and active session
         fee_to_program = FeeToProgram.objects.filter(
             semester_number__in=[semester],
             programs__in=[student.program],
@@ -622,6 +597,8 @@ def generate_voucher(request):
             
             if not fee_to_program:
                 errors.append(f"No fee schedule found for {student_shift} shift in this program and semester.")
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'errors': errors}, status=400)
                 return render(request, 'fee_management/generate_voucher.html', {'errors': errors})
         
         semester_fee = fee_to_program.SemesterFee
@@ -651,7 +628,7 @@ def generate_voucher(request):
             voucher.save(update_fields=['office'])
         
         # Prepare context for HTML
-        generated_at = datetime.now().strftime('%d %B %Y %I:%M %p %Z')  # Current date and time
+        generated_at = datetime.now().strftime('%d %B %Y %I:%M %p PKT')  # Use PKT timezone
         context = {
             'voucher_id': voucher.voucher_id,
             'student_name': student.applicant.full_name,
@@ -662,17 +639,7 @@ def generate_voucher(request):
             'shift': student_shift,
             'academic_session': fee_to_program.academic_session.name,
             'fee_type': semester_fee.fee_type.name,
-            'amount': str(semester_fee.amount),
-            'computer_fee': semester_fee.computer_fee,
-            'computer_fee_amount': str(semester_fee.computer_fee_amount) if semester_fee.computer_fee else '0',
-            'examination_fund': semester_fee.examination_fund,
-            'examination_fund_amount': str(semester_fee.examination_fund_amount) if semester_fee.examination_fund else '0',
-            'tuition_fee': semester_fee.tuition_fee,
-            'tuition_fee_amount': str(semester_fee.tuition_fee_amount) if semester_fee.tuition_fee else '0',
-            'others': semester_fee.others,
-            'others_amount': str(semester_fee.others_amount) if semester_fee.others else '0',
-            'evening_fund': semester_fee.evening_fund,
-            'evening_fund_amount': str(semester_fee.evening_fund_amount) if semester_fee.evening_fund else '0',
+            'dynamic_fees': semester_fee.dynamic_fees,  # Dictionary of fee heads and amounts
             'total_amount': str(semester_fee.total_amount),
             'due_date': voucher.due_date.strftime('%d %B %Y'),
             'office_name': voucher.office.name if voucher.office else 'N/A',
@@ -681,6 +648,11 @@ def generate_voucher(request):
             'generated_at': generated_at,
         }
         
-        return render(request, 'fee_management/voucher.html', context)
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            # Render voucher HTML for AJAX response
+            voucher_html = render_to_string('fee_management/voucher.html', context)
+            return JsonResponse({'voucher_html': voucher_html})
+        
+        return render(request, 'fee_management/generate_voucher.html', context)
     
     return render(request, 'fee_management/generate_voucher.html', {'errors': errors})

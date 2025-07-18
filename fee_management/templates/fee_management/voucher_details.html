@@ -1,0 +1,82 @@
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div>
+        <h3 class="text-lg font-medium mb-2">Student Information</h3>
+        <div class="space-y-2">
+            <p><span class="font-medium">Name:</span> {{ student.applicant.full_name }}</p>
+            <p><span class="font-medium">Roll No:</span> {{ student.university_roll_no }}</p>
+            <p><span class="font-medium">Program:</span> {{ student.program.name }}</p>
+            <p><span class="font-medium">Session:</span> {{ student.applicant.session.name }}</p>
+            <p><span class="font-medium">Semester:</span> {{ voucher.semester.name }}</p>
+        </div>
+    </div>
+    <div>
+        <h3 class="text-lg font-medium mb-2">Payment Details</h3>
+        <div class="space-y-2">
+            <p><span class="font-medium">Voucher ID:</span> {{ voucher.voucher_id }}</p>
+            <p><span class="font-medium">Fee Type:</span> {{ voucher.semester_fee.fee_type.name }}</p>
+            <p><span class="font-medium">Due Date:</span> {{ voucher.due_date|date:"d M Y" }}</p>
+            <p><span class="font-medium">Status:</span> 
+                {% if voucher.is_paid %}
+                    <span class="badge badge-success">Paid on {{ voucher.paid_at|date:"d M Y" }}</span>
+                {% else %}
+                    <span class="badge badge-warning">Pending</span>
+                {% endif %}
+            </p>
+            {% if voucher.payment %}
+            <p><span class="font-medium">Receipt #:</span> {{ voucher.payment.receipt_number }}</p>
+            {% elif not voucher.is_paid %}
+            <button class="btn btn-success verify-payment mt-4" data-voucher-id="{{ voucher.voucher_id }}">
+                <i class="fas fa-check-circle"></i> Mark as Paid
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="mt-6">
+    <h3 class="text-lg font-medium mb-2">Fee Breakdown</h3>
+    <div class="overflow-x-auto">
+        <table class="table table-zebra w-full">
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th class="text-right">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Tuition Fee</td>
+                    <td class="text-right">{{ voucher.semester_fee.tuition_fee_amount|floatformat:2 }}</td>
+                </tr>
+                {% if voucher.semester_fee.computer_fee %}
+                <tr>
+                    <td>Computer Fee</td>
+                    <td class="text-right">{{ voucher.semester_fee.computer_fee_amount|floatformat:2 }}</td>
+                </tr>
+                {% endif %}
+                {% if voucher.semester_fee.examination_fund %}
+                <tr>
+                    <td>Examination Fund</td>
+                    <td class="text-right">{{ voucher.semester_fee.examination_fund_amount|floatformat:2 }}</td>
+                </tr>
+                {% endif %}
+                {% if voucher.semester_fee.others %}
+                <tr>
+                    <td>Other Charges</td>
+                    <td class="text-right">{{ voucher.semester_fee.others_amount|floatformat:2 }}</td>
+                </tr>
+                {% endif %}
+                {% if voucher.semester_fee.evening_fund %}
+                <tr>
+                    <td>Evening Fund</td>
+                    <td class="text-right">{{ voucher.semester_fee.evening_fund_amount|floatformat:2 }}</td>
+                </tr>
+                {% endif %}
+                <tr class="font-bold">
+                    <td>Total Amount</td>
+                    <td class="text-right">PKR {{ voucher.semester_fee.total_amount|floatformat:2 }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

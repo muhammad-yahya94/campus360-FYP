@@ -15,7 +15,7 @@
         .grid-cols-1.sm\:grid-cols-2, .grid-cols-1.md\:grid-cols-3 {
             grid-template-columns: 1fr;
         }
-        .select2-container, .btn.w-full.sm\:w-auto {
+        .select, .btn.w-full.sm\:w-auto {
             width: 100% !important;
         }
         .semester-card {
@@ -68,11 +68,8 @@
                             <label class="label">
                                 <span class="label-text font-medium">Program</span>
                             </label>
-                            <select name="program_id" id="add_program_id" class="select select-bordered select2 w-full" required>
+                            <select name="program_id" id="add_program_id" class="select select-bordered w-full" required>
                                 <option value="">Select a program...</option>
-                                {% for program in programs %}
-                                <option value="{{ program.id }}">{{ program.name }}</option>
-                                {% endfor %}
                             </select>
                             <span id="add-program-error" class="text-error text-xs mt-1"></span>
                         </div>
@@ -80,11 +77,8 @@
                             <label class="label">
                                 <span class="label-text font-medium">Session</span>
                             </label>
-                            <select name="session_id" id="add_session_id" class="select select-bordered select2 w-full" required>
+                            <select name="session_id" id="add_session_id" class="select select-bordered w-full" required>
                                 <option value="">Select a session...</option>
-                                {% for session in academic_sessions %}
-                                <option value="{{ session.id }}">{{ session.name }}</option>
-                                {% endfor %}
                             </select>
                             <span id="add-session-error" class="text-error text-xs mt-1"></span>
                         </div>
@@ -156,31 +150,22 @@
                                 <span class="label-text font-medium">Search</span>
                             </label>
                             <input type="text" name="q" id="q" class="input input-bordered w-full" value="{{ search_query }}" placeholder="Search by name, description, program...">
+                            <span id="search-query-error" class="text-error text-xs mt-1"></span>
                         </div>
                         <div class="form-control">
                             <label class="label">
                                 <span class="label-text font-medium">Filter by Program</span>
                             </label>
-                            <select name="program_id" id="program_id_filter" class="select select-bordered select2 w-full">
+                            <select name="program_id" id="program_id_filter" class="select select-bordered w-full">
                                 <option value="">All Programs in {{ request.user.teacher_profile.department.name }}</option>
-                                {% for program in programs %}
-                                <option value="{{ program.id }}" {% if selected_program == program.id|stringformat:'s' %}selected{% endif %}>
-                                    {{ program.name }}
-                                </option>
-                                {% endfor %}
                             </select>
                         </div>
                         <div class="form-control">
                             <label class="label">
                                 <span class="label-text font-medium">Filter by Session</span>
                             </label>
-                            <select name="session_id" id="session_id_filter" class="select select-bordered select2 w-full">
+                            <select name="session_id" id="session_id_filter" class="select select-bordered w-full">
                                 <option value="">All Sessions</option>
-                                {% for session in academic_sessions %}
-                                <option value="{{ session.id }}" {% if selected_session == session.id|stringformat:'s' %}selected{% endif %}>
-                                    {{ session.name }}
-                                </option>
-                                {% endfor %}
                             </select>
                         </div>
                     </div>
@@ -272,11 +257,8 @@
                             <label class="label">
                                 <span class="label-text font-medium">Program</span>
                             </label>
-                            <select name="program_id" id="edit_program_id" class="select select-bordered select2 w-full" required>
+                            <select name="program_id" id="edit_program_id" class="select select-bordered w-full" required>
                                 <option value="">Select a program...</option>
-                                {% for program in programs %}
-                                <option value="{{ program.id }}">{{ program.name }}</option>
-                                {% endfor %}
                             </select>
                             <span id="edit-program-error" class="text-error text-xs mt-1"></span>
                         </div>
@@ -284,11 +266,8 @@
                             <label class="label">
                                 <span class="label-text font-medium">Session</span>
                             </label>
-                            <select name="session_id" id="edit_session_id" class="select select-bordered select2 w-full" required>
+                            <select name="session_id" id="edit_session_id" class="select select-bordered w-full" required>
                                 <option value="">Select a session...</option>
-                                {% for session in academic_sessions %}
-                                <option value="{{ session.id }}">{{ session.name }}</option>
-                                {% endfor %}
                             </select>
                             <span id="edit-session-error" class="text-error text-xs mt-1"></span>
                         </div>
@@ -350,61 +329,66 @@
         </dialog>
     </div>
 
-    <!-- Include Select2 CSS and JS -->
+    <!-- Include jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
     <script>
     $(document).ready(function() {
         let isSubmitting = false;
 
-        // Force focus on Select2 search input
-        $(document).on('select2:open', () => {
-            setTimeout(() => {
-                document.querySelector('.select2-search__field')?.focus();
-            }, 0);
-        });
+        // Initialize programs for a given select element
+        function initPrograms(selector) {
+            $.ajax({
+                url: "{% url 'faculty_staff:get_programs' %}",
+                dataType: 'json',
+                success: function(data) {
+                    const $select = $(selector);
+                    $select.empty().append('<option value="">Select a program...</option>');
+                    $.each(data.results, function(index, item) {
+                        $select.append(`<option value="${item.id}">${item.text}</option>`);
+                    });
+                    // Set selected program for filter if provided
+                    if (selector === '#program_id_filter' && "{{ selected_program }}") {
+                        $select.val("{{ selected_program }}");
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error fetching programs:', error);
+                    $(selector).empty().append('<option value="">Error loading programs</option>');
+                }
+            });
+        }
 
-        // Initialize Select2
-        $('#add_program_id').select2({
-            placeholder: 'Select a program...',
-            minimumInputLength: 0,
-            allowClear: true,
-            width: '100%'
-        });
-        $('#add_session_id').select2({
-            placeholder: 'Select a session...',
-            minimumInputLength: 0,
-            allowClear: true,
-            width: '100%'
-        });
-        $('#program_id_filter').select2({
-            placeholder: 'All Programs in {{ request.user.teacher_profile.department.name }}',
-            minimumInputLength: 0,
-            allowClear: true,
-            width: '100%'
-        });
-        $('#session_id_filter').select2({
-            placeholder: 'All Sessions',
-            minimumInputLength: 0,
-            allowClear: true,
-            width: '100%'
-        });
-        $('#edit_program_id').select2({
-            placeholder: 'Select a program...',
-            minimumInputLength: 0,
-            allowClear: true,
-            width: '100%',
-            dropdownParent: $('#editSemesterModal')
-        });
-        $('#edit_session_id').select2({
-            placeholder: 'Select a session...',
-            minimumInputLength: 0,
-            allowClear: true,
-            width: '100%',
-            dropdownParent: $('#editSemesterModal')
-        });
+        // Initialize sessions for a given select element
+        function initSessions(selector) {
+            $.ajax({
+                url: "{% url 'faculty_staff:get_academic_sessions' %}",
+                dataType: 'json',
+                success: function(data) {
+                    const $select = $(selector);
+                    $select.empty().append('<option value="">Select a session...</option>');
+                    $.each(data.results, function(index, item) {
+                        $select.append(`<option value="${item.id}">${item.text}</option>`);
+                    });
+                    // Set selected session for filter if provided
+                    if (selector === '#session_id_filter' && "{{ selected_session }}") {
+                        $select.val("{{ selected_session }}");
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error fetching sessions:', error);
+                    $(selector).empty().append('<option value="">Error loading sessions</option>');
+                }
+            });
+        }
+
+        // Initialize programs and sessions for all forms
+        initPrograms('#add_program_id');
+        initSessions('#add_session_id');
+        initPrograms('#program_id_filter');
+        initSessions('#session_id_filter');
+        initPrograms('#edit_program_id');
+        initSessions('#edit_session_id');
 
         // Add Semester Form Submission
         $('#add-semester-form').on('submit', function(e) {
@@ -450,7 +434,7 @@
                         `;
                         $('.semester-form').prepend(successAlert);
                         $('#add-semester-form')[0].reset();
-                        $('#add_program_id, #add_session_id').val(null).trigger('change');
+                        $('#add_program_id, #add_session_id').val('');
                         setTimeout(() => location.reload(), 1000);
                     } else {
                         const errorAlert = `
@@ -484,8 +468,8 @@
         $(document).on('click', '.edit-semester', function() {
             const data = $(this).data();
             $('#edit_semester_id').val(data.semesterId);
-            $('#edit_program_id').val(data.programId).trigger('change');
-            $('#edit_session_id').val(data.sessionId).trigger('change');
+            $('#edit_program_id').val(data.programId);
+            $('#edit_session_id').val(data.sessionId);
             $('#edit_number').val(data.number);
             $('#edit_name').val(data.name);
             $('#edit_description').val(data.description);
@@ -572,7 +556,7 @@
         // Reset modal form when closed
         $('#editSemesterModal').on('close', function() {
             $('#edit-semester-form')[0].reset();
-            $('#edit_program_id, #edit_session_id').val(null).trigger('change');
+            $('#edit_program_id, #edit_session_id').val('');
             $('.text-error').text('');
             $('#editSemesterModal .modal-box .alert').remove();
         });
@@ -626,4 +610,4 @@
     });
     </script>
 </div>
-{% endblock %}   
+{% endblock %}

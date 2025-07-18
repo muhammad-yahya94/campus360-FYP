@@ -6,13 +6,6 @@ from . import views
 app_name = 'faculty_staff'   
 
 urlpatterns = [
-    # ========== 8. Department Funds ==========
-    path('department-funds/', views.department_funds_management, name='department_funds_management'),
-    path('department-funds/view/<int:fund_id>/', views.view_department_fund, name='view_department_fund'),
-    path('department-funds/get-programs/', views.get_programs_fund, name='get_programs_fund'),
-    path('department-funds/get-semesters/', views.get_semesters_fund, name='get_semesters_fund'),
-    
-    # ========== 1. Authentication ==========
 
     # ========== 1. Authentication ==========
     path('login/', views.login_view, name='login'),
@@ -54,6 +47,8 @@ urlpatterns = [
     path('search-timetable-slots/', views.search_timetable_slots, name='search_timetable_slots'),
     path('my-timetable/', views.my_timetable, name='my_timetable'),
     path('timetable/replacement/create/', views.lecture_replacement_create, name='lecture_replacement_create'),
+  
+  
     # ========== 7. Search APIs ==========
     path('search-courses/', views.search_courses, name='search_courses'),
     path('search-teachers/', views.search_teachers, name='search_teachers'),
@@ -98,7 +93,6 @@ urlpatterns = [
  
     # ========== 13. Notice Board ==========
     path('notices/', views.notice_board, name='notice_board'),
-    path('notices/toggle-pin/<int:notice_id>/', views.toggle_pin_notice, name='toggle_pin_notice'),
     
     # ========== 14. Attendance ==========
     path('attendance/<int:offering_id>/', views.attendance, name='attendance'),
@@ -112,6 +106,9 @@ urlpatterns = [
     path('semester/add/', views.add_semester, name='add_semester'),
     path('semester/edit/', views.edit_semester, name='edit_semester'),
     path('semester/delete/', views.delete_semester, name='delete_semester'),
+    # New AJAX endpoints
+    path('get-programs/', views.get_programs, name='get_programs'),
+    path('get-academic-sessions/', views.get_academic_sessions, name='get_academic_sessions'),
 
     # ========== 15. Teacher Courses ==========
     path('teacher-course-list/', views.teacher_course_list, name='teacher_course_list'),
@@ -127,5 +124,9 @@ urlpatterns = [
     path('create-quiz/<int:course_offering_id>/', views.create_quiz, name='create_quiz'),
     path('get-quiz/<int:quiz_id>/', views.get_quiz, name='get_quiz'),
 
-
+    # ========== 18. Department Funds ==========
+    path('department-funds/', views.department_funds_management, name='department_funds_management'),
+    path('department-funds/view/<int:fund_id>/', views.view_department_fund, name='view_department_fund'),
+    path('department-funds/get-programs/', views.get_programs_fund, name='get_programs_fund'),
+    path('department-funds/get-semesters/', views.get_semesters_fund, name='get_semesters_fund'),
 ]

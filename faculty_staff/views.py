@@ -1008,7 +1008,7 @@ def search_teachers(request):
     return JsonResponse({'results': [], 'more': False})
 
 def get_academic_sessions(request):
-    sessions = AcademicSession.objects.all()
+    sessions = AcademicSession.objects.filter(is_active=True)
     results = [{'id': session.id, 'text': session.name} for session in sessions]
     return JsonResponse({'results': results})
 
@@ -2103,7 +2103,12 @@ def lecture_replacement_create(request):
         except Teacher.DoesNotExist:
             messages.error(request, 'Invalid teacher selected.')
         except ValidationError as e:
-            messages.error(request, f'Error creating replacement: {e}')
+            error_message = 'Error creating replacement: '
+            if hasattr(e, 'message_dict') and '__all__' in e.message_dict:
+                error_message += e.message_dict['__all__'][0]
+            else:
+                error_message += str(e)
+            messages.error(request, error_message)
         except Exception as e:
             messages.error(request, f'An unexpected error occurred: {e}')
 
@@ -2779,13 +2784,13 @@ def grade_submission(request):
 def notice_board(request):
     if request.user.teacher_profile and request.user.teacher_profile.designation == 'head_of_department':
         # HoD view: Manage all notices
-        notices = Notice.objects.all().order_by('-is_pinned', '-created_at')
+        notices = Notice.objects.all().order_by('-created_at')
     elif request.user.teacher_profile:
         # Teacher view: View only notices relevant to their department's programs
         department = request.user.teacher_profile.department
         notices = Notice.objects.filter(
             Q(programs__department=department) | Q(sessions__semesters__program__department=department)
-        ).distinct().order_by('-is_pinned', '-created_at')
+        ).distinct().order_by('-created_at')
     else:
         # Student view: Filter by enrolled program and session
         student = getattr(request.user, 'student_profile', None)
@@ -2800,23 +2805,21 @@ def notice_board(request):
                     Q(valid_until__gte=timezone.now()) | Q(valid_until__isnull=True),
                     is_active=True,
                     valid_from__lte=timezone.now(),
-                ).distinct().order_by('-is_pinned', '-created_at')
+                ).distinct().order_by('-created_at')
         else:
             notices = Notice.objects.none()
 
     if request.method == 'POST':
         if 'create_notice' in request.POST:
-            if not request.user.teacher_profile or request.user.teacher_profile.designation != 'head_of_department':
-                messages.error(request, "Only the Head of Department can create notices.")
+            if not request.user.teacher_profile:
+                messages.error(request, "Only teachers can create notices.")
                 return redirect('notice_board')
 
             title = request.POST.get('title')
             content = request.POST.get('content')
             notice_type = request.POST.get('notice_type', 'general')
-            priority = request.POST.get('priority', 'medium')
             program_ids = request.POST.getlist('programs')
             session_ids = request.POST.getlist('sessions')
-            is_pinned = request.POST.get('is_pinned') == 'on'
             valid_from = request.POST.get('valid_from') or timezone.now()
             valid_until = request.POST.get('valid_until')
             attachment = request.FILES.get('attachment')
@@ -2827,7 +2830,6 @@ def notice_board(request):
                 content=content,
                 notice_type=notice_type,
                 priority=priority,
-                is_pinned=is_pinned,
                 valid_from=valid_from,
                 valid_until=valid_until if valid_until else None,
                 attachment=attachment,
@@ -2842,14 +2844,15 @@ def notice_board(request):
         elif 'toggle_active' in request.POST:
             notice_id = request.POST.get('notice_id')
             notice = get_object_or_404(Notice, id=notice_id)
-            if request.user.teacher_profile and request.user.teacher_profile.designation == 'head_of_department':
+            if request.user.teacher_profile:
                 notice.is_active = not notice.is_active
                 notice.save()
                 messages.success(request, f"Notice '{notice.title}' {'activated' if notice.is_active else 'deactivated'} successfully.")
         elif 'edit_notice' in request.POST:
             notice_id = request.POST.get('notice_id')
             notice = get_object_or_404(Notice, id=notice_id)
-            if request.user.teacher_profile and request.user.teacher_profile.designation == 'head_of_department':
+            if request.user.teacher_profile and (request.user.teacher_profile.designation == 'head_of_department' or 
+                                              notice.created_by == request.user.teacher_profile):
                 notice.title = request.POST.get('title')
                 notice.content = request.POST.get('content')
                 notice.notice_type = request.POST.get('notice_type')
@@ -2866,7 +2869,8 @@ def notice_board(request):
         elif 'delete_notice' in request.POST:
             notice_id = request.POST.get('notice_id')
             notice = get_object_or_404(Notice, id=notice_id)
-            if request.user.teacher_profile and request.user.teacher_profile.designation == 'head_of_department':
+            if request.user.teacher_profile and (request.user.teacher_profile.designation == 'head_of_department' or 
+                                              notice.created_by == request.user.teacher_profile):
                 notice.delete()
                 messages.success(request, "Notice deleted successfully.")
 
@@ -2875,8 +2879,26 @@ def notice_board(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    programs = Program.objects.all()  # Fetch all programs for the form
-    sessions = AcademicSession.objects.all()  # Fetch all sessions for the form
+    # Get programs based on user type
+    if request.user.teacher_profile:
+        if request.user.teacher_profile.designation == 'head_of_department':
+            # HoD can see all programs in their department
+            programs = Program.objects.filter(department=request.user.teacher_profile.department)
+        else:
+            # Regular teachers can see programs they're associated with
+            programs = Program.objects.filter(
+                Q(department=request.user.teacher_profile.department) |
+                Q(courses__assigned_teachers=request.user.teacher_profile)
+            ).distinct()
+    else:
+        # For students, show only their enrolled program
+        student = getattr(request.user, 'student_profile', None)
+        if student and hasattr(student, 'program'):
+            programs = Program.objects.filter(id=student.program.id)
+        else:
+            programs = Program.objects.none()
+
+    sessions = AcademicSession.objects.filter(is_active=True) 
 
     return render(request, 'faculty_staff/notice_board.html', {
         'notices': page_obj,
@@ -2885,16 +2907,6 @@ def notice_board(request):
         'notice_types': dict(Notice.NOTICE_TYPES),
         'priorities': dict(Notice.PRIORITY_LEVELS)
     })
-
-@login_required
-@require_http_methods(['POST'])
-def toggle_pin_notice(request, notice_id):
-    notice = get_object_or_404(Notice, id=notice_id)
-    if request.user.teacher_profile and request.user.teacher_profile.designation == 'head_of_department':
-        notice.is_pinned = not notice.is_pinned
-        notice.save()
-        return JsonResponse({'is_pinned': notice.is_pinned, 'message': 'Pin status updated.'})
-    return JsonResponse({'error': 'Permission denied'}, status=403)
 
 
 @login_required
@@ -3261,19 +3273,22 @@ def semester_management(request):
     program_id = request.GET.get('program_id', '')
     session_id = request.GET.get('session_id', '')
     print(f'Semester management search query: {search_query}, program_id: {program_id}, session_id: {session_id}')
+
     # Filter semesters by department
     semesters = Semester.objects.filter(program__department=hod_department).order_by('program', 'number')
+    
+    # Apply filters
     if search_query:
         semesters = semesters.filter(
             Q(name__icontains=search_query) |
             Q(description__icontains=search_query) |
-            Q(program__name__icontains=search_query) |
-            Q(session=search_query)
+            Q(program__name__icontains=search_query)
         )
     if program_id:
         semesters = semesters.filter(program__id=program_id, program__department=hod_department)
     if session_id:
-        session = semesters.filter(session__id=session_id)
+        semesters = semesters.filter(session__id=session_id)
+
     # Debug: Log total semesters and active/inactive breakdown
     total_semesters = semesters.count()
     active_semesters = semesters.filter(is_active=True).count()
@@ -3283,10 +3298,9 @@ def semester_management(request):
         logger.debug(f'Semester: {semester.name}, Program: {semester.program.name}, Is Active: {semester.is_active}')
 
     # Pagination
-    paginator = Paginator(semesters, 20)  # 10 semesters per page
+    paginator = Paginator(semesters, 20)  # 20 semesters per page
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    # logger.debug(f'Paginated page: {page_number}, Items: {page_obj.object_list.count()}')
 
     # Debug: Log programs and their active status
     programs = Program.objects.filter(department=hod_department)
@@ -3301,10 +3315,25 @@ def semester_management(request):
         'search_query': search_query,
         'selected_program': program_id,
         'selected_session': session_id,
-        'academic_sessions': AcademicSession.objects.all().order_by('-start_year'),  # Add all sessions
+        'academic_sessions': AcademicSession.objects.filter(is_active=True).order_by('-start_year'),
     }
     return render(request, 'faculty_staff/semester_management.html', context)
 
+
+
+
+@hod_required
+def get_programs(request):
+    """
+    AJAX view to fetch programs for the Head of Department's department.
+    """
+    if not hasattr(request.user, 'teacher_profile'):
+        return JsonResponse({'success': False, 'message': 'User has no teacher profile.'}, status=403)
+    
+    hod_department = request.user.teacher_profile.department
+    programs = Program.objects.filter(department=hod_department).order_by('name')
+    results = [{'id': program.id, 'text': program.name} for program in programs]
+    return JsonResponse({'results': results})
 
 @hod_required
 def add_semester(request):

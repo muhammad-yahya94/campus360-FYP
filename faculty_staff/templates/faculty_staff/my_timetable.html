@@ -62,7 +62,7 @@
 
   <!-- Controls Row -->
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-    <a href="{% url 'faculty_staff:course_offerings' %}" class="no-print inline-flex items-center px-4 py-2 border border-indigo-500 text-indigo-500 bg-white hover:bg-indigo-50 rounded-lg shadow-sm">
+    <a href="{% url 'faculty_staff:course_offerings' %}" class="inline-flex items-center px-4 py-2 border border-indigo-500 text-indigo-500 bg-white hover:bg-indigo-50 rounded-lg shadow-sm">
       <i class="fas fa-arrow-left mr-2"></i>
       Back to Course Offerings
     </a>
@@ -85,9 +85,6 @@
           {% endfor %}
         </select>
       </div>
-      <button onclick="printTimetable()" class="no-print inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-        <i class="fas fa-print mr-2"></i> Print Timetable
-      </button>
     </div>
   </div>
 
@@ -101,7 +98,7 @@
       <span class="text-sm font-medium bg-gray-100 px-3 py-1 rounded-full">{{ academic_session.name|default:'No Active Session' }}</span>
     </div>
     
-    {% if timetable_data %}
+    {% if timetable_data %}   
       <div class="space-y-4">
         {% for day in timetable_data %}
           <div class="border border-gray-200 rounded-lg overflow-hidden">
@@ -115,11 +112,7 @@
                   {% if slot.shift == 'Morning' %}bg-gradient-to-br from-blue-50 to-blue-100 border-l-4 border-blue-400
                   {% elif slot.shift == 'Evening' %}bg-gradient-to-br from-purple-50 to-purple-100 border-l-4 border-purple-400
                   {% else %}bg-gradient-to-br from-green-50 to-green-100 border-l-4 border-green-400{% endif %}
-                  hover:shadow-xl" 
-                  data-tooltip="Program: {{ slot.program }}"
-                  data-course-code="{{ slot.course_code }}"
-                  data-course-name="{{ slot.course_name }}"
-                  data-program="{{ slot.program }}">
+                  hover:shadow-xl">
                   <div class="p-5">
                     <!-- Course Header -->
                     <div class="flex items-start justify-between mb-3">
@@ -138,25 +131,42 @@
                         </h3>
                         <p class="text-sm font-medium text-gray-600">{{ slot.course_name }}</p>
                       </div>
+                      <div class="text-right">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                          {% if slot.shift == 'Morning' %}bg-blue-100 text-blue-800
+                          {% elif slot.shift == 'Evening' %}bg-purple-100 text-purple-800
+                          {% else %}bg-green-100 text-green-800{% endif %}">
+                          <i class="fas fa-clock mr-1"></i>{{ slot.start_time }}–{{ slot.end_time }}
+                        </span>
+                      </div>
                     </div>
                     
-                    <!-- Program Info -->
-                    <div class="mt-3 p-3 bg-white bg-opacity-50 rounded-lg border border-gray-100">
-                      <p class="text-sm text-gray-700">
-                        <i class="fas fa-graduation-cap mr-2"></i>{{ slot.program|default:'No Program' }}
-                      </p>
+                    <!-- Teacher and Program Info -->
+                    <div class="mt-4 p-3 bg-white rounded-lg border border-gray-100 shadow-sm">
+                      <div class="flex items-start">
+                        <div class="flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center 
+                          {% if slot.shift == 'Morning' %}bg-blue-100 text-blue-600
+                          {% elif slot.shift == 'Evening' %}bg-purple-100 text-purple-600
+                          {% else %}bg-green-100 text-green-600{% endif %}">
+                          <i class="fas fa-chalkboard-teacher"></i>
+                        </div>
+                        <div class="ml-3">
+                          <p class="text-sm font-medium text-gray-900">{{ slot.teacher|default:'Not Assigned' }}</p>
+                          <p class="text-xs text-gray-500 flex items-center">
+                            <i class="fas fa-graduation-cap mr-1"></i>{{ slot.program|default:'No Program' }}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                     
-                    <!-- Location and Time -->
-                    <div class="mt-3 space-y-2">
-                      <p class="text-sm text-gray-600 flex items-center">
-                        <i class="fas fa-map-marker-alt mr-2 w-4 text-center"></i>
-                        {{ slot.venue }} - Room {{ slot.room_no }}
-                      </p>
-                      <p class="text-sm text-gray-600 flex items-center">
-                        <i class="fas fa-clock mr-2 w-4 text-center"></i>
-                        {{ slot.start_time }}–{{ slot.end_time }}
-                      </p>
+                    <!-- Location Info -->
+                    <div class="mt-3 flex items-center text-xs text-gray-600">
+                      <span class="inline-flex items-center">
+                        <i class="fas fa-map-marker-alt mr-1.5"></i>
+                        {{ slot.venue }}
+                        <span class="mx-1">•</span>
+                        Room {{ slot.room_no }}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -185,195 +195,73 @@ function toggleDay(dayId) {
   }
 }
 
-function printTimetable() {
-  try {
-    // Create a new container for the print content
-    const printContent = document.querySelector('.print-section').cloneNode(true);
-    printContent.className = 'print-container';
+// Function to reorder days with current day first
+function reorderDays() {
+  const daysContainer = document.querySelector('.space-y-4');
+  if (!daysContainer) return;
+  
+  const days = Array.from(daysContainer.children);
+  if (days.length === 0) return;
+  
+  // Get current day (0 = Sunday, 1 = Monday, etc.)
+  const currentDay = new Date().getDay();
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const currentDayName = dayNames[currentDay];
+  
+  // Find current day element
+  const currentDayElement = days.find(day => {
+    const dayLabel = day.querySelector('.text-lg')?.textContent.toLowerCase();
+    return dayLabel === currentDayName;
+  });
+  
+  if (currentDayElement) {
+    // Move current day to top
+    daysContainer.insertBefore(currentDayElement, daysContainer.firstChild);
     
-    // Get the current academic session
-    const academicSession = document.querySelector('.academic-session')?.textContent || 'Current Session';
-    
-    // Create a new window for printing
-    const printWindow = window.open('', '_blank');
-    
-    // Check if window was opened (not blocked by popup blocker)
-    if (!printWindow || printWindow.closed || typeof printWindow.closed === 'undefined') {
-      alert('Please allow popups for this site to use the print feature.');
-      return;
-    }
-    
-    // Create the print document
-    const printDoc = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>My Timetable - ${document.title}</title>
-        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-        <style>
-          @page {
-            size: A4 landscape;
-            margin: 0.5cm;
-          }
-          body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            font-size: 12px;
-          }
-          .print-header {
-            text-align: center;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-          }
-          .print-header h1 {
-            margin: 0 0 5px 0;
-            font-size: 24px;
-            color: #1e40af;
-          }
-          .print-footer {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 10px;
-            color: #6b7280;
-          }
-          /* Ensure cards don't break across pages */
-          .border-gray-200 {
-            page-break-inside: avoid;
-            break-inside: avoid;
-          }
-          /* Force grid layout for printing */
-          .grid {
-            display: grid !important;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1rem;
-          }
-          /* Print-specific styles */
-          @media print {
-            .teacher-section {
-              page-break-after: always;
-              margin-bottom: 2rem;
-            }
-            .teacher-section h2 {
-              color: #1e40af;
-              font-size: 1.5rem;
-              margin-bottom: 1.5rem;
-            }
-            body {
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-              font-size: 13px;
-              line-height: 1.4;
-            }
-            [class*='from-'] {
-              background: #fff !important;
-              border: 1px solid #e5e7eb !important;
-            }
-            .border-gray-200 {
-              break-inside: avoid;
-              page-break-inside: avoid;
-              margin-bottom: 16px;
-            }
-            .print-header {
-              border-bottom: 2px solid #e5e7eb;
-              padding-bottom: 15px;
-              margin-bottom: 20px;
-            }
-            .bg-white, .print-tooltip, .bg-opacity-50 {
-              background-color: #fff !important;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-              border: 1px solid #f3f4f6 !important;
-            }
-            [class*='from-'], [class*='to-'] {
-              background-image: none !important;
-            }
-            .text-gray-600, .text-gray-700, .text-gray-900 {
-              color: #1f2937 !important;
-            }
-            .print-tooltip {
-              display: block !important;
-              opacity: 1 !important;
-              visibility: visible !important;
-              position: static !important;
-              transform: none !important;
-              margin-top: 8px;
-              padding: 8px 12px;
-              border-radius: 6px;
-              background-color: #f9fafb !important;
-              border: 1px solid #e5e7eb !important;
-              font-size: 12px;
-            }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="print-header">
-          <h1>${document.querySelector('h1').textContent}</h1>
-          <p>${document.querySelector('.text-lg').textContent}</p>
-          <p>Generated on: ${new Date().toLocaleString()}</p>
-        </div>
-        ${printContent.outerHTML}
-        <div class="print-footer">
-          Generated by Campus360 - ${window.location.hostname}
-        </div>
-        <script>
-          // Auto-print when the print window loads
-          window.onload = function() {
-            // Expand all days for printing
-            document.querySelectorAll('[id^="slots-"]').forEach(el => {
-              el.classList.remove('hidden');
-            });
-            
-            setTimeout(function() {
-              window.print();
-            }, 500);
-          };
-        <\/script>
-      </body>
-      </html>
-    `;
-    
-    printWindow.document.open();
-    printWindow.document.write(printDoc);
-    printWindow.document.close();
-    
-    // Focus the window (helps with some browsers)
-    printWindow.focus();
-    
-  } catch (error) {
-    console.error('Print error:', error);
-    alert('An error occurred while preparing the print view. Please try again.');
+    // Show current day and hide others
+    days.forEach(day => {
+      const dayLabel = day.querySelector('.text-lg')?.textContent.toLowerCase();
+      const slots = day.querySelector('[id^="slots-"]');
+      const icon = day.querySelector('i.fa-chevron-down, i.fa-chevron-up');
+      
+      if (dayLabel === currentDayName) {
+        // Show current day
+        if (slots) slots.classList.remove('hidden');
+        if (icon) {
+          icon.classList.remove('fa-chevron-down');
+          icon.classList.add('fa-chevron-up');
+        }
+      } else {
+        // Hide other days
+        if (slots) slots.classList.add('hidden');
+        if (icon) {
+          icon.classList.remove('fa-chevron-up');
+          icon.classList.add('fa-chevron-down');
+        }
+      }
+    });
   }
 }
 
-// Initialize all days as expanded
-document.querySelectorAll('[id^="slots-"]').forEach(el => el.classList.remove('hidden'));
-
-// Add event listener for print button
 document.addEventListener('DOMContentLoaded', function() {
-  // Add click handler for print button if it exists
-  const printBtn = document.getElementById('print-timetable-btn');
-  if (printBtn) {
-    printBtn.addEventListener('click', printTimetable);
-  }
+  // Reorder days with current day first and hide others
+  reorderDays();
   
-  // Initialize tooltips
-  document.querySelectorAll('[data-tooltip]').forEach(el => {
-    el.classList.add('group', 'relative');
-    const tooltip = document.createElement('div');
-    tooltip.className = 'hidden group-hover:block absolute z-10 w-48 p-2 text-sm text-white bg-gray-800 rounded shadow-lg -top-12 left-1/2 transform -translate-x-1/2';
-    tooltip.innerHTML = el.getAttribute('data-tooltip');
-    el.appendChild(tooltip);
+  // Add click handlers for day toggles
+  document.querySelectorAll('[id^="toggle-icon-"]').forEach(icon => {
+    const dayId = icon.id.replace('toggle-icon-', '');
+    const dayElement = document.querySelector(`[onclick="toggleDay('${dayId}')"]`);
+    if (dayElement) {
+      dayElement.addEventListener('click', () => toggleDay(dayId));
+    }
   });
 });
 </script>
 
 <style>
-  /* Ensure Tailwind group-hover works */
-  .group:hover .group-hover\:block {
-    display: block !important;
+  /* Day toggle styles */
+  [id^="slots-"] {
+    transition: all 0.3s ease;
   }
   
   /* Print-specific styles */
@@ -381,7 +269,6 @@ document.addEventListener('DOMContentLoaded', function() {
     .no-print {
       display: none !important;
     }
-    
     .print-section {
       padding: 0;
       box-shadow: none;

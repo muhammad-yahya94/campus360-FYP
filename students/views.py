@@ -1631,7 +1631,7 @@ def semester_fees(request):
             'has_payments': any(sem['is_fully_paid'] for sem in semester_list)
         }
         
-        return render(request, 'semester_fees.html', context)
+        return render(request, 'students/semester_fees.html', context)
         
     except Student.DoesNotExist:
         messages.error(request, 'Student profile not found.')

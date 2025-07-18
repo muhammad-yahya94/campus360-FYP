@@ -4,15 +4,7 @@
 
 {% block extra_css %}
 <style>
-  @media print {
-    body * { visibility: hidden; }
-    .print-section, .print-section * { visibility: visible; }
-    .print-section { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; }
-    .no-print { display: none !important; }
-    @page { size: A4 landscape; margin: 0.5cm; }
-    .timetable-day { page-break-inside: avoid; margin-bottom: 20px; }
-    .timetable-slot { page-break-inside: avoid; }
-  }
+
 
 </style>  
 {% endblock %}
@@ -33,6 +25,7 @@
       <i class="fas fa-arrow-left mr-2"></i>Back to Course Offerings
     </a>
     <div class="flex items-center gap-4">
+
       <label for="session-filter" class="text-sm font-medium text-gray-700">Select Session:</label>
       <select id="session-filter" onchange="window.location.href='?session_id=' + this.value + '&shift=' + document.getElementById('shift-filter').value" class="border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500">
         {% for session in academic_sessions %}
@@ -308,6 +301,8 @@
         icon.classList.add('fa-chevron-down');
       }
     }
+
+
 
     document.addEventListener('DOMContentLoaded', function() {
       console.log('DOMContentLoaded fired');

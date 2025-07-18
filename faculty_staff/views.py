@@ -2150,6 +2150,7 @@ def my_timetable(request):
         day_slots = sorted(
             [
                 {
+                    'teacher': slot.course_offering.teacher.user.get_full_name(),
                     'course_code': slot.course_offering.course.code,
                     'course_name': slot.course_offering.course.name,
                     'venue': slot.venue.name,

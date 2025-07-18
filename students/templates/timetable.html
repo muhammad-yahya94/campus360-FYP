@@ -22,28 +22,84 @@
         My Schedule
       </h2>
       {% if timetable_data %}
-        <div class="space-y-4">
+        <div class="space-y-4" id="timetable-days">
           {% for day in timetable_data %}
-            <div class="card bg-base-100 border border-base-200 rounded-lg">
-              <button class="card-title w-full flex justify-between items-center p-4 bg-base-200 hover:bg-base-300 transition duration-200" onclick="toggleDay('{{ day.day_value }}')">
-                <span class="text-lg font-semibold text-base-content">{{ day.day_label }}</span>
-                <i id="toggle-icon-{{ day.day_value }}" class="fas fa-chevron-down text-base-content"></i>
+            <div class="card bg-base-100 border border-base-200 rounded-lg timetable-day" data-day="{{ day.day_value }}" {% if day.is_today %}data-today="true"{% endif %}>
+              <button class="card-title w-full flex justify-between items-center p-4 bg-base-200 hover:bg-base-300 transition duration-200">
+                <div class="flex items-center">
+                  <span class="text-lg font-semibold text-base-content">{{ day.day_label }}</span>
+                  {% if day.is_today %}
+                    <span class="ml-2 px-2 py-0.5 bg-primary/10 text-primary text-xs font-medium rounded-full">Today</span>
+                  {% endif %}
+                </div>
+                <i id="toggle-icon-{{ day.day_value }}" class="fas fa-chevron-{% if day.is_today %}up{% else %}down{% endif %} text-base-content"></i>
               </button>
-              <div id="slots-{{ day.day_value }}" class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div id="slots-{{ day.day_value }}" class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 {% if not day.is_today %}hidden{% endif %}">
                 {% for slot in day.slots %}
-                  <div class="card shadow-md transition duration-200 {% if slot.shift == 'Morning' %}bg-primary/10 border-primary/20 hover:bg-primary/20{% elif slot.shift == 'Evening' %}bg-secondary/10 border-secondary/20 hover:bg-secondary/20{% else %}bg-accent/10 border-accent/20 hover:bg-accent/20{% endif %}" data-tooltip="Program: {{ slot.program }}  Semester: {{ slot.semester }}">
-                    <div class="card-body">
-                      <p class="font-semibold text-lg {% if slot.shift == 'Morning' %}text-primary{% elif slot.shift == 'Evening' %}text-secondary{% else %}text-accent{% endif %}">{{ slot.course_code }} - {{ slot.course_name }}</p>
-                      <p class="text-sm text-base-content/70">
-                        <i class="fas fa-user-tie mr-1"></i>
-                        Teacher: {{ slot.teacher_name }}{% if slot.replaced_for %} (for {{ slot.replaced_for }}){% endif %}
-                      </p>
-                      <p class="text-sm text-base-content/70"><i class="fas fa-map-marker-alt mr-1"></i>{{ slot.venue }} - Room {{ slot.room_no }}</p>
-                      <p class="text-sm text-base-content/70"><i class="fas fa-clock mr-1"></i>{{ slot.start_time }}–{{ slot.end_time }}</p>
+                  <div class="relative overflow-hidden rounded-xl shadow-lg transition-all duration-300 transform hover:scale-[1.02] 
+                    {% if slot.shift == 'Morning' %}bg-gradient-to-br from-blue-50 to-blue-100 border-l-4 border-blue-400
+                    {% elif slot.shift == 'Evening' %}bg-gradient-to-br from-purple-50 to-purple-100 border-l-4 border-purple-400
+                    {% else %}bg-gradient-to-br from-green-50 to-green-100 border-l-4 border-green-400{% endif %}
+                    hover:shadow-xl" data-tooltip="Program: {{ slot.program }}  Semester: {{ slot.semester }}">
+                    <div class="p-5">
+                      <!-- Course Header -->
+                      <div class="flex items-start justify-between mb-3">
+                        <div>
+                          <h3 class="text-lg font-bold 
+                            {% if slot.shift == 'Morning' %}text-blue-900
+                            {% elif slot.shift == 'Evening' %}text-purple-900
+                            {% else %}text-green-900{% endif %} mb-1">
+                            {{ slot.course_code }} - {{ slot.course_name }}
+                          </h3>
+                        </div>
+                        <div class="text-right">
+                          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                            {% if slot.shift == 'Morning' %}bg-blue-100 text-blue-800
+                            {% elif slot.shift == 'Evening' %}bg-purple-100 text-purple-800
+                            {% else %}bg-green-100 text-green-800{% endif %}">
+                            <i class="fas fa-clock mr-1"></i>{{ slot.start_time }}–{{ slot.end_time }}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <!-- Teacher and Program Info -->
+                      <div class="mt-4 p-3 bg-white rounded-lg border border-gray-100 shadow-sm">
+                        <div class="flex items-start">
+                          <div class="flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center 
+                            {% if slot.shift == 'Morning' %}bg-blue-100 text-blue-600
+                            {% elif slot.shift == 'Evening' %}bg-purple-100 text-purple-600
+                            {% else %}bg-green-100 text-green-600{% endif %}">
+                            <i class="fas fa-chalkboard-teacher"></i>
+                          </div>
+                          <div class="ml-3">
+                            <div class="flex items-center">
+                              <p class="text-sm font-medium {% if slot.replaced_for %}text-amber-600{% else %}text-gray-900{% endif %}">
+                                {{ slot.teacher_name|default:'Not Assigned' }}
+                                {% if slot.replaced_for %}
+                                  <span class="ml-1 text-xs text-amber-500">(Substitute for {{ slot.replaced_for }})</span>
+                                {% endif %}
+                              </p>
+                            </div>
+                            <p class="text-xs text-gray-500 flex items-center">
+                              <i class="fas fa-graduation-cap mr-1"></i>{{ slot.program|default:'No Program' }}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Location Info -->
+                      <div class="mt-3 flex items-center text-xs text-gray-600">
+                        <span class="inline-flex items-center">
+                          <i class="fas fa-map-marker-alt mr-1.5"></i>
+                          {{ slot.venue }}
+                          <span class="mx-1">•</span>
+                          Room {{ slot.room_no }}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 {% empty %}
-                  <p class="col-span-full text-center text-base-content/70">No slots scheduled for {{ day.day_label }}.</p>
+                  <p class="col-span-full text-center text-gray-500">No slots scheduled for {{ day.day_label }}.</p>
                 {% endfor %}
               </div>
             </div>
@@ -64,28 +120,81 @@
 
 {% block extra_js %}
 <script>
-function toggleDay(dayId) {
-  const slots = document.getElementById(`slots-${dayId}`);
-  const icon = document.getElementById(`toggle-icon-${dayId}`);
-  if (slots.classList.contains('hidden')) {
-    slots.classList.remove('hidden');
-    icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
-  } else {
-    slots.classList.add('hidden');
-    icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+// Toggle function is now handled by the click event listeners
+
+// Function to reorder days with current day first
+function reorderDays() {
+  const daysContainer = document.querySelector('.space-y-4');
+  if (!daysContainer) return;
+  
+  const days = Array.from(daysContainer.children);
+  if (days.length === 0) return;
+  
+  // Get current day (0 = Sunday, 1 = Monday, etc.)
+  const currentDay = new Date().getDay();
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const currentDayName = dayNames[currentDay];
+  
+  // Find current day element
+  const currentDayElement = days.find(day => {
+    const dayLabel = day.querySelector('.text-lg')?.textContent.toLowerCase();
+    return dayLabel === currentDayName;
+  });
+  
+  if (currentDayElement) {
+    // Move current day to top
+    daysContainer.insertBefore(currentDayElement, daysContainer.firstChild);
+    
+    // Show current day and hide others
+    days.forEach(day => {
+      const dayLabel = day.querySelector('.text-lg')?.textContent.toLowerCase();
+      const slots = day.querySelector('[id^="slots-"]');
+      const icon = day.querySelector('i.fa-chevron-down, i.fa-chevron-up');
+      
+      if (dayLabel === currentDayName) {
+        // Show current day
+        if (slots) slots.classList.remove('hidden');
+        if (icon) {
+          icon.classList.remove('fa-chevron-down');
+          icon.classList.add('fa-chevron-up');
+        }
+      } else {
+        // Hide other days
+        if (slots) slots.classList.add('hidden');
+        if (icon) {
+          icon.classList.remove('fa-chevron-up');
+          icon.classList.add('fa-chevron-down');
+        }
+      }
+    });
   }
 }
 
-// Initialize all days as expanded
-document.querySelectorAll('[id^="slots-"]').forEach(el => el.classList.remove('hidden'));
-
-// Tooltip functionality
-document.querySelectorAll('[data-tooltip]').forEach(el => {
-  const tooltip = document.createElement('div');
-  tooltip.innerHTML = el.dataset.tooltip;
-  tooltip.className = 'absolute hidden group-hover:block bg-base-300 text-base-content text-xs rounded p-2 -top-10 left-1/2 transform -translate-x-1/2 z-10';
-  el.classList.add('group', 'relative');
-  el.appendChild(tooltip);
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+  // Reorder days with current day first and hide others
+  reorderDays();
+  
+  // Add click handlers for day toggles
+  document.querySelectorAll('.timetable-day').forEach(day => {
+    const dayLabel = day.querySelector('.text-lg')?.textContent.toLowerCase();
+    const dayButton = day.querySelector('button');
+    if (dayButton) {
+      dayButton.addEventListener('click', () => {
+        const slots = day.querySelector('[id^="slots-"]');
+        const icon = day.querySelector('i.fa-chevron-down, i.fa-chevron-up');
+        if (slots && icon) {
+          if (slots.classList.contains('hidden')) {
+            slots.classList.remove('hidden');
+            icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+          } else {
+            slots.classList.add('hidden');
+            icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+          }
+        }
+      });
+    }
+  });
 });
 </script>
 <style>

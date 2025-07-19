@@ -63,6 +63,11 @@
                         </a>
                     </li>
                     <li>
+                        <a href="{% url 'fee_management:manage_merit_lists' %}" class="{% if request.resolver_match.url_name == 'manage_merit_lists' %}active{% endif %} text-base">
+                            <i class="fas fa-check-circle text-lg w-6"></i> Merit Lists
+                        </a>
+                    </li>
+                    <li>
                         <a href="{% url 'fee_management:office_logout' %}" class="text-error hover:bg-error hover:text-error-content text-base">
                             <i class="fas fa-sign-out-alt text-lg w-6"></i> Logout
                         </a>
@@ -260,6 +265,11 @@
                         <li>
                             <a href="{% url 'fee_management:fee_verification' %}" class="{% if request.resolver_match.url_name == 'fee_verification' %}active{% endif %} text-lg py-3">
                                 <i class="fas fa-check-circle text-lg w-6"></i> Fee Verification
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'fee_management:manage_merit_lists' %}" class="{% if request.resolver_match.url_name == 'manage_merit_lists' %}active{% endif %} text-base">
+                                <i class="fas fa-check-circle text-lg w-6"></i> Merit Lists
                             </a>
                         </li>
                         <div class="divider"></div>

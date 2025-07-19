@@ -5,18 +5,39 @@ from django.shortcuts import render
 app_name = 'fee_management'
 
 urlpatterns = [
-    path('treasure-office/', views.treasure_office_view, name='treasure_office'),
-    path('office-login/', views.office_login_view, name='office_login'),
-    path('office-logout/', views.office_logout_view, name='office_logout'),
-    path('office-dashboard/', lambda request: render(request, 'fee_management/office_dashboard.html'), name='office_dashboard'),
-    path('applicant-verification/', views.applicant_verification, name='applicant_verification'),
-    path('student-management/', views.student_management, name='student_management'),
-    path('admission-fee/', views.admission_fee, name='admission_fee'),
-    path('semester-fee/', views.semester_fee, name='semester-fee'),
-    path('get_programs/', views.get_programs, name='get_programs'),
-    path('get_semesters/', views.get_semesters, name='get_semesters'),
-    path('get_semesters_by_roll/', views.get_semesters_by_roll, name='get_semesters_by_roll'),
-    path('generate-voucher/', views.generate_voucher, name='generate_voucher'),
-    path('student/generate-voucher/', views.student_generate_voucher, name='student_generate_voucher'),
-    path('fee-verification/', views.fee_verification, name='fee_verification'),
+    # ========== 1. Authentication & Dashboard ==========
+    path('treasure-office/', views.treasure_office_view, name='treasure_office'),  # 1.1 Treasure Office Home
+    path('office-login/', views.office_login_view, name='office_login'),  # 1.2 Office Login
+    path('office-logout/', views.office_logout_view, name='office_logout'),  # 1.3 Office Logout
+    path('office-dashboard/', lambda request: render(request, 'fee_management/office_dashboard.html'), name='office_dashboard'),  # 1.4 Office Dashboard
+    
+    # ========== 2. Applicant Management ==========
+    path('applicant-verification/', views.applicant_verification, name='applicant_verification'),  # 2.1 Applicant Verification List
+    path('view-applicant/<int:applicant_id>/', views.view_applicant, name='view_applicant'),  # 2.2 View Applicant Details
+    path('verify-applicant/<int:applicant_id>/', views.verify_applicant, name='verify_applicant'),  # 2.3 Verify Applicant
+    
+    # ========== 3. Student Management ==========
+    path('student-management/', views.student_management, name='student_management'),  # 3.1 Student Management
+    # path('add-student/', views.add_student_manually, name='add_student_manually'),  # 3.2 Add Student (Commented Out)
+    
+    # ========== 4. Fee Management ==========
+    path('admission-fee/', views.admission_fee, name='admission_fee'),  # 4.1 Admission Fee
+    path('semester-fee/', views.semester_fee, name='semester-fee'),  # 4.2 Semester Fee
+    path('fee-verification/', views.fee_verification, name='fee_verification'),  # 4.3 Fee Verification
+    
+    # ========== 5. Voucher Management ==========
+    path('generate-voucher/', views.generate_voucher, name='generate_voucher'),  # 5.1 Generate Voucher (Admin)
+    path('student/generate-voucher/', views.student_generate_voucher, name='student_generate_voucher'),  # 5.2 Student Voucher Generation
+    
+    # ========== 6. Merit List Management ==========
+    path('generate-merit-list/', views.generate_merit_list, name='generate_merit_list'),  # 6.1 Generate Merit List
+    path('view-merit-list/<int:merit_list_id>/', views.view_merit_list, name='view_merit_list'),  # 6.2 View Merit List
+    path('manage-merit-lists/', views.manage_merit_lists, name='manage_merit_lists'),  # 6.3 Manage Merit Lists
+    path('grant-admission-single/<int:entry_id>/', views.grant_admission_single, name='grant_admission_single'),  # 6.4 Grant Admission (Single)
+    path('get-next-list-number/', views.get_next_list_number, name='get_next_list_number'),  # 6.5 Get Next List Number
+    
+    # ========== 7. AJAX Endpoints ==========
+    path('get_programs/', views.get_programs, name='get_programs'),  # 7.1 Get Programs (AJAX)
+    path('get_semesters/', views.get_semesters, name='get_semesters'),  # 7.2 Get Semesters (AJAX)
+    path('get_semesters_by_roll/', views.get_semesters_by_roll, name='get_semesters_by_roll'),  # 7.3 Get Semesters by Roll (AJAX)
 ] 

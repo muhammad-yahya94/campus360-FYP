@@ -2,7 +2,7 @@ from django.db import models
 from django.utils import timezone
 from students.models import Student
 from academics.models import Program, Semester
-from admissions.models import AcademicSession
+from admissions.models import AcademicSession , Applicant ,AcademicQualification
 import uuid
 from faculty_staff.models import Office
 
@@ -124,3 +124,77 @@ class FeeVoucher(models.Model):
     def __str__(self):
         status = "Paid" if self.is_paid else "Unpaid"
         return f"Voucher {self.voucher_id} - {self.student} - {self.semester} ({status})"
+
+class MeritList(models.Model):
+    SHIFT_CHOICES = [
+        ('morning', 'Morning'),
+        ('evening', 'Evening'),
+    ]
+    program = models.ForeignKey(Program, on_delete=models.CASCADE, related_name='merit_lists')
+    list_number = models.PositiveIntegerField(help_text="Sequence number of this merit list")
+    shift = models.CharField(max_length=10, choices=SHIFT_CHOICES, help_text="Shift for the merit list", default='Morning')
+    academic_session = models.ForeignKey(AcademicSession,on_delete=models.CASCADE, related_name='merit_lists',default=None, null=True,blank=True    )
+    generation_date = models.DateField(auto_now_add=True)
+    total_seats = models.PositiveIntegerField(default=0, help_text="Total number of applicants in this merit list")
+    seccured_seats = models.PositiveIntegerField(default=0, help_text="Number of seats secured from this merit list")
+    valid_until = models.DateTimeField(help_text="Date until which this merit list is valid")
+    is_active = models.BooleanField(default=True, help_text="Is this the currently active merit list?")
+    notes = models.TextField(blank=True, help_text="Any additional notes about this merit list")
+
+    class Meta:
+        unique_together = ('program', 'list_number', 'shift')
+        ordering = ['-generation_date']
+
+    def _str_(self):
+        return f"Merit List #{self.list_number} - {self.program} ({self.shift})"
+    def save(self, *args, **kwargs):
+        # Ensure only one active merit list per program and shift
+        if self.is_active:
+            MeritList.objects.filter(
+                program=self.program,
+                shift=self.shift,
+                is_active=True
+            ).exclude(pk=self.pk).update(is_active=False)
+        super().save(*args, **kwargs)
+
+class MeritListEntry(models.Model):
+    """
+    Model to store selected candidates in each merit list
+    """
+    STATUS_CHOICES = [
+        ('selected', 'Selected'),
+        ('admitted', 'Admitted'),
+    ]
+    
+    merit_list = models.ForeignKey(MeritList, on_delete=models.CASCADE, related_name='entries')
+    applicant = models.ForeignKey(Applicant, on_delete=models.CASCADE, related_name='merit_list_entries')
+    merit_position = models.PositiveIntegerField(help_text="Ranking position in the merit list")
+    relevant_percentage = models.DecimalField(
+        max_digits=5, 
+        decimal_places=2,
+        help_text="Relevant percentage based on program level (Intermediate for BS, Bachelor's for MS)"
+    )
+    qualification_used = models.ForeignKey(
+        AcademicQualification,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Reference to the academic qualification used for merit calculation"
+    )
+    passing_year = models.PositiveIntegerField(null=True, blank=True, help_text="Passing year of the qualification used")
+    marks_obtained = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True, help_text="Marks obtained in the qualification used")
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='selected',
+        help_text="Current status of the candidate in this merit list"
+    )
+    selection_date = models.DateTimeField(auto_now_add=True)
+    remarks = models.TextField(blank=True, help_text="Any additional remarks about this candidate")
+
+    class Meta:
+        unique_together = ('merit_list', 'applicant')
+        ordering = ['merit_position']
+
+    def _str_(self):
+        return f"#{self.merit_position} - {self.applicant.full_name} ({self.relevant_percentage}%) - {self.status}"

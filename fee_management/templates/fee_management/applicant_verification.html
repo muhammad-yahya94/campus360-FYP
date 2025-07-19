@@ -1,15 +1,164 @@
 {% extends 'fee_management/office_base.html' %}
 {% block title %}Applicant Verification{% endblock %}
 {% block content %}
-<div class="hero bg-base-200 rounded-lg shadow-lg mb-6">
+<div class="hero bg-base-200 rounded-xl shadow-lg mb-8 py-6">
   <div class="hero-content text-center">
     <div class="max-w-md">
-      <h1 class="text-3xl sm:text-4xl font-bold text-base-content mb-2">Applicant Verification</h1>
-      <p class="text-base sm:text-lg text-base-content/90">Here office staff can verify applicant documents, activate applicants, and proceed to student creation and fee charging.</p>
+      <h1 class="text-3xl sm:text-4xl font-bold text-base-content">Applicant Verification</h1>
+      <p class="text-base-content mt-2">Filter, sort, and verify applicants by program, shift, or name</p>
     </div>
   </div>
 </div>
-<div class="max-w-3xl mx-auto bg-base-100 rounded-lg shadow p-6">
-    <!-- Workflow content goes here -->
+
+<div class="max-w-6xl mx-auto bg-base-100 rounded-xl shadow-lg p-8">
+  <!-- Messages -->
+  {% if messages %}
+  <div class="mb-4">
+    {% for message in messages %}
+    <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-error{% endif %}">
+      {{ message }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Filter and Sort Form -->
+  <div class="card bg-base-100 shadow-md p-6 mb-8">
+    <h2 class="text-2xl font-semibold mb-4 text-base-content">Filter & Sort Applicants</h2>
+    <hr class="mb-4 border-base-300">
+    <form method="get" class="grid grid-cols-1 sm:grid-cols-5 gap-4" id="filter-form">
+      <div>
+        <label for="search" class="block text-sm font-medium text-base-content">Search by Name</label>
+        <input type="text" name="search" id="search" value="{{ search_query }}" class="input input-bordered w-full" placeholder="Enter name" aria-label="Search by Applicant Name">
+      </div>
+      <div>
+        <label for="program" class="block text-sm font-medium text-base-content">Program</label>
+        <select name="program" id="program" class="select select-bordered w-full" aria-label="Filter by Program">
+          <option value="">All Programs</option>
+          {% for program in programs %}
+            <option value="{{ program.id }}" {% if program.id|stringformat:"s" == selected_program %}selected{% endif %}>{{ program.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="shift" class="block text-sm font-medium text-base-content">Shift</label>
+        <select name="shift" id="shift" class="select select-bordered w-full" aria-label="Filter by Shift">
+          <option value="">All Shifts</option>
+          <option value="morning" {% if selected_shift == "morning" %}selected{% endif %}>Morning</option>
+          <option value="evening" {% if selected_shift == "evening" %}selected{% endif %}>Evening</option>
+        </select>
+      </div>
+      <div>
+        <label for="sort" class="block text-sm font-medium text-base-content">Sort By</label>
+        <select name="sort" id="sort" class="select select-bordered w-full" aria-label="Sort Applicants">
+          <option value="">Default (Name A-Z)</option>
+
+          <option value="full_name" {% if selected_sort == "full_name" %}selected{% endif %}>Name (A-Z)</option>
+          <option value="-full_name" {% if selected_sort == "-full_name" %}selected{% endif %}>Name (Z-A)</option>
+          <option value="program__name" {% if selected_sort == "program__name" %}selected{% endif %}>Program (A-Z)</option>
+          <option value="-program__name" {% if selected_sort == "-program__name" %}selected{% endif %}>Program (Z-A)</option>
+          <option value="shift" {% if selected_sort == "shift" %}selected{% endif %}>Shift (A-Z)</option>
+          <option value="-shift" {% if selected_sort == "-shift" %}selected{% endif %}>Shift (Z-A)</option>
+
+        </select>
+      </div>
+      <div class="flex items-end gap-2">
+        <button type="submit" class="btn btn-primary flex-1">Apply Filters</button>
+        <a href="{% url 'fee_management:applicant_verification' %}" class="btn btn-secondary flex-1">Reset</a>
+      </div>
+    </form>
+    <!-- Page Size Selection -->
+    <div class="mt-4">
+      <label for="per_page" class="block text-sm font-medium text-base-content">Items per page</label>
+      <select name="per_page" id="per_page" class="select select-bordered w-full max-w-xs" onchange="this.form.submit()" form="filter-form" aria-label="Select items per page">
+        <option value="25" {% if per_page == '25' %}selected{% endif %}>25</option>
+        <option value="50" {% if per_page == '50' %}selected{% endif %}>50</option>
+        <option value="100" {% if per_page == '100' %}selected{% endif %}>100</option>
+      </select>
+    </div>
+
+  <!-- Applicants Table -->
+  <div class="card bg-base-100 shadow-md p-6">
+    <h2 class="text-2xl font-semibold mb-4 text-base-content">Applicants List</h2>
+    <hr class="mb-4 border-base-300">
+    {% if applicants %}
+    <div class="overflow-x-auto">
+      <table class="table w-full">
+        <thead>
+          <tr>
+            <th scope="col">Full Name</th>
+            <th scope="col">Program</th>
+            <th scope="col">Shift</th>
+            <th scope="col">Status</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for applicant in applicants %}
+          <tr>
+            <td>{{ applicant.full_name|default:"N/A" }}</td>
+            <td>{{ applicant.program.name|default:"N/A" }}</td>
+            <td>{{ applicant.shift|title|default:"N/A" }}</td>
+            <td>
+              <span class="badge {% if applicant.status == 'pending' %}badge-warning{% elif applicant.status == 'accepted' %}badge-success{% else %}badge-error{% endif %} tooltip" data-tip="{{ applicant.status|title }} status" role="status" aria-label="Applicant Status: {{ applicant.status|title|default:'N/A' }}">
+                {{ applicant.status|title|default:"N/A" }}
+              </span>
+            </td>
+            <td>
+              <div class="flex items-center gap-2">
+                <a href="{% url 'fee_management:view_applicant' applicant.id %}" class="btn btn-sm btn-primary">View</a>
+                {% if applicant.status == 'pending' %}
+                <span class="text-base-content opacity-50">Pending Review</span>
+                {% else %}
+                <span class="text-base-content opacity-50">{{ applicant.status|title }}</span>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <!-- Pagination -->
+    {% if applicants.has_other_pages %}
+    <div class="mt-6 flex flex-col items-center gap-4">
+      <div class="join">
+        <a href="{% if applicants.has_previous %}?page={{ applicants.previous_page_number }}{% if request.GET.program %}&program={{ request.GET.program }}{% endif %}{% if request.GET.shift %}&shift={{ request.GET.shift }}{% endif %}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search|urlencode }}{% endif %}{% if request.GET.per_page %}&per_page={{ request.GET.per_page }}{% endif %}{% else %}javascript:void(0){% endif %}" 
+           class="join-item btn btn-sm {% if not applicants.has_previous %}btn-disabled{% endif %}" 
+           aria-label="Previous page" 
+           {% if not applicants.has_previous %}aria-disabled="true"{% endif %}>«</a>
+        {% if applicants.number > 3 %}
+        <a href="?page=1{% if request.GET.program %}&program={{ request.GET.program }}{% endif %}{% if request.GET.shift %}&shift={{ request.GET.shift }}{% endif %}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search|urlencode }}{% endif %}{% if request.GET.per_page %}&per_page={{ request.GET.per_page }}{% endif %}" 
+           class="join-item btn btn-sm {% if applicants.number == 1 %}btn-active{% endif %}" 
+           aria-label="Page 1">1</a>
+        <span class="join-item btn btn-sm btn-disabled">...</span>
+        {% endif %}
+        {% for num in applicants.paginator.page_range %}
+          {% if num != 1 and num != applicants.paginator.num_pages and num >= applicants.number|add:-2 and num <= applicants.number|add:2 %}
+          <a href="?page={{ num }}{% if request.GET.program %}&program={{ request.GET.program }}{% endif %}{% if request.GET.shift %}&shift={{ request.GET.shift }}{% endif %}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search|urlencode }}{% endif %}{% if request.GET.per_page %}&per_page={{ request.GET.per_page }}{% endif %}" 
+             class="join-item btn btn-sm {% if applicants.number == num %}btn-active{% endif %}" 
+             aria-label="Page {{ num }}">{{ num }}</a>
+          {% endif %}
+        {% endfor %}
+        {% if applicants.number < applicants.paginator.num_pages|add:-2 %}
+        <span class="join-item btn btn-sm btn-disabled">...</span>
+        <a href="?page={{ applicants.paginator.num_pages }}{% if request.GET.program %}&program={{ request.GET.program }}{% endif %}{% if request.GET.shift %}&shift={{ request.GET.shift }}{% endif %}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search|urlencode }}{% endif %}{% if request.GET.per_page %}&per_page={{ request.GET.per_page }}{% endif %}" 
+           class="join-item btn btn-sm {% if applicants.number == applicants.paginator.num_pages %}btn-active{% endif %}" 
+           aria-label="Page {{ applicants.paginator.num_pages }}">{{ applicants.paginator.num_pages }}</a>
+        {% endif %}
+        <a href="{% if applicants.has_next %}?page={{ applicants.next_page_number }}{% if request.GET.program %}&program={{ request.GET.program }}{% endif %}{% if request.GET.shift %}&shift={{ request.GET.shift }}{% endif %}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search|urlencode }}{% endif %}{% if request.GET.per_page %}&per_page={{ request.GET.per_page }}{% endif %}{% else %}javascript:void(0){% endif %}" 
+           class="join-item btn btn-sm {% if not applicants.has_next %}btn-disabled{% endif %}" 
+           aria-label="Next page" 
+           {% if not applicants.has_next %}aria-disabled="true"{% endif %}>»</a>
+      </div>
+      <p class="text-sm text-base-content">
+        Showing {{ applicants.start_index }} to {{ applicants.end_index }} of {{ applicants.paginator.count }} applicants
+      </p>
+    </div>
+    {% endif %}
+    {% else %}
+    <p class="text-base-content text-center">No applicants found matching the selected filters.</p>
+    {% endif %}
+  </div>
 </div>
-{% endblock %} 
+{% endblock %}

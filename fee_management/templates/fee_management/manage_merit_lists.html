@@ -1,0 +1,143 @@
+{% extends 'fee_management/office_base.html' %}
+{% block title %}Manage Merit Lists{% endblock %}
+{% block content %}
+<div class="hero bg-base-200 rounded-xl shadow-lg mb-8 py-6">
+  <div class="hero-content text-center">
+    <div class="max-w-md">
+      <h1 class="text-3xl sm:text-4xl font-bold text-base-content">Manage Merit Lists</h1>
+    </div>
+  </div>
+</div>
+
+<div class="max-w-6xl mx-auto bg-base-100 rounded-xl shadow-lg p-8">
+  <!-- Filters and Actions -->
+  <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+    <div class="flex flex-col md:flex-row gap-4">
+      <!-- Program Filter -->
+     <form method="get" class="flex gap-2">
+          <select name="program" class="select select-bordered" onchange="this.form.submit()">
+            <option value="">All Programs</option>
+            {% for program in programs %}
+            <option value="{{ program.id }}" {% if selected_program == program.id|stringformat:"s" %}selected{% endif %}>
+              {{ program.name }}
+            </option>
+            {% endfor %}
+          </select>
+        </form>
+        
+        </form>
+    </div>
+    <a href="{% url 'fee_management:generate_merit_list' %}" class="btn btn-primary">
+      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+      </svg>
+      Generate New Merit List
+    </a>
+  </div>
+
+  <!-- Merit Lists Table -->
+  <div class="card bg-base-100 shadow-md">
+    <div class="card-body p-0">
+      {% if merit_lists %}
+      <div class="overflow-x-auto">
+        <table class="table w-full">
+          <thead class="bg-base-200">
+            <tr>
+              <th class="text-left">List #</th>
+              <th class="text-left">Program</th>
+              <th class="text-left">Shift</th>
+              <th class="text-left">Generation Date</th>
+              <th class="text-left">Valid Until</th>
+              <th class="text-left">Selected Students</th>
+              <th class="text-left">Session</th>
+              <th class="text-left">Status</th>
+              <th class="text-left">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for merit_list in merit_lists %}
+            <tr class="hover:bg-base-50">
+              <td class="font-bold text-primary">#{{ merit_list.list_number }}</td>
+              <td>{{ merit_list.program.name }}</td>
+              <td>{{ merit_list.shift }}</td>
+              <td>{{ merit_list.generation_date|date:"M d, Y" }}</td>
+              <td>{{ merit_list.valid_until|date:"M d, Y" }}</td>
+              <td>
+                <span class="badge badge-success">{{ merit_list.seccured_seats }}</span>
+              </td>
+              <td>
+                {{ merit_list.academic_session.name }}
+              </td>
+              <td>
+                {% if merit_list.is_active %}
+                <span class="badge badge-success">Active</span>
+                {% else %}
+                <span class="badge badge-neutral">Inactive</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="flex gap-2">
+                  <a href="{% url 'fee_management:view_merit_list' merit_list.id %}" 
+                     class="btn btn-sm btn-primary" title="View Merit List">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
+                    View
+                  </a>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="p-8 text-center">
+        <div class="mb-4">
+          <svg class="w-16 h-16 mx-auto text-base-content/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+        </div>
+        <h3 class="text-lg font-semibold mb-2">No Merit Lists Found</h3>
+        <p class="text-base-content/70 mb-4">
+          {% if selected_program %}
+          No merit lists found for the selected program.
+          {% else %}
+          No merit lists have been generated yet.
+          {% endif %}
+        </p>
+        <a href="{% url 'fee_management:generate_merit_list' %}" class="btn btn-primary">
+          Generate Your First Merit List
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Summary Statistics -->
+  {% if merit_lists %}
+  <div class="mt-8 grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="stat bg-base-200 rounded-lg">
+      <div class="stat-title">Total Merit Lists</div>
+      <div class="stat-value text-2xl">{{ merit_lists.count }}</div>
+    </div>
+    <div class="stat bg-base-200 rounded-lg">
+      <div class="stat-title">Active Lists</div>
+      <div class="stat-value text-2xl text-success">
+        {% with active_count=merit_lists|length %}
+        {{ merit_lists|length }}
+        {% endwith %}
+      </div>
+    </div>
+    <div class="stat bg-base-200 rounded-lg">
+      <div class="stat-title">Programs Covered</div>
+      <div class="stat-value text-2xl text-info">
+        {% regroup merit_lists by program as program_groups %}
+        {{ program_groups|length }}
+      </div>
+    </div>
+    </div>
+  </div>
+  {% endif %}
+{% endblock %}

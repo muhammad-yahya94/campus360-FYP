@@ -3916,20 +3916,90 @@ def student_semester_performance(request, student_id):
     # Get all semester enrollments for the student
     semester_enrollments = StudentSemesterEnrollment.objects.filter(
         student=student,
-        # status='enrolled'  # Adjust based on your status logic
     ).select_related('semester').order_by('semester__number')
 
-    print("Total semester enrollments found:", semester_enrollments.count())
+    logger.info(f"Found {semester_enrollments.count()} semester enrollments for student {student_id}")
 
     # Aggregate performance stats for all semesters
     stats_by_semester = []
     for sem_enrollment in semester_enrollments:
         semester = sem_enrollment.semester
-        print(f"Processing Semester {semester.number} (Status: {sem_enrollment.status})")
+        logger.info(f"Processing Semester {semester.number} (ID: {semester.id})")
 
-        # Fetch all course offerings for the semester
-        course_enrollments = CourseEnrollment.objects.filter(student_semester_enrollment=sem_enrollment)
+        # Fetch all course enrollments for the semester
+        course_enrollments = CourseEnrollment.objects.filter(
+            student_semester_enrollment=sem_enrollment
+        ).select_related('course_offering__course')
         course_offerings = [enrollment.course_offering for enrollment in course_enrollments]
+
+        # Get exam results for all courses in this semester
+        exam_results = ExamResult.objects.filter(
+            student=student,
+            course_offering__in=course_offerings
+        ).select_related('course_offering__course')
+
+        # Calculate GPA for the semester
+        total_credit_hours = 0
+        total_quality_points = 0
+        semester_gpa = None
+        
+        exam_stats = []
+        for result in exam_results:
+            # Calculate grade points based on percentage
+            percentage = float(result.percentage) if result.percentage else 0
+            if percentage >= 85:
+                grade = 'A+'
+                grade_points = 4.0
+            elif percentage >= 80:
+                grade = 'A'
+                grade_points = 4.0
+            elif percentage >= 75:
+                grade = 'B+'
+                grade_points = 3.5
+            elif percentage >= 70:
+                grade = 'B'
+                grade_points = 3.0
+            elif percentage >= 65:
+                grade = 'B-'
+                grade_points = 2.7
+            elif percentage >= 60:
+                grade = 'C+'
+                grade_points = 2.3
+            elif percentage >= 55:
+                grade = 'C'
+                grade_points = 2.0
+            elif percentage >= 50:
+                grade = 'C-'
+                grade_points = 1.7
+            elif percentage >= 40:
+                grade = 'D'
+                grade_points = 1.0
+            else:
+                grade = 'F'
+                grade_points = 0.0
+
+            credit_hours = result.course_offering.course.credits or 3  # Default to 3 if not set
+            quality_points = credit_hours * grade_points
+            
+            exam_stats.append({
+                'course_code': result.course_offering.course.code,
+                'course_name': result.course_offering.course.name,
+                'percentage': percentage,
+                'grade': grade,
+                'credit_hours': credit_hours,
+                'grade_points': grade_points,
+                'quality_points': quality_points,
+                'status': 'Pass' if percentage >= 40 else 'Fail',
+                'remarks': result.remarks or ''
+            })
+            
+            # Update GPA calculation
+            total_credit_hours += credit_hours
+            total_quality_points += quality_points
+
+        # Calculate semester GPA if we have results
+        if total_credit_hours > 0:
+            semester_gpa = round(total_quality_points / total_credit_hours, 2)
 
         # Aggregate attendance data
         attendance_records = Attendance.objects.filter(student=student, course_offering__in=course_offerings)
@@ -3972,6 +4042,10 @@ def student_semester_performance(request, student_id):
             'attendance_percentage': (attendance_present / attendance_total * 100) if attendance_total > 0 else 0,
             'assignments': assignments,
             'quizzes': quizzes,
+            'exam_results': exam_stats,
+            'semester_gpa': semester_gpa,
+            'total_credit_hours': total_credit_hours,
+            'total_quality_points': total_quality_points,
         })
 
     # Pagination (1 semester per page)

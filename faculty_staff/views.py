@@ -3578,6 +3578,7 @@ def attendance(request, offering_id=None):
     )
 
     if course_offering_id:
+        print(f'entering in if {course_offering_id}')
         try:
             course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
             course_shift = course_offering.shift
@@ -3649,7 +3650,7 @@ def attendance(request, offering_id=None):
                 'is_active_slot': True,
                 'error_message': f"Error loading course offering: {str(e)}"
             })
-    print(f'slot is : {is_active_slot}')
+    print(f'slot is : {is_active_slot} , course shift is {course_shift}')
     context = {
         'students': students,
         'course_offering_id': course_offering_id,

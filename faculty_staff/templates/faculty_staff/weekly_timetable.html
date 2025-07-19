@@ -77,11 +77,11 @@
       <div class="space-y-4">
         {% for day in timetable_data %}
           <div class="border border-gray-200 rounded-lg timetable-day">
-            <button class="w-full flex justify-between items-center p-4 bg-gray-50 hover:bg-gray-100 transition duration-200" onclick="toggleDay('{{ day.day_value }}')">
+            <button class="w-full flex justify-between items-center p-4 bg-gray-50 hover:bg-gray-100 transition duration-200" onclick="toggleDay('{{ day.day_value|lower }}', event)">
               <span class="text-lg font-semibold text-gray-800">{{ day.day_label }}</span>
-              <i id="toggle-icon-{{ day.day_value }}" class="fas fa-chevron-down text-gray-600"></i>
+              <i id="toggle-icon-{{ day.day_value|lower }}" class="fas fa-chevron-down text-gray-600"></i>
             </button>
-             <div id="slots-{{ day.day_value }}" class="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div id="slots-{{ day.day_value|lower }}" class="hidden p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
               {% for slot in day.slots %}
                 {% with replacements=slot.course_offering_id|lookup_replacements %}
                 <div class="rounded-xl shadow-lg transition-all duration-300 transform hover:scale-[1.02] {% if slot.shift == 'Morning' %}bg-gradient-to-br from-blue-50 to-blue-100 border-l-4 border-blue-400{% elif slot.shift == 'Evening' %}bg-gradient-to-br from-purple-50 to-purple-100 border-l-4 border-purple-400{% else %}bg-gradient-to-br from-green-50 to-green-100 border-l-4 border-green-400{% endif %} hover:shadow-xl">
@@ -250,7 +250,7 @@
 
     // Sanitize input to prevent XSS
     function sanitize(str) {
-      return String(str || '').replace(/['"\\]/g, '\\$&').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return String(str || '').replace(/['"\\]/g, '\\$&').replace(/</g, '<').replace(/>/g, '>');
     }
 
     // Initialize Select2 for replacement teacher dropdown
@@ -295,20 +295,24 @@
     });
 
     // Toggle day visibility
-    function toggleDay(dayId) {
+    function toggleDay(dayId, event) {
       console.log('toggleDay called with:', dayId);
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
       const slots = document.getElementById(`slots-${dayId}`);
       const icon = document.getElementById(`toggle-icon-${dayId}`);
       if (!slots || !icon) {
         console.error(`Element not found: slots-${dayId} or toggle-icon-${dayId}`);
         return;
       }
+
+      slots.classList.toggle('hidden');
       if (slots.classList.contains('hidden')) {
-        slots.classList.remove('hidden');
-        icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
-      } else {
-        slots.classList.add('hidden');
         icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+      } else {
+        icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
       }
     }
 
@@ -328,9 +332,7 @@
       teacherInput.value = sanitize(teacherId) || '';
       courseCodeEl.textContent = sanitize(courseCode) || 'N/A';
       teacherNameEl.textContent = sanitize(teacherName) || 'N/A';
-      // Clear previous Select2 selection
       $('#replacement_teacher').val(null).trigger('change');
-      console.log('Setting modal to visible');
       modal.classList.remove('hidden');
       modal.classList.add('flex');
       toggleReplacementDate();
@@ -343,7 +345,6 @@
       if (modal) {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
-        console.log('Modal closed');
       }
       const replacementTeacher = document.getElementById('replacement_teacher');
       const replacementType = document.getElementById('replacement_type');
@@ -376,27 +377,30 @@
     // Initialize timetable on page load
     document.addEventListener('DOMContentLoaded', function() {
       console.log('DOMContentLoaded fired');
-      // Get current day
       const currentDay = new Date().getDay();
       const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      const currentDayName = dayNames[currentDay];
-      
-      // Initialize all days
+      const currentDayName = dayNames[currentDay].toLowerCase();
+
       document.querySelectorAll('.timetable-day').forEach(day => {
         const dayLabel = day.querySelector('.text-lg.font-semibold').textContent;
         const dayValue = dayLabel.toLowerCase();
-        const slots = document.getElementById('slots-' + dayValue);
-        const icon = document.getElementById('toggle-icon-' + dayValue);
-        
-        if (dayLabel === currentDayName) {
+        const slots = document.getElementById(`slots-${dayValue}`);
+        const icon = document.getElementById(`toggle-icon-${dayValue}`);
+
+        if (!slots || !icon) {
+          console.error(`Element not found for day: ${dayValue}`);
+          return;
+        }
+
+        if (dayValue === currentDayName) {
           // Move current day to top and expand it
           day.parentNode.insertBefore(day, day.parentNode.firstChild);
-          slots.style.display = 'grid';
+          slots.classList.remove('hidden');
           icon.classList.remove('fa-chevron-down');
           icon.classList.add('fa-chevron-up');
         } else {
           // Collapse other days
-          slots.style.display = 'none';
+          slots.classList.add('hidden');
           icon.classList.remove('fa-chevron-up');
           icon.classList.add('fa-chevron-down');
         }
@@ -407,7 +411,7 @@
         const modal = document.getElementById('replacementModal');
         if (event.target === modal) {
           closeReplacementModal();
-        }  
+        }
       });
     });
   </script>

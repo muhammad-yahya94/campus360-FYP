@@ -26,6 +26,13 @@ from admissions.models import AcademicSession
 from payment.models import Payment
 from django.forms import modelformset_factory
 from admissions.forms import ApplicantForm, AcademicQualificationForm, ExtraCurricularActivityForm
+from academics.models import Department
+from django.http import JsonResponse
+from django.db import transaction
+from datetime import datetime, date
+from .models import Program, Applicant,AcademicSession, MeritList, MeritListEntry
+from django.db.models import F
+from dateutil import parser
 
 @login_required
 def add_student_manually(request):
@@ -263,9 +270,6 @@ def view_applicant(request, applicant_id):
         'extracurriculars': extracurriculars
     })
 
-
-
-from academics.models import Department
 
 @office_required
 def student_management(request):
@@ -881,16 +885,7 @@ def generate_voucher(request):
     
     return render(request, 'fee_management/generate_voucher.html', {'errors': errors})
 
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
-from django.db import transaction
-from django.contrib import messages
-from datetime import datetime, date
-import logging
-from payment.models import Payment
-from .models import Program, Applicant,AcademicSession, MeritList, MeritListEntry
-from django.db.models import F
-from dateutil import parser
+
 
 def active_session_required(program_id):
     try:
@@ -1153,15 +1148,6 @@ def generate_merit_list(request):
         'errors': errors
     })
 
-@office_required
-def view_merit_list(request, merit_list_id):
-    merit_list = get_object_or_404(MeritList.objects.select_related('program'), pk=merit_list_id)
-    entries = merit_list.entries.select_related('applicant', 'qualification_used').order_by('merit_position')
-    
-    return render(request, 'fee_management/view_merit_list.html', {
-        'merit_list': merit_list,
-        'entries': entries
-    })
 
 def get_next_list_number(request):
     program_id = request.GET.get('program')
@@ -1201,7 +1187,7 @@ def view_merit_list(request, merit_list_id):
     })
  
 
-from django.utils import timezone  # Import timezone
+ # Import timezone
 @office_required
 def manage_merit_lists(request):
     program_id = request.GET.get('program')

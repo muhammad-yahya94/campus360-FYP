@@ -18,7 +18,7 @@
                         <td class="text-sm">
                             <div class="flex items-center gap-2">
                                 <a href="{% url 'faculty_staff:student_detail' student.pk %}" class="link link-primary">
-                                    {{ student.user.get_full_name }}
+                                    {{ student.applicant.full_name }}
                                 </a>
                                 {% if student.role %}
                                     <span class="badge badge-secondary ml-1" style="background-color:#f472b6; color:white;">{{ student.role }}</span>

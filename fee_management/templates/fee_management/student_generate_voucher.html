@@ -1,0 +1,330 @@
+{% extends 'base_student.html' %}
+{% load static %}
+
+{% block title %}Generate Fee Voucher - Student Portal{% endblock %}
+
+{% block content %}
+<style>
+    @page {
+      size: A4 landscape;
+      margin: 10mm;
+      orphans: 0;
+      widows: 0;
+    }
+  
+    dialog {
+      width: 90%;
+      max-width: 1000px;
+      border: 2px solid #000;
+      background: #fff;
+      padding: 0;
+      margin: auto;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+  
+    @media print {
+      body, html {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+  
+      dialog {
+        border: none;
+        width: 297mm;
+        height: 187mm;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        display: block;
+        page-break-before: auto;
+        page-break-after: auto;
+        page-break-inside: avoid;
+      }
+  
+      .modal-box {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+        border: none;
+        background: #fff;
+      }
+  
+      .voucher-container {
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        height: 100% !important;
+        gap: 3mm !important;
+        margin: 0 !important;
+        padding: 5mm !important;
+        box-sizing: border-box;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        transform: scale(0.95);
+        transform-origin: top left;
+      }
+  
+      .voucher-copy {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        height: 100% !important;
+        width: 32% !important;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 3mm !important;
+        border: 1px solid #000 !important;
+        background: #fff !important;
+        font-size: 0.75em !important;
+        overflow: hidden !important;
+        box-sizing: border-box;
+      }
+  
+      .office-details {
+        display: block !important;
+        visibility: visible !important;
+        font-size: 0.65em !important;
+        margin-top: 5px !important;
+        padding-top: 3px !important;
+        border-top: 1px dashed #000;
+      }
+  
+      .modal-action {
+        display: none !important;
+      }
+  
+      .font-bold.text-lg.mb-4 {
+        display: none !important;
+      }
+  
+      table {
+        font-size: 0.75em !important;
+        line-height: 1.2 !important;
+      }
+  
+      th, td {
+        padding: 2px !important;
+      }
+    }
+  </style>
+  
+
+
+<div class="container mx-auto px-4 py-8">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <div class="hero bg-base-200 rounded-lg shadow-lg py-8">
+            <div class="hero-content text-center">
+                <div class="max-w-md">
+                    <h1 class="text-3xl sm:text-4xl font-bold text-base-content mb-2">Fee Voucher Generator</h1>
+                    <p class="text-base sm:text-lg text-base-content/90">Select semester to generate a fee voucher.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="space-y-3 mb-6">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} shadow-lg">
+            <div>
+                {% if message.tags == 'success' %}
+                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {% else %}
+                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {% endif %}
+                <span>{{ message }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Form Section -->
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <h2 class="card-title text-2xl font-bold mb-6">Generate Fee Voucher</h2>
+            
+            {% if errors %}
+            <div class="alert alert-error mb-6">
+                <div>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                        <h3 class="font-bold">There were errors with your submission</h3>
+                        <div class="text-xs">
+                            <ul class="list-disc pl-5">
+                                {% for error in errors %}
+                                <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <form id="voucherForm" method="post" class="space-y-6">
+                {% csrf_token %}
+                <div class="form-control w-full">
+                    <label class="label" for="semester">
+                        <span class="label-text font-medium">Select Semester</span>
+                    </label>
+                    {% if semesters %}
+                        <select id="semester" name="semester" required
+                            class="select select-bordered w-full">
+                            <option value="" selected disabled>Select a semester</option>
+                            {% for semester in semesters %}
+                            <option value="{{ semester.id }}">{{ semester.name }} - {{ semester.session.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <label class="label">
+                            <span class="label-text-alt">Select the semester for which you want to generate the fee voucher.</span>
+                        </label>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <div>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current flex-shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <span>All semesters have been paid or no semesters are available for fee generation.</span>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="flex justify-end mt-8">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-file-invoice mr-2"></i>
+                        Generate Voucher
+                    </button>
+                </div>
+            </form>
+
+            <!-- Loading Indicator -->
+            <div id="loadingIndicator" class="hidden mt-6 text-center">
+                <div class="flex flex-col items-center justify-center space-y-4">
+                    <span class="loading loading-spinner loading-lg text-primary"></span>
+                    <p class="text-gray-600">Generating your voucher, please wait...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Voucher Modal -->
+  <!-- Voucher Modal -->
+  <dialog id="voucherModal" class="modal">
+    <div class="modal-box w-11/12 max-w-5xl">
+        <h3 class="font-bold text-lg mb-4">Your Fee Voucher</h3>
+        <div id="voucherContent" class="w-full">
+            <!-- Voucher content will be loaded here -->
+        </div>
+        <div class="modal-action">
+            <button onclick="printVoucher()" class="btn btn-primary">
+                <i class="fas fa-print mr-2"></i>Print Voucher
+            </button>
+            <form method="dialog">
+                <button class="btn">Close</button>
+            </form>
+        </div>
+    </div>
+</dialog>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('voucherForm');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const voucherModal = document.getElementById('voucherModal');
+    const voucherContent = document.getElementById('voucherContent');
+    let isPrinting = false;
+
+    function printVoucher() {
+        if (!isPrinting) {
+            isPrinting = true;
+            setTimeout(() => {
+                window.print();
+                window.onafterprint = () => {
+                    voucherModal.close();
+                    isPrinting = false;
+                    window.onafterprint = null;
+                };
+            }, 1000);
+        }
+    }
+
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Show loading indicator
+            form.classList.add('hidden');
+            loadingIndicator.classList.remove('hidden');
+            
+            // Submit form data
+            const formData = new FormData(form);
+            formData.append('university_roll_no', '{{ request.user.student_profile.university_roll_no }}');
+            
+            fetch('{% url "fee_management:generate_voucher" %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return;
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.voucher_html) {
+                    // Show voucher in modal
+                    voucherContent.innerHTML = data.voucher_html;
+                    voucherModal.showModal();
+                    // Auto-print after rendering
+                    printVoucher();
+                } else {
+                    throw new Error(data.errors ? data.errors.join('\n') : 'Failed to generate voucher');
+                }
+            })
+            .catch(error => {
+                // Show error message
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'alert alert-error mb-6';
+                errorDiv.innerHTML = `
+                    <div>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>${error.message || 'An error occurred while generating the voucher.'}</span>
+                    </div>
+                `;
+                form.parentElement.insertBefore(errorDiv, form);
+            })
+            .finally(() => {
+                // Hide loading indicator and show form again
+                loadingIndicator.classList.add('hidden');
+                form.classList.remove('hidden');
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

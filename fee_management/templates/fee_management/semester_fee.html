@@ -11,7 +11,7 @@
     opacity: 0;    
   }
   .section-content:not(.hidden) {
-    height: auto; /* Adjust based on content size */
+    height: auto;
     opacity: 1;
   }
   .toggle-icon i {
@@ -19,6 +19,17 @@
   }
   .toggle-icon.hidden i {
     transform: rotate(180deg);
+  }
+  .dynamic-field {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .dynamic-field input[type="text"] {
+    flex: 2;
+  }
+  .dynamic-field input[type="number"] {
+    flex: 1;
   }
 </style>
 
@@ -147,9 +158,10 @@
     </span>
   </div>
   <div id="semester-fee-form-section" class="max-w-full mx-auto bg-base-100 rounded-xl shadow-xl p-8 mb-8 section-content">
-    <form method="post" class="space-y-6">
+    <form method="post" class="space-y-6" id="semester-fee-form">
       {% csrf_token %}
       <input type="hidden" name="form_type" value="semester_fee">
+      <input type="hidden" name="dynamic_fees" id="dynamic_fees">
       {% if errors %}
       <div class="bg-error/10 border border-error rounded-lg p-4 text-error">
         {% for error in errors %}
@@ -161,7 +173,7 @@
       <input type="hidden" name="edit_id" value="{{ edit_fee.pk }}">
       {% endif %}
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <!-- Left Section: Amounts and Funds -->
+        <!-- Left Section: Dynamic Fees -->
         <div class="space-y-6">
           <div>
             <label class="block mb-2 font-semibold text-base-content" for="fee_type">Fee Type</label>
@@ -173,56 +185,25 @@
             </select>
           </div>
           <div>
-            <label class="block mb-2 font-semibold text-base-content" for="amount">Amount</label>
-            <input type="number" id="amount" name="amount" class="input input-bordered w-full rounded-lg" step="0.01" min="0" value="{% if edit_fee %}{{ edit_fee.amount }}{% endif %}" required oninput="calculateTotal()">
-          </div>
-          <div>
-            <label class="block mb-2 font-semibold text-base-content" for="admission_fee">Admission Fee</label>
-            <input type="checkbox" id="admission_fee" name="admission_fee" class="checkbox checkbox-primary" {% if edit_fee.admission_fee %}checked{% endif %} onchange="toggleAmountField('admission_fee', 'admission_fee_amount'); calculateTotal()">
-          </div>
-          <div id="admission_fee_amount_div" {% if not edit_fee.admission_fee %}class="hidden"{% endif %}>
-            <label class="block mb-2 font-semibold text-base-content" for="admission_fee_amount">Admission Fee Amount</label>
-            <input type="number" id="admission_fee_amount" name="admission_fee_amount" class="input input-bordered w-full rounded-lg" step="0.01" min="0" value="{% if edit_fee %}{{ edit_fee.admission_fee_amount|default_if_none:'0' }}{% endif %}" {% if edit_fee.admission_fee %}required{% endif %} oninput="calculateTotal()">
-          </div>
-          <div>
-            <label class="block mb-2 font-semibold text-base-content" for="computer_fee">Computer Fee</label>
-            <input type="checkbox" id="computer_fee" name="computer_fee" class="checkbox checkbox-primary" {% if edit_fee.computer_fee %}checked{% endif %} onchange="toggleAmountField('computer_fee', 'computer_fee_amount'); calculateTotal()">
-          </div>
-          <div id="computer_fee_amount_div" {% if not edit_fee.computer_fee %}class="hidden"{% endif %}>
-            <label class="block mb-2 font-semibold text-base-content" for="computer_fee_amount">Computer Fee Amount</label>
-            <input type="number" id="computer_fee_amount" name="computer_fee_amount" class="input input-bordered w-full rounded-lg" step="0.01" min="0" value="{% if edit_fee %}{{ edit_fee.computer_fee_amount|default_if_none:'0' }}{% endif %}" {% if edit_fee.computer_fee %}required{% endif %} oninput="calculateTotal()">
-          </div>
-          <div>
-            <label class="block mb-2 font-semibold text-base-content" for="examination_fund">Examination Fund</label>
-            <input type="checkbox" id="examination_fund" name="examination_fund" class="checkbox checkbox-primary" {% if edit_fee.examination_fund %}checked{% endif %} onchange="toggleAmountField('examination_fund', 'examination_fund_amount'); calculateTotal()">
-          </div>
-          <div id="examination_fund_amount_div" {% if not edit_fee.examination_fund %}class="hidden"{% endif %}>
-            <label class="block mb-2 font-semibold text-base-content" for="examination_fund_amount">Examination Fund Amount</label>
-            <input type="number" id="examination_fund_amount" name="examination_fund_amount" class="input input-bordered w-full rounded-lg" step="0.01" min="0" value="{% if edit_fee %}{{ edit_fee.examination_fund_amount|default_if_none:'0' }}{% endif %}" {% if edit_fee.examination_fund %}required{% endif %} oninput="calculateTotal()">
-          </div>
-          <div>
-            <label class="block mb-2 font-semibold text-base-content" for="tuition_fee">Tuition Fee</label>
-            <input type="checkbox" id="tuition_fee" name="tuition_fee" class="checkbox checkbox-primary" {% if edit_fee.tuition_fee %}checked{% endif %} onchange="toggleAmountField('tuition_fee', 'tuition_fee_amount'); calculateTotal()">
-          </div>
-          <div id="tuition_fee_amount_div" {% if not edit_fee.tuition_fee %}class="hidden"{% endif %}>
-            <label class="block mb-2 font-semibold text-base-content" for="tuition_fee_amount">Tuition Fee Amount</label>
-            <input type="number" id="tuition_fee_amount" name="tuition_fee_amount" class="input input-bordered w-full rounded-lg" step="0.01" min="0" value="{% if edit_fee %}{{ edit_fee.tuition_fee_amount|default_if_none:'0' }}{% endif %}" {% if edit_fee.tuition_fee %}required{% endif %} oninput="calculateTotal()">
-          </div>
-          <div>
-            <label class="block mb-2 font-semibold text-base-content" for="others">Others</label>
-            <input type="checkbox" id="others" name="others" class="checkbox checkbox-primary" {% if edit_fee.others %}checked{% endif %} onchange="toggleAmountField('others', 'others_amount'); calculateTotal()">
-          </div>
-          <div id="others_amount_div" {% if not edit_fee.others %}class="hidden"{% endif %}>
-            <label class="block mb-2 font-semibold text-base-content" for="others_amount">Others Amount</label>
-            <input type="number" id="others_amount" name="others_amount" class="input input-bordered w-full rounded-lg" step="0.01" min="0" value="{% if edit_fee %}{{ edit_fee.others_amount|default_if_none:'0' }}{% endif %}" {% if edit_fee.others %}required{% endif %} oninput="calculateTotal()">
-          </div>
-          <div>
-            <label class="block mb-2 font-semibold text-base-content" for="evening_fund">Evening Fund</label>
-            <input type="checkbox" id="evening_fund" name="evening_fund" class="checkbox checkbox-primary" {% if edit_fee.evening_fund %}checked{% endif %} onchange="toggleAmountField('evening_fund', 'evening_fund_amount'); calculateTotal()">
-          </div>
-          <div id="evening_fund_amount_div" {% if not edit_fee.evening_fund %}class="hidden"{% endif %}>
-            <label class="block mb-2 font-semibold text-base-content" for="evening_fund_amount">Evening Fund Amount</label>
-            <input type="number" id="evening_fund_amount" name="evening_fund_amount" class="input input-bordered w-full rounded-lg" step="0.01" min="0" value="{% if edit_fee %}{{ edit_fee.evening_fund_amount|default_if_none:'0' }}{% endif %}" {% if edit_fee.evening_fund %}required{% endif %} oninput="calculateTotal()">
+            <label class="block mb-2 font-semibold text-base-content">Fee Heads</label>
+            <div id="dynamic-fee-fields">
+              {% if edit_fee %}
+                {% for head, amount in edit_fee.dynamic_fees.items %}
+                <div class="dynamic-field">
+                  <input type="text" name="fee_head" class="input input-bordered rounded-lg" value="{{ head }}" placeholder="Fee Head" required>
+                  <input type="number" name="fee_amount" class="input input-bordered rounded-lg" step="0.01" min="0" value="{{ amount }}" placeholder="Amount" required oninput="calculateTotal()">
+                  <button type="button" class="btn btn-error btn-sm rounded-lg" onclick="removeFeeField(this)">Remove</button>
+                </div>
+                {% endfor %}
+              {% else %}
+                <div class="dynamic-field">
+                  <input type="text" name="fee_head" class="input input-bordered rounded-lg" placeholder="Fee Head" required>
+                  <input type="number" name="fee_amount" class="input input-bordered rounded-lg" step="0.01" min="0" placeholder="Amount" required oninput="calculateTotal()">
+                  <button type="button" class="btn btn-error btn-sm rounded-lg" onclick="removeFeeField(this)">Remove</button>
+                </div>
+              {% endif %}
+            </div>
+            <button type="button" class="btn btn-primary btn-sm rounded-lg mt-2" onclick="addFeeField()">Add More</button>
           </div>
           <div>
             <label class="block mb-2 font-semibold text-base-content" for="total_amount">Total Amount</label>
@@ -279,7 +260,7 @@
         </div>
       </div>
       <div class="flex gap-4 mt-6">
-        <button type="submit" class="btn btn-primary w-full rounded-lg">{% if edit_fee %}Update{% else %}Add{% endif %} Semester Fee</button>
+        <button type="submit" class="btn btn-primary w-full rounded-lg" onclick="prepareDynamicFees()">{% if edit_fee %}Update{% else %}Add{% endif %} Semester Fee</button>
         {% if edit_fee %}
         <a href="{% url 'fee_management:semester-fee' %}" class="btn btn-ghost w-full rounded-lg">Cancel Edit</a>
         {% endif %}
@@ -289,126 +270,91 @@
 </div>
 
 <!-- Semester Fee Table Section -->
-<!-- Semester Fee Table Section -->
 <div class="mb-6">
-    <div class="flex justify-between items-center mb-2">
-      <h2 class="text-xl font-semibold text-base-content">Semester Fees</h2>
-      <span class="toggle-icon cursor-pointer" onclick="toggleSection('semester-fee-table-section')">
-        <i class="fas fa-chevron-down text-base-content"></i>
-      </span>
-    </div>
-    <div id="semester-fee-table-section" class="max-w-full mx-auto bg-base-100 rounded-xl shadow-xl p-8 mb-8 section-content">
-      <form method="get" class="mb-6 flex flex-col sm:flex-row gap-4">
-        <input type="text" name="q" value="{{ query }}" placeholder="Search by fee type or amount..." class="input input-bordered w-full sm:w-64 rounded-lg">
-        <button type="submit" class="btn btn-primary rounded-lg">Search</button>
-      </form>
-      <div class="overflow-x-auto">
-        <table class="table w-full">
-          <thead>
-            <tr>
-              <th class="text-base-content">Fee Type</th>
-              <th class="text-base-content">Amount</th>
-              <th class="text-base-content">Computer Fee</th>
-              <th class="text-base-content">Examination Fund</th>
-              <th class="text-base-content">Tuition Fee</th>
-              <th class="text-base-content">Others</th>
-              <th class="text-base-content">Evening Fund</th>
-              <th class="text-base-content">Total</th>
-              <th class="text-base-content">Active</th>
-              <th class="text-base-content">Semesters</th>
-              <th class="text-base-content">Session</th>
-              <th class="text-base-content">Programs</th>
-              <th class="text-base-content">Shift</th>
-              <th class="text-base-content">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for fee in semester_fees %}
-            <tr {% if edit_fee and fee.pk == edit_fee.pk %}class="bg-info/10"{% endif %}>
-              <td>{{ fee.fee_type.name }}</td>
-              <td>{{ fee.amount }}</td>
-              <td>
-                {% if fee.computer_fee %}
-                  {{ fee.computer_fee_amount|default:"0" }}
-                {% else %}
+  <div class="flex justify-between items-center mb-2">
+    <h2 class="text-xl font-semibold text-base-content">Semester Fees</h2>
+    <span class="toggle-icon cursor-pointer" onclick="toggleSection('semester-fee-table-section')">
+      <i class="fas fa-chevron-down text-base-content"></i>
+    </span>
+  </div>
+  <div id="semester-fee-table-section" class="max-w-full mx-auto bg-base-100 rounded-xl shadow-xl p-8 mb-8 section-content">
+    <form method="get" class="mb-6 flex flex-col sm:flex-row gap-4">
+      <input type="text" name="q" value="{{ query }}" placeholder="Search by fee type or amount..." class="input input-bordered w-full sm:w-64 rounded-lg">
+      <button type="submit" class="btn btn-primary rounded-lg">Search</button>
+    </form>
+    <div class="overflow-x-auto">
+      <table class="table w-full">
+        <thead>
+          <tr>
+            <th class="text-base-content">Fee Type</th>
+            <th class="text-base-content">Fee Heads</th>
+            <th class="text-base-content">Total</th>
+            <th class="text-base-content">Active</th>
+            <th class="text-base-content">Semesters</th>
+            <th class="text-base-content">Session</th>
+            <th class="text-base-content">Programs</th>
+            <th class="text-base-content">Shift</th>
+            <th class="text-base-content">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fee in semester_fees %}
+          <tr {% if edit_fee and fee.pk == edit_fee.pk %}class="bg-info/10"{% endif %}>
+            <td>{{ fee.fee_type.name }}</td>
+            <td>
+              {% for head, amount in fee.dynamic_fees.items %}
+                {{ head }}: {{ amount }}{% if not forloop.last %}, {% endif %}
+              {% empty %}
+                -
+              {% endfor %}
+            </td>
+            <td>{{ fee.total_amount }}</td>
+            <td>{{ fee.is_active|yesno:"Yes,No" }}</td>
+            <td>
+              {% if fee.semester_fees.first %}
+                {% for semester in fee.semester_fees.first.semester_number.all %}
+                  {{ semester.name }} ({{ semester.program.name }}){% if not forloop.last %}, {% endif %}
+                {% empty %}
                   -
-                {% endif %}
-              </td>
-              <td>
-                {% if fee.examination_fund %}
-                  {{ fee.examination_fund_amount|default:"0" }}
-                {% else %}
+                {% endfor %}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>{{ fee.semester_fees.first.academic_session|default:"-" }}</td>
+            <td>
+              {% if fee.semester_fees.first %}
+                {% for program in fee.semester_fees.first.programs.all %}
+                  {{ program.name }}{% if not forloop.last %}, {% endif %}
+                {% empty %}
                   -
-                {% endif %}
-              </td>
-              <td>
-                {% if fee.tuition_fee %}
-                  {{ fee.tuition_fee_amount|default:"0" }}
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-              <td>
-                {% if fee.others %}
-                  {{ fee.others_amount|default:"0" }}
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-              <td>
-                {% if fee.evening_fund %}
-                  {{ fee.evening_fund_amount|default:"0" }}
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-              <td>{{ fee.total_amount }}</td>
-              <td>{{ fee.is_active|yesno:"Yes,No" }}</td>
-              <td>
-                {% if fee.semester_fees.first %}
-                  {% for semester in fee.semester_fees.first.semester_number.all %}
-                    {{ semester.name }} ({{ semester.program.name }}){% if not forloop.last %}, {% endif %}
-                  {% empty %}
-                    -
-                  {% endfor %}
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-              <td>{{ fee.semester_fees.first.academic_session|default:"-" }}</td>
-              <td>
-                {% if fee.semester_fees.first %}
-                  {% for program in fee.semester_fees.first.programs.all %}
-                    {{ program.name }}{% if not forloop.last %}, {% endif %}
-                  {% empty %}
-                    -
-                  {% endfor %}
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-              <td>
-                {% if fee.shift %}
-                  {{ fee.shift|default:"-" }}
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-              <td>
-                <a href="?edit={{ fee.pk }}{% if query %}&q={{ query }}{% endif %}" class="btn btn-xs btn-outline rounded-lg">Edit</a>
-                <a href="?delete={{ fee.pk }}{% if query %}&q={{ query }}{% endif %}" class="btn btn-xs btn-error rounded-lg ml-2">Delete</a>
-              </td>
-            </tr>
-            {% empty %}
-            <tr>
-              <td colspan="13" class="text-center text-base-content">No semester fees found.</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+                {% endfor %}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>
+              {% if fee.shift %}
+                {{ fee.shift|default:"-" }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>
+              <a href="?edit={{ fee.pk }}{% if query %}&q={{ query }}{% endif %}" class="btn btn-xs btn-outline rounded-lg">Edit</a>
+              <a href="?delete={{ fee.pk }}{% if query %}&q={{ query }}{% endif %}" class="btn btn-xs btn-error rounded-lg ml-2">Delete</a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="9" class="text-center text-base-content">No semester fees found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </div>
+</div>
 
 <!-- Semester Fee Delete Confirmation Modal -->
 {% if delete_fee %}
@@ -428,20 +374,6 @@
 {% endif %}
 
 <script>
-function toggleAmountField(checkboxId, amountFieldId) {
-  const checkbox = document.getElementById(checkboxId);
-  const amountDiv = document.getElementById(amountFieldId + '_div');
-  const amountInput = document.getElementById(amountFieldId);
-  if (checkbox.checked) {
-    amountDiv.classList.remove('hidden');
-    amountInput.setAttribute('required', 'required');
-  } else {
-    amountDiv.classList.add('hidden');
-    amountInput.removeAttribute('required');
-  }
-  calculateTotal();
-}
-
 function toggleSection(sectionId) {
   const section = document.getElementById(sectionId);
   const toggleIcon = document.querySelector(`[onclick="toggleSection('${sectionId}')"] i`);
@@ -481,15 +413,48 @@ function openDeleteFeeTypeModal(id) {
   const feetypeIdInput = document.getElementById('delete_feetype_id');
   feetypeIdInput.value = id;
   modal.showModal();
-  const tuitionFeeChecked = document.getElementById('tuition_fee').checked;
-  const tuitionFeeAmount = tuitionFeeChecked ? parseFloat(document.getElementById('tuition_fee_amount').value) || 0 : 0;
-  const othersChecked = document.getElementById('others').checked;
-  const othersAmount = othersChecked ? parseFloat(document.getElementById('others_amount').value) || 0 : 0;
-  const eveningFundChecked = document.getElementById('evening_fund').checked;
-  const eveningFundAmount = eveningFundChecked ? parseFloat(document.getElementById('evening_fund_amount').value) || 0 : 0;
-  
-  const total = amount + computerFeeAmount + examinationFundAmount + tuitionFeeAmount + othersAmount + eveningFundAmount;
+}
+
+function addFeeField() {
+  const container = document.getElementById('dynamic-fee-fields');
+  const newField = document.createElement('div');
+  newField.className = 'dynamic-field';
+  newField.innerHTML = `
+    <input type="text" name="fee_head" class="input input-bordered rounded-lg" placeholder="Fee Head" required>
+    <input type="number" name="fee_amount" class="input input-bordered rounded-lg" step="0.01" min="0" placeholder="Amount" required oninput="calculateTotal()">
+    <button type="button" class="btn btn-error btn-sm rounded-lg" onclick="removeFeeField(this)">Remove</button>
+  `;
+  container.appendChild(newField);
+  calculateTotal();
+}
+
+function removeFeeField(button) {
+  button.parentElement.remove();
+  calculateTotal();
+}
+
+function calculateTotal() {
+  const amountInputs = document.querySelectorAll('input[name="fee_amount"]');
+  let total = 0;
+  amountInputs.forEach(input => {
+    const value = parseFloat(input.value) || 0;
+    total += value;
+  });
   document.getElementById('total_amount').value = total.toFixed(2);
+}
+
+function prepareDynamicFees() {
+  const heads = document.querySelectorAll('input[name="fee_head"]');
+  const amounts = document.querySelectorAll('input[name="fee_amount"]');
+  const dynamicFees = {};
+  
+  heads.forEach((head, index) => {
+    if (head.value && amounts[index].value) {
+      dynamicFees[head.value] = parseFloat(amounts[index].value) || 0;
+    }
+  });
+  
+  document.getElementById('dynamic_fees').value = JSON.stringify(dynamicFees);
 }
 
 function fetchPrograms() {

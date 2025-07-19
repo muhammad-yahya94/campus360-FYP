@@ -74,6 +74,10 @@ class Applicant(models.Model):
     dob = models.DateField(help_text="Select the applicant's date of birth.")
     contact_no = models.CharField(max_length=15, help_text="Enter the applicant's primary contact phone number.")
     identification_mark = models.TextField(blank=True, help_text="Describe any visible identification mark on the applicant's body (optional).")
+    gender = models.CharField(
+        max_length=6,
+        choices=[('male', 'Male'), ('female', 'Female')],
+        help_text="Select the gender of the applicant.")
 
     # Father/Guardian details
     father_name = models.CharField(max_length=100, help_text="Enter the full name of the applicant's father or guardian.")

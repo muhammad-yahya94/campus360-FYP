@@ -2,7 +2,8 @@
 from django.urls import path
 from . import views
 
-app_name = 'faculty_staff'
+
+app_name = 'faculty_staff'   
 
 urlpatterns = [
 
@@ -21,10 +22,11 @@ urlpatterns = [
     path('staff/delete/<int:staff_id>/', views.delete_staff, name='delete_staff'),
 
     # ========== 4. Students & Enrollment ==========
-    path('session/<int:session_id>/students/', views.session_students, name='session_students'),
+    path('students/', views.session_students, name='session_students'),
+    path('session/<int:session_id>/students/', views.session_students, name='session_students_by_id'),
     path('student/<int:student_id>/', views.student_detail, name='student_detail'),
     path('edit-enrollment-status/', views.edit_enrollment_status, name='edit_enrollment_status'),
-    path('view-students/', views.view_students, name='view_students'),
+    path('view-students/<int:offering_id>', views.view_students, name='view_students'),
     path('student/<int:student_id>/set_role/', views.set_student_role, name='set_student_role'),
 
     # ========== 5. Courses & Offerings ==========
@@ -44,7 +46,9 @@ urlpatterns = [
     path('weekly-timetable/', views.weekly_timetable, name='weekly_timetable'),
     path('search-timetable-slots/', views.search_timetable_slots, name='search_timetable_slots'),
     path('my-timetable/', views.my_timetable, name='my_timetable'),
-
+    path('timetable/replacement/create/', views.lecture_replacement_create, name='lecture_replacement_create'),
+  
+  
     # ========== 7. Search APIs ==========
     path('search-courses/', views.search_courses, name='search_courses'),
     path('search-teachers/', views.search_teachers, name='search_teachers'),
@@ -60,13 +64,13 @@ urlpatterns = [
     path('save-venue/', views.save_venue, name='save_venue'),
 
     # ========== 9. Study Materials ==========
-    path('study-materials/', views.study_materials, name='study_materials'),
+    path('study-materials/<int:offering_id>/', views.study_materials, name='study_materials'),
     path('create-study-material/', views.create_study_material, name='create_study_material'),
     path('edit-study-material/', views.edit_study_material, name='edit_study_material'),
     path('delete-study-material/', views.delete_study_material, name='delete_study_material'),
 
     # ========== 10. Assignments ==========
-    path('assignments/', views.assignments, name='assignments'),
+    path('assignments/<int:offering_id>/', views.assignments, name='assignments'),
     path('create-assignment/', views.create_assignment, name='create_assignment'),
     path('edit-assignment/', views.edit_assignment, name='edit_assignment'),
     path('delete-assignment/', views.delete_assignment, name='delete_assignment'),
@@ -75,19 +79,24 @@ urlpatterns = [
 
 
     # ========== 12. Exam Results ==========
-    path('exam-results/', views.exam_results, name='exam_results'),
+    path('exam-results/<int:course_offering_id>/', views.exam_results, name='exam_results'),
     path('record-exam-results/', views.record_exam_results, name='record_exam_results'),
-    path('delete-exam-result/', views.delete_exam_result, name='delete_exam_result'),
-
-    path('update-exam-result/', views.update_exam_result, name='update_exam_result'), 
+    
+    
+    
+    
+    # ==========  student performace ==========
     path('course/<int:course_offering_id>/student/<int:student_id>/performance/', views.student_performance, name='student_performance'),
     path('student/<int:student_id>/performance/', views.student_semester_performance, name='student_semester_performance'),
+ 
+ 
+ 
     # ========== 13. Notice Board ==========
     path('notices/', views.notice_board, name='notice_board'),
-    path('notices/toggle-pin/<int:notice_id>/', views.toggle_pin_notice, name='toggle_pin_notice'),
     
     # ========== 14. Attendance ==========
-    path('attendance/', views.attendance, name='attendance'),
+    path('attendance/<int:offering_id>/', views.attendance, name='attendance'),
+    path('load-students-for-course/', views.load_students_for_course, name='load_students_for_course'),
     path('record-attendance/', views.record_attendance, name='record_attendance'),
     path('load-students-for-course/', views.load_students_for_course, name='load_students_for_course'),
     path('load-attendance/', views.load_attendance, name='load_attendance'),
@@ -99,6 +108,9 @@ urlpatterns = [
     path('semester/add/', views.add_semester, name='add_semester'),
     path('semester/edit/', views.edit_semester, name='edit_semester'),
     path('semester/delete/', views.delete_semester, name='delete_semester'),
+    # New AJAX endpoints
+    path('get-programs/', views.get_programs, name='get_programs'),
+    path('get-academic-sessions/', views.get_academic_sessions, name='get_academic_sessions'),
 
     # ========== 15. Teacher Courses ==========
     path('teacher-course-list/', views.teacher_course_list, name='teacher_course_list'),
@@ -114,5 +126,9 @@ urlpatterns = [
     path('create-quiz/<int:course_offering_id>/', views.create_quiz, name='create_quiz'),
     path('get-quiz/<int:quiz_id>/', views.get_quiz, name='get_quiz'),
 
-
+    # ========== 18. Department Funds ==========
+    path('department-funds/', views.department_funds_management, name='department_funds_management'),
+    path('department-funds/view/<int:fund_id>/', views.view_department_fund, name='view_department_fund'),
+    path('department-funds/get-programs/', views.get_programs_fund, name='get_programs_fund'),
+    path('department-funds/get-semesters/', views.get_semesters_fund, name='get_semesters_fund'),
 ]

@@ -11,6 +11,7 @@ from django.utils import timezone
 
 # ===== Course =====
 class Course(models.Model):
+    opt = models.BooleanField(default=False)
     code = models.CharField(max_length=10, unique=True, help_text="Enter the unique course code (e.g., CS101).")  # e.g., CS101
     name = models.CharField(max_length=200, help_text="Enter the full name of the course (e.g., Introduction to Programming).")  # e.g., Introduction to Programming
     credits = models.PositiveIntegerField(help_text="Enter the number of credit hours for this course.")  # e.g., 3
@@ -30,6 +31,7 @@ class Course(models.Model):
 class CourseOffering(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='offerings', help_text="Select the core course being offered.")
     teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='course_offerings', help_text="Select the teacher assigned to teach this course offering.")
+    replacement_teacher = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True, blank=True, related_name='replacement_course_offerings')  # Active replacement
     department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name='course_offerings', null=True, blank=True, help_text="Select the department offering this course (optional).")
     program = models.ForeignKey(Program, on_delete=models.CASCADE, related_name='course_offerings', null=True, blank=True, help_text="Select the program this course offering belongs to (optional).")
     academic_session = models.ForeignKey(AcademicSession, on_delete=models.CASCADE, related_name='course_offerings', help_text="Select the academic session for this offering.")
@@ -142,6 +144,93 @@ def clean(self):
                 f"Time conflict: Teacher {self.course_offering.teacher.user.get_full_name()} is already scheduled on "
                 f"{self.get_day_display()} from {slot.start_time} to {slot.end_time} for an active semester."
             )
+
+
+
+
+# New LectureReplacement model
+class LectureReplacement(models.Model):
+    REPLACEMENT_TYPES = [
+        ('temporary', 'Temporary'),
+        ('permanent', 'Permanent'),
+    ]
+
+    course_offering = models.ForeignKey(
+        CourseOffering,
+        on_delete=models.CASCADE,
+        related_name='replacements',
+        help_text="Select the course offering for which the teacher is being replaced."
+    )
+    original_teacher = models.ForeignKey(
+        Teacher,
+        on_delete=models.CASCADE,
+        related_name='replaced_lectures',
+        help_text="Select the original teacher being replaced."
+    )
+    replacement_teacher = models.ForeignKey(
+        Teacher,
+        on_delete=models.CASCADE,
+        related_name='replacement_lectures',
+        help_text="Select the teacher who will replace the original teacher."
+    )
+    replacement_type = models.CharField(
+        max_length=10,
+        choices=REPLACEMENT_TYPES,
+        default='temporary',
+        help_text="Specify if the replacement is temporary (one day) or permanent."
+    )
+    replacement_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="For temporary replacements, specify the date of the replacement. Leave blank for permanent replacements."
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Timestamp when the replacement was created."
+    )
+
+    def __str__(self):
+        return f"{self.replacement_teacher} replacing {self.original_teacher} for {self.course_offering} ({self.replacement_type})"
+
+    class Meta:
+        verbose_name = "Lecture Replacement"
+        verbose_name_plural = "Lecture Replacements"
+        unique_together = ['course_offering', 'original_teacher', 'replacement_date']
+
+    def clean(self):
+        # Ensure original teacher matches the course offering's teacher
+        if self.course_offering.teacher != self.original_teacher:
+            raise ValidationError(
+                f"The original teacher {self.original_teacher} does not match the course offering's assigned teacher {self.course_offering.teacher}."
+            )
+
+        # Ensure replacement teacher is not the same as the original teacher
+        if self.original_teacher == self.replacement_teacher:
+            raise ValidationError("The replacement teacher cannot be the same as the original teacher.")
+
+        # For temporary replacements, ensure replacement_date is provided
+        if self.replacement_type == 'temporary' and not self.replacement_date:
+            raise ValidationError("A replacement date must be provided for temporary replacements.")
+
+        # For permanent replacements, ensure replacement_date is not provided
+        if self.replacement_type == 'permanent' and self.replacement_date:
+            raise ValidationError("Permanent replacements should not have a specific replacement date.")
+
+        # Check for replacement teacher conflicts on the same day and time
+        if self.replacement_date:
+            timetable_slots = self.course_offering.timetable_slots.all()
+            for slot in timetable_slots:
+                conflicting_slots = TimetableSlot.objects.filter(
+                    course_offering__teacher=self.replacement_teacher,
+                    day=slot.day,
+                    start_time__lt=slot.end_time,
+                    end_time__gt=slot.start_time
+                ).exclude(course_offering__id=self.course_offering.id)
+                if conflicting_slots.exists():
+                    raise ValidationError(
+                        f"Replacement teacher {self.replacement_teacher} has a scheduling conflict on {slot.get_day_display()} from {slot.start_time} to {slot.end_time}."
+                    )
+
 
 
 
@@ -286,34 +375,59 @@ class Notice(models.Model):
         return "All Programs and Sessions"
     
     
-# ===== Marks After Exams =====
 class ExamResult(models.Model):
-    EXAM_TYPES = [
-        ('midterm', 'Midterm Exam'),
-        ('final', 'Final Exam'),
-        ('sessional', 'Sessoinal'),
-        ('project', 'Project'),
-        ('practical', 'Practical Exam'),
-    ]
-
     course_offering = models.ForeignKey(CourseOffering, on_delete=models.CASCADE, related_name='exam_results', help_text="The course offering this exam result is for.")
     student = models.ForeignKey('students.Student', on_delete=models.CASCADE, related_name='exam_results', help_text="The student this result pertains to.")
-    exam_type = models.CharField(max_length=20, choices=EXAM_TYPES, help_text="The type of exam (e.g., Midterm, Final).")
-    total_marks = models.PositiveIntegerField(default=100, help_text="Total marks for this exam.")
-    marks_obtained = models.PositiveIntegerField(help_text="Marks obtained by the student in this exam.")
+    
+    # Midterm Exam Marks
+    midterm_obtained = models.PositiveIntegerField(null=True, blank=True, help_text="Marks obtained in Midterm Exam.")
+    midterm_total = models.PositiveIntegerField(help_text="Total marks for Midterm Exam (credit_hours * 4).")
+    
+    # Final Exam Marks
+    final_obtained = models.PositiveIntegerField(null=True, blank=True, help_text="Marks obtained in Final Exam.")
+    final_total = models.PositiveIntegerField(help_text="Total marks for Final Exam (credit_hours * 14).")
+    
+    # Sessional Marks
+    sessional_obtained = models.PositiveIntegerField(null=True, blank=True, help_text="Marks obtained in Sessional.")
+    sessional_total = models.PositiveIntegerField(help_text="Total marks for Sessional (credit_hours * 2).")
+    
+    # Practical Marks
+    practical_obtained = models.PositiveIntegerField(null=True, blank=True, help_text="Marks obtained in Practical.")
+    practical_total = models.PositiveIntegerField(help_text="Total marks for practical (credit_hours * 20).")
+    
+    # Calculated fields
+    total_marks = models.FloatField(default=0.0, help_text="Overall marks obtained for the exam result.")
+    percentage = models.FloatField(null=True, blank=True, help_text="Overall percentage for the exam result.")
+    
+    # Common fields
     graded_by = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True, related_name='graded_results', help_text="The teacher who graded this exam.")
     graded_at = models.DateTimeField(auto_now_add=True, help_text="The date and time when the result was recorded.")
-    remarks = models.TextField(blank=True,null=True, help_text="Additional remarks or comments on the student's performance.")
+    remarks = models.TextField(blank=True, null=True, help_text="Additional remarks or comments on the student's performance.")
+
+    def save(self, *args, **kwargs):
+        # Calculate total marks based on course credit_hours
+        if self.course_offering and self.course_offering.course:
+            self.midterm_total = self.course_offering.course.credits * 4
+            self.final_total = self.course_offering.course.credits * 14
+            self.sessional_total = self.course_offering.course.credits * 2
+            self.practical_total = self.course_offering.course.lab_work * 20
+            
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.student} - {self.exam_type} ({self.course_offering})"
+        return f"{self.student} - Exam Results ({self.course_offering})"
+           
+    def get_total_max_marks(self):
+        """Calculate total maximum marks across all exam types"""
+        total = 0
+        for field in ['midterm', 'final', 'sessional', 'practical']:
+            total += getattr(self, f"{field}_total", 0)
+        return total
 
     class Meta:
-        unique_together = ('course_offering', 'student', 'exam_type')
+        unique_together = ('course_offering', 'student')
         verbose_name = "Exam Result"
-        verbose_name_plural = "Exam Results"
-        
-        
+        verbose_name_plural = "Exam Results"      
         
 
 

@@ -1,6 +1,10 @@
 from django.contrib import admin
-from .models import Course, CourseOffering, Venue, TimetableSlot, StudyMaterial, Assignment, AssignmentSubmission, Notice, ExamResult, Attendance, Quiz, Question, Option, QuizSubmission
-
+from .models import (
+    Course, CourseOffering, Venue, TimetableSlot, 
+    StudyMaterial, Assignment, AssignmentSubmission, 
+    Notice, ExamResult, Attendance, LectureReplacement,
+    Quiz, Question, Option, QuizSubmission
+)
 # Inline for Options in Question
 class OptionInline(admin.TabularInline):
     model = Option
@@ -81,14 +85,14 @@ class NoticeAdmin(admin.ModelAdmin):
     date_hierarchy = 'created_at'
     raw_id_fields = ('created_by',)
 
-# Admin for ExamResult
 @admin.register(ExamResult)
 class ExamResultAdmin(admin.ModelAdmin):
-    list_display = ('course_offering', 'student', 'exam_type', 'marks_obtained', 'total_marks', 'graded_by', 'graded_at')
-    list_filter = ('exam_type', 'course_offering__academic_session', 'course_offering__semester', 'graded_at')
+    list_display = ('course_offering', 'student', 'remarks', 'graded_by', 'graded_at')
+    list_filter = ('course_offering__academic_session', 'course_offering__semester', 'graded_at')
     search_fields = ('student__applicant__full_name', 'course_offering__course__name')
     raw_id_fields = ('course_offering', 'student', 'graded_by')
     date_hierarchy = 'graded_at'
+    
 
 # Admin for Attendance
 @admin.register(Attendance)
@@ -133,3 +137,8 @@ class QuizSubmissionAdmin(admin.ModelAdmin):
     search_fields = ('student__applicant__full_name', 'quiz__title')
     date_hierarchy = 'submitted_at'
     raw_id_fields = ('student', 'quiz')
+    
+    
+    
+admin.site.register(LectureReplacement)
+   

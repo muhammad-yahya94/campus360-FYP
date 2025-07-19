@@ -46,24 +46,19 @@
                             <i class="fas fa-calendar-week text-lg w-6"></i> Timetable
                         </a>
                     </li>  
-                    {% comment %} <li>
-                        <a href="{% url 'students:study_materials' %}" class="{% if request.resolver_match.url_name == 'study_materials' %}active{% endif %} text-base">
-                            <i class="fas fa-book-open text-lg w-6"></i> Study Materials
-                        </a>
-                    </li> {% endcomment %}
                     <li>
                         <a href="{% url 'students:notices' %}" class="{% if request.resolver_match.url_name == 'notices' %}active{% endif %} text-base">
                             <i class="fas fa-bell text-lg w-6"></i> Notices
                         </a>
                     </li>
                     <li>
-                        <a href="{% url 'students:exam_results' %}" class="{% if request.resolver_match.url_name == 'exam_results' %}active{% endif %} text-base">
-                            <i class="fas fa-clipboard-check text-lg w-6"></i> Exam Results
+                        <a href="{% url 'students:semester_fees' %}" class="{% if request.resolver_match.url_name == 'semester_fees' %}active{% endif %} text-base">
+                            <i class="fas fa-money-bill-wave text-lg w-6"></i> Semester Fees
                         </a>
                     </li>
                     <li>
-                        <a href="{% url 'students:semester_fees' %}" class="{% if request.resolver_match.url_name == 'semester_fees' %}active{% endif %} text-base">
-                            <i class="fas fa-money-bill-wave text-lg w-6"></i> Semester Fees
+                        <a href="{% url 'students:fund_payments' %}" class="{% if request.resolver_match.url_name == 'fund_payments' %}active{% endif %} text-base">
+                            <i class="fas fa-wallet text-lg w-6"></i> Fund Payments
                         </a>
                     </li>
                     <li>
@@ -98,8 +93,13 @@
                         </a>
                     </li>
                     <li>
+                        <a href="{% url 'students:ide' %}" class="{% if request.resolver_match.url_name == 'ide' %}active{% endif %} text-base">
+                            <i class="fas fa-code text-lg w-6"></i> Code Editor
+                        </a>
+                    </li>
+                    <li>
                         <a href="{% url 'students:my_courses' %}" class="{% if request.resolver_match.url_name == 'my_courses' %}active{% endif %} text-base">
-                            <i class="fas fa-book text-lg w-6"></i> Cources Record
+                            <i class="fas fa-book text-lg w-6"></i> Courses Record
                         </a>
                     </li>
                     <li>
@@ -107,7 +107,12 @@
                             <i class="fas fa-user-check text-lg w-6"></i> Attendance Record
                         </a>
                     </li>
-
+                    <li>
+                        <a href="{% url 'students:exam_results' %}" class="{% if request.resolver_match.url_name == 'exam_results' %}active{% endif %} text-base">
+                            <i class="fas fa-clipboard-check text-lg w-6"></i> Academic Record
+                        </a>
+                    </li>
+                    <li>
                         <a href="{% url 'students:logout' %}" class="text-error hover:bg-error hover:text-error-content text-base">
                             <i class="fas fa-sign-out-alt text-lg w-6"></i> Logout
                         </a>
@@ -263,7 +268,7 @@
                         <div>
                             <h2 class="text-xl font-bold">Student Dashboard</h2>
                             <p class="text-sm text-base-content/70">
-                                 {{ student_full_name }}
+                                {{ student_full_name }}
                                 <span class="text-blue-500">Student</span>
                             </p>
                         </div>
@@ -283,25 +288,29 @@
                                 <i class="fas fa-tachometer-alt text-lg w-6"></i> Dashboard
                             </a>
                         </li>
-                    <li>
-                        <a href="{% url 'students:timetable' %}" class="{% if request.resolver_match.url_name == 'timetable' %}active{% endif %} text-base">
-                            <i class="fas fa-calendar-week text-lg w-6"></i> Timetable
-                        </a>
-                    </li>      
-    
+                        <li>
+                            <a href="{% url 'students:timetable' %}" class="{% if request.resolver_match.url_name == 'timetable' %}active{% endif %} text-lg py-3">
+                                <i class="fas fa-calendar-week text-lg w-6"></i> Timetable
+                            </a>
+                        </li>      
                         <li>
                             <a href="{% url 'students:notices' %}" class="{% if request.resolver_match.url_name == 'notices' %}active{% endif %} text-lg py-3">
                                 <i class="fas fa-bell text-lg w-6"></i> Notices
                             </a>
                         </li>
                         <li>
-                            <a href="{% url 'students:exam_results' %}" class="{% if request.resolver_match.url_name == 'exam_notices' %}active{% endif %} text-lg py-3">
-                                <i class="fas fa-clipboard-check text-lg w-6"></i> Exam Results
+                            <a href="{% url 'students:semester_fees' %}" class="{% if request.resolver_match.url_name == 'semester_fees' %}active{% endif %} text-lg py-3">
+                                <i class="fas fa-money-bill-wave text-lg w-6"></i> Semester Fees
                             </a>
                         </li>
                         <li>
-                            <a href="{% url 'students:semester_fees' %}" class="{% if request.resolver_match.url_name == 'semester_fees' %}active{% endif %} text-lg py-3">
-                                <i class="fas fa-money-bill-wave text-lg w-6"></i> Semester Fees
+                            <a href="{% url 'fee_management:student_generate_voucher' %}" class="{% if 'student_generate_voucher' in request.resolver_match.url_name %}active{% endif %} text-lg py-3">
+                                <i class="fas fa-file-invoice-dollar text-lg w-6"></i> Generate Voucher
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'students:fund_payments' %}" class="{% if request.resolver_match.url_name == 'fund_payments' %}active{% endif %} text-lg py-3">
+                                <i class="fas fa-wallet text-lg w-6"></i> Fund Payments
                             </a>
                         </li>
                         <li>
@@ -320,8 +329,18 @@
                             </a>
                         </li>
                         <li>
-                            <a href="{% url 'students:upload_photos' %}" class="{% if request.resolver_match.url_name == 'upload_photos' %}active{% endif %} text-lg py-3">
-                                <i class="fas fa-images text-lg w-6"></i> Upload Photos
+                            <a href="{% url 'students:my_courses' %}" class="{% if request.resolver_match.url_name == 'my_courses' %}active{% endif %} text-lg py-3">
+                                <i class="fas fa-book text-lg w-6"></i> Courses Record
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'students:exam_results' %}" class="{% if request.resolver_match.url_name == 'exam_results' %}active{% endif %} text-lg py-3">
+                                <i class="fas fa-clipboard-check text-lg w-6"></i> Academic Record
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'students:attendance_stats' %}" class="{% if request.resolver_match.url_name == 'attendance_stats' %}active{% endif %} text-lg py-3">
+                                <i class="fas fa-user-check text-lg w-6"></i> Attendance Record
                             </a>
                         </li>
                         <div class="divider"></div>

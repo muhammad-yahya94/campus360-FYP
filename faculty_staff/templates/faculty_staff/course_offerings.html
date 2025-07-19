@@ -86,96 +86,88 @@
         </div>
     </div>
 
-  <!-- Course Offering Form -->
-  <section class="card bg-base-100 shadow-xl assignment-form">
-    <div class="card-body p-6">
-      <h2 class="card-title text-2xl font-semibold mb-4">
-        <i class="fas fa-book mr-2"></i>
-        Assign Course
-      </h2>
-      <form id="course-offering-form" method="post" action="{% url 'faculty_staff:save_course_offering' %}" class="space-y-6">
-        {% csrf_token %}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="form-control">
-            <label class="label" for="course_id">
-              <span class="label-text">Course</span>
-            </label>
-            <select name="course_id" id="course_id" class="select select-bordered select2" aria-label="Select course" required>
-              <option value="">Search for a course...</option>
-            </select>
-            <span id="course-error" class="text-error text-sm mt-1"></span>
-          </div>
-          <div class="form-control">
-            <label class="label" for="offering_type">
-              <span class="label-text">Offering Type</span>
-            </label>
-            <select name="offering_type" id="offering_type" class="select select-bordered select2" aria-label="Select offering type" required>
-              <option value="">Select offering type...</option>
-            </select>
-            <span id="offering-type-error" class="text-error text-sm mt-1"></span>
-          </div>
-          <div class="form-control">
-            <label class="label" for="teacher_id">
-              <span class="label-text">Teacher</span>
-            </label>
-            <select name="teacher_id" id="teacher_id" class="select select-bordered select2" aria-label="Select teacher" required>
-              <option value="">Select a teacher...</option>
-            </select>
-            <span id="teacher-error" class="text-error text-sm mt-1"></span>
-          </div>
-          <div class="form-control">
-            <label class="label" for="academic_session_id">
-              <span class="label-text">Academic Session</span>
-            </label>
-            <select name="academic_session_id" id="academic_session_id" class="select select-bordered select2" aria-label="Select academic session" required>
-              <option value="">Select an academic session...</option>
-            </select>
-            <span id="academic-session-error" class="text-error text-sm mt-1"></span>
-          </div>
-          <div class="form-control">
-            <label class="label" for="program_id">
-              <span class="label-text">Program</span>
-            </label>
-            <select name="program_id" id="program_id" class="select select-bordered select2" aria-label="Select program" required>
-              <option value="">Select an academic session first...</option>
-            </select>
-            <span id="program-error" class="text-error text-sm mt-1"></span>
-          </div>
-          <div class="form-control">
-            <label class="label" for="semester_id">
-              <span class="label-text">Semester</span>
-            </label>
-            <select name="semester_id" id="semester_id" class="select select-bordered select2" aria-label="Select semester" required>
-              <option value="">Search for a semester...</option>
-            </select>
-            <span id="semester-error" class="text-error text-sm mt-1"></span>
-          </div>
-          <div class="form-control">
-            <label class="label" for="shift">
-              <span class="label-text">Shift</span>
-            </label>
-            <select name="shift" id="shift" class="select select-bordered" aria-label="Select shift" required>
-              <option value="">Select a shift...</option>
-              <option value="morning">Morning</option>
-              <option value="evening">Evening</option>
-              <option value="both">Both</option>
-            </select>
-            <span id="shift-error" class="text-error text-sm mt-1"></span>
-          </div>
-          <div class="form-control">
-            <label class="label" for="is_active">
-              <span class="label-text">Active</span>
-            </label>
-            <input type="checkbox" name="is_active" id="is_active" class="checkbox checkbox-primary" checked aria-label="Toggle active status" />
-          </div>
-        </div>
-        <button type="submit" class="btn btn-primary w-full">
-          <i class="fas fa-check mr-2"></i>
-          Assign Course
-        </button>
-      </form>
+<!-- Course Offering Form -->
+<form id="course-offering-form" method="post" action="{% url 'faculty_staff:save_course_offering' %}" class="space-y-6">
+  {% csrf_token %}
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="form-control">
+      <label class="label" for="course_id">
+        <span class="label-text">Course</span>
+      </label>
+      <select name="course_id" id="course_id" class="select select-bordered select2" aria-label="Select course" required>
+        <option value="">Search for a course...</option>
+      </select>
+      <span id="course-error" class="text-error text-sm mt-1"></span>
     </div>
-  </section>
+    <div class="form-control">
+      <label class="label" for="offering_type">
+        <span class="label-text">Offering Type</span>
+      </label>
+      <select name="offering_type" id="offering_type" class="select select-bordered" aria-label="Select offering type" required>
+        <option value="">Select offering type...</option>
+      </select>
+      <span id="offering-type-error" class="text-error text-sm mt-1"></span>
+    </div>
+    <div class="form-control">
+      <label class="label" for="teacher_id">
+        <span class="label-text">Teacher</span>
+      </label>
+      <select name="teacher_id" id="teacher_id" class="select select-bordered select2" aria-label="Select teacher" required>
+        <option value="">Select a teacher...</option>
+      </select>
+      <span id="teacher-error" class="text-error text-sm mt-1"></span>
+    </div>
+    <div class="form-control">
+      <label class="label" for="academic_session_id">
+        <span class="label-text">Academic Session</span>
+      </label>
+      <select name="academic_session_id" id="academic_session_id" class="select select-bordered" aria-label="Select academic session" required>
+        <option value="">Select an academic session...</option>
+      </select>
+      <span id="academic-session-error" class="text-error text-sm mt-1"></span>
+    </div>
+    <div class="form-control">
+      <label class="label" for="program_id">
+        <span class="label-text">Program</span>
+      </label>
+      <select name="program_id" id="program_id" class="select select-bordered" aria-label="Select program" required>
+        <option value="">Select an academic session first...</option>
+      </select>
+      <span id="program-error" class="text-error text-sm mt-1"></span>
+    </div>
+    <div class="form-control">
+      <label class="label" for="semester_id">
+        <span class="label-text">Semester</span>
+      </label>
+      <select name="semester_id" id="semester_id" class="select select-bordered" aria-label="Select semester" required>
+        <option value="">Select a program first...</option>
+      </select>
+      <span id="semester-error" class="text-error text-sm mt-1"></span>
+    </div>
+    <div class="form-control">
+      <label class="label" for="shift">
+        <span class="label-text">Shift</span>
+      </label>
+      <select name="shift" id="shift" class="select select-bordered" aria-label="Select shift" required>
+        <option value="">Select a shift...</option>
+        <option value="morning">Morning</option>
+        <option value="evening">Evening</option>
+        <option value="both">Both</option>
+      </select>
+      <span id="shift-error" class="text-error text-sm mt-1"></span>
+    </div>
+    <div class="form-control">
+      <label class="label" for="is_active">
+        <span class="label-text">Active</span>
+      </label>
+      <input type="checkbox" name="is_active" id="is_active" class="checkbox checkbox-primary" checked aria-label="Toggle active status" />
+    </div>
+  </div>
+  <button type="submit" class="btn btn-primary w-full">
+    <i class="fas fa-check mr-2"></i>
+    Assign Course
+  </button>
+</form>
 
   <!-- Filter Section -->
   <section class="card bg-base-100 shadow-xl">
@@ -475,7 +467,7 @@
         <label class="label" for="edit_offering_type">
           <span class="label-text">Offering Type</span>
         </label>
-        <select name="offering_type" id="edit_offering_type" class="select select-bordered select2" required>
+        <select name="offering_type" id="edit_offering_type" class="select select-bordered" required>
           <option value="">Select offering type...</option>
         </select>
         <span id="edit_offering_type-error" class="text-error text-sm mt-1"></span>
@@ -493,7 +485,7 @@
         <label class="label" for="edit_academic_session_id">
           <span class="label-text">Academic Session</span>
         </label>
-        <select name="academic_session_id" id="edit_academic_session_id" class="select select-bordered select2" required>
+        <select name="academic_session_id" id="edit_academic_session_id" class="select select-bordered" required>
           <option value="">Select an academic session...</option>
         </select>
         <span id="edit_academic_session_id-error" class="text-error text-sm mt-1"></span>
@@ -502,7 +494,7 @@
         <label class="label" for="edit_program_id">
           <span class="label-text">Program</span>
         </label>
-        <select name="program_id" id="edit_program_id" class="select select-bordered select2" required>
+        <select name="program_id" id="edit_program_id" class="select select-bordered" required>
           <option value="">Select an academic session first...</option>
         </select>
         <span id="edit_program_id-error" class="text-error text-sm mt-1"></span>
@@ -511,8 +503,8 @@
         <label class="label" for="edit_semester_id">
           <span class="label-text">Semester</span>
         </label>
-        <select name="semester_id" id="edit_semester_id" class="select select-bordered select2" required>
-          <option value="">Search for a semester...</option>
+        <select name="semester_id" id="edit_semester_id" class="select select-bordered" required>
+          <option value="">Select a program first...</option>
         </select>
         <span id="edit_semester_id-error" class="text-error text-sm mt-1"></span>
       </div>
@@ -535,17 +527,27 @@
         <input type="checkbox" name="is_active" id="edit_is_active" class="checkbox checkbox-primary">
         <span id="edit_is_active-error" class="text-error text-sm mt-1"></span>
       </div>
-      <button type="submit" class="btn btn-primary w-full">
-        <i class="fas fa-save mr-2"></i> Save Changes
-      </button>
+      <div class="mb-4 md:mb-6">
+        <button type="submit" class="btn btn-primary w-full">
+          <i class="fas fa-save mr-2"></i> Save Changes
+        </button>
+      
+        <!-- Cancel button to uncheck the modal toggle -->
+        <label for="edit-offering-modal" class="btn btn-secondary w-full mt-2 cursor-pointer">
+          <i class="fas fa-times mr-2"></i> Cancel
+        </label>
+      
+        <!-- This closes the modal when clicking outside -->
+        <label for="edit-offering-modal" class="modal-backdrop cursor-pointer">Close</label>
+      </div>
     </form>
-    <label class="modal-backdrop" for="edit-offering-modal">Close</label>
+  
   </div>
 </div>
 
 <!-- Edit Timetable Modal -->
 <input type="checkbox" id="edit-timetable-modal" class="modal-toggle" />
-<div class="modal">
+<div class="modal" role="dialog">
   <div class="modal-box">
     <h3 class="font-bold text-lg">Edit Timetable Slot</h3>
     <form id="edit-timetable-form" method="post" action="{% url 'faculty_staff:edit_timetable_slot' %}" class="space-y-4">
@@ -555,9 +557,8 @@
         <label class="label" for="edit_timetable_course_offering_id">
           <span class="label-text">Course Offering</span>
         </label>
-        <select name="course_offering_id" id="edit_timetable_course_offering_id" class="select select-bordered" disabled>
-          <option value="">Select a course offering...</option>
-        </select>
+        <input type="text" id="edit_timetable_course_offering_display" class="input input-bordered" readonly aria-label="Course Offering" />
+        <input type="hidden" name="course_offering_id" id="edit_timetable_course_offering_id">
         <span id="edit_course_offering_id-error" class="text-error text-sm mt-1"></span>
       </div>
       <div class="form-control">
@@ -598,13 +599,15 @@
         </select>
         <span id="edit_venue_id-error" class="text-error text-sm mt-1"></span>
       </div>
-      <button type="submit" class="btn btn-primary w-full">
-        <i class="fas fa-save mr-2"></i> Save Changes
-      </button>
+      <div class="modal-action">
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-save mr-2"></i> Save Changes
+        </button>
+        <label for="edit-timetable-modal" class="btn btn-outline">Close</label>
+      </div>
     </form>
-    <label class="modal-backdrop" for="edit-timetable-modal">Close</label>
   </div>
-</div>
+</div> 
 
 <!-- Include Select2 CSS and JS -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -665,112 +668,6 @@ $(document).ready(function() {
     });
   }
 
-  // Initialize Select2 for academic session
-  function initSelect2AcademicSession(selector) {
-    $(selector).select2({
-      ajax: {
-        url: "{% url 'faculty_staff:get_academic_sessions' %}",
-        dataType: 'json',
-        delay: 250,
-        data: function(params) {
-          return { q: params.term, page: params.page || 1 };
-        },
-        processResults: function(data, params) {
-          params.page = params.page || 1;
-          return {
-            results: data.results,
-            pagination: { more: data.pagination ? data.pagination.more : false }
-          };
-        },
-        cache: true
-      },
-      placeholder: "Select an academic session...",
-      minimumInputLength: 0,
-      allowClear: true
-    });
-  }
-
-  // Initialize Select2 for program
-  function initSelect2Program(selector, academicSessionSelector) {
-    $(selector).select2({
-      ajax: {
-        url: "{% url 'faculty_staff:search_programs' %}",
-        dataType: 'json',
-        delay: 250,
-        data: function(params) {
-          return {
-            q: params.term,
-            academic_session_id: $(academicSessionSelector).val(),
-            page: params.page || 1
-          };
-        },
-        processResults: function(data, params) {
-          params.page = params.page || 1;
-          return {
-            results: data.results,
-            pagination: { more: data.pagination.more }
-          };
-        },
-        cache: true
-      },
-      placeholder: "Select an academic session first...",
-      minimumInputLength: 1,
-      allowClear: true
-    });
-  }
-
-  // Initialize Select2 for semester
-  function initSelect2Semester(selector, academicSessionSelector) {
-    $(selector).select2({
-      ajax: {
-        url: "{% url 'faculty_staff:search_semesters' %}",
-        dataType: 'json',
-        delay: 250,
-        data: function(params) {
-          return {
-            q: params.term,
-            page: params.page || 1,
-            program_id: $('#program_id').val() || $('#edit_program_id').val(),
-            academic_session_id: $(academicSessionSelector).val() || ''
-          };
-        },
-        processResults: function(data, params) {
-          params.page = params.page || 1;
-          return {
-            results: data.results,
-            pagination: { more: data.more }
-          };
-        },
-        cache: true
-      },
-      placeholder: "Search for a semester...",
-      minimumInputLength: 1,
-      allowClear: true
-    });
-  }
-
-  // Initialize Select2 for offering type
-  function initSelect2OfferingType(selector) {
-    $(selector).select2({
-      ajax: {
-        url: "{% url 'faculty_staff:get_offering_type_choices' %}",
-        dataType: 'json',
-        delay: 250,
-        data: function(params) {
-          return { q: params.term, page: params.page || 1 };
-        },
-        processResults: function(data, params) {
-          params.page = params.page || 1;
-          return { results: data.results };
-        },
-        cache: true
-      },
-      placeholder: "Select offering type...",
-      minimumResultsForSearch: Infinity,
-      allowClear: true
-    });
-  }
-
   // Initialize Select2 for venue
   function initSelect2Venue(selector) {
     $(selector).select2({
@@ -796,68 +693,200 @@ $(document).ready(function() {
     });
   }
 
-  // Initialize Select2 for main form
-  initSelect2Course('#course_id');
-  initSelect2Teacher('#teacher_id');
-  initSelect2AcademicSession('#academic_session_id');
-  initSelect2Program('#program_id', '#academic_session_id');
-  initSelect2Semester('#semester_id');
-  initSelect2OfferingType('#offering_type');
-
-  // Initialize Select2 for edit offering form
-  initSelect2Course('#edit_course_id');
-  initSelect2Teacher('#edit_teacher_id');
-  initSelect2AcademicSession('#edit_academic_session_id');
-  initSelect2Program('#edit_program_id', '#edit_academic_session_id');
-  initSelect2Semester('#edit_semester_id');
-  initSelect2OfferingType('#edit_offering_type');
-
-  // Initialize Select2 for edit timetable form
-  initSelect2Venue('#edit_venue_id');
-
-  // Update program dropdown when academic session changes
-  function handleAcademicSessionChange(selector, programSelector) {
-    $(selector).on('change', function() {
-      $(programSelector).val(null).trigger('change');
-      if ($(this).val()) {
-        $(programSelector).prop('disabled', false);
-        $(programSelector).select2('destroy').select2({
-          ajax: {
-            url: "{% url 'faculty_staff:search_programs' %}",
-            dataType: 'json',
-            delay: 250,
-            data: function(params) {
-              return {
-                q: params.term,
-                academic_session_id: $(selector).val(),
-                page: params.page || 1
-              };
-            },
-            processResults: function(data, params) {
-              params.page = params.page || 1;
-              return {
-                results: data.results,
-                pagination: { more: data.pagination.more }
-              };
-            },
-            cache: true
-          },
-          placeholder: "Search for a program...",
-          minimumInputLength: 1,
-          allowClear: true
+  // Initialize normal select for academic session
+  function initSelectAcademicSession(selector) {
+    $.ajax({
+      url: "{% url 'faculty_staff:get_academic_sessions' %}",
+      dataType: 'json',
+      success: function(data) {
+        const $select = $(selector);
+        $select.empty().append('<option value="">Select an academic session...</option>');
+        $.each(data.results, function(index, item) {
+          $select.append(`<option value="${item.id}">${item.text}</option>`);
         });
-      } else {
-        $(programSelector).prop('disabled', true);
-        $(programSelector).select2('destroy').select2({
-          placeholder: "Select an academic session first...",
-          disabled: true
-        });
+      },
+      error: function(xhr, status, error) {
+        console.error('Error fetching academic sessions:', error);
       }
     });
   }
 
-  handleAcademicSessionChange('#academic_session_id', '#program_id');
-  handleAcademicSessionChange('#edit_academic_session_id', '#edit_program_id');
+  // Initialize normal select for program
+  function initSelectProgram(selector, academicSessionSelector) {
+    const $select = $(selector);
+    $select.empty().append('<option value="">Select an academic session first...</option>').prop('disabled', true);
+    
+    $(academicSessionSelector).on('change', function() {
+      const sessionId = $(this).val();
+      if (sessionId) {
+        $select.prop('disabled', false);
+        $.ajax({
+          url: "{% url 'faculty_staff:search_programs' %}",
+          dataType: 'json',
+          data: { academic_session_id: sessionId },
+          success: function(data) {
+            $select.empty().append('<option value="">Select a program...</option>');
+            $.each(data.results, function(index, item) {
+              $select.append(`<option value="${item.id}">${item.text}</option>`);
+            });
+          },
+          error: function(xhr, status, error) {
+            console.error('Error fetching programs:', error);
+            $select.empty().append('<option value="">Error loading programs</option>').prop('disabled', true);
+          }
+        });
+      } else {
+        $select.empty().append('<option value="">Select an academic session first...</option>').prop('disabled', true);
+      }
+    });
+  }
+
+  // Initialize normal select for semester
+  function initSelectSemester(selector, academicSessionSelector, programSelector) {
+    const $select = $(selector);
+    $select.empty().append('<option value="">Select a program first...</option>').prop('disabled', true);
+    
+    $(programSelector).on('change', function() {
+      const programId = $(this).val();
+      const sessionId = $(academicSessionSelector).val();
+      if (programId && sessionId) {
+        $select.prop('disabled', false);
+        $.ajax({
+          url: "{% url 'faculty_staff:search_semesters' %}",
+          dataType: 'json',
+          data: { program_id: programId, academic_session_id: sessionId },
+          success: function(data) {
+            $select.empty().append('<option value="">Select a semester...</option>');
+            $.each(data.results, function(index, item) {
+              $select.append(`<option value="${item.id}">${item.text}</option>`);
+            });
+          },
+          error: function(xhr, status, error) {
+            console.error('Error fetching semesters:', error);
+            $select.empty().append('<option value="">Error loading semesters</option>').prop('disabled', true);
+          }
+        });
+      } else {
+        $select.empty().append('<option value="">Select a program first...</option>').prop('disabled', true);
+      }
+    });
+  }
+
+  // Initialize normal select for offering type
+  function initSelectOfferingType(selector) {
+    $.ajax({
+      url: "{% url 'faculty_staff:get_offering_type_choices' %}",
+      dataType: 'json',
+      success: function(data) {
+        const $select = $(selector);
+        $select.empty().append('<option value="">Select offering type...</option>');
+        $.each(data.results, function(index, item) {
+          $select.append(`<option value="${item.id}">${item.text}</option>`);
+        });
+      },
+      error: function(xhr, status, error) {
+        console.error('Error fetching offering types:', error);
+      }
+    });
+  }
+
+  // Initialize Select2 and normal selects for main form
+  initSelect2Course('#course_id');
+  initSelect2Teacher('#teacher_id');
+  initSelectAcademicSession('#academic_session_id');
+  initSelectProgram('#program_id', '#academic_session_id');
+  initSelectSemester('#semester_id', '#academic_session_id', '#program_id');
+  initSelectOfferingType('#offering_type');
+
+  // Initialize Select2 and normal selects for edit offering form
+  initSelect2Course('#edit_course_id');
+  initSelect2Teacher('#edit_teacher_id');
+  initSelectAcademicSession('#edit_academic_session_id');
+  initSelectProgram('#edit_program_id', '#edit_academic_session_id');
+  initSelectSemester('#edit_semester_id', '#edit_academic_session_id', '#edit_program_id');
+  initSelectOfferingType('#edit_offering_type');
+
+  // Initialize Select2 for edit timetable form
+  initSelect2Venue('#edit_venue_id');
+
+  // Handle edit course offering
+  $('.edit-offering').on('click', function() {
+    const offeringId = $(this).data('offering-id');
+    $.ajax({
+      url: "{% url 'faculty_staff:get_course_offering' %}",
+      type: 'GET',
+      data: { offering_id: offeringId },
+      success: function(response) {
+        if (response.success) {
+          const data = response.data;
+          $('#edit_offering_id').val(data.id);
+          $('#edit_course_id').append(new Option(data.course.text, data.course.id, true, true)).trigger('change');
+          $('#edit_teacher_id').append(new Option(data.teacher.text, data.teacher.id, true, true)).trigger('change');
+          $('#edit_offering_type').val(data.offering_type.id);
+          $('#edit_academic_session_id').val(data.academic_session.id).trigger('change'); // Trigger change to populate programs
+          
+          // Populate programs based on academic session
+          $.ajax({
+            url: "{% url 'faculty_staff:search_programs' %}",
+            dataType: 'json',
+            data: { academic_session_id: data.academic_session.id },
+            success: function(programData) {
+              const $programSelect = $('#edit_program_id');
+              $programSelect.empty().append('<option value="">Select a program...</option>').prop('disabled', false);
+              $.each(programData.results, function(index, item) {
+                $programSelect.append(`<option value="${item.id}">${item.text}</option>`);
+              });
+              $programSelect.val(data.program.id).trigger('change'); // Set program and trigger change to populate semesters
+              
+              // Populate semesters based on program and academic session
+              $.ajax({
+                url: "{% url 'faculty_staff:search_semesters' %}",
+                dataType: 'json',
+                data: { program_id: data.program.id, academic_session_id: data.academic_session.id },
+                success: function(semesterData) {
+                  const $semesterSelect = $('#edit_semester_id');
+                  $semesterSelect.empty().append('<option value="">Select a semester...</option>').prop('disabled', false);
+                  $.each(semesterData.results, function(index, item) {
+                    $semesterSelect.append(`<option value="${item.id}">${item.text}</option>`);
+                  });
+                  $semesterSelect.val(data.semester.id);
+                },
+                error: function(xhr, status, error) {
+                  console.error('Error fetching semesters:', error);
+                  $('#edit_semester_id').empty().append('<option value="">Error loading semesters</option>').prop('disabled', true);
+                }
+              });
+            },
+            error: function(xhr, status, error) {
+              console.error('Error fetching programs:', error);
+              $('#edit_program_id').empty().append('<option value="">Error loading programs</option>').prop('disabled', true);
+            }
+          });
+
+          $('#edit_shift').val(data.shift);
+          $('#edit_is_active').prop('checked', data.is_active);
+          $('#edit-offering-modal').prop('checked', true);
+        } else {
+          const errorAlert = `
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+              Error: ${response.message}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          `;
+          $('.assignment-form').prepend(errorAlert);
+        }
+      },
+      error: function(xhr, status, error) {
+        const errorAlert = `
+          <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            An error occurred: ${error}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        `;
+        $('.assignment-form').prepend(errorAlert);
+      }
+    });
+  });
 
   // Handle course offering form submission
   $('#course-offering-form').on('submit', function(e) {
@@ -906,7 +935,7 @@ $(document).ready(function() {
           
           $('#course-offering-form')[0].reset();
           $('.select2', '#course-offering-form').val(null).trigger('change');
-          $('#shift').val('');
+          $('#shift, #offering_type, #academic_session_id, #program_id, #semester_id').val('');
           $('#is_active').prop('checked', true);
           
           setTimeout(() => { location.reload(); }, 1500);
@@ -937,48 +966,6 @@ $(document).ready(function() {
     });
   });
 
-  // Handle edit course offering
-  $('.edit-offering').on('click', function() {
-    const offeringId = $(this).data('offering-id');
-    $.ajax({
-      url: "{% url 'faculty_staff:get_course_offering' %}",
-      type: 'GET',
-      data: { offering_id: offeringId },
-      success: function(response) {
-        if (response.success) {
-          const data = response.data;
-          $('#edit_offering_id').val(data.id);
-          $('#edit_course_id').append(new Option(data.course.text, data.course.id, true, true)).trigger('change');
-          $('#edit_offering_type').append(new Option(data.offering_type.text, data.offering_type.id, true, true)).trigger('change');
-          $('#edit_teacher_id').append(new Option(data.teacher.text, data.teacher.id, true, true)).trigger('change');
-          $('#edit_academic_session_id').append(new Option(data.academic_session.text, data.academic_session.id, true, true)).trigger('change');
-          $('#edit_program_id').append(new Option(data.program.text, data.program.id, true, true)).trigger('change');
-          $('#edit_semester_id').append(new Option(data.semester.text, data.semester.id, true, true)).trigger('change');
-          $('#edit_shift').val(data.shift);
-          $('#edit_is_active').prop('checked', data.is_active);
-          $('#edit-offering-modal').prop('checked', true);
-        } else {
-          const errorAlert = `
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-              Error: ${response.message}
-              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-          `;
-          $('.assignment-form').prepend(errorAlert);
-        }
-      },
-      error: function(xhr, status, error) {
-        const errorAlert = `
-          <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            An error occurred: ${error}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-          </div>
-        `;
-        $('.assignment-form').prepend(errorAlert);
-      }
-    });
-  });
-
   // Handle edit offering form submission
   $('#edit-offering-form').on('submit', function(e) {
     e.preventDefault();
@@ -992,13 +979,10 @@ $(document).ready(function() {
     $('.text-error', this).text('');
     
     let isValid = true;
-    $('select[required], input[type="checkbox"]', this).each(function() {
-      if ($(this).is('select') && !$(this).val()) {
+    $('select[required]', this).each(function() {
+      if (!$(this).val()) {
         const fieldName = $(this).attr('name');
         $(`#edit_${fieldName}-error`).text('This field is required.');
-        isValid = false;
-      } else if ($(this).is('input[type="checkbox"]') && !$(this).is(':checked')) {
-        $(`#edit_is_active-error`).text('This field is required.');
         isValid = false;
       }
     });
@@ -1055,44 +1039,45 @@ $(document).ready(function() {
     });
   });
 
-  // Handle edit timetable slot
-  $('.edit-timetable-slot').on('click', function() {
-    const slotId = $(this).data('slot-id');
-    $.ajax({
-      url: "{% url 'faculty_staff:get_timetable_slot' %}",
-      type: 'GET',
-      data: { slot_id: slotId },
-      success: function(response) {
-        if (response.success) {
-          const data = response.data;
-          $('#edit_slot_id').val(data.id);
-          $('#edit_timetable_course_offering_id').append(new Option(data.course_offering.text, data.course_offering.id, true, true)).trigger('change');
-          $('#edit_day').val(data.day);
-          $('#edit_start_time').val(data.start_time);
-          $('#edit_end_time').val(data.end_time);
-          $('#edit_venue_id').append(new Option(data.venue.text, data.venue.id, true, true)).trigger('change');
-          $('#edit-timetable-modal').prop('checked', true);
-        } else {
-          const errorAlert = `
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-              Error: ${response.message}
-              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-          `;
-          $('.assignment-form').prepend(errorAlert);
-        }
-      },
-      error: function(xhr, status, error) {
+// Handle edit timetable slot
+$('.edit-timetable-slot').on('click', function() {
+  const slotId = $(this).data('slot-id');
+  $.ajax({
+    url: "{% url 'faculty_staff:get_timetable_slot' %}",
+    type: 'GET',
+    data: { slot_id: slotId },
+    success: function(response) {
+      if (response.success) {
+        const data = response.data;
+        $('#edit_slot_id').val(data.id);
+        $('#edit_timetable_course_offering_id').val(data.course_offering.id);
+        $('#edit_timetable_course_offering_display').val(data.course_offering.text);
+        $('#edit_day').val(data.day);
+        $('#edit_start_time').val(data.start_time);
+        $('#edit_end_time').val(data.end_time);
+        $('#edit_venue_id').append(new Option(data.venue.text, data.venue.id, true, true)).trigger('change');
+        $('#edit-timetable-modal').prop('checked', true);
+      } else {
         const errorAlert = `
           <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            An error occurred: ${error}
+            Error: ${response.message}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
           </div>
         `;
         $('.assignment-form').prepend(errorAlert);
       }
-    });
+    },
+    error: function(xhr, status, error) {
+      const errorAlert = `
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+          An error occurred: ${error}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      `;
+      $('.assignment-form').prepend(errorAlert);
+    }
   });
+});
 
   // Handle edit timetable form submission
   $('#edit-timetable-form').on('submit', function(e) {
@@ -1110,7 +1095,7 @@ $(document).ready(function() {
     $('select[required], input[required]', this).each(function() {
       if (!$(this).val()) {
         const fieldName = $(this).attr('name');
-        $(`#edit-${fieldName}-error`).text('This field is required.');
+        $(`#edit_${fieldName}-error`).text('This field is required.');
         $(`#edit_${fieldName}`).addClass('border-red-500');
         isValid = false;
       }
@@ -1120,7 +1105,7 @@ $(document).ready(function() {
     const startTime = $('#edit_start_time').val();
     const endTime = $('#edit_end_time').val();
     if (startTime && endTime && startTime >= endTime) {
-      $('#edit-start_time-error').text('End time must be after start time.');
+      $('#edit_start_time-error').text('End time must be after start time.');
       $('#edit_start_time, #edit_end_time').addClass('border-red-500');
       isValid = false;
     }
@@ -1166,7 +1151,7 @@ $(document).ready(function() {
           `;
           $('.assignment-form').prepend(errorAlert);
           if (response.message.includes('Timetable slot already exists')) {
-            $('#edit-day-error').text(response.message);
+            $('#edit_day-error').text(response.message);
             $('#edit_day, #edit_start_time, #edit_end_time, #edit_venue_id').addClass('border-red-500');
           }
         }
@@ -1278,4 +1263,5 @@ $(document).ready(function() {
   });
 });
 </script>
+
 {% endblock %}

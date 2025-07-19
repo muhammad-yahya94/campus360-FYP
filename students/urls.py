@@ -48,6 +48,5 @@ urlpatterns = [
     # ========== 11. Semester Fees ==========
     path('fees/', views.semester_fees, name='semester_fees'),  # 11.1 Semester Fees
     
-    # ========== 12. FAce Attandence ==========
-    path('upload-photos/', views.upload_photos, name='upload_photos'),  # 12.1 Upload Photos
+    path('fund_payments/', views.fund_payments, name='fund_payments'),
 ]

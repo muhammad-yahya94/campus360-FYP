@@ -1,9 +1,12 @@
 from django.db import models
 from users.models import CustomUser
-from academics.models import Program, Department, Faculty
+from academics.models import Program, Department, Faculty, Semester
 from admissions.models import Applicant, AcademicSession
 from django.utils.text import slugify
 from django.conf import settings # Import settings for User model
+from django.core.validators import FileExtensionValidator
+from django.utils import timezone
+
 
 # ===== Teacher =====
 class Teacher(models.Model):
@@ -11,6 +14,12 @@ class Teacher(models.Model):
     DESIGNATION_CHOICES = [
         ('head_of_department', 'Head of Department'),
         ('professor', 'Professor'),
+    ]
+    
+    # Gender Choices
+    GENDER_CHOICES = [
+        ('male', 'Male'),
+        ('female', 'Female'),
     ]
 
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='teacher_profile', help_text="Select the user account associated with this teacher.")
@@ -20,6 +29,10 @@ class Teacher(models.Model):
     qualification = models.TextField(help_text="Enter the highest academic qualification of the teacher (e.g., PhD in Computer Science).")  # e.g., PhD in Computer Science
     hire_date = models.DateField(help_text="Select the date when the teacher was hired.")
     is_active = models.BooleanField(default=True, help_text="Check this if the teacher's profile is currently active.")
+    gender = models.CharField(
+        max_length=6,
+        choices=[('male', 'Male'), ('female', 'Female')],
+        help_text="Select the gender of the teacher.")
     # New fields for social media and experience
     linkedin_url = models.URLField(max_length=200, blank=True, null=True, help_text="Enter the LinkedIn profile URL for the teacher (optional).")
     twitter_url = models.URLField(max_length=200, blank=True, null=True, help_text="Enter the Twitter profile URL for the teacher (optional).")
@@ -32,6 +45,79 @@ class Teacher(models.Model):
     class Meta:
         verbose_name = "Teacher"
         verbose_name_plural = "Teachers"
+
+
+class DepartmentFund(models.Model):
+    """Model to manage departmental funds that can be applied to multiple programs and semesters."""
+    
+    hod = models.ForeignKey(
+        Teacher,
+        on_delete=models.CASCADE,
+        related_name='created_funds',
+        limit_choices_to={'designation': 'head_of_department'},
+        help_text="Select the HOD who created this fund"
+    )
+    students = models.ManyToManyField(
+    'students.Student',
+    through='students.StudentFundPayment',
+    through_fields=('fund', 'student'),
+    related_name='department_funds',
+    blank=True,
+    help_text="Students associated with this fund and their payment status"
+)
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.CASCADE,
+        related_name='department_funds',
+        help_text="Select the department this fund belongs to"
+    )
+    academic_sessions = models.ManyToManyField(
+        AcademicSession,
+        related_name='department_funds',
+        help_text="Select the academic sessions this fund applies to"
+    )
+    programs = models.ManyToManyField(
+        Program,
+        related_name='department_funds',
+        help_text="Select the programs this fund applies to"
+    )
+    semesters = models.ManyToManyField(
+        Semester,
+        related_name='department_funds',
+        help_text="Select the semesters this fund applies to"
+    )
+    fundtype = models.CharField(
+        max_length=100,
+        help_text="type of fund"
+    )
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text="Enter the required amount for this fund"
+    )
+    description = models.TextField(
+        help_text="Enter a description of what this fund is for"
+    )
+    due_date = models.DateField(
+        help_text="Set the deadline for this fund"
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When this fund was created"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Check this if the fund is currently active"
+    )
+    
+    class Meta:
+        verbose_name = "Department Fund"
+        verbose_name_plural = "Department Funds"
+        ordering = ['-created_at']
+        
+    def __str__(self):
+        return f"{self.department.name} - {self.description[:50]}"  # Show first 50 characters of description
+
 
 class TeacherDetails(models.Model):
     # Employment Type Choices
@@ -92,6 +178,10 @@ class OfficeStaff(models.Model):
     office = models.ForeignKey(Office, on_delete=models.CASCADE, related_name='staff', help_text="Select the office this staff member belongs to.")
     position = models.CharField(max_length=100, help_text="Enter the position or role of the staff member within the office.")
     contact_no = models.CharField(max_length=15, blank=True, null=True, help_text="Enter the contact phone number for the office staff member (optional).")
+    gender = models.CharField(
+        max_length=6,
+        choices=[('male', 'Male'), ('female', 'Female')],
+        help_text="Select the gender of the office staff member.")
 
     def __str__(self):
         return f"{(self.user.get_full_name() or self.user.first_name)} ({self.position})"

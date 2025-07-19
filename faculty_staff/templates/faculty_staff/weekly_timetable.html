@@ -1,59 +1,38 @@
 {% extends 'faculty_staff/base_dashboard.html' %}
-
+{% load timetable_filters %}
 {% block title %}Weekly Timetable - {{ department.name }}{% endblock %}
 
 {% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <style>
-  @media print {
-    body * {
-      visibility: hidden;
-    }
-    .print-section, .print-section * {
-      visibility: visible;
-    }
-    .print-section {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-      padding: 20px;
-    }
-    .no-print {
-      display: none !important;
-    }
-    @page {
-      size: A4 landscape;
-      margin: 0.5cm;
-    }
-    .timetable-day {
-      page-break-inside: avoid;
-      margin-bottom: 20px;
-    }
-    .timetable-slot {
-      page-break-inside: avoid;
-    }
+  /* Ensure Select2 dropdown aligns with DaisyUI styling */
+  .select2-container--default .select2-selection--single {
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    padding: 0.5rem;
+    background-color: #fff;
+    height: 2.5rem;
   }
-  .print-header {
-    text-align: center;
-    margin-bottom: 20px;
-    border-bottom: 2px solid #333;
-    padding-bottom: 10px;
+  .select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #374151;
+    line-height: 1.5rem;
   }
-  .print-header h1 {
-    margin: 0 0 5px 0;
-    color: #1e40af;
+  .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 2.5rem;
   }
-  .print-header p {
-    margin: 5px 0;
-    color: #4b5563;
+  .select2-container--default .select2-results__option {
+    padding: 0.5rem;
   }
-  .print-footer {
-    text-align: center;
-    margin-top: 20px;
-    font-size: 10px;
-    color: #6b7280;
+  .select2-container--default .select2-results__option--highlighted {
+    background-color: #4f46e5;
+    color: #fff;
   }
-</style>
+  .select2-container .select2-selection--single:focus {
+    outline: none;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.5);
+  }
+</style>  
 {% endblock %}
 
 {% block content %}
@@ -64,21 +43,16 @@
       <h1 class="text-4xl font-bold mb-2">Weekly Timetable</h1>
       <p class="text-lg opacity-90">{{ department.name }} - <span class="academic-session">{{ academic_session.name|default:'No Active Session' }}</span></p>
     </div>
-  </div>
+  </div>  
 
   <!-- Controls -->
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
     <a href="{% url 'faculty_staff:course_offerings' %}" class="inline-flex items-center px-4 py-2 border border-indigo-500 text-indigo-500 bg-white hover:bg-indigo-50 rounded-lg shadow-sm">
-      <i class="fas fa-arrow-left mr-2"></i>
-      Back to Course Offerings
+      <i class="fas fa-arrow-left mr-2"></i>Back to Course Offerings
     </a>
     <div class="flex items-center gap-4">
-      <button id="printTimetableBtn" class="btn btn-primary no-print">
-        <i class="fas fa-print mr-2"></i>Print Timetable
-      </button>
       <label for="session-filter" class="text-sm font-medium text-gray-700">Select Session:</label>
       <select id="session-filter" onchange="window.location.href='?session_id=' + this.value + '&shift=' + document.getElementById('shift-filter').value" class="border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500">
-        {% comment %} <option value="">All Sessions</option> {% endcomment %}
         {% for session in academic_sessions %}
           <option value="{{ session.id }}" {% if request.GET.session_id|default:'' == session.id|stringformat:"s" %}selected{% endif %}>
             {{ session.name }}
@@ -97,27 +71,20 @@
   <!-- Timetable -->
   <div class="bg-white shadow-xl rounded-lg p-6 print-section">
     <h2 class="text-2xl font-semibold mb-4">
-      <i class="fas fa-calendar-week mr-2"></i>
-      Timetable Overview
+      <i class="fas fa-calendar-week mr-2"></i>Timetable Overview
     </h2>
-    {% if timetable_data %}
+    {% if timetable_data %}  
       <div class="space-y-4">
         {% for day in timetable_data %}
-          <div class="border border-gray-200 rounded-lg">
+          <div class="border border-gray-200 rounded-lg timetable-day">
             <button class="w-full flex justify-between items-center p-4 bg-gray-50 hover:bg-gray-100 transition duration-200" onclick="toggleDay('{{ day.day_value }}')">
               <span class="text-lg font-semibold text-gray-800">{{ day.day_label }}</span>
               <i id="toggle-icon-{{ day.day_value }}" class="fas fa-chevron-down text-gray-600"></i>
             </button>
-            <div id="slots-{{ day.day_value }}" class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+             <div id="slots-{{ day.day_value }}" class="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
               {% for slot in day.slots %}
-                <div 
-                  class="relative overflow-hidden rounded-xl shadow-lg transition-all duration-300 transform hover:scale-[1.02] {% if slot.shift == 'Morning' %}bg-gradient-to-br from-blue-50 to-blue-100 border-l-4 border-blue-400{% elif slot.shift == 'Evening' %}bg-gradient-to-br from-purple-50 to-purple-100 border-l-4 border-purple-400{% else %}bg-gradient-to-br from-green-50 to-green-100 border-l-4 border-green-400{% endif %} hover:shadow-xl" 
-                  data-tooltip="Teacher: {{ slot.teacher }}<br>Program: {{ slot.program }}"
-                  data-teacher="{{ slot.teacher }}"
-                  data-course-code="{{ slot.course_code }}"
-                  data-course-name="{{ slot.course_name }}"
-                  data-program="{{ slot.program }}"
-                >
+                {% with replacements=slot.course_offering_id|lookup_replacements %}
+                <div class="rounded-xl shadow-lg transition-all duration-300 transform hover:scale-[1.02] {% if slot.shift == 'Morning' %}bg-gradient-to-br from-blue-50 to-blue-100 border-l-4 border-blue-400{% elif slot.shift == 'Evening' %}bg-gradient-to-br from-purple-50 to-purple-100 border-l-4 border-purple-400{% else %}bg-gradient-to-br from-green-50 to-green-100 border-l-4 border-green-400{% endif %} hover:shadow-xl">
                   <div class="p-5">
                     <!-- Course Header -->
                     <div class="flex items-start justify-between mb-3">
@@ -160,9 +127,32 @@
                         <span class="mx-1">•</span>
                         Room {{ slot.room_no }}
                       </span>
+                      <button 
+                        onclick="openReplacementModal('{{ slot.course_offering_id }}', '{{ slot.teacher_id }}', '{{ slot.course_code|addslashes }}', '{{ slot.teacher|addslashes }}')"
+                        class="px-3 py-1 text-xs font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <i class="fas fa-exchange-alt mr-1"></i>Replace
+                      </button>
                     </div>
+                    <!-- Display Existing Replacements -->
+                    {% if replacements %}
+                      <div class="mt-2 text-xs text-gray-600 replacement-info">
+                        <p><strong>Replacements:</strong></p>
+                        <ul class="list-disc ml-4">
+                          {% for r in replacements %}
+                            <li>
+                              {{ r.replacement_teacher }} ({{ r.replacement_type|capfirst }}
+                              {% if r.replacement_date %}on {{ r.replacement_date }}{% endif %},
+                              Original: {{ r.original_teacher }}
+                              {% if r.is_active %} - Active{% endif %})
+                            </li>
+                          {% endfor %}
+                        </ul>
+                      </div>
+                    {% endif %}
                   </div>
                 </div>
+                {% endwith %}
               {% empty %}
                 <p class="col-span-full text-center text-gray-500">No slots scheduled for {{ day.day_label }}.</p>
               {% endfor %}
@@ -179,11 +169,52 @@
     {% endif %}
   </div>
 
+  <!-- Replacement Modal -->
+  <div id="replacementModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-gray-900">Create Lecture Replacement</h2>
+        <button onclick="closeReplacementModal()" class="text-gray-500 hover:text-gray-700 text-2xl font-bold">×</button>
+      </div>
+      <form id="replacement-form" method="post" action="{% url 'faculty_staff:lecture_replacement_create' %}">
+        {% csrf_token %}
+        <input type="hidden" name="course_offering" id="modal_course_offering">
+        <input type="hidden" name="original_teacher" id="modal_original_teacher">
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700">Course</label>
+          <p id="modal_course_code" class="text-sm text-gray-600"></p>
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700">Original Teacher</label>
+          <p id="modal_teacher_name" class="text-sm text-gray-600"></p>
+        </div>
+        <div class="mb-4">
+          <label for="replacement_teacher" class="block text-sm font-medium text-gray-700">Replacement Teacher</label>
+          <select name="replacement_teacher" id="replacement_teacher" class="select2-teacher w-full" required></select>
+        </div>
+        <div class="mb-4">
+          <label for="replacement_type" class="block text-sm font-medium text-gray-700">Replacement Type</label>
+          <select name="replacement_type" id="replacement_type" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500" onchange="toggleReplacementDate()" required>
+            <option value="temporary">Temporary</option>
+            <option value="permanent">Permanent</option>
+          </select>
+        </div>
+        <div class="mb-4 hidden" id="replacement_date_container">
+          <label for="replacement_date" class="block text-sm font-medium text-gray-700">Replacement Date</label>
+          <input type="date" name="replacement_date" id="replacement_date" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+        <div class="flex justify-end gap-4">
+          <button type="button" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300" onclick="closeReplacementModal()">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Save Replacement</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Programs Section -->
   <div class="bg-white shadow-xl rounded-lg p-6 mt-6">
     <h2 class="text-2xl font-semibold mb-4">
-      <i class="fas fa-list mr-2"></i>
-      Programs Running in {{ academic_session.name|default:'No Active Session' }}
+      <i class="fas fa-list mr-2"></i>Programs Running in {{ academic_session.name|default:'No Active Session' }}
     </h2>
     {% if programs %}
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -200,293 +231,185 @@
       </div>
     {% endif %}
   </div>
-</div>
 
-{% block extra_js %}
-<script>
-function printTimetable() {
-  try {
-    // Create a new container for the print content
-    const printContent = document.createElement('div');
-    printContent.className = 'print-container';
-    
-    // Get the current academic session from the page
-    const academicSession = document.querySelector('.academic-session')?.textContent || 'Current Session';
-    
-    // Create teacher details section
-    const teacherSection = document.createElement('div');
-    teacherSection.className = 'teacher-section mb-8';
-    teacherSection.innerHTML = `
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-bold">Teacher Schedule Overview</h2>
-        <span class="text-sm font-medium bg-gray-100 px-3 py-1 rounded-full">${academicSession}</span>
-      </div>
-      <div class="border-b pb-2 mb-4"></div>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        ${Array.from(new Set(Array.from(document.querySelectorAll('[data-teacher]')).map(el => 
-          el.getAttribute('data-teacher')
-        ))).filter(Boolean).map(teacher => {
-          const teacherSlots = Array.from(document.querySelectorAll(`[data-teacher="${teacher}"]`));
-          const courses = [...new Set(teacherSlots.map(slot => ({
-            code: slot.getAttribute('data-course-code'),
-            name: slot.getAttribute('data-course-name'),
-            program: slot.getAttribute('data-program')
-          })))];
-          
-          return `
-            <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-              <div class="flex items-center mb-3">
-                <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 mr-3">
-                  <i class="fas fa-chalkboard-teacher"></i>
-                </div>
-                <h3 class="font-bold text-gray-800">${teacher}</h3>
-              </div>
-              <div class="space-y-2">
-                ${courses.map(course => `
-                  <div class="text-sm p-2 bg-gray-50 rounded border border-gray-100">
-                    <p class="font-medium">${course.code} - ${course.name}</p>
-                    <p class="text-xs text-gray-600">${course.program || 'No Program'}</p>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    `;
-    
-    // Clone the timetable section
-    const timetableSection = document.querySelector('.print-section').cloneNode(true);
-    
-    // Remove teacher info cards from timetable section
-    timetableSection.querySelectorAll('.bg-white.rounded-lg.border').forEach(el => {
-      if (el.textContent.includes('chalkboard-teacher')) {
-        el.remove();
-      }
+  <!-- Include jQuery and Select2 JS -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  <script>
+    console.log('Timetable script loaded');
+
+    // Get CSRF token from meta tag or cookie
+    function getCsrfToken() {
+      const metaTag = document.querySelector('meta[name="csrf-token"]');
+      if (metaTag) return metaTag.getAttribute('content');
+      const name = 'csrftoken';
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      return parts.length === 2 ? parts.pop().split(';').shift() : '';
+    }
+
+    // Sanitize input to prevent XSS
+    function sanitize(str) {
+      return String(str || '').replace(/['"\\]/g, '\\$&').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // Initialize Select2 for replacement teacher dropdown
+    $(document).ready(function() {
+      $('#replacement_teacher').select2({
+        placeholder: 'Select a teacher',
+        allowClear: true,
+        minimumInputLength: 1,
+        ajax: {
+          url: "{% url 'faculty_staff:search_teachers' %}",
+          dataType: 'json',
+          delay: 250,
+          data: function(params) {
+            return {
+              q: params.term || '',
+              page: params.page || 1
+            };
+          },
+          processResults: function(data, params) {
+            return {
+              results: data.results.map(function(item) {
+                return {
+                  id: item.id,
+                  text: item.text
+                };
+              }),
+              pagination: {
+                more: data.pagination && data.pagination.more
+              }
+            };
+          },
+          cache: true
+        },
+        templateResult: function(data) {
+          if (!data.id) return data.text;
+          return $('<span>' + data.text + '</span>');
+        },
+        templateSelection: function(data) {
+          return data.text || 'Select a teacher';
+        }
+      });
     });
-    
-    // Add session info to timetable section
-    const timetableHeader = timetableSection.querySelector('h2');
-    if (timetableHeader) {
-      const sessionBadge = document.createElement('span');
-      sessionBadge.className = 'text-sm font-medium bg-gray-100 px-3 py-1 rounded-full ml-4';
-      sessionBadge.textContent = academicSession;
-      timetableHeader.parentNode.insertBefore(sessionBadge, timetableHeader.nextSibling);
+
+    // Toggle day visibility
+    function toggleDay(dayId) {
+      console.log('toggleDay called with:', dayId);
+      const slots = document.getElementById(`slots-${dayId}`);
+      const icon = document.getElementById(`toggle-icon-${dayId}`);
+      if (!slots || !icon) {
+        console.error(`Element not found: slots-${dayId} or toggle-icon-${dayId}`);
+        return;
+      }
+      if (slots.classList.contains('hidden')) {
+        slots.classList.remove('hidden');
+        icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+      } else {
+        slots.classList.add('hidden');
+        icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+      }
     }
-    
-    // Add both sections to print content
-    printContent.appendChild(teacherSection);
-    printContent.appendChild(timetableSection);
-    
-    // Remove any elements with class 'no-print'
-    printContent.querySelectorAll('.no-print').forEach(el => el.remove());
-    
-    // Create a new window for printing - must be triggered by user action
-    const printWindow = window.open('', '_blank');
-    
-    // Check if window was opened (not blocked by popup blocker)
-    if (!printWindow || printWindow.closed || typeof printWindow.closed === 'undefined') {
-      alert('Please allow popups for this site to use the print feature.');
-      return;
+
+    // Open replacement modal
+    function openReplacementModal(courseOfferingId, teacherId, courseCode, teacherName) {
+      console.log('openReplacementModal called with:', { courseOfferingId, teacherId, courseCode, teacherName });
+      const modal = document.getElementById('replacementModal');
+      const courseInput = document.getElementById('modal_course_offering');
+      const teacherInput = document.getElementById('modal_original_teacher');
+      const courseCodeEl = document.getElementById('modal_course_code');
+      const teacherNameEl = document.getElementById('modal_teacher_name');
+      if (!modal || !courseInput || !teacherInput || !courseCodeEl || !teacherNameEl) {
+        console.error('Modal or form elements not found');
+        return;
+      }
+      courseInput.value = sanitize(courseOfferingId) || '';
+      teacherInput.value = sanitize(teacherId) || '';
+      courseCodeEl.textContent = sanitize(courseCode) || 'N/A';
+      teacherNameEl.textContent = sanitize(teacherName) || 'N/A';
+      // Clear previous Select2 selection
+      $('#replacement_teacher').val(null).trigger('change');
+      console.log('Setting modal to visible');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      toggleReplacementDate();
     }
-    
-    const currentDate = new Date().toLocaleString();
-  
-  // Create the print document
-  const printDoc = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>${document.title}</title>
-      <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-      <style>
-        @page {
-          size: A4 landscape;
-          margin: 0.5cm;
-        }
-        body {
-          font-family: Arial, sans-serif;
-          margin: 0;
-          padding: 20px;
-          font-size: 12px;
-        }
-        .print-header {
-          text-align: center;
-          margin-bottom: 20px;
-          padding-bottom: 10px;
-        }
-        .print-header h1 {
-          margin: 0 0 5px 0;
-          font-size: 24px;
-          color: #1e40af;
-        }
-        .print-header p {
-          margin: 5px 0;
-          color: #4b5563;
-        }
-        .print-footer {
-          text-align: center;
-          margin-top: 20px;
-          font-size: 10px;
-          color: #6b7280;
-        }
-        /* Ensure cards don't break across pages */
-        .border-gray-200 {
-          page-break-inside: avoid;
-          break-inside: avoid;
-        }
-        /* Force grid layout for printing */
-        .grid {
-          display: grid !important;
-          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-          gap: 1rem;
-        }
-        /* Enhanced print styles */
-        @media print {
-          .teacher-section {
-            page-break-after: always;
-            margin-bottom: 2rem;
-          }
-          .teacher-section h2 {
-            color: #1e40af;
-            font-size: 1.5rem;
-            margin-bottom: 1.5rem;
-          }
-          body {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            font-size: 13px;
-            line-height: 1.4;
-          }
-          
-          /* Card styling for print */
-          [class*='from-'] {
-            background: #fff !important;
-            border: 1px solid #e5e7eb !important;
-          }
-          
-          /* Ensure proper spacing and breaks */
-          .border-gray-200 {
-            break-inside: avoid;
-            page-break-inside: avoid;
-            margin-bottom: 16px;
-          }
-          
-          /* Header styling for print */
-          .print-header {
-            border-bottom: 2px solid #e5e7eb;
-            padding-bottom: 15px;
-            margin-bottom: 20px;
-          }
-          
-          /* Ensure colors are visible in print */
-          .bg-white, .print-tooltip, .bg-opacity-50 {
-            background-color: #fff !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-            border: 1px solid #f3f4f6 !important;
-          }
-          
-          /* Fix for gradient backgrounds in print */
-          [class*='from-'], [class*='to-'] {
-            background-image: none !important;
-          }
-          
-          /* Ensure text is readable */
-          .text-gray-600, .text-gray-700, .text-gray-900 {
-            color: #1f2937 !important;
-          }
-          
-          /* Print tooltip styling */
-          .print-tooltip {
-            display: block !important;
-            opacity: 1 !important;
-            visibility: visible !important;
-            position: static !important;
-            transform: none !important;
-            margin-top: 8px;
-            padding: 8px 12px;
-            border-radius: 6px;
-            background-color: #f9fafb !important;
-            border: 1px solid #e5e7eb !important;
-            font-size: 12px;
-          }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="print-header">
-        <h1>${document.querySelector('h1').textContent}</h1>
-        <p>${document.querySelector('.text-lg').textContent}</p>
-        <p>Generated on: ${currentDate}</p>
-      </div>
-      ${printContent.outerHTML}
-      <div class="print-footer">
-        Generated by Campus360 - ${window.location.hostname}
-      </div>
-      <script>
-        // Auto-print when the print window loads
-        window.onload = function() {
-          // Expand all days for printing
-          document.querySelectorAll('[id^="slots-"]').forEach(el => {
-            el.classList.remove('hidden');
-          });
-          
-          setTimeout(function() {
-            window.print();
-          }, 500);
-        };
-      <\/script>
-    <\/body>
-    <\/html>
-  `;
-  
-  printWindow.document.open();
-  printWindow.document.write(printDoc);
-  printWindow.document.close();
-  
-  // Focus the window (helps with some browsers)
-  printWindow.focus();
-  
-  } catch (error) {
-    console.error('Print error:', error);
-    alert('An error occurred while preparing the print view. Please try again.');
-  }
-}
 
-function toggleDay(dayId) {
-  const slots = document.getElementById(`slots-${dayId}`);
-  const icon = document.getElementById(`toggle-icon-${dayId}`);
-  if (slots.classList.contains('hidden')) {
-    slots.classList.remove('hidden');
-    icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
-  } else {
-    slots.classList.add('hidden');
-    icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
-  }
-}
+    // Close replacement modal
+    function closeReplacementModal() {
+      console.log('closeReplacementModal called');
+      const modal = document.getElementById('replacementModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        console.log('Modal closed');
+      }
+      const replacementTeacher = document.getElementById('replacement_teacher');
+      const replacementType = document.getElementById('replacement_type');
+      const replacementDate = document.getElementById('replacement_date');
+      if (replacementTeacher) $('#replacement_teacher').val(null).trigger('change');
+      if (replacementType) replacementType.value = 'temporary';
+      if (replacementDate) replacementDate.value = '';
+    }
 
-// Initialize all days as expanded
-document.querySelectorAll('[id^="slots-"]').forEach(el => el.classList.remove('hidden'));
+    // Toggle replacement date visibility
+    function toggleReplacementDate() {
+      console.log('toggleReplacementDate called');
+      const replacementType = document.getElementById('replacement_type');
+      const dateContainer = document.getElementById('replacement_date_container');
+      const replacementDate = document.getElementById('replacement_date');
+      if (!replacementType || !dateContainer || !replacementDate) {
+        console.error('Replacement type or date elements not found');
+        return;
+      }
+      if (replacementType.value === 'temporary') {
+        dateContainer.classList.remove('hidden');
+        replacementDate.required = true;
+      } else {
+        dateContainer.classList.add('hidden');
+        replacementDate.required = false;
+        replacementDate.value = '';
+      }
+    }
 
-// Add event listener for print button
-document.getElementById('printTimetableBtn').addEventListener('click', printTimetable);
+    // Initialize timetable on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOMContentLoaded fired');
+      // Get current day
+      const currentDay = new Date().getDay();
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const currentDayName = dayNames[currentDay];
+      
+      // Initialize all days
+      document.querySelectorAll('.timetable-day').forEach(day => {
+        const dayLabel = day.querySelector('.text-lg.font-semibold').textContent;
+        const dayValue = dayLabel.toLowerCase();
+        const slots = document.getElementById('slots-' + dayValue);
+        const icon = document.getElementById('toggle-icon-' + dayValue);
+        
+        if (dayLabel === currentDayName) {
+          // Move current day to top and expand it
+          day.parentNode.insertBefore(day, day.parentNode.firstChild);
+          slots.style.display = 'grid';
+          icon.classList.remove('fa-chevron-down');
+          icon.classList.add('fa-chevron-up');
+        } else {
+          // Collapse other days
+          slots.style.display = 'none';
+          icon.classList.remove('fa-chevron-up');
+          icon.classList.add('fa-chevron-down');
+        }
+      });
 
-// Tooltip functionality
-document.querySelectorAll('[data-tooltip]').forEach(el => {
-  const tooltip = document.createElement('div');
-  tooltip.innerHTML = el.dataset.tooltip;
-  tooltip.className = 'absolute hidden group-hover:block bg-gray-800 text-white text-xs rounded p-2 -top-10 left-1/2 transform -translate-x-1/2 z-10';
-  el.classList.add('group', 'relative');
-  el.appendChild(tooltip);
-});
-</script>
-<style>
-/* Ensure Tailwind group-hover works */
-.group:hover .group-hover\:block {
-  display: block;
-}
-</style>
-{% endblock %}
+      // Handle modal backdrop click
+      window.addEventListener('click', function(event) {
+        const modal = document.getElementById('replacementModal');
+        if (event.target === modal) {
+          closeReplacementModal();
+        }  
+      });
+    });
+  </script>
+</div>
 {% endblock %}

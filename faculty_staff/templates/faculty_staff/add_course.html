@@ -63,6 +63,16 @@
                         </div>
                         <div class="form-control">
                             <label class="label">
+                                <span class="label-text text-sm text-base-content">Optional</span>
+                            </label>
+                            <select name="opt" id="opt" class="select select-bordered text-sm text-base-content">
+                
+                                <option value="False" {% if not form.opt.value|default:'False' %} selected {% endif %}>No</option>
+                                <option value="True" {% if form.opt.value|default:'True' %} {% endif %}>Yes</option>
+                            </select>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
                                 <span class="label-text text-sm text-base-content">Active</span>
                             </label>
                             <select name="is_active" id="is_active" class="select select-bordered text-sm text-base-content">
@@ -70,6 +80,17 @@
                                 <option value="False" {% if not form.is_active.value|default:'True' %}selected{% endif %}>No</option>
                             </select>
                         </div>
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text text-sm text-base-content">Prerequisites</span>
+                        </label>
+                        <select name="prerequisites" id="prerequisites" class="select select-bordered text-sm text-base-content" style="height: 300px;" multiple>
+                            {% for course in form.fields.prerequisites.queryset %}
+                            <option value="{{ course.id }}">{{ course.code }} - {{ course.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-base-content/70">Select any courses that must be completed before taking this course</small>
                     </div>
                     <div class="form-control">
                         <label class="label">

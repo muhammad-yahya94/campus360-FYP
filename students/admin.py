@@ -121,7 +121,7 @@ class StudentAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Basic Information', {
-            'fields': ('applicant', 'user', 'university_roll_no', 'college_roll_no')
+            'fields': ('applicant', 'user', 'university_roll_no', 'college_roll_no', 'role',)
         }),
         ('Academic Information', {
             'fields': ('program', 'enrollment_date', 'graduation_date', 'current_status')

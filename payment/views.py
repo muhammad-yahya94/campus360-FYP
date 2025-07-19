@@ -7,7 +7,7 @@ from .models import Payment
 from admissions.models import Applicant
 import stripe
 import logging
-from django.db.models import Q
+from django.db.models import Q   
 
 
 # Configure logging

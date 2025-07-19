@@ -1,5 +1,6 @@
 {% extends 'base_student.html' %}
 {% load humanize %}
+{% load custom_filters %}
 
 {% block title %}Semester Fees - {{ block.super }}{% endblock %}
 
@@ -13,7 +14,10 @@
           </div>
         </div>
       </div>
-    <div class="bg-base-100 rounded-lg shadow-md p-6">
+    
+    <!-- Regular Semester Fees Section -->
+    <div class="bg-base-100 rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-xl font-bold mb-4">Semester Fees</h2>
         {% if semester_list %}
             <div class="space-y-6">
                 {% for semester in semester_list %}
@@ -92,5 +96,236 @@
             </div>
         {% endif %}
     </div>
+
+    <!-- Fund Management Section -->
+    <div class="bg-base-100 rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-bold mb-4">Fund Management</h2>
+        
+        {% if funds %}
+            <div class="space-y-6">
+                {% for fund in funds %}
+                <div class="card bg-base-200 shadow-sm">
+                    <div class="card-body">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between">
+                            <div>
+                                <h2 class="card-title text-lg">
+                                    {{ fund.description }}
+                                </h2>
+                                <p class="text-sm text-gray-500">
+                                    Deadline: {{ fund.deadline|date:"M d, Y" }}
+                                </p>
+                            </div>
+                            <div class="text-right mt-2 md:mt-0">
+                                <span class="text-lg font-bold">
+                                    Rs. {{ fund.amount|intcomma }}
+                                </span>
+                                <div class="mt-1">
+                                    <span class="badge {{ fund.is_active|yesno:'badge-success, badge-warning' }}">
+                                        {{ fund.is_active|yesno:"Active, Inactive" }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="divider my-2"></div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="table table-compact w-full">
+                                <thead>
+                                    <tr>
+                                        <th>Receipt Status</th>
+                                        <th>Amount Paid</th>
+                                        <th>Payment Date</th>
+                                        <th>Verified By</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% with receipt=receipts|get_item:fund.id %}
+                                    <tr>
+                                        <td>
+                                            {% if receipt %}
+                                                <span class="badge {{ receipt.status|lower }}">
+                                                    {{ receipt.get_status_display }}
+                                                </span>
+                                            {% else %}
+                                                <span class="badge badge-warning">Not Submitted</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if receipt %}
+                                                Rs. {{ receipt.amount_paid|intcomma }}
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if receipt %}
+                                                {{ receipt.payment_date|date:"M d, Y" }}
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if receipt and receipt.verified_by %}
+                                                {{ receipt.verified_by.applicant.full_name }}
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if not receipt %}
+                                                <button class="btn btn-primary btn-sm" 
+                                                        onclick="showReceiptForm({{ fund.id }})">
+                                                    Submit Receipt
+                                                </button>
+                                            {% elif receipt.status == 'pending' and request.user.student.role in 'CR,GR' %}
+                                                <button class="btn btn-secondary btn-sm" 
+                                                        onclick="showVerificationForm({{ receipt.id }})">
+                                                    Verify Payment
+                                                </button>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endwith %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                <div class="flex-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" 
+                         class="w-6 h-6 mx-2 stroke-current">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <label>No funds found for your program and semester.</label>
+                </div>
+            </div>
+        {% endif %}
+    </div>
 </div>
+
+<!-- Receipt Submission Modal -->
+<div id="receiptModal" class="modal">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">Submit Payment Receipt</h3>
+        <form id="receiptForm" method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="fund_id" id="fundId">
+            <div class="form-control">
+                <label class="label">
+                    <span class="label-text">Payment Receipt</span>
+                </label>
+                <input type="file" name="receipt" class="file-input file-input-bordered w-full" 
+                       accept=".pdf,.jpg,.jpeg,.png" required>
+            </div>
+            <div class="form-control">
+                <label class="label">
+                    <span class="label-text">Amount Paid</span>
+                </label>
+                <input type="number" name="amount_paid" class="input input-bordered w-full" required>
+            </div>
+            <div class="form-control">
+                <label class="label">
+                    <span class="label-text">Payment Date</span>
+                </label>
+                <input type="date" name="payment_date" class="input input-bordered w-full" required>
+            </div>
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" onclick="closeModal('receiptModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Verification Modal -->
+<div id="verificationModal" class="modal">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">Verify Payment</h3>
+        <form id="verificationForm" method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="receipt_id" id="receiptId">
+            <div class="form-control">
+                <label class="label">
+                    <span class="label-text">Status</span>
+                </label>
+                <select name="status" class="select select-bordered w-full">
+                    <option value="verified">Verified</option>
+                    <option value="rejected">Rejected</option>
+                </select>
+            </div>
+            <div class="form-control">
+                <label class="label">
+                    <span class="label-text">Verification Note</span>
+                </label>
+                <textarea name="verification_note" class="textarea textarea-bordered w-full" rows="3"></textarea>
+            </div>
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" onclick="closeModal('verificationModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function showReceiptForm(fundId) {
+    document.getElementById('fundId').value = fundId;
+    openModal('receiptModal');
+}
+
+function showVerificationForm(receiptId) {
+    document.getElementById('receiptId').value = receiptId;
+    openModal('verificationModal');
+}
+
+function openModal(modalId) {
+    document.getElementById(modalId).style.display = 'block';
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+}
+
+// Handle form submissions
+const receiptForm = document.getElementById('receiptForm');
+if (receiptForm) {
+    receiptForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        fetch('/students/submit_payment_receipt/', {
+            method: 'POST',
+            body: new FormData(this)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                closeModal('receiptModal');
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        });
+    });
+}
+
+const verificationForm = document.getElementById('verificationForm');
+if (verificationForm) {
+    verificationForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        fetch('/students/verify_payment_receipt/', {
+            method: 'POST',
+            body: new FormData(this)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                closeModal('verificationModal');
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        });
+    });
+}
+</script>
 {% endblock %}

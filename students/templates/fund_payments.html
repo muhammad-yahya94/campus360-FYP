@@ -1,0 +1,454 @@
+{% extends 'base_student.html' %}
+{% load custom_filters %}
+
+{% block title %}Fund Payments{% endblock %}
+{% block content %}
+<div class="container mx-auto">
+  <div class="hero bg-base-200 rounded-lg shadow-lg mb-6">
+    <div class="hero-content text-center">
+      <div class="max-w-md">
+        <h1 class="text-3xl sm:text-4xl font-bold text-base-content mb-2">Fund Payments</h1>
+        <p class="text-base-content">Session: {{ student.applicant.session }} | Program: {{ student.program }} | Shift: {{ student.applicant.shift|title }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Funds Table -->
+  <div class="mb-8">
+    <h2 class="text-2xl font-semibold mb-4 text-base-content">Your Funds</h2>
+    <div class="overflow-x-auto bg-base-100 rounded-xl shadow-xl p-6">
+      <table class="table w-full">
+        <thead>
+          <tr>
+            <th class="text-base-content">Fund Type</th>
+            <th class="text-base-content">Description</th>
+            <th class="text-base-content">Amount</th>
+            <th class="text-base-content">Due Date</th>
+            <th class="text-base-content">Status</th>
+            <th class="text-base-content">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fund in funds %}
+          <tr>
+            <td>{{ fund.fundtype }}</td>
+            <td>{{ fund.description|truncatechars:50 }}</td>
+            <td>{{ fund.amount }}</td>
+            <td>{{ fund.due_date|date:'Y-m-d' }}</td>
+            <td>
+              {% with payment=payments|get_payment_for_fund:fund.id %}
+              {% if payment %}
+                <span class="badge {% if payment.status == 'paid' %}badge-success{% elif payment.status == 'partial' %}badge-warning{% elif payment.status == 'unpaid' %}badge-error{% else %}badge-info{% endif %}">
+                  {{ payment.status|title }}
+                </span>
+              {% else %}
+                <span class="badge badge-info">Pending</span>
+              {% endif %}
+              {% endwith %}
+            </td>
+            <td>
+              <button onclick="openPaymentModal('{{ fund.id }}', '{{ fund.fundtype|escapejs }}', '{{ fund.amount }}')" class="btn btn-sm btn-primary rounded-lg">Upload Payment</button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6">
+              <div class="flex flex-col items-center justify-center p-8 text-center">
+                <div class="p-4 mb-4 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 class="text-lg font-medium text-gray-700 dark:text-gray-200">No Funds Assigned</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">There are currently no funds assigned to your account.</p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Payment Upload Modal -->
+  <dialog id="paymentModal" class="modal">
+    <div class="modal-box bg-base-100 rounded-xl shadow-xl p-8 max-w-md w-full">
+      <h2 class="text-2xl font-bold mb-6 text-base-content">Upload Payment Details</h2>
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="upload_payment">
+        <input type="hidden" name="fund_id" id="payment_fund_id">
+        <div class="mb-4">
+          <label class="block mb-2 font-semibold text-base-content" for="fund_type">Fund Type</label>
+          <input type="text" id="fund_type" class="input input-bordered w-full rounded-lg" disabled>
+        </div>
+        <div class="mb-4">
+          <label class="block mb-2 font-semibold text-base-content" for="amount">Amount Required</label>
+          <input type="text" id="amount" class="input input-bordered w-full rounded-lg" disabled>
+        </div>
+        <div class="mb-4">
+          <label class="block mb-2 font-semibold text-base-content" for="amount_paid">Amount Paid</label>
+          <input type="number" id="amount_paid" name="amount_paid" class="input input-bordered w-full rounded-lg" step="0.01" min="0" required>
+        </div>
+        <div class="mb-4">
+          <label class="block mb-2 font-semibold text-base-content" for="payment_date">Payment Date</label>
+          <input type="date" id="payment_date" name="payment_date" class="input input-bordered w-full rounded-lg" value="{{ now|date:'Y-m-d' }}" required>
+        </div>
+        <div class="mb-4">
+          <label class="block mb-2 font-semibold text-base-content" for="proof">Proof of Payment</label>
+          <input type="file" id="proof" name="proof" class="file-input file-input-bordered w-full rounded-lg" accept=".pdf,.jpg,.jpeg,.png">
+        </div>
+        <div class="mb-4">
+          <label class="block mb-2 font-semibold text-base-content" for="notes">Notes</label>
+          <textarea id="notes" name="notes" class="textarea textarea-bordered w-full rounded-lg"></textarea>
+        </div>
+        <div class="mb-2">
+          <button type="submit" class="btn btn-primary w-full rounded-lg">Submit</button>
+          <button type="button" class="btn btn-ghost w-full rounded-lg" onclick="document.getElementById('paymentModal').close()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Pending Payments Section -->
+  <div class="card bg-base-100 shadow-lg mb-8">
+    <div class="card-body">
+      <h2 class="card-title text-2xl mb-4">
+        {% if is_cr or is_gr %}
+          All Pending Payments ({{ student.applicant.session }} - {{ student.program }} - {{ student.applicant.shift|title }} Shift)
+          <div class="badge badge-primary">{{ student.role }} View</div>
+        {% else %}
+          My Payments
+        {% endif %}
+      </h2>
+
+      {% if is_cr or is_gr %}
+      <!-- Filter Form for CR/GR -->
+      <form method="get" class="mb-6">
+        <div class="flex flex-col md:flex-row gap-4">
+          <div class="form-control flex-1">
+            <label class="label" for="fund">
+              <span class="label-text">Filter by Fund</span>
+            </label>
+            <select name="fund" id="fund" class="select select-bordered w-full">
+              <option value="all">All Funds</option>
+              {% for fund in funds %}
+              <option value="{{ fund.id }}" {% if request.GET.fund == fund.id|stringformat:'s' %}selected{% endif %}>
+                {{ fund.fundtype }} - {{ fund.amount }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-control self-end">
+            <button type="submit" name="apply_filters" class="btn btn-primary">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              Apply Filters
+            </button>
+          </div>
+        </div>
+      </form>
+      {% endif %}
+
+      <div class="overflow-x-auto bg-base-100 rounded-xl shadow-xl p-6">
+        {% if all_pending_payments %}
+          <table class="table w-full">
+            <thead>
+              <tr>
+                {% if is_cr or is_gr %}
+                <th>Student</th>
+                <th>Session</th>
+                <th>Program</th>
+                <th>Shift</th>
+                <th>Gender</th>
+                {% endif %}
+                <th>Fund</th>
+                <th>Amount</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Notes</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for payment in all_pending_payments %}
+              <tr class="{% if payment.status == 'paid' %}bg-green-50{% elif payment.status == 'unpaid' %}bg-red-50{% elif payment.status == 'partial' %}bg-yellow-50{% endif %}">
+                {% if is_cr or is_gr %}
+                <td>
+                  {{ payment.student.applicant.full_name }}
+                  {% if payment.student.role %}
+                    <span class="badge badge-xs ml-2">{{ payment.student.get_role_display }}</span>
+                  {% endif %}
+                </td>
+                <td>{{ payment.student.applicant.session }}</td>
+                <td>{{ payment.student.program }}</td>
+                <td>{{ payment.student.applicant.shift|title }}</td>
+                <td>{{ payment.student.applicant.gender|title }}</td>
+                {% endif %}
+                <td>{{ payment.fund.fundtype }}</td>
+                <td>{{ payment.amount_paid|default:0 }}/{{ payment.fund.amount }}</td>
+                <td>{{ payment.payment_date|date:"M d, Y"|default:"-" }}</td>
+                <td>
+                  {% if payment.status == 'paid' %}
+                    <span class="badge badge-success">Paid</span>
+                  {% elif payment.status == 'partial' %}
+                    <span class="badge badge-warning">Partial</span>
+                  {% elif payment.status == 'unpaid' %}
+                    <span class="badge badge-error">Unpaid</span>
+                  {% else %}
+                    <span class="badge badge-info">Pending</span>
+                  {% endif %}
+                </td>
+                <td>{{ payment.notes|default:'-'|truncatechars:30 }}</td>
+                <td>
+                  {% if payment.student == student or is_cr or is_gr %}
+                    <button onclick="openVerifyModal('{{ payment.id }}', '{{ payment.student.applicant.full_name|escapejs }}', '{{ payment.fund.fundtype|escapejs }}', '{{ payment.status }}', '{% if payment.proof and payment.proof.name %}{{ payment.proof.url }}{% endif %}')"
+                            class="btn btn-sm {% if payment.student == student %}btn-primary{% else %}btn-secondary{% endif %} rounded-lg">
+                      {% if payment.student == student %}Update{% else %}Verify{% endif %}
+                    </button>
+                  {% else %}
+                    <span class="text-gray-400">-</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <div class="flex flex-col items-center justify-center p-8 text-center">
+            <div class="p-4 mb-4 rounded-full bg-primary/10 text-primary">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 class="text-lg font-medium text-gray-700 dark:text-gray-200">No Pending Payments</h3>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              {% if is_cr or is_gr %}
+                There are currently no pending payments in your session ({{ student.applicant.session }}), program ({{ student.program }}), and {{ student.applicant.shift|title }} shift.
+              {% else %}
+                You don't have any pending payments at the moment.
+              {% endif %}
+            </p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Verification Section -->
+  {% if is_cr or is_gr %}
+    <div class="card bg-base-100 shadow-lg mb-8">
+      <div class="card-body">
+        <h2 class="card-title text-2xl mb-4">Verify Payments ({{ student.applicant.session }} - {{ student.program }} - {{ student.applicant.shift|title }} Shift)</h2>
+
+        <!-- Filter Form -->
+        <form method="get" class="mb-6">
+          <div class="flex flex-col md:flex-row gap-4">
+            <div class="form-control flex-1">
+              <label class="label" for="fund">
+                <span class="label-text">Filter by Fund</span>
+              </label>
+              <select name="fund" id="fund" class="select select-bordered w-full">
+                <option value="all">All Funds</option>
+                {% for fund in funds %}
+                <option value="{{ fund.id }}" {% if request.GET.fund == fund.id|stringformat:'s' %}selected{% endif %}>
+                  {{ fund.fundtype }} - {{ fund.amount }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-control self-end">
+              <button type="submit" name="apply_filters" class="btn btn-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                Apply Filters
+              </button>
+            </div>
+          </div>
+        </form>
+
+        {% if show_verification %}
+          <div class="overflow-x-auto bg-base-100 rounded-xl shadow-xl p-6">
+            <table class="table w-full">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Session</th>
+                  <th>Program</th>
+                  <th>Shift</th>
+                  <th>Gender</th>
+                  <th>Fund</th>
+                  <th>Amount</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Notes</th>
+                  <th>Proof</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for payment in verifiable_payments %}
+                <tr>
+                  <td>{{ payment.student.applicant.full_name }}</td>
+                  <td>{{ payment.student.applicant.session }}</td>
+                  <td>{{ payment.student.program }}</td>
+                  <td>{{ payment.student.applicant.shift|title }}</td>
+                  <td>{{ payment.student.applicant.gender|title }}</td>
+                  <td>{{ payment.fund.fundtype }}</td>
+                  <td>{{ payment.amount_paid|default:0 }}</td>
+                  <td>{{ payment.payment_date|date:"M d, Y"|default:"-" }}</td>
+                  <td>
+                    {% if payment.status == 'paid' %}
+                      <span class="badge badge-success">Paid</span>
+                    {% elif payment.status == 'partial' %}
+                      <span class="badge badge-warning">Partial</span>
+                    {% elif payment.status == 'unpaid' %}
+                      <span class="badge badge-error">Unpaid</span>
+                    {% else %}
+                      <span class="badge badge-info">Pending</span>
+                    {% endif %}
+                  </td>
+                  <td>{{ payment.notes|default:'-' }}</td>
+                  <td>
+                    {% if payment.proof and payment.proof.name %}
+                      <a href="{{ payment.proof.url }}" target="_blank" class="btn btn-sm btn-ghost" title="View Proof">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      </a>
+                    {% else %}-
+                    {% endif %}
+                  </td>
+                  <td>
+                    <button onclick="openVerifyModal('{{ payment.id }}', '{{ payment.student.applicant.full_name|escapejs }}', '{{ payment.fund.fundtype|escapejs }}', '{{ payment.status }}', '{% if payment.proof and payment.proof.name %}{{ payment.proof.url }}{% endif %}')" class="btn btn-sm btn-primary rounded-lg">Verify</button>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="12">
+                    <div class="flex flex-col items-center justify-center p-8 text-center">
+                      <div class="p-4 mb-4 rounded-full bg-primary/10 text-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <h3 class="text-lg font-medium text-gray-700 dark:text-gray-200">No Payments to Verify</h3>
+                      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">There are currently no pending payments requiring your verification in the {{ student.applicant.session }} session, {{ student.program }} program, and {{ student.applicant.shift|title }} shift.</p>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="text-center py-8">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 text-blue-500 mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+            </div>
+            <h3 class="text-lg font-medium text-gray-700 dark:text-gray-200">Apply Filters to View Payments</h3>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Use the filters above to view and verify pending payments in the {{ student.applicant.session }} session, {{ student.program }} program, and {{ student.applicant.shift|title }} shift.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<!-- Verification Modal -->
+<dialog id="verifyModal" class="modal">
+  <div class="modal-box bg-base-100 rounded-xl shadow-xl p-8 max-w-md w-full">
+    <h2 class="text-2xl font-bold mb-6 text-base-content">Verify Payment</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="verify_payment">
+      <input type="hidden" name="payment_id" id="verify_payment_id">
+      <div class="mb-4">
+        <label class="block mb-2 font-semibold text-base-content">Student</label>
+        <input type="text" id="verify_student" class="input input-bordered w-full rounded-lg" disabled>
+      </div>
+      <div class="mb-4">
+        <label class="block mb-2 font-semibold text-base-content">Fund Type</label>
+        <input type="text" id="verify_fund_type" class="input input-bordered w-full rounded-lg" disabled>
+      </div>
+      <div class="mb-4">
+        <div class="mb-2">
+          <a id="proof_link" href="#" target="_blank" class="btn btn-sm btn-outline mb-2 hidden">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            View Payment Proof
+          </a>
+        </div>
+        <label class="block mb-2 font-semibold text-base-content" for="new_status">New Status</label>
+        <select id="new_status" name="new_status" class="select select-bordered w-full rounded-lg" required>
+          <option value="paid">Paid</option>
+          <option value="partial">Partially Paid</option>
+          <option value="unpaid">Unpaid</option>
+        </select>
+      </div>
+      <div class="flex gap-4">
+        <button type="submit" class="btn btn-primary w-full rounded-lg">Verify</button>
+        <button type="button" class="btn btn-ghost w-full rounded-lg" onclick="document.getElementById('verifyModal').close()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<script>
+function openPaymentModal(fundId, fundType, amount) {
+  document.getElementById('payment_fund_id').value = fundId;
+  document.getElementById('fund_type').value = fundType;
+  document.getElementById('amount').value = amount;
+  document.getElementById('paymentModal').showModal();
+}
+
+function openVerifyModal(paymentId, studentName, fundType, currentStatus = 'pending', proofUrl = '') {
+  const modal = document.getElementById('verifyModal');
+  const statusSelect = document.getElementById('new_status');
+  
+  // Set form values
+  document.getElementById('verify_payment_id').value = paymentId;
+  document.getElementById('verify_student').value = studentName;
+  document.getElementById('verify_fund_type').value = fundType;
+  
+  // Update status options based on whether it's the student's own payment
+  const isOwnPayment = studentName === '{{ student.applicant.full_name|escapejs }}';
+  
+  if (isOwnPayment) {
+    // Students can set status to any value
+    statusSelect.innerHTML = `
+      <option value="pending" ${currentStatus === 'pending' ? 'selected' : ''}>Pending</option>
+      <option value="paid" ${currentStatus === 'paid' ? 'selected' : ''}>Paid</option>
+      <option value="partial" ${currentStatus === 'partial' ? 'selected' : ''}>Partially Paid</option>
+      <option value="unpaid" ${currentStatus === 'unpaid' ? 'selected' : ''}>Unpaid</option>
+    `;
+  } else {
+    // CR/GR can only verify as paid/partial/unpaid
+    statusSelect.innerHTML = `
+      <option value="paid" ${currentStatus === 'paid' ? 'selected' : ''}>Paid</option>
+      <option value="partial" ${currentStatus === 'partial' ? 'selected' : ''}>Partially Paid</option>
+      <option value="unpaid" ${currentStatus === 'unpaid' ? 'selected' : ''}>Unpaid</option>
+    `;
+  }
+  
+  // Handle proof link
+  const proofLink = document.getElementById('proof_link');
+  if (proofUrl) {
+    proofLink.href = proofUrl;
+    proofLink.classList.remove('hidden');
+  } else {
+    proofLink.classList.add('hidden');
+  }
+  
+  // Show the modal
+  modal.showModal();
+}
+</script>
+{% endblock %}

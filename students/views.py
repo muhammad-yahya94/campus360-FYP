@@ -8,8 +8,7 @@ import random
 import uuid
 import shutil
 # extra
-import cv2 as cv
-import numpy as np
+
 from django.core.files.storage import FileSystemStorage
 from django.shortcuts import render, redirect
 from django.contrib import messages
@@ -18,7 +17,6 @@ from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from django.utils import timezone
 from students.models import Student
-from .generate_encodings import generate_embeddings
 import shutil
 import logging
 # Third-Party Imports
@@ -46,7 +44,7 @@ import os
 from django.contrib import messages
 from django.db import transaction
 from django.db.models import Sum, Q, Count, Max
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.exceptions import ObjectDoesNotExist, ValidationError, PermissionDenied
 from django.contrib.auth import (
     authenticate, login, logout, update_session_auth_hash,
     get_user_model
@@ -54,20 +52,23 @@ from django.contrib.auth import (
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 
+from django.db.models import Q
 # Local App Imports
 from academics.models import Department, Program, Semester
 from admissions.models import (
     AcademicSession, AdmissionCycle, Applicant, AcademicQualification
 )
-from courses.models import (
+from courses.models import (  
     Course, CourseOffering, ExamResult, StudyMaterial, Assignment,
     AssignmentSubmission, Notice, Attendance, Venue, TimetableSlot,
-    Quiz, Question, Option, QuizSubmission, 
+    Quiz, Question, Option, QuizSubmission, LectureReplacement
 )
-from faculty_staff.models import Teacher, TeacherDetails
-from students.models import Student, StudentSemesterEnrollment, CourseEnrollment
+from faculty_staff.models import Teacher, TeacherDetails, DepartmentFund
+from students.models import Student, StudentSemesterEnrollment, CourseEnrollment, StudentFundPayment
 from fee_management.models import SemesterFee, StudentFeePayment, FeeToProgram, FeeVoucher
-from .generate_encodings import generate_embeddings
+from collections import defaultdict
+import math
+from django.core.exceptions import PermissionDenied
 
 
 # Set up logging
@@ -104,13 +105,12 @@ def student_login(request):
 
     return render(request, 'login.html')
 
-
-@login_required
 def student_dashboard(request):
     logger.info("Starting student_dashboard view for user: %s", request.user)
-
+    
     try:
         student = Student.objects.get(user=request.user)
+        current_session = student.applicant.session
         logger.debug(
             "Found student: %s (User ID: %s, Program: %s, Program ID: %s)",
             student.applicant.full_name,
@@ -123,17 +123,7 @@ def student_dashboard(request):
         messages.error(request, 'You are not authorized as a student.')
         return redirect('students:login')
 
-    current_session = AcademicSession.objects.filter(is_active=True).first()
-
-    if not current_session:
-        logger.warning("No active academic session found.")
-        return render(request, 'dashboard.html', {
-            'student': student,
-            'active_semester': None,
-            'enrollments': [],
-        })
-
-    # Get active semester in current session for student's program
+    # Get the most recent active semester for the student's program and session
     active_semester = Semester.objects.filter(
         program=student.program,
         session=current_session,
@@ -141,42 +131,56 @@ def student_dashboard(request):
     ).order_by('-number').first()
 
     if not active_semester:
-        logger.warning(
-            "No active semester found for student: %s in session: %s",
-            student.applicant.full_name,
-            current_session.name
-        )
         return render(request, 'dashboard.html', {
             'student': student,
             'active_semester': None,
             'enrollments': [],
         })
 
-    logger.debug(
-        "Active semester found: %s (Semester ID: %s) in session: %s",
-        active_semester.name,
-        active_semester.id,
-        current_session.name
-    )
+    # Get the student's enrollment for the active semester
+    try:
+        enrolled = StudentSemesterEnrollment.objects.get(
+            student=student,
+            semester=active_semester
+        )
+    except StudentSemesterEnrollment.DoesNotExist:
+        logger.warning("Student is not enrolled in active semester: %s", active_semester)
+        enrolled = None
 
-    current_session = AcademicSession.objects.filter(is_active=True).first()
-    enrollments = CourseEnrollment.objects.filter(
-        student_semester_enrollment__student=student,
-        course_offering__academic_session=current_session,
-        course_offering__semester__is_active=True  # Filter only active semester courses
-    ).select_related(
-        'course_offering__course',
-        'course_offering__semester',
-        'course_offering__teacher__user'
-    )
+    if enrolled:
+        enrollments = CourseEnrollment.objects.filter(
+            student_semester_enrollment=enrolled,
+            status='enrolled'  # show only enrolled courses
+        ).select_related(
+            'course_offering__course',
+            'course_offering__semester',
+            'course_offering__teacher__user'
+        )
+    else:
+        enrollments = []
 
-    logger.debug("Found %d course(s) in active semester", enrollments.count())
+    logger.debug("Found %d course(s) in active semester", len(enrollments))
 
+    # Start with base queryset
+    from django.utils import timezone
+    
+    notices = Notice.objects.filter(
+        Q(programs__in=[student.program]) | Q(programs__isnull=True)
+    ).filter(
+        is_active=True,
+        valid_from__lte=timezone.now(),
+    ).distinct().order_by('-created_at')[:3]
+
+    print(notices)
     return render(request, 'dashboard.html', {
         'student': student,
         'active_semester': active_semester,
         'enrollments': enrollments,
+        'notices': notices
     })
+
+
+
 
 def my_courses(request):
     user = request.user
@@ -187,7 +191,7 @@ def my_courses(request):
         messages.error(request, 'You are not authorized as a student.')
         return redirect('students:login')
 
-    current_session = AcademicSession.objects.filter(is_active=True).first()
+    current_session = student.applicant.session.name
     academic_sessions = AcademicSession.objects.all().order_by('-start_year')
 
     # Get the selected semester number from the query parameter
@@ -195,9 +199,9 @@ def my_courses(request):
     if selected_semester_number:
         try:
             selected_semester_number = int(selected_semester_number)
+            print(f"Selected semester number: {selected_semester_number}")
             enrollments = CourseEnrollment.objects.filter(
                 student_semester_enrollment__student=student,
-                course_offering__academic_session=current_session,
                 course_offering__semester__number=selected_semester_number
             ).select_related('course_offering__course', 'course_offering__semester', 'course_offering__teacher__user')
         except ValueError:
@@ -208,12 +212,11 @@ def my_courses(request):
     else:
         # Default to the first semester number if no selection
         first_semester_number = CourseOffering.objects.filter(
-            academic_session=current_session
         ).values_list('semester__number', flat=True).order_by('semester__number').first()
+        print(f"First semester number: {first_semester_number}")
         if first_semester_number:
             enrollments = CourseEnrollment.objects.filter(
                 student_semester_enrollment__student=student,
-                course_offering__academic_session=current_session,
                 course_offering__semester__number=first_semester_number
             ).select_related('course_offering__course', 'course_offering__semester', 'course_offering__teacher__user')
         else:
@@ -221,13 +224,13 @@ def my_courses(request):
 
     semester_numbers = Semester.objects.filter(
         program=student.program,
-        is_active=True
-    ).order_by('number').values_list('number', flat=True)
+        session=student.applicant.session,
+    ).order_by('number').values_list('number', flat=True).distinct()
     print(f'this is queery set only numbers --  {semester_numbers}')
     context = {
         'enrollments': enrollments,
         'academic_sessions': academic_sessions,
-        'current_session': current_session,
+        'current_session': current_session,   
         'semester_numbers': semester_numbers,
         'selected_semester_number': selected_semester_number or first_semester_number,
     }
@@ -527,25 +530,334 @@ def notices(request):
     }
     return render(request, 'notice.html', context)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def calculate_grade(percentage):
+    """Calculate grade based on percentage according to the provided conversion table."""
+    if percentage is None:
+        return 'N/A'
+    percentage = float(percentage)
+    if percentage >= 85:
+        return 'A+'
+    elif percentage >= 80:
+        return 'A'
+    elif percentage >= 75:
+        return 'B+'
+    elif percentage >= 70:
+        return 'B'
+    elif percentage >= 65:
+        return 'C+'
+    elif percentage >= 60:
+        return 'C'
+    elif percentage >= 50:
+        return 'D'
+    else:
+        return 'F'
+
+
 @login_required
 def exam_results(request):
-    user = request.user
     try:
-        student = Student.objects.get(user=user)
+        student = Student.objects.get(user=request.user)
     except Student.DoesNotExist:
-        messages.error(request, 'You are not authorized as a student.')
-        return redirect('students:login')
+        return render(request, 'exam_results.html', {'msg': 'No student profile found for this user.'})
 
+    roll_no = student.university_roll_no or 'N/A'
+    session = student.applicant.session
+    print(f"Student: {student}, Roll No: {roll_no}, Session: {session}, Time: 07:59 PM PKT, July 12, 2025")
+
+    # Fetch exam results with shift filter
     results = ExamResult.objects.filter(
-        student=student
-    ).select_related('course_offering__course', 'course_offering__academic_session')
-    academic_sessions = AcademicSession.objects.all().order_by('-start_year')
+        student=student,
+    ).select_related('course_offering__course', 'course_offering__semester', 'course_offering__academic_session').order_by(
+        'course_offering__semester__name', 'course_offering__course__code'
+    )
+    print(f"Results fetched: {results.count()} entries.")
+
+    # Handle case where no results are found
+    not_found_roll = f"No results found for roll number {roll_no}" if roll_no and not results else None
+
+    # Separate optional and non-optional results
+    opt_results = results.filter(course_offering__course__opt=True)
+    non_opt_results = results.exclude(course_offering__course__opt=True)
+    print(f"Optional results count: {opt_results.count()}, Non-optional results count: {non_opt_results.count()}.")
+
+    def calculate_quality_points(result):
+        credit_hour = result.course_offering.course.credits
+        total_marks = math.ceil(float(result.percentage or 0))
+        print(f"Result for {result.student.university_roll_no}: Percentage: {result.percentage}, Ceiled: {total_marks}")
+
+        quality_points_mapping = {
+            40: 1.0, 41: 1.1, 42: 1.2, 43: 1.3, 44: 1.4, 45: 1.5,
+            46: 1.6, 47: 1.7, 48: 1.8, 49: 1.9, 50: 2.0, 51: 2.07,
+            52: 2.14, 53: 2.21, 54: 2.28, 55: 2.35, 56: 2.42, 57: 2.49,
+            58: 2.56, 59: 2.63, 60: 2.70, 61: 2.76, 62: 2.82, 63: 2.88,
+            64: 2.94, 65: 3.00, 66: 3.05, 67: 3.10, 68: 3.15, 69: 3.20,
+            70: 3.25, 71: 3.30, 72: 3.35, 73: 3.40, 74: 3.45, 75: 3.50,
+            76: 3.55, 77: 3.60, 78: 3.65, 79: 3.70, 80: 3.75, 81: 3.80,
+            82: 3.85, 83: 3.90, 84: 3.95, 85: 4.0, 86: 4.0, 87: 4.0,
+            88: 4.0, 89: 4.0, 90: 4.0, 91: 4.0, 92: 4.0, 93: 4.0,
+            94: 4.0, 95: 4.0, 96: 4.0, 97: 4.0, 98: 4.0, 99: 4.0,
+            100: 4.0
+        }
+        quality_points = quality_points_mapping.get(total_marks, 0.0) * credit_hour
+        print(f"Result: {result.student.university_roll_no}, Marks: {total_marks}, Quality Points: {quality_points}")
+        return round(quality_points, 2)
+
+    # Add calculated fields to non-optional results
+    for result in non_opt_results:
+        result.quality_points = calculate_quality_points(result)
+        result.grade = calculate_grade(result.percentage)
+        result.effective_credit_hour = result.course_offering.course.credits
+        result.course_marks = result.course_offering.course.credits * 20 + (
+            result.course_offering.course.lab_work * 20 if result.course_offering.course.lab_work > 0 else 0
+        )
+        print(f"Result: {result.student.university_roll_no}, Quality Points: {result.quality_points}, "
+              f"Effective Credit Hours: {result.effective_credit_hour}, Course Marks: {result.course_marks}")
+    # Add grades to optional results
+    for opt_result in opt_results:
+        opt_result.grade = calculate_grade(opt_result.percentage)
+
+    # Group non-optional results by semester
+    semester_results = defaultdict(list)
+    for result in non_opt_results:
+        semester_results[result.course_offering.semester.name].append(result)
+
+    # Calculate semester-wise metrics
+    semester_gpas = {}
+    semester_totals = {}
+    for semester, semester_data in semester_results.items():
+        total_qp = sum(calculate_quality_points(result) for result in semester_data)
+        total_credit_hours = sum(result.course_offering.course.credits for result in semester_data)
+        semester_gpas[semester] = round(total_qp / total_credit_hours, 2) if total_credit_hours > 0 else 0
+
+        total_marks = sum(float(result.percentage or 0) * result.course_offering.course.credits for result in semester_data)
+        avg_percentage = math.ceil(total_marks / total_credit_hours) if total_credit_hours > 0 else 0
+        total_full_marks = sum(
+            (result.course_offering.course.credits * 20 + (
+                result.course_offering.course.lab_work * 20 if result.course_offering.course.lab_work > 0 else 0
+            )) for result in semester_data
+        )
+        max_marks = sum(result.total_marks or 0 for result in semester_data)
+        total_quality_points = round(sum(calculate_quality_points(result) for result in semester_data), 2)
+
+        semester_totals[semester] = {
+            'total_credit_hours': total_credit_hours,
+            'total_full_marks': total_full_marks,
+            'max_marks': max_marks,
+            'average_percentage': avg_percentage,
+            'total_quality_points': total_quality_points
+        }
+        print(f"Semester: {semester}")
+        print(f"  Total Credit Hours: {total_credit_hours}")
+        print(f"  Total Full Marks: {total_full_marks}")
+        print(f"  Max Marks: {max_marks}")
+        print(f"  Average Percentage: {avg_percentage}%")
+        print(f"  Total Quality Points: {total_quality_points}")
+
+    # Calculate overall CGPA (excluding optional courses)
+    total_quality_points = round(sum(result.quality_points for result in non_opt_results), 2)
+    total_credit_hours = sum(result.course_offering.course.credits for result in non_opt_results)
+    cgpa = round(total_quality_points / total_credit_hours, 2) if total_credit_hours > 0 else 0
+    print(f"Total Quality Points: {total_quality_points}, Total Credit Hours: {total_credit_hours}, CGPA: {cgpa}")
+
+    total_marks = sum(float(result.percentage or 0) * result.course_offering.course.credits for result in non_opt_results)
+    avg_percentage = math.ceil(total_marks / total_credit_hours) if total_credit_hours > 0 else 0
+    print(f"Total Marks: {total_marks}, Average Percentage: {avg_percentage}")
+
+    total_full_marks = sum(
+        (result.course_offering.course.credits * 20 + (
+            result.course_offering.course.lab_work * 20 if result.course_offering.course.lab_work > 0 else 0
+        )) for result in non_opt_results
+    )
+    max_marks = sum(result.total_marks or 0 for result in non_opt_results)
+    print(f"Total Full Marks: {total_full_marks}, Max Marks: {max_marks}")
 
     context = {
-        'results': results,
-        'academic_sessions': academic_sessions,
+        'student': student,
+        'semester_results': dict(semester_results),
+        'semester_gpas': semester_gpas,
+        'opt_results': opt_results,
+        'roll_no': roll_no,
+        'session': session,
+        'semester_totals': semester_totals,
+        'msg': not_found_roll,
+        'total_credit_hours': total_credit_hours,
+        'total_full_marks': total_full_marks,
+        'max_marks': max_marks,
+        'avg_percentage': avg_percentage,
+        'total_quality_points': total_quality_points,
+        'cgpa': cgpa,
     }
+
     return render(request, 'exam_results.html', context)
+
+
+
+
+
+
+
+
+
+
+# @login_required
+# def exam_results(request):
+#     try:
+#         student = Student.objects.get(user=request.user)
+#     except Student.DoesNotExist:
+#         return render(request, 'exam_results.html', {'msg': 'No student profile found for this user.'})
+
+#     roll_no = student.university_roll_no or 'N/A'
+#     session = student.applicant.session
+#     print(f"Student: {student}, Roll No: {roll_no}, Session: {session}, Time: 11:48 PM PKT, July 12, 2025")
+
+#     # Fetch exam results with shift filter
+#     results = ExamResult.objects.filter(
+#         student=student,
+#     ).select_related('course_offering__course', 'course_offering__semester', 'course_offering__academic_session').order_by(
+#         'course_offering__semester__name', 'course_offering__course__code'
+#     )
+#     print(f"Results fetched: {results.count()} entries.")
+
+#     # Handle case where no results are found
+#     not_found_roll = f"No results found for roll number {roll_no}" if roll_no and not results else None
+
+#     # Separate optional and non-optional results
+#     opt_results = results.filter(course_offering__course__opt=True)
+#     non_opt_results = results.exclude(course_offering__course__opt=True)
+#     print(f"Optional results count: {opt_results.count()}, Non-optional results count: {non_opt_results.count()}.")
+
+#     def calculate_quality_points(result):
+#         credit_hour = result.course_offering.course.credits
+#         total_marks = math.ceil(float(result.percentage or 0))
+#         print(f"Result for {result.student.university_roll_no}: Percentage: {result.percentage}, Ceiled: {total_marks}")
+
+#         quality_points_mapping = {
+#             40: 1.0, 41: 1.1, 42: 1.2, 43: 1.3, 44: 1.4, 45: 1.5,
+#             46: 1.6, 47: 1.7, 48: 1.8, 49: 1.9, 50: 2.0, 51: 2.07,
+#             52: 2.14, 53: 2.21, 54: 2.28, 55: 2.35, 56: 2.42, 57: 2.49,
+#             58: 2.56, 59: 2.63, 60: 2.70, 61: 2.76, 62: 2.82, 63: 2.88,
+#             64: 2.94, 65: 3.00, 66: 3.05, 67: 3.10, 68: 3.15, 69: 3.20,
+#             70: 3.25, 71: 3.30, 72: 3.35, 73: 3.40, 74: 3.45, 75: 3.50,
+#             76: 3.55, 77: 3.60, 78: 3.65, 79: 3.70, 80: 3.75, 81: 3.80,
+#             82: 3.85, 83: 3.90, 84: 3.95, 85: 4.0, 86: 4.0, 87: 4.0,
+#             88: 4.0, 89: 4.0, 90: 4.0, 91: 4.0, 92: 4.0, 93: 4.0,
+#             94: 4.0, 95: 4.0, 96: 4.0, 97: 4.0, 98: 4.0, 99: 4.0,
+#             100: 4.0
+#         }
+#         quality_points = quality_points_mapping.get(total_marks, 0.0) * credit_hour
+#         print(f"Result: {result.student.university_roll_no}, Marks: {total_marks}, Quality Points: {quality_points}")
+#         return round(quality_points, 2)
+
+#     # Add calculated fields to results
+#     for result in results:  # Process both optional and non-optional results
+#         result.quality_points = calculate_quality_points(result)
+#         result.grade = calculate_grade(result.percentage)
+#         result.effective_credit_hour = result.course_offering.course.credits
+#         result.course_marks = result.get_total_max_marks()
+#         print(f"Result: {result.student.university_roll_no}, Grade: {result.grade}, Quality Points: {result.quality_points}, "
+#               f"Effective Credit Hours: {result.effective_credit_hour}, Course Marks: {result.course_marks}")
+
+#     # Group non-optional results by semester
+#     semester_results = defaultdict(list)
+#     for result in non_opt_results:
+#         semester_results[result.course_offering.semester.name].append(result)
+
+#     # Calculate semester-wise metrics
+#     semester_gpas = {}
+#     semester_totals = {}
+#     for semester, semester_data in semester_results.items():
+#         total_qp = sum(calculate_quality_points(result) for result in semester_data)
+#         total_credit_hours = sum(result.course_offering.course.credits for result in semester_data)
+#         semester_gpas[semester] = round(total_qp / total_credit_hours, 2) if total_credit_hours > 0 else 0
+
+#         total_marks = sum(float(result.percentage or 0) * result.course_offering.course.credits for result in semester_data)
+#         avg_percentage = math.ceil(total_marks / total_credit_hours) if total_credit_hours > 0 else 0
+#         total_full_marks = sum(result.get_total_max_marks() for result in semester_data)
+#         max_marks = sum(result.total_marks or 0 for result in semester_data)
+#         total_quality_points = round(sum(calculate_quality_points(result) for result in semester_data), 2)
+
+#         semester_totals[semester] = {
+#             'total_credit_hours': total_credit_hours,
+#             'total_full_marks': total_full_marks,
+#             'max_marks': max_marks,
+#             'average_percentage': avg_percentage,
+#             'total_quality_points': total_quality_points
+#         }
+#         print(f"Semester: {semester}")
+#         print(f"  Total Credit Hours: {total_credit_hours}")
+#         print(f"  Total Full Marks: {total_full_marks}")
+#         print(f"  Max Marks: {max_marks}")
+#         print(f"  Average Percentage: {avg_percentage}%")
+#         print(f"  Total Quality Points: {total_quality_points}")
+
+#     # Calculate overall CGPA (excluding optional courses)
+#     total_quality_points = round(sum(result.quality_points for result in non_opt_results), 2)
+#     total_credit_hours = sum(result.course_offering.course.credits for result in non_opt_results)
+#     cgpa = round(total_quality_points / total_credit_hours, 2) if total_credit_hours > 0 else 0
+#     print(f"Total Quality Points: {total_quality_points}, Total Credit Hours: {total_credit_hours}, CGPA: {cgpa}")
+
+#     total_marks = sum(float(result.percentage or 0) * result.course_offering.course.credits for result in non_opt_results)
+#     avg_percentage = math.ceil(total_marks / total_credit_hours) if total_credit_hours > 0 else 0
+#     print(f"Total Marks: {total_marks}, Average Percentage: {avg_percentage}")
+
+#     total_full_marks = sum(result.get_total_max_marks() for result in non_opt_results)
+#     max_marks = sum(result.total_marks or 0 for result in non_opt_results)
+#     print(f"Total Full Marks: {total_full_marks}, Max Marks: {max_marks}")
+
+#     context = {
+#         'student': student,
+#         'semester_results': dict(semester_results),
+#         'semester_gpas': semester_gpas,
+#         'opt_results': opt_results,
+#         'roll_no': roll_no,
+#         'session': session,
+#         'semester_totals': semester_totals,
+#         'msg': not_found_roll,
+#         'total_credit_hours': total_credit_hours,
+#         'total_full_marks': total_full_marks,
+#         'max_marks': max_marks,
+#         'avg_percentage': avg_percentage,
+#         'total_quality_points': total_quality_points,
+#         'cgpa': cgpa,
+#     }
+
+#     return render(request, 'exam_results.html', context)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 @login_required
 def logout_view(request):
@@ -723,13 +1035,14 @@ def student_attendance_stats(request):
 
 
 
+
 def student_timetable(request):
     logger.info("Starting student_timetable view for user: %s", request.user)
-    
+
     # Get the student
     try:
         student = Student.objects.get(user=request.user)
-        logger.debug("Found student: %s (ID: %s)", student.applicant.full_name, student.user.id)
+        logger.debug("Step 1: Found student: %s (ID: %s)", student.applicant.full_name, student.user.id)
     except Student.DoesNotExist:
         logger.error("No Student found for user: %s", request.user)
         return render(request, 'timetable.html', {
@@ -738,37 +1051,60 @@ def student_timetable(request):
             'active_session': None,
         })
 
-    # Get the active semester enrollment (latest active semester)
-    active_enrollment = StudentSemesterEnrollment.objects.filter(
-        student=student,
-        semester__is_active=True
-    ).order_by('-semester__start_time').first()
-
-    if not active_enrollment:
-        logger.warning("No active semester enrollment found for student: %s", student.applicant.full_name)
+    # Get the active semester enrollment
+    try:
+        active_enrollment = StudentSemesterEnrollment.objects.filter(
+            student=student,
+            semester__is_active=True
+        ).order_by('-semester__start_time').first()
+        if not active_enrollment:
+            logger.warning("Step 2: No active semester enrollment found for student: %s", student.applicant.full_name)
+            return render(request, 'timetable.html', {
+                'student': student,
+                'timetable_data': [],
+                'active_session': None,
+            })
+        active_semester = active_enrollment.semester
+        active_session = active_semester.session
+        logger.debug("Step 3: Active semester: %s, Session: %s", active_semester.name, active_session.name)
+    except Exception as e:
+        logger.error("Error querying active enrollment: %s", str(e))
         return render(request, 'timetable.html', {
             'student': student,
             'timetable_data': [],
             'active_session': None,
         })
 
-    active_semester = active_enrollment.semester
-    active_session = active_semester.session
-    logger.debug("Active semester: %s, Session: %s", active_semester.name, active_session.name)
-
     # Get course enrollments for the active semester
-    enrollments = CourseEnrollment.objects.filter(
-        student_semester_enrollment__student=student,
-        student_semester_enrollment__semester=active_semester
-    ).select_related('course_offering__course', 'course_offering__program', 'course_offering__semester', 'course_offering__teacher')
-    logger.debug("Found %d course enrollments for student in semester %s", enrollments.count(), active_semester.name)
+    try:
+        enrollments = CourseEnrollment.objects.filter(
+            student_semester_enrollment__student=student,
+            student_semester_enrollment__semester=active_semester
+        ).select_related('course_offering__course', 'course_offering__program', 'course_offering__semester', 'course_offering__teacher', 'course_offering__replacement_teacher')
+        logger.debug("Step 4: Found %d course enrollments for student in semester %s", enrollments.count(), active_semester.name)
+    except Exception as e:
+        logger.error("Error querying course enrollments: %s", str(e))
+        enrollments = CourseEnrollment.objects.none()
 
     # Get timetable slots for enrolled courses
-    course_offerings = enrollments.values_list('course_offering', flat=True)
-    timetable_slots = TimetableSlot.objects.filter(
-        course_offering__in=course_offerings
-    ).select_related('course_offering__course', 'course_offering__teacher', 'venue', 'course_offering__program', 'course_offering__semester')
-    logger.debug("Retrieved %d timetable slots for student", timetable_slots.count())
+    try:
+        course_offerings = enrollments.values_list('course_offering', flat=True)
+        timetable_slots = TimetableSlot.objects.filter(
+            course_offering__in=course_offerings
+        ).filter(
+            Q(course_offering__shift=student.applicant.shift) | Q(course_offering__shift='both')
+        ).select_related(
+            'course_offering__course',
+            'course_offering__teacher',
+            'course_offering__replacement_teacher',
+            'venue',
+            'course_offering__program',
+            'course_offering__semester'
+        )
+        logger.debug("Step 5: Retrieved %d timetable slots for student", timetable_slots.count())
+    except Exception as e:
+        logger.error("Error querying timetable slots: %s", str(e))
+        timetable_slots = TimetableSlot.objects.none()
 
     # Organize slots by day
     days = [
@@ -780,13 +1116,58 @@ def student_timetable(request):
         {'day_value': 'saturday', 'day_label': 'Saturday'},
     ]
     timetable_data = []
+    current_date = timezone.now().date()
     for day in days:
         day_slots = timetable_slots.filter(day=day['day_value'])
-        slots = [
-            {
+        slots = []
+        for slot in day_slots:
+            # Check for replacement teacher
+            replacement = None
+            original_teacher_name = None
+            try:
+                replacement = LectureReplacement.objects.filter(
+                    course_offering=slot.course_offering,
+                    replacement_date__lte=current_date
+                ).filter(
+                    Q(replacement_type='permanent') |
+                    Q(replacement_type='temporary', replacement_date__lte=current_date)
+                ).select_related('replacement_teacher', 'original_teacher').first()
+                if replacement:
+                    original_teacher_name = f"{replacement.original_teacher.user.first_name} {replacement.original_teacher.user.last_name}"
+                    logger.debug(
+                        "Step 6a: Found LectureReplacement for CourseOffering %s: Replacement Teacher ID=%s, Original Teacher=%s, Type=%s, Date=%s",
+                        slot.course_offering.id, replacement.replacement_teacher.id, original_teacher_name, replacement.replacement_type, replacement.replacement_date
+                    )
+            except Exception as e:
+                logger.error("Step 6b: Error querying LectureReplacement for CourseOffering %s: %s", slot.course_offering.id, str(e))
+
+            # Check CourseOffering.replacement_teacher if no LectureReplacement
+            if not replacement and slot.course_offering.replacement_teacher:
+                original_teacher_name = f"{slot.course_offering.teacher.user.first_name} {slot.course_offering.teacher.user.last_name}"
+                logger.debug(
+                    "Step 6c: CourseOffering %s has replacement_teacher ID=%s, Original Teacher=%s",
+                    slot.course_offering.id, slot.course_offering.replacement_teacher.id, original_teacher_name
+                )
+
+            # Determine teacher to display
+            teacher = (
+                replacement.replacement_teacher if replacement else
+                slot.course_offering.replacement_teacher or
+                slot.course_offering.teacher
+            )
+            teacher_name = f"{teacher.user.first_name} {teacher.user.last_name}" if teacher else 'N/A'
+            replaced_for = original_teacher_name if (replacement or slot.course_offering.replacement_teacher) else None
+
+            logger.debug(
+                "Step 6d: Slot for %s, Course: %s (ID: %s), Teacher: %s, Replaced for: %s",
+                day['day_label'], slot.course_offering.course.code, slot.course_offering.id, teacher_name, replaced_for or 'None'
+            )
+
+            slots.append({
                 'course_code': slot.course_offering.course.code,
                 'course_name': slot.course_offering.course.name,
-                'teacher_name': f"{slot.course_offering.teacher.user.first_name} {slot.course_offering.teacher.user.last_name}",
+                'teacher_name': teacher_name,
+                'replaced_for': replaced_for,
                 'venue': slot.venue.name,
                 'room_no': slot.venue.capacity,
                 'start_time': slot.start_time.strftime('%H:%M'),
@@ -794,27 +1175,23 @@ def student_timetable(request):
                 'shift': slot.course_offering.get_shift_display(),
                 'program': slot.course_offering.program.name if slot.course_offering.program else 'N/A',
                 'semester': slot.course_offering.semester.name,
-            }
-            for slot in day_slots
-        ]
-        if slots:  # Only include days with slots
+            })
+        if slots:
             timetable_data.append({
                 'day_value': day['day_value'],
                 'day_label': day['day_label'],
                 'slots': slots
             })
-            logger.debug("Added %d slots for %s", len(slots), day['day_label'])
+            logger.debug("Step 7: Added %d slots for %s", len(slots), day['day_label'])
 
-    logger.info("Timetable data prepared for student: %s, with %d days", student.applicant.full_name, len(timetable_data))
+    logger.info("Step 8: Timetable data prepared for student: %s, with %d days", student.applicant.full_name, len(timetable_data))
 
     context = {
         'student': student,
         'timetable_data': timetable_data,
         'active_session': active_session,
     }
-    return render(request, 'timetable.html', context)   
-
-
+    return render(request, 'timetable.html', context)
 
 
 @login_required
@@ -1210,7 +1587,7 @@ def ide(request):
     View for the online code editor.
     """
     return render(request, 'ide.html')
-    
+ 
     
 def semester_fees(request):
     """
@@ -1331,175 +1708,234 @@ def change_password(request):
         logger.error(f"Error in change_password view: {str(e)}")
         messages.error(request, 'An unexpected error occurred. Please try again later.')
         return redirect('students:settings')
-
+    
+    
+    
 @login_required
-def upload_photos(request):
-    """
-    View for uploading up to 10 photos per student, replacing existing photos.
-    Photos are stored in: media/Attandence/[session]/[program]/[cnic]
-    Calls generate_embeddings with NumPy arrays and redirects to profile on success.
-    """
+def fund_payments(request):
+    student = get_object_or_404(Student, user=request.user)
+    print(f'student is -- {student}, Session: {student.applicant.session}, Program: {student.program}, Shift: {student.applicant.shift}, Role: {student.role}, Gender: {student.applicant.gender}')
+    
+    # Get funds associated with the student's program (and optionally session, if model supports)
+    funds = DepartmentFund.objects.filter(
+        programs=student.program,
+        is_active=True
+    ).distinct()
+    print(f'funds are -- {funds}')
+
+    # Get payment records for the student
+    payments = StudentFundPayment.objects.filter(student=student)
+    print(f'payments are -- {payments}')
+
+    # Determine if the student can verify payments
+    is_cr = student.role == 'CR'
+    is_gr = student.role == 'GR'
+    verifiable_payments = []
+    show_verification = False
+    all_pending_payments = []
+    
     try:
-        student = Student.objects.get(user=request.user)
-        logger.info(f"Starting upload_photos for student: {student.applicant.full_name}")
-    except Student.DoesNotExist:
-        logger.error(f"No Student found for user: {request.user}")
-        messages.error(request, 'Student profile not found.')
-        return redirect('students:dashboard')
+        # Check if filter form was submitted
+        filter_submitted = 'apply_filters' in request.GET
+        fund_filter = request.GET.get('fund', '')
+        
+        # Base query for all pending payments in the same session, program, and shift
+        all_pending_payments = StudentFundPayment.objects.filter(
+            student__applicant__session=student.applicant.session,  # Same session
+            student__program=student.program,                      # Same program
+            student__applicant__shift=student.applicant.shift,     # Same shift
+            status='pending'
+        )
+        
+        # Apply gender filter for CR/GR
+        if is_cr:
+            all_pending_payments = all_pending_payments.filter(
+                student__applicant__gender='male'
+            )
+        elif is_gr:
+            all_pending_payments = all_pending_payments.filter(
+                student__applicant__gender='female'
+            )
+            
+        all_pending_payments = all_pending_payments.select_related('student__applicant', 'fund')
+        
+        # Apply fund filter if selected
+        if fund_filter and fund_filter != 'all':
+            all_pending_payments = all_pending_payments.filter(fund_id=fund_filter)
+        
+        # For CR/GR, show verifiable payments when filters are applied
+        if is_cr or is_gr:
+            show_verification = filter_submitted
+            if show_verification:
+                # Get or create payment records for all students in the same session, program, and shift
+                if fund_filter and fund_filter != 'all':
+                    fund = get_object_or_404(DepartmentFund, id=fund_filter)
+                    # Get students in the same session, program, and shift
+                    students_in_program = Student.objects.filter(
+                        applicant__session=student.applicant.session,  # Same session
+                        program=student.program,                      # Same program
+                        applicant__shift=student.applicant.shift       # Same shift
+                    )
+                    if is_cr:
+                        students_in_program = students_in_program.filter(
+                            applicant__gender='male'
+                        )
+                    elif is_gr:
+                        students_in_program = students_in_program.filter(
+                            applicant__gender='female'
+                        )
+                    
+                    # Create payment records for students who don't have one for this fund
+                    for std in students_in_program:
+                        StudentFundPayment.objects.get_or_create(
+                            student=std,
+                            fund=fund,
+                            defaults={
+                                'status': 'pending',
+                                'amount_paid': 0,
+                                'notes': 'Auto-created for verification'
+                            }
+                        )
+                    
+                    # Get all payments for this fund, filtered by session, program, shift, and gender
+                    verifiable_payments = StudentFundPayment.objects.filter(
+                        fund=fund,
+                        student__applicant__session=student.applicant.session,  # Same session
+                        student__program=student.program,                      # Same program
+                        student__applicant__shift=student.applicant.shift      # Same shift
+                    )
+                    
+                    if is_cr:
+                        verifiable_payments = verifiable_payments.filter(
+                            student__applicant__gender='male'
+                        )
+                    elif is_gr:
+                        verifiable_payments = verifiable_payments.filter(
+                            student__applicant__gender='female'
+                        )
+                else:
+                    # If no specific fund is selected, show all payments for the session, program, and shift
+                    verifiable_payments = StudentFundPayment.objects.filter(
+                        student__applicant__session=student.applicant.session,  # Same session
+                        student__program=student.program,                      # Same program
+                        student__applicant__shift=student.applicant.shift      # Same shift
+                    )
+                    
+                    if is_cr:
+                        verifiable_payments = verifiable_payments.filter(
+                            student__applicant__gender='male'
+                        )
+                    elif is_gr:
+                        verifiable_payments = verifiable_payments.filter(
+                            student__applicant__gender='female'
+                        )
+                
+                verifiable_payments = verifiable_payments.distinct()
+                print(f'Verifiable payments: {verifiable_payments.query}')
+                print(f'Verifiable payments count: {verifiable_payments.count()}')
+            
+            # Always show all pending payments for CR/GR
+            all_pending_payments = all_pending_payments.distinct()
+        
     except Exception as e:
-        logger.error(f"Error fetching student for user {request.user}: {str(e)}")
-        messages.error(request, 'An unexpected error occurred. Please try again later.')
-        return redirect('students:dashboard')
+        messages.error(request, f'Error fetching payments: {str(e)}')
+        import traceback
+        print(traceback.format_exc())
+        verifiable_payments = []
+        all_pending_payments = []
 
     if request.method == 'POST':
-        uploaded_files = request.FILES.getlist('photos')
-        if not uploaded_files:
-            logger.warning(f"No files uploaded by student: {student.applicant.full_name}")
-            messages.error(request, 'No photos were selected.')
-            return render(request, 'upload_photos.html', {
-                'student': student,
-                'student_full_name': student.applicant.full_name,
-                'today_date': timezone.now().date(),
-            })
+        action = request.POST.get('action')
+        if action == 'upload_payment':
+            fund_id = request.POST.get('fund_id')
+            fund = get_object_or_404(DepartmentFund, id=fund_id)
+            amount_paid = request.POST.get('amount_paid')
+            payment_date = request.POST.get('payment_date')
+            notes = request.POST.get('notes')
+            proof = request.FILES.get('proof')
 
-        if len(uploaded_files) > 10:
-            logger.warning(f"Too many files ({len(uploaded_files)}) uploaded by student: {student.applicant.full_name}")
-            messages.error(request, 'You can upload a maximum of 10 photos.')
-            return render(request, 'upload_photos.html', {
-                'student': student,
-                'student_full_name': student.applicant.full_name,
-                'today_date': timezone.now().date(),
-            })
-
-        # Validate files
-        for file in uploaded_files:
-            if not file.content_type.startswith('image/'):
-                logger.warning(f"Non-image file {file.name} uploaded by student: {student.applicant.full_name}")
-                messages.error(request, f'File {file.name} is not an image.')
-                return render(request, 'upload_photos.html', {
-                    'student': student,
-                    'student_full_name': student.applicant.full_name,
-                    'today_date': timezone.now().date(),
-                })
-            if file.size > 2 * 1024 * 1024:  # 2MB
-                logger.warning(f"File {file.name} exceeds 2MB by student: {student.applicant.full_name}")
-                messages.error(request, f'File {file.name} exceeds 2MB.')
-                return render(request, 'upload_photos.html', {
-                    'student': student,
-                    'student_full_name': student.applicant.full_name,
-                    'today_date': timezone.now().date(),
-                })
-
-        # Get dynamic directory components
-        session_name = student.applicant.session.name.replace(" ", "_") if student.applicant.session else "Unknown_Session"
-        program_name = student.program.name.replace(" ", "_") if student.program else "Unknown_Program"
-        cnic = str(student.applicant.cnic) if student.applicant.cnic else "Unknown_CNIC"
-        shift = student.applicant.shift if hasattr(student.applicant, 'shift') and student.applicant.shift else "Unknown_Shift"
-        logger.debug(f"Directory components - session: {session_name}, program: {program_name}, cnic: {cnic}, shift: {shift}")
-
-        # Define base media path
-        base_path = os.path.join(
-            settings.MEDIA_ROOT,
-            'Attandence',
-            session_name,
-            program_name,
-            cnic
-        )
-
-        # Remove existing directory if it exists
-        if os.path.exists(base_path):
             try:
-                shutil.rmtree(base_path)
-                logger.info(f"Removed existing directory: {base_path} for student: {student.applicant.full_name}")
+                payment, created = StudentFundPayment.objects.get_or_create(
+                    student=student,
+                    fund=fund,
+                    defaults={
+                        'status': 'pending',
+                        'amount_paid': amount_paid or 0,
+                        'payment_date': payment_date or None,
+                        'notes': notes or '',
+                        'proof': proof
+                    }
+                )
+                if not created:
+                    payment.amount_paid = amount_paid or payment.amount_paid
+                    payment.payment_date = payment_date or payment.payment_date
+                    payment.notes = notes or payment.notes
+                    if proof:
+                        payment.proof = proof
+                    payment.status = 'pending'
+                    payment.save()
+                messages.success(request, 'Payment details uploaded successfully.')
             except Exception as e:
-                logger.error(f"Error removing directory {base_path}: {str(e)}")
-                messages.error(request, 'Error clearing previous photos. Please try again.')
-                return render(request, 'upload_photos.html', {
-                    'student': student,
-                    'student_full_name': student.applicant.full_name,
-                    'today_date': timezone.now().date(),
-                })
+                messages.error(request, f'Error uploading payment: {str(e)}')
+            return redirect('students:fund_payments')
 
-        # Create directory
-        try:
-            os.makedirs(base_path, exist_ok=True)
-            logger.debug(f"Created directory: {base_path}")
-        except Exception as e:
-            logger.error(f"Error creating directory {base_path}: {str(e)}")
-            messages.error(request, 'Error creating storage directory. Please try again.')
-            return render(request, 'upload_photos.html', {
-                'student': student,
-                'student_full_name': student.applicant.full_name,
-                'today_date': timezone.now().date(),
-            })
-
-        # Convert uploaded files to NumPy arrays and save files
-        photos = []
-        fs = FileSystemStorage(location=base_path)
-        for index, file in enumerate(uploaded_files, start=1):
-            filename = f"{index}.jpg"
-            try:
-                # Save file to disk
-                fs.save(filename, file)
-                logger.info(f"Saved file {filename} for student: {student.applicant.full_name}")
+        elif action == 'verify_payment':
+            payment_id = request.POST.get('payment_id')
+            payment = get_object_or_404(StudentFundPayment, id=payment_id)
+            
+            # Allow students to update their own payment status
+            if payment.student == student:
+                new_status = request.POST.get('new_status')
+                if new_status in ['paid', 'pending', 'partial', 'unpaid']:
+                    payment.status = new_status
+                    if new_status == 'pending':
+                        payment.verified_by = None
+                    payment.save()
+                    messages.success(request, f'Your payment status has been updated to {new_status}.')
+                else:
+                    messages.error(request, 'Invalid payment status.')
+                return redirect('students:fund_payments')
+            
+            # CR/GR verification for other students
+            elif is_cr or is_gr:
+                # Check session, program, shift, and gender restrictions
+                if payment.student.applicant.session != student.applicant.session:
+                    raise PermissionDenied("You can only verify payments for students in your academic session.")
+                if payment.student.program != student.program:
+                    raise PermissionDenied("You can only verify payments for students in your program.")
+                if payment.student.applicant.shift != student.applicant.shift:
+                    raise PermissionDenied("You can only verify payments for students in your shift.")
+                if is_cr and payment.student.applicant.gender != 'male':
+                    raise PermissionDenied("CR can only verify payments for male students.")
+                if is_gr and payment.student.applicant.gender != 'female':
+                    raise PermissionDenied("GR can only verify payments for female students.")
                 
-                # Read file content for NumPy conversion
-                file.seek(0)  # Reset file pointer
-                file_content = file.read()
-                nparr = np.frombuffer(file_content, np.uint8)
-                img = cv.imdecode(nparr, cv.IMREAD_COLOR)
-                if img is None:
-                    logger.error(f"Failed to decode image {filename} for student: {student.applicant.full_name}")
-                    messages.error(request, f'Failed to process image {filename}.')
-                    return render(request, 'upload_photos.html', {
-                        'student': student,
-                        'student_full_name': student.applicant.full_name,
-                        'today_date': timezone.now().date(),
-                    })
-                photos.append(img)
-            except Exception as e:
-                logger.error(f"Error processing file {filename}: {str(e)}")
-                messages.error(request, f'Error processing photo {filename}.')
-                return render(request, 'upload_photos.html', {
-                    'student': student,
-                    'student_full_name': student.applicant.full_name,
-                    'today_date': timezone.now().date(),
-                })
-
-        # Call generate_embeddings with NumPy arrays
-        try:
-            logger.debug(f"Calling generate_embeddings with {len(photos)} photos")
-            success, error = generate_embeddings(photos, session_name, program_name, shift, cnic)
-            if not success:
-                logger.warning(f"Face extraction or embedding storage failed for student: {student.applicant.full_name}: {error}")
-                messages.warning(request, f'Unable to process photos: {error}')
-                return render(request, 'upload_photos.html', {
-                    'student': student,
-                    'student_full_name': student.applicant.full_name,
-                    'today_date': timezone.now().date(),
-                })
+                new_status = request.POST.get('new_status')
+                if new_status not in ['paid', 'partial', 'unpaid']:
+                    messages.error(request, 'Invalid payment status.')
+                    return redirect('students:fund_payments')
+                    
+                payment.status = new_status
+                payment.verified_by = student
+                payment.save()
+                messages.success(request, f'Payment for {payment.student.applicant.full_name} verified as {new_status}.')
+                return redirect('students:fund_payments')
             else:
-                logger.info(f"Face extraction and embedding storage successful for student: {student.applicant.full_name}")
-                messages.success(request, f'Successfully uploaded {len(uploaded_files)} photo(s) and processed embeddings.')
-                try:
-                    return redirect(reverse('students:profile'))
-                except NoReverseMatch as e:
-                    logger.error(f"URL reverse failed for students:profile: {str(e)}")
-                    messages.warning(request, 'Photos processed successfully, but redirect to profile page failed. Returning to dashboard.')
-                    return redirect('students:dashboard')
-        except Exception as e:
-            logger.error(f"Unexpected error in generate_embeddings for student {student.applicant.full_name}: {str(e)}")
-            messages.error(request, f'Unexpected error processing photos: {str(e)}')
-            return render(request, 'upload_photos.html', {
-                'student': student,
-                'student_full_name': student.applicant.full_name,
-                'today_date': timezone.now().date(),
-            })
+                raise PermissionDenied("You are not authorized to verify this payment.")
 
-    # For GET request, render the upload form
-    logger.debug(f"Rendering upload_photos.html for student: {student.applicant.full_name}")
-    return render(request, 'upload_photos.html', {
+    # Get current date in Asia/Karachi timezone
+    karachi_tz = pytz.timezone('Asia/Karachi')
+    current_date = timezone.now().astimezone(karachi_tz).date()
+    
+    context = {
         'student': student,
-        'student_full_name': student.applicant.full_name,
-        'today_date': timezone.now().date(),
-    })
+        'funds': funds,
+        'payments': payments,
+        'is_cr': is_cr,
+        'is_gr': is_gr,
+        'verifiable_payments': verifiable_payments,
+        'all_pending_payments': all_pending_payments,
+        'show_verification': show_verification,
+        'now': current_date,
+    }
+    return render(request, 'fund_payments.html', context)

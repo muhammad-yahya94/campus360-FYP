@@ -14,6 +14,26 @@
     </div>
   </div>
 
+  <!-- Notices Section -->
+  <div class="card bg-base-100 shadow-lg rounded-lg mb-6">
+    <div class="card-body">
+      <h2 class="card-title text-2xl text-base-content mb-4">Recent Notices</h2>
+      <div class="space-y-3">
+        {% for notice in notices %}
+        <div class="flex items-center justify-between p-3 bg-base-200 rounded-lg">
+          <div class="flex-1">
+            <p class="text-base-content font-medium truncate">{{ notice.title }}</p>
+            <p class="text-sm text-base-content/70 truncate">{{ notice.content|truncatewords:10 }}</p>
+          </div>
+          <div class="text-sm text-base-content/70">
+            {{ notice.created_at|timesince }} ago
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
   <!-- Enrolled Courses -->
   {% if enrollments %}
     <div class="card bg-base-100 shadow-lg rounded-lg overflow-hidden mb-6">
@@ -57,7 +77,7 @@
     <div class="card-body">
       <h2 class="card-title text-2xl text-base-content mb-4">Quick Actions</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <a href="#" class="btn btn-primary">View Settings</a>
+        <a href="{% url "students:settings" %}" class="btn btn-primary">View Settings</a>
         <a href="{% url 'students:my_courses' %}" class="btn btn-success">My Courses</a>
         <a href="{% url 'students:attendance_stats' %}" class="btn btn-accent">Attendance Stats</a>
       </div>

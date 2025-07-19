@@ -42,6 +42,11 @@
           <div class="stat md:col-span-2 lg:col-span-4">
             <div class="stat-title">Attendance Percentage</div>
             <div class="stat-value text-primary">{{ course_stats.percentage }}%</div>
+                    <div class="flex items-center gap-2">
+          <div class="w-full bg-base-200 rounded-full h-2.5">
+            <div class="bg-primary h-2.5 rounded-full" style="width: {{ course_stats.percentage }}%"></div>
+          </div>
+        </div>
           </div>
         </div>
       </div>

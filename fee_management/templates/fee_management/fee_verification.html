@@ -12,12 +12,12 @@
 
 <div class="max-w-4xl mx-auto bg-base-100 rounded-lg shadow p-6 mb-6">
     <h2 class="text-xl font-semibold mb-4">Search Voucher</h2>
-    <form method="post" class="space-y-4">
+    <form id="voucher-search-form" class="space-y-4">
         {% csrf_token %}
         <input type="hidden" name="action" value="search">
         <div class="form-control">
             <div class="join w-full">
-                <input type="text" name="voucher_id" placeholder="Enter Voucher ID" 
+                <input type="text" name="voucher_id" id="voucher-id" placeholder="Enter Voucher ID" 
                        class="input input-bordered join-item w-full" 
                        value="{{ voucher.voucher_id|default:'' }}"
                        required>
@@ -29,108 +29,97 @@
     </form>
 </div>
 
-{% if voucher %}
-<div class="max-w-4xl mx-auto bg-base-100 rounded-lg shadow p-6 mb-6">
+<div id="voucher-details" class="max-w-4xl mx-auto bg-base-100 rounded-lg shadow p-6 mb-6 hidden">
     <h2 class="text-xl font-semibold mb-4">Voucher Details</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-            <h3 class="text-lg font-medium mb-2">Student Information</h3>
-            <div class="space-y-2">
-                <p><span class="font-medium">Name:</span> {{ student.applicant.full_name }}</p>
-                <p><span class="font-medium">Roll No:</span> {{ student.university_roll_no }}</p>
-                <p><span class="font-medium">Program:</span> {{ student.program.name }}</p>
-                <p><span class="font-medium">Session:</span> {{ student.applicant.session.name }}</p>
-                <p><span class="font-medium">Semester:</span> {{ voucher.semester.name }}</p>
-            </div>
-        </div>
-        <div>
-            <h3 class="text-lg font-medium mb-2">Payment Details</h3>
-            <div class="space-y-2">
-                <p><span class="font-medium">Voucher ID:</span> {{ voucher.voucher_id }}</p>
-                <p><span class="font-medium">Fee Type:</span> {{ voucher.semester_fee.fee_type.name }}</p>
-                <p><span class="font-medium">Due Date:</span> {{ voucher.due_date|date:"d M Y" }}</p>
-                <p><span class="font-medium">Status:</span> 
-                    {% if voucher.is_paid %}
-                        <span class="badge badge-success">Paid on {{ voucher.paid_at|date:"d M Y" }}</span>
-                    {% else %}
-                        <span class="badge badge-warning">Pending</span>
-                    {% endif %}
-                </p>
-                {% if voucher.payment %}
-                <p><span class="font-medium">Receipt #:</span> {{ voucher.payment.receipt_number }}</p>
-                {% elif not voucher.is_paid %}
-                <form method="post" class="mt-4">
-                    {% csrf_token %}
-                    <input type="hidden" name="voucher_id" value="{{ voucher.voucher_id }}">
-                    <input type="hidden" name="action" value="verify">
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-check-circle"></i> Mark as Paid
-                    </button>
-                </form>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <div class="mt-6">
-        <h3 class="text-lg font-medium mb-2">Fee Breakdown</h3>
-        <div class="overflow-x-auto">
-            <table class="table table-zebra w-full">
-                <thead>
-                    <tr>
-                        <th>Description</th>
-                        <th class="text-right">Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Tuition Fee</td>
-                        <td class="text-right">{{ voucher.semester_fee.tuition_fee_amount|floatformat:2 }}</td>
-                    </tr>
-                    {% if voucher.semester_fee.computer_fee %}
-                    <tr>
-                        <td>Computer Fee</td>
-                        <td class="text-right">{{ voucher.semester_fee.computer_fee_amount|floatformat:2 }}</td>
-                    </tr>
-                    {% endif %}
-                    {% if voucher.semester_fee.examination_fund %}
-                    <tr>
-                        <td>Examination Fund</td>
-                        <td class="text-right">{{ voucher.semester_fee.examination_fund_amount|floatformat:2 }}</td>
-                    </tr>
-                    {% endif %}
-                    {% if voucher.semester_fee.others %}
-                    <tr>
-                        <td>Other Charges</td>
-                        <td class="text-right">{{ voucher.semester_fee.others_amount|floatformat:2 }}</td>
-                    </tr>
-                    {% endif %}
-                    {% if voucher.semester_fee.evening_fund %}
-                    <tr>
-                        <td>Evening Fund</td>
-                        <td class="text-right">{{ voucher.semester_fee.evening_fund_amount|floatformat:2 }}</td>
-                    </tr>
-                    {% endif %}
-                    <tr class="font-bold">
-                        <td>Total Amount</td>
-                        <td class="text-right">PKR {{ voucher.semester_fee.total_amount|floatformat:2 }}</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    {% if not voucher.is_paid %}
-    <div class="mt-6 text-center">
-        <form method="post" class="inline-block">
-            {% csrf_token %}
-            <input type="hidden" name="voucher_id" value="{{ voucher.voucher_id }}">
-            <button type="submit" name="action" value="verify" class="btn btn-success">
-                <i class="fas fa-check-circle mr-2"></i> Mark as Paid
-            </button>
-        </form>
-    </div>
-    {% endif %}
+    <div id="voucher-content"></div>
 </div>
-{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('voucher-search-form');
+    const voucherDetails = document.getElementById('voucher-details');
+    const voucherContent = document.getElementById('voucher-content');
+
+    // Handle form submission for voucher search
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const voucherId = formData.get('voucher_id');
+
+        fetch('{% url "fee_management:fee_verification" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showToast(data.error, 'error');
+                voucherDetails.classList.add('hidden');
+            } else {
+                voucherContent.innerHTML = data.html;
+                voucherDetails.classList.remove('hidden');
+                bindVerifyButton();
+            }
+        })
+        .catch(error => {
+            showToast('An error occurred. Please try again.', 'error');
+            console.error('Error:', error);
+        });
+    });
+
+    // Function to bind click event to verify buttons
+    function bindVerifyButton() {
+        const verifyButtons = document.querySelectorAll('.verify-payment');
+        verifyButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                const voucherId = this.dataset.voucherId;
+                const formData = new FormData();
+                formData.append('action', 'verify');
+                formData.append('voucher_id', voucherId);
+                formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+                fetch('{% url "fee_management:fee_verification" %}', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        showToast(data.error, 'error');
+                    } else {
+                        voucherContent.innerHTML = data.html;
+                        showToast(data.message, 'success');
+                        bindVerifyButton(); // Rebind buttons for any new content
+                    }
+                })
+                .catch(error => {
+                    showToast('An error occurred while verifying payment.', 'error');
+                    console.error('Error:', error);
+                });
+            });
+        });
+    }
+
+    // Toast notification function
+    function showToast(message, type) {
+        const toast = document.createElement('div');
+        toast.className = `toast toast-top toast-end`;
+        toast.innerHTML = `
+            <div class="alert alert-${type === 'success' ? 'success' : 'error'}">
+                <span>${message}</span>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+});
+</script>
 {% endblock %}

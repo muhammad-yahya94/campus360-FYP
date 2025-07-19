@@ -2,11 +2,12 @@
 import os
 import logging
 import datetime
-from datetime import time
+import json
+from datetime import time, date
 
 # Third-party Imports
 import pytz
-from .Face_Attandence import face_attandence_detection
+
 
 # Django Core Imports
 from django import forms
@@ -22,9 +23,11 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db import transaction
 from django.db.models import Sum, Q, Count, Max, Subquery, OuterRef, F, Value
 from django.db.utils import IntegrityError
+from django.db.models.functions import ExtractYear
 from django.forms.models import inlineformset_factory
 from django.http import JsonResponse
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
+from django.template.loader import get_template, render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
@@ -43,9 +46,9 @@ from courses.models import (
     Course, CourseOffering, ExamResult, StudyMaterial,
     Assignment, AssignmentSubmission, Notice,
     Attendance, Venue, TimetableSlot,
-    Quiz, Question, QuizSubmission, Option
+    Quiz, Question, QuizSubmission, Option, LectureReplacement
 )
-from faculty_staff.models import Teacher, TeacherDetails, OfficeStaff, Office
+from faculty_staff.models import Teacher, TeacherDetails, OfficeStaff, Office, DepartmentFund
 from students.models import Student, StudentSemesterEnrollment, CourseEnrollment
 
 # Forms
@@ -149,10 +152,12 @@ def professor_dashboard(request):
 
 
 
-@hod_required
+
+
+
 def staff_management(request):
     hod_department = request.user.teacher_profile.department
-    staff_list = Teacher.objects.filter(department=hod_department)
+    staff_list = Teacher.objects.filter(department=hod_department).order_by('user__last_name', 'user__first_name')
     print(f"this is staff -- {staff_list}")
     search_query = request.GET.get('search', '')
     if search_query:
@@ -160,7 +165,7 @@ def staff_management(request):
             Q(user__first_name__icontains=search_query) |
             Q(user__last_name__icontains=search_query) |
             Q(user__email__icontains=search_query)
-        )
+        )  
 
     status = request.GET.get('status')
     if status == 'active':
@@ -178,6 +183,7 @@ def staff_management(request):
         'designation_choices': Teacher.DESIGNATION_CHOICES,
         'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
         'status_choices': TeacherDetails.STATUS_CHOICES,
+        'gender_choices': Teacher.GENDER_CHOICES,
     }
     return render(request, 'faculty_staff/staff_management.html', context)
 
@@ -190,6 +196,7 @@ def add_staff(request):
         last_name = request.POST.get('last_name')
         email = request.POST.get('email')
         designation = request.POST.get('designation')
+        gender = request.POST.get('gender')  # New field
         contact_no = request.POST.get('contact_no', '')
         qualification = request.POST.get('qualification', '')
         hire_date = request.POST.get('hire_date', None)
@@ -203,19 +210,21 @@ def add_staff(request):
         fixed_salary = request.POST.get('fixed_salary', None)
         status = request.POST.get('status', '')
 
-        if not all([first_name, last_name, email, designation]):
-            messages.error(request, 'Please fill in all required fields (First Name, Last Name, Email, Designation).')
+        if not all([first_name, last_name, email, designation, gender]):
+            messages.error(request, 'Please fill in all required fields (First Name, Last Name, Email, Designation, Gender).')
             return render(request, 'faculty_staff/staff_management.html', {
                 'department': hod_department,
                 'staff_members': Teacher.objects.filter(department=hod_department),
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
                 'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
                 'status_choices': TeacherDetails.STATUS_CHOICES,
+                'gender_choices': Teacher.GENDER_CHOICES,  # Add gender choices
                 'form_errors': {
                     'first_name': not first_name,
                     'last_name': not last_name,
                     'email': not email,
                     'designation': not designation,
+                    'gender': not gender,  # Add gender to form errors
                 },
             })
 
@@ -227,6 +236,7 @@ def add_staff(request):
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
                 'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
                 'status_choices': TeacherDetails.STATUS_CHOICES,
+                'gender_choices': Teacher.GENDER_CHOICES,  # Add gender choices
                 'form_errors': {'email': 'exists'},
             })
 
@@ -238,7 +248,20 @@ def add_staff(request):
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
                 'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
                 'status_choices': TeacherDetails.STATUS_CHOICES,
+                'gender_choices': Teacher.GENDER_CHOICES,  # Add gender choices
                 'form_errors': {'designation': True},
+            })
+
+        if gender not in dict(Teacher.GENDER_CHOICES).keys():
+            messages.error(request, 'Invalid gender selected.')
+            return render(request, 'faculty_staff/staff_management.html', {
+                'department': hod_department,
+                'staff_members': Teacher.objects.filter(department=hod_department),
+                'designation_choices': Teacher.DESIGNATION_CHOICES,
+                'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
+                'status_choices': TeacherDetails.STATUS_CHOICES,
+                'gender_choices': Teacher.GENDER_CHOICES,  # Add gender choices
+                'form_errors': {'gender': True},
             })
 
         try:
@@ -255,6 +278,7 @@ def add_staff(request):
                 user=user,
                 department=hod_department,
                 designation=designation,
+                gender=gender,  # Add gender
                 contact_no=contact_no,
                 qualification=qualification,
                 hire_date=hire_date if hire_date else None,
@@ -285,6 +309,7 @@ def add_staff(request):
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
                 'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
                 'status_choices': TeacherDetails.STATUS_CHOICES,
+                'gender_choices': Teacher.GENDER_CHOICES,  # Add gender choices
                 'form_errors': {},
             })
 
@@ -294,8 +319,11 @@ def add_staff(request):
         'designation_choices': Teacher.DESIGNATION_CHOICES,
         'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
         'status_choices': TeacherDetails.STATUS_CHOICES,
+        'gender_choices': Teacher.GENDER_CHOICES,  # Add gender choices
     })
-
+    
+    
+        
 @hod_required
 def edit_staff(request, staff_id):
     hod_department = request.user.teacher_profile.department
@@ -307,6 +335,7 @@ def edit_staff(request, staff_id):
         last_name = request.POST.get('last_name')
         email = request.POST.get('email')
         designation = request.POST.get('designation')
+        gender = request.POST.get('gender')  # New field
         contact_no = request.POST.get('contact_no', '')
         qualification = request.POST.get('qualification', '')
         hire_date = request.POST.get('hire_date', None)
@@ -320,19 +349,21 @@ def edit_staff(request, staff_id):
         fixed_salary = request.POST.get('fixed_salary', None)
         status = request.POST.get('status', '')
 
-        if not all([first_name, last_name, email, designation]):
-            messages.error(request, 'Please fill in all required fields (First Name, Last Name, Email, Designation).')
+        if not all([first_name, last_name, email, designation, gender]):
+            messages.error(request, 'Please fill in all required fields (First Name, Last Name, Email, Designation, Gender).')
             return render(request, 'faculty_staff/staff_management.html', {
                 'department': hod_department,
                 'staff_members': Teacher.objects.filter(department=hod_department),
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
                 'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
                 'status_choices': TeacherDetails.STATUS_CHOICES,
+                'gender_choices': Teacher.GENDER_CHOICES,  # Add gender choices
                 'form_errors': {
                     'first_name': not first_name,
                     'last_name': not last_name,
                     'email': not email,
                     'designation': not designation,
+                    'gender': not gender,  # Add gender to form errors
                 },
             })
 
@@ -344,6 +375,7 @@ def edit_staff(request, staff_id):
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
                 'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
                 'status_choices': TeacherDetails.STATUS_CHOICES,
+                'gender_choices': Teacher.GENDER_CHOICES,  # Add gender choices
                 'form_errors': {'email': 'exists'},
             })
 
@@ -355,7 +387,20 @@ def edit_staff(request, staff_id):
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
                 'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
                 'status_choices': TeacherDetails.STATUS_CHOICES,
+                'gender_choices': Teacher.GENDER_CHOICES,  # Add gender choices
                 'form_errors': {'designation': True},
+            })
+
+        if gender not in dict(Teacher.GENDER_CHOICES).keys():
+            messages.error(request, 'Invalid gender selected.')
+            return render(request, 'faculty_staff/staff_management.html', {
+                'department': hod_department,
+                'staff_members': Teacher.objects.filter(department=hod_department),
+                'designation_choices': Teacher.DESIGNATION_CHOICES,
+                'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
+                'status_choices': TeacherDetails.STATUS_CHOICES,
+                'gender_choices': Teacher.GENDER_CHOICES,  # Add gender choices
+                'form_errors': {'gender': True},
             })
 
         try:
@@ -365,6 +410,7 @@ def edit_staff(request, staff_id):
             teacher.user.save()
 
             teacher.designation = designation
+            teacher.gender = gender  # Update gender
             teacher.contact_no = contact_no
             teacher.qualification = qualification
             teacher.hire_date = hire_date if hire_date else None
@@ -402,17 +448,21 @@ def edit_staff(request, staff_id):
                 'designation_choices': Teacher.DESIGNATION_CHOICES,
                 'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
                 'status_choices': TeacherDetails.STATUS_CHOICES,
+                'gender_choices': Teacher.GENDER_CHOICES,  # Add gender choices
                 'form_errors': {},
             })
-    print(f'this is {TeacherDetails.EMPLOYMENT_TYPE_CHOICES} and {TeacherDetails.STATUS_CHOICES}')        
+
     return render(request, 'faculty_staff/staff_management.html', {
         'department': hod_department,
         'staff_members': Teacher.objects.filter(department=hod_department),
         'designation_choices': Teacher.DESIGNATION_CHOICES,
         'employment_type_choices': TeacherDetails.EMPLOYMENT_TYPE_CHOICES,
         'status_choices': TeacherDetails.STATUS_CHOICES,
+        'gender_choices': Teacher.GENDER_CHOICES,  # Add gender choices
     })
     
+    
+        
 @hod_required
 def delete_staff(request, staff_id):
     hod_department = request.user.teacher_profile.department
@@ -434,33 +484,128 @@ def delete_staff(request, staff_id):
 
 
 
+import calendar  
+from datetime import date
+import logging
+
+
+def hod_required(view_func):
+    from django.contrib.auth.decorators import login_required
+    return login_required(view_func)
+
 @hod_required
 def teacher_lecture_details(request, teacher_id):
+    # Ensure teacher_id is an integer
+    try:
+        teacher_id = int(teacher_id)
+    except (ValueError, TypeError):
+        logger.error(f"Invalid teacher_id: {teacher_id}")
+        return render(request, 'faculty_staff/error.html', {
+            'message': 'Invalid teacher ID provided.'
+        }, status=400)
+
     # Ensure the teacher is in the HOD's department
     hod_department = request.user.teacher_profile.department
     teacher = get_object_or_404(Teacher, id=teacher_id, department=hod_department)
+    logger.debug(f"Step 1: Teacher retrieved: {teacher}, ID: {teacher_id}, Type: {type(teacher)}")
 
-    # Get all attendance records recorded by this teacher
-    from courses.models import Attendance
-    lectures = Attendance.objects.filter(recorded_by=teacher).order_by('-date')
-    lecture_count = lectures.count()
+    # Step 1: Get total course offerings for active sessions
+    try:
+        current_year = timezone.now().year
+        active_sessions = AcademicSession.objects.filter(
+            Q(is_active=True) | Q(end_year__gte=current_year)
+        ).values_list('id', flat=True)
+        logger.debug(f"Step 2: Active sessions: {list(active_sessions)}")
 
-    # Get teacher details for salary calculation
+        course_offerings = CourseOffering.objects.filter(
+            teacher=teacher,
+            academic_session__id__in=active_sessions
+        ).select_related('course', 'semester', 'program', 'academic_session')
+        course_offering_ids = course_offerings.values_list('id', flat=True)
+        logger.debug(f"Step 3: Total course offerings: {list(course_offering_ids)}")
+    except Exception as e:
+        logger.error(f"Error querying CourseOffering: {str(e)}")
+        return render(request, 'faculty_staff/error.html', {
+            'message': f'Error retrieving course offerings: {str(e)}'
+        }, status=500)
+
+    # Step 2: Get replacement course offerings
+    try:
+        replacement_course_offerings = CourseOffering.objects.filter(
+            Q(replacement_teacher=teacher) |
+            Q(id__in=LectureReplacement.objects.filter(
+                replacement_teacher=teacher,
+                course_offering__academic_session__id__in=active_sessions
+            ).values_list('course_offering__id', flat=True))
+        ).select_related('course', 'semester', 'program', 'academic_session')
+        replacement_course_offering_ids = replacement_course_offerings.values_list('id', flat=True)
+        logger.debug(f"Step 4: Replacement course offerings: {list(replacement_course_offering_ids)}")
+    except Exception as e:
+        logger.error(f"Error querying replacement CourseOffering: {str(e)}")
+        replacement_course_offerings = CourseOffering.objects.none()
+        replacement_course_offering_ids = []
+
+    # Step 3: Get original (normal) lectures
+    try:
+        normal_lectures = Attendance.objects.filter(
+            recorded_by=teacher,
+            course_offering__teacher=teacher,
+            course_offering__academic_session__id__in=active_sessions
+        ).select_related('course_offering__course', 'course_offering__semester')
+        logger.debug(f"Step 5: Normal lectures (recorded_by and original teacher): {normal_lectures.count()}")
+    except Exception as e:
+        logger.error(f"Error querying normal lectures: {str(e)}")
+        normal_lectures = Attendance.objects.none()
+
+    # Step 4: Get replacement lectures
+    try:
+        replacement_lectures = Attendance.objects.filter(
+            recorded_by=teacher,
+            course_offering__id__in=replacement_course_offering_ids,
+            course_offering__academic_session__id__in=active_sessions
+        ).select_related('course_offering__course', 'course_offering__semester')
+        logger.debug(f"Step 6: Replacement lectures (recorded_by and replacement): {replacement_lectures.count()}")
+    except Exception as e:
+        logger.error(f"Error querying replacement lectures: {str(e)}")
+        replacement_lectures = Attendance.objects.none()
+
+    # Combine lectures for total count
+    try:
+        all_lectures = (normal_lectures | replacement_lectures).distinct().order_by('-date')
+        logger.debug(f"Step 7: Total lectures: {all_lectures.count()}")
+    except Exception as e:
+        logger.error(f"Error combining lectures: {str(e)}")
+        return render(request, 'faculty_staff/error.html', {
+            'message': f'Error combining lecture data: {str(e)}'
+        }, status=500)
+
+    # Step 5: Calculate lecture counts and salary
+    normal_lecture_count = normal_lectures.count()  # Each Attendance = 1 lecture
+    replacement_lecture_count = replacement_lectures.count()
+    total_lecture_count = all_lectures.count()
+    salary_lecture_count = normal_lecture_count + replacement_lecture_count  # Salary based on recorded_by
+
     teacher_details = teacher.details if hasattr(teacher, 'details') else None
     salary_per_lecture = teacher_details.salary_per_lecture if teacher_details else 0
+    total_salary = salary_lecture_count * salary_per_lecture
+    logger.debug(f"Step 8: Lecture counts - Normal: {normal_lecture_count}, Replacement: {replacement_lecture_count}, Total: {total_lecture_count}, Salary lectures: {salary_lecture_count}, Total salary: {total_salary}")
 
-    # Calculate total salary
-    total_salary = lecture_count * salary_per_lecture if salary_per_lecture else 0
+    # Prepare lecture details
+    lecture_details = []
+    for lecture in all_lectures:
+        is_replacement = lecture.course_offering.id in replacement_course_offering_ids
+        role = 'Replacement' if is_replacement else 'Normal'
+        lecture_details.append({
+            'lecture': lecture,
+            'role': role,
+            'course_code': lecture.course_offering.course.code,
+            'course_name': lecture.course_offering.course.name,
+            'shift': lecture.shift,
+            'date': lecture.date
+        })
 
-    # Year selection
-    from django.db.models.functions import ExtractYear
-    from django.db.models import Count, Sum, F, Value
-    from django.utils import timezone
-    from datetime import datetime
-    import calendar
-
-    # Get all years with attendance data
-    years_qs = lectures.annotate(year=ExtractYear('date')).values_list('year', flat=True).distinct().order_by('-year')
+    # Get all years for filtering
+    years_qs = all_lectures.annotate(year=ExtractYear('date')).values_list('year', flat=True).distinct().order_by('-year')
     years = list(years_qs)
     current_year = timezone.now().year
     selected_year = request.GET.get('year')
@@ -470,76 +615,66 @@ def teacher_lecture_details(request, teacher_id):
             selected_year = current_year
     except (TypeError, ValueError):
         selected_year = current_year
+    logger.debug(f"Step 9: Selected year: {selected_year}, Available years: {years}")
 
-    # Monthly statistics for selected year
+    # Monthly statistics
     monthly_stats = []
     current_month = timezone.now().month if selected_year == current_year else 1
     for month in range(1, 13):
-        month_lectures = lectures.filter(
-            date__year=selected_year,
-            date__month=month
+        month_lectures = all_lectures.filter(date__year=selected_year, date__month=month)
+        month_normal = month_lectures.filter(
+            recorded_by=teacher,
+            course_offering__teacher=teacher,
+            course_offering__replacement_teacher__isnull=True
         )
-        month_count = month_lectures.count()
-        month_salary = month_count * salary_per_lecture if salary_per_lecture else 0
+        month_replacement = month_lectures.filter(
+            recorded_by=teacher,
+            course_offering__id__in=replacement_course_offering_ids
+        )
+        month_salary = (month_normal.count() + month_replacement.count()) * salary_per_lecture
         monthly_stats.append({
             'month': calendar.month_name[month],
-            'lecture_count': month_count,
+            'normal_count': month_normal.count(),
+            'replacement_count': month_replacement.count(),
             'salary': month_salary,
             'is_current': (month == current_month and selected_year == current_year)
         })
+    logger.debug(f"Step 10: Monthly stats generated for {selected_year}")
 
     # Course-wise statistics
-    if salary_per_lecture and salary_per_lecture > 0:
-        course_stats = lectures.values(
-            'course_offering__course__code',
-            'course_offering__course__name',
-            'course_offering__semester__name',
-            'course_offering__program__name'
-        ).annotate(
-            lecture_count=Count('id'),
-            total_salary=Count('id') * Value(salary_per_lecture)
-        ).order_by('-lecture_count')
-    else:
-        course_stats = lectures.values(
-            'course_offering__course__code',
-            'course_offering__course__name',
-            'course_offering__semester__name',
-            'course_offering__program__name'
-        ).annotate(
-            lecture_count=Count('id'),
-            total_salary=Value(0)
-        ).order_by('-lecture_count')
-
-    # Semester-wise statistics
-    if salary_per_lecture and salary_per_lecture > 0:
-        semester_stats = lectures.values(
-            'course_offering__semester__name',
-            'course_offering__academic_session__name'
-        ).annotate(
-            lecture_count=Count('id'),
-            total_salary=Count('id') * Value(salary_per_lecture)
-        ).order_by('-lecture_count')
-    else:
-        semester_stats = lectures.values(
-            'course_offering__semester__name',
-            'course_offering__academic_session__name'
-        ).annotate(
-            lecture_count=Count('id'),
-            total_salary=Value(0)
-        ).order_by('-lecture_count')
+    course_stats = all_lectures.filter(date__year=selected_year).values(
+        'course_offering__course__code',
+        'course_offering__course__name'
+    ).annotate(
+        normal_count=Count('id', filter=Q(
+            recorded_by=teacher,
+            course_offering__teacher=teacher,
+            course_offering__replacement_teacher__isnull=True
+        )),
+        replacement_count=Count('id', filter=Q(
+            recorded_by=teacher,
+            course_offering__id__in=replacement_course_offering_ids
+        )),
+        salary=Count('id', filter=Q(recorded_by=teacher)) * Value(salary_per_lecture)
+    ).order_by('-normal_count', '-replacement_count')
+    logger.debug(f"Step 11: Course stats generated")
 
     # Recent lectures (last 10)
-    recent_lectures = lectures[:10]
+    recent_lectures = lecture_details[:10]
+    logger.debug(f"Step 12: Recent lectures prepared (count: {len(recent_lectures)})")
 
     context = {
         'teacher': teacher,
-        'lectures': lectures,
-        'lecture_count': lecture_count,
+        'course_offerings': course_offerings,
+        'replacement_course_offerings': replacement_course_offerings,
+        'normal_lecture_count': normal_lecture_count,
+        'replacement_lecture_count': replacement_lecture_count,
+        'total_lecture_count': total_lecture_count,
+        'salary_lecture_count': salary_lecture_count,
         'salary_per_lecture': salary_per_lecture,
         'total_salary': total_salary,
         'monthly_stats': monthly_stats,
         'course_stats': course_stats,
-        'semester_stats': semester_stats,
         'recent_lectures': recent_lectures,
         'years': years,
         'selected_year': selected_year,
@@ -549,38 +684,74 @@ def teacher_lecture_details(request, teacher_id):
 
 
 
+
+
 @hod_required
-def session_students(request, session_id):
+def session_students(request, session_id=None):
     hod_department = request.user.teacher_profile.department
-    session = get_object_or_404(AcademicSession, id=session_id)
     programs = Program.objects.filter(department=hod_department)
-    applicants = Applicant.objects.filter(program__in=programs, session=session)  # Filter applicants by session
-    students = Student.objects.filter(
-        applicant__in=applicants,
-        program__in=programs
-    ).select_related('applicant', 'program')
-
-    search_query = request.GET.get('q', '').strip()
-    if search_query:
-        students = students.filter(
-            Q(university_roll_no__icontains=search_query) |
-            Q(applicant__full_name__icontains=search_query) |
-            Q(college_roll_no__icontains=search_query)
-        )
-
-    paginator = Paginator(students, 10)
-    page_number = request.GET.get('page')
-    page_students = paginator.get_page(page_number)
-
     academic_sessions = AcademicSession.objects.all().order_by('-start_year')
-
+    
+    students = Student.objects.none()
+    session = None
+    students_by_program = {}
+    
+    if session_id:
+        # Get the selected session
+        session = get_object_or_404(AcademicSession, id=session_id)
+        print(f"Debug - Selected Session: {session}")
+        print(f"Debug - Programs in department: {list(programs.values_list('name', flat=True))}")
+        
+        # Get students for this session and department's programs
+        students = Student.objects.filter(
+            applicant__session=session,
+            program__in=programs
+        ).select_related('applicant', 'program').order_by('program__name', 'university_roll_no')
+        
+        # Debug: Print initial student count and query
+        print(f"Debug - Initial student count: {students.count()}")
+        print(f"Debug - SQL Query: {str(students.query)}")
+        
+        # Get the selected program filter if any
+        program_id = request.GET.get('program_id')
+        print(f"Debug - Program ID from request: {program_id}")
+        
+        if program_id and program_id != 'all':
+            students = students.filter(program_id=program_id)
+            print(f"Debug - Filtered by program ID {program_id}, student count: {students.count()}")
+        
+        # Group students by program
+        for program in programs:
+            program_students = students.filter(program=program)
+            print(f"Debug - Program: {program.name}, Student count: {program_students.count()}")
+            if program_students.exists():
+                students_by_program[program] = program_students
+        
+        print(f"Debug - Final students_by_program keys: {list(students_by_program.keys())}")
+        print(f"Debug - Total students found: {sum(len(s) for s in students_by_program.values())}")
+    
+    # Handle AJAX requests
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        if not session_id:
+            return JsonResponse({'error': 'Session ID is required'}, status=400)
+            
+        html = render_to_string('faculty_staff/includes/student_list.html', {
+            'students_by_program': students_by_program,
+            'session': session,
+            'programs': programs,  # Add programs to AJAX context
+        })
+        return JsonResponse({'html': html})
+    
+    # For regular GET requests
     context = {
         'session': session,
-        'students': page_students,
         'department': hod_department,
         'academic_sessions': academic_sessions,
+        'students_by_program': students_by_program,
+        'programs': programs,  # Add programs to regular context
     }
     return render(request, 'faculty_staff/session_students.html', context)
+
 
 @hod_required
 def student_detail(request, student_id):
@@ -646,9 +817,16 @@ class CourseForm(forms.Form):
     code = forms.CharField(max_length=10, required=True, help_text="Enter the unique course code (e.g., CS101).")
     name = forms.CharField(max_length=200, required=True, help_text="Enter the full name of the course.")
     credits = forms.IntegerField(min_value=1, required=True, help_text="Enter the number of credit hours.")
-    lab_work = forms.IntegerField(min_value=0, required=False, help_text="Enter the number of lab work.")
+    lab_work = forms.IntegerField(min_value=0, required=False, help_text="Enter the number of lab hours per week for this course (if applicable).")
     is_active = forms.BooleanField(required=False, initial=True, help_text="Check this if the course is active.")
-    description = forms.CharField(widget=forms.Textarea, required=False, help_text="Provide a description.")
+    opt = forms.BooleanField(required=False, initial=True, help_text="Check this if the course is just optional")
+    description = forms.CharField(widget=forms.Textarea, required=False, help_text="Provide a brief description or syllabus summary for the course.")
+    prerequisites = forms.ModelMultipleChoiceField(
+        queryset=Course.objects.all(),
+        required=False,
+        widget=forms.SelectMultiple(attrs={'class': 'form-control'}),
+        help_text="Select any courses that are required to be completed before taking this course (optional)."
+    )
 
 
 @hod_required
@@ -661,14 +839,22 @@ def add_course(request):
         if Course.objects.filter(code=code).exists():
             form.add_error('code', 'This course code already exists.')
         else:
-            Course.objects.create(
+            # Create the course first
+            course = Course.objects.create(
                 code=code,
                 name=form.cleaned_data['name'],
                 credits=form.cleaned_data['credits'],
                 lab_work=form.cleaned_data['lab_work'],
                 is_active=form.cleaned_data['is_active'],
+                opt=form.cleaned_data['opt'],
                 description=form.cleaned_data['description']
             )
+            
+            # Add prerequisites if any selected
+            prerequisites = form.cleaned_data['prerequisites']
+            if prerequisites:
+                course.prerequisites.set(prerequisites)
+            
             messages.success(request, f'Course {code} added successfully.')
             return redirect('faculty_staff:course_offerings')
 
@@ -709,8 +895,8 @@ def course_offerings(request):
     course_offerings = CourseOffering.objects.filter(
         department=hod_department,
         semester__is_active=True,
-        program__is_active=True
-    )
+        program__is_active=True   
+    ).order_by('academic_session__start_year', 'program__name', 'semester__name', 'course__code')
     if session_id:
         course_offerings = course_offerings.filter(academic_session_id=session_id)
     if program_id:
@@ -728,7 +914,7 @@ def course_offerings(request):
         course_offering__department=hod_department,
         course_offering__semester__is_active=True,
         course_offering__program__is_active=True
-    )
+    ).order_by('course_offering__academic_session__start_year', 'course_offering__program__name', 'course_offering__semester__name', 'day', 'start_time')
     if session_id:
         timetable_slots = timetable_slots.filter(course_offering__academic_session_id=session_id)
     if program_id:
@@ -823,7 +1009,7 @@ def search_teachers(request):
     return JsonResponse({'results': [], 'more': False})
 
 def get_academic_sessions(request):
-    sessions = AcademicSession.objects.all()
+    sessions = AcademicSession.objects.filter(is_active=True)
     results = [{'id': session.id, 'text': session.name} for session in sessions]
     return JsonResponse({'results': results})
 
@@ -1771,53 +1957,35 @@ def delete_timetable_slot(request):
         })
 
 
+
 @hod_required
 def weekly_timetable(request):
-    if not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
-        return render(request, 'faculty_staff/error.html', {
-            'message': 'You do not have permission to view the weekly timetable.'
-        }, status=403)
-
     department = request.user.teacher_profile.department
-    # Get all active sessions for the filter
     academic_sessions = AcademicSession.objects.filter(is_active=True).order_by('-start_year')
     selected_session_id = request.GET.get('session_id')
 
-    # Determine the current session
     if selected_session_id:
         current_session = AcademicSession.objects.filter(id=selected_session_id, is_active=True).first()
     else:
         current_session = AcademicSession.objects.filter(is_active=True).order_by('-start_year').first()
-    
+
     if not current_session:
         return render(request, 'faculty_staff/error.html', {
             'message': 'No active academic session found.'
         }, status=404)
 
-    # Debug: Log active and inactive semesters per program for the selected session
     programs = Program.objects.filter(department=department).distinct()
-    for program in programs:
-        semesters = Semester.objects.filter(program=program, session=current_session)
-        active_semesters = semesters.filter(is_active=True).count()
-        inactive_semesters = semesters.count() - active_semesters
-        logger.debug(f"Program: {program.name}, Active Semesters: {active_semesters}, Inactive Semesters: {inactive_semesters}")
-        for semester in semesters:
-            logger.debug(f"  Semester: {semester.name}, Is Active: {semester.is_active}")
-
-    # Get shift filter from GET parameter (default: all)
     shift_filter = request.GET.get('shift', 'all').lower()
     valid_shifts = ['morning', 'evening', 'both', 'all']
     if shift_filter not in valid_shifts:
         shift_filter = 'all'
 
-    # Fetch timetable slots, filtering for active semesters
     queryset = TimetableSlot.objects.filter(
         course_offering__department=department,
         course_offering__academic_session=current_session,
-        course_offering__semester__is_active=True  # Filter for active semesters only
-    ).select_related('course_offering__course', 'course_offering__teacher', 'course_offering__program', 'venue')
+        course_offering__semester__is_active=True
+    ).select_related('course_offering__course', 'course_offering__teacher', 'course_offering__replacement_teacher', 'course_offering__program', 'venue')
 
-    # Apply shift filter
     if shift_filter != 'all':
         if shift_filter == 'morning':
             queryset = queryset.filter(Q(course_offering__shift='morning') | 
@@ -1825,12 +1993,11 @@ def weekly_timetable(request):
         elif shift_filter == 'evening':
             queryset = queryset.filter(Q(course_offering__shift='evening') | 
                                      (Q(course_offering__shift='both') & Q(start_time__gte='12:00:00')))
-        else:  # both
+        else:
             queryset = queryset.filter(course_offering__shift='both')
 
-    # Organize slots by day
     timetable_data = []
-    days_of_week = TimetableSlot.DAYS_OF_WEEK  # [('monday', 'Monday'), ...]
+    days_of_week = TimetableSlot.DAYS_OF_WEEK
     for day_value, day_label in days_of_week:
         day_slots = sorted(
             [
@@ -1845,8 +2012,19 @@ def weekly_timetable(request):
                         slot.course_offering.shift.capitalize() if slot.course_offering.shift != 'both'
                         else ('Morning' if slot.start_time.hour < 12 else 'Evening')
                     ),
-                    'teacher': f"{slot.course_offering.teacher.user.first_name} {slot.course_offering.teacher.user.last_name}",
-                    'program': slot.course_offering.program.name,
+                    'teacher': (
+                        f"{slot.course_offering.replacement_teacher.user.get_full_name()}"
+                        if slot.course_offering.replacement_teacher
+                        else f"{slot.course_offering.teacher.user.get_full_name()}"
+                    ),
+                    'teacher_id': (
+                        slot.course_offering.replacement_teacher.id
+                        if slot.course_offering.replacement_teacher
+                        else slot.course_offering.teacher.id
+                    ),
+                    'original_teacher_id': slot.course_offering.teacher.id,
+                    'program': slot.course_offering.program.name if slot.course_offering.program else 'No Program',
+                    'course_offering_id': slot.course_offering.id,
                 }
                 for slot in queryset.filter(day=day_value)
             ],
@@ -1855,15 +2033,16 @@ def weekly_timetable(request):
         timetable_data.append({
             'day_value': day_value,
             'day_label': day_label,
-            'slots': day_slots  
+            'slots': day_slots
         })
 
-    # Fetch unique programs for the current session and department (only active semesters)
     programs = TimetableSlot.objects.filter(
         course_offering__department=department,
         course_offering__academic_session=current_session,
         course_offering__semester__is_active=True
     ).values('course_offering__program__name').distinct()
+
+    teachers = Teacher.objects.filter(department=department, is_active=True)
 
     return render(request, 'faculty_staff/weekly_timetable.html', {
         'timetable_data': timetable_data,
@@ -1872,11 +2051,69 @@ def weekly_timetable(request):
         'shift_filter': shift_filter,
         'shift_options': [('all', 'All'), ('morning', 'Morning'), ('evening', 'Evening'), ('both', 'Both')],
         'academic_sessions': academic_sessions,
-        'programs': programs,  # Pass the list of programs with active semesters
+        'programs': programs,
+        'teachers': teachers,
     })
     
     
+    
+@hod_required
+def lecture_replacement_create(request):
+    if request.method == 'POST':
+        course_offering_id = request.POST.get('course_offering')
+        original_teacher_id = request.POST.get('original_teacher')
+        replacement_teacher_id = request.POST.get('replacement_teacher')
+        replacement_type = request.POST.get('replacement_type')
+        replacement_date = request.POST.get('replacement_date') or None
 
+        try:
+            course_offering = CourseOffering.objects.get(id=course_offering_id)
+            original_teacher = Teacher.objects.get(id=original_teacher_id)
+            replacement_teacher = Teacher.objects.get(id=replacement_teacher_id)
+
+            # Create LectureReplacement instance
+            replacement = LectureReplacement(
+                course_offering=course_offering,
+                original_teacher=original_teacher,
+                replacement_teacher=replacement_teacher,
+                replacement_type=replacement_type,
+                replacement_date=replacement_date
+            )
+            replacement.full_clean()
+            replacement.save()
+
+            # Update CourseOffering.replacement_teacher and teacher
+            if replacement_type == 'permanent':
+                course_offering.replacement_teacher = replacement_teacher
+                course_offering.teacher = replacement_teacher
+                course_offering.save()
+            elif replacement_type == 'temporary' and replacement_date:
+                if date.today() >= date.fromisoformat(replacement_date):
+                    course_offering.replacement_teacher = replacement_teacher
+                    course_offering.teacher = replacement_teacher
+                    course_offering.save()
+                else:
+                    course_offering.replacement_teacher = None  # Clear if not yet active
+                    course_offering.teacher = None
+                    course_offering.save()
+
+            messages.success(request, 'Lecture replacement created successfully.')
+            return redirect('faculty_staff:weekly_timetable')
+        except CourseOffering.DoesNotExist:
+            messages.error(request, 'Invalid course offering selected.')
+        except Teacher.DoesNotExist:
+            messages.error(request, 'Invalid teacher selected.')
+        except ValidationError as e:
+            error_message = 'Error creating replacement: '
+            if hasattr(e, 'message_dict') and '__all__' in e.message_dict:
+                error_message += e.message_dict['__all__'][0]
+            else:
+                error_message += str(e)
+            messages.error(request, error_message)
+        except Exception as e:
+            messages.error(request, f'An unexpected error occurred: {e}')
+
+    return redirect('faculty_staff:weekly_timetable')
 
 
 @hod_or_professor_required
@@ -1954,6 +2191,7 @@ def my_timetable(request):
         day_slots = sorted(
             [
                 {
+                    'teacher': slot.course_offering.teacher.user.get_full_name(),
                     'course_code': slot.course_offering.course.code,
                     'course_name': slot.course_offering.course.name,
                     'venue': slot.venue.name,
@@ -2056,8 +2294,8 @@ def delete_course_offering(request):
 
 
 @hod_or_professor_required
-def study_materials(request):
-    course_offering_id = request.GET.get('course_offering_id')
+def study_materials(request, offering_id):
+    course_offering_id = offering_id
     course_shift = None
     materials = []
 
@@ -2337,8 +2575,8 @@ def search_course_offerings(request):
 
 
 @hod_or_professor_required
-def assignments(request):    
-    course_offering_id = request.GET.get('course_offering_id')
+def assignments(request, offering_id):    
+    course_offering_id = offering_id
     if course_offering_id:
         try:
             course_offering = get_object_or_404(CourseOffering, id=course_offering_id, teacher=request.user.teacher_profile)
@@ -2420,7 +2658,7 @@ def create_assignment(request):
         description=description,
         due_date=due_date,
         max_points=max_points,
-        resource_file=resource_file
+        resource_file=resource_file  
     )
     logger.info(f"Assignment '{title}' created for course offering {course_offering_id} by {request.user}")
     return JsonResponse({'success': True, 'message': 'Assignment created successfully.'})
@@ -2547,13 +2785,13 @@ def grade_submission(request):
 def notice_board(request):
     if request.user.teacher_profile and request.user.teacher_profile.designation == 'head_of_department':
         # HoD view: Manage all notices
-        notices = Notice.objects.all().order_by('-is_pinned', '-created_at')
+        notices = Notice.objects.all().order_by('-created_at')
     elif request.user.teacher_profile:
         # Teacher view: View only notices relevant to their department's programs
         department = request.user.teacher_profile.department
         notices = Notice.objects.filter(
             Q(programs__department=department) | Q(sessions__semesters__program__department=department)
-        ).distinct().order_by('-is_pinned', '-created_at')
+        ).distinct().order_by('-created_at')
     else:
         # Student view: Filter by enrolled program and session
         student = getattr(request.user, 'student_profile', None)
@@ -2568,23 +2806,21 @@ def notice_board(request):
                     Q(valid_until__gte=timezone.now()) | Q(valid_until__isnull=True),
                     is_active=True,
                     valid_from__lte=timezone.now(),
-                ).distinct().order_by('-is_pinned', '-created_at')
+                ).distinct().order_by('-created_at')
         else:
             notices = Notice.objects.none()
 
     if request.method == 'POST':
         if 'create_notice' in request.POST:
-            if not request.user.teacher_profile or request.user.teacher_profile.designation != 'head_of_department':
-                messages.error(request, "Only the Head of Department can create notices.")
+            if not request.user.teacher_profile:
+                messages.error(request, "Only teachers can create notices.")
                 return redirect('notice_board')
 
             title = request.POST.get('title')
             content = request.POST.get('content')
             notice_type = request.POST.get('notice_type', 'general')
-            priority = request.POST.get('priority', 'medium')
             program_ids = request.POST.getlist('programs')
             session_ids = request.POST.getlist('sessions')
-            is_pinned = request.POST.get('is_pinned') == 'on'
             valid_from = request.POST.get('valid_from') or timezone.now()
             valid_until = request.POST.get('valid_until')
             attachment = request.FILES.get('attachment')
@@ -2595,7 +2831,6 @@ def notice_board(request):
                 content=content,
                 notice_type=notice_type,
                 priority=priority,
-                is_pinned=is_pinned,
                 valid_from=valid_from,
                 valid_until=valid_until if valid_until else None,
                 attachment=attachment,
@@ -2610,14 +2845,15 @@ def notice_board(request):
         elif 'toggle_active' in request.POST:
             notice_id = request.POST.get('notice_id')
             notice = get_object_or_404(Notice, id=notice_id)
-            if request.user.teacher_profile and request.user.teacher_profile.designation == 'head_of_department':
+            if request.user.teacher_profile:
                 notice.is_active = not notice.is_active
                 notice.save()
                 messages.success(request, f"Notice '{notice.title}' {'activated' if notice.is_active else 'deactivated'} successfully.")
         elif 'edit_notice' in request.POST:
             notice_id = request.POST.get('notice_id')
             notice = get_object_or_404(Notice, id=notice_id)
-            if request.user.teacher_profile and request.user.teacher_profile.designation == 'head_of_department':
+            if request.user.teacher_profile and (request.user.teacher_profile.designation == 'head_of_department' or 
+                                              notice.created_by == request.user.teacher_profile):
                 notice.title = request.POST.get('title')
                 notice.content = request.POST.get('content')
                 notice.notice_type = request.POST.get('notice_type')
@@ -2634,7 +2870,8 @@ def notice_board(request):
         elif 'delete_notice' in request.POST:
             notice_id = request.POST.get('notice_id')
             notice = get_object_or_404(Notice, id=notice_id)
-            if request.user.teacher_profile and request.user.teacher_profile.designation == 'head_of_department':
+            if request.user.teacher_profile and (request.user.teacher_profile.designation == 'head_of_department' or 
+                                              notice.created_by == request.user.teacher_profile):
                 notice.delete()
                 messages.success(request, "Notice deleted successfully.")
 
@@ -2643,8 +2880,26 @@ def notice_board(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    programs = Program.objects.all()  # Fetch all programs for the form
-    sessions = AcademicSession.objects.all()  # Fetch all sessions for the form
+    # Get programs based on user type
+    if request.user.teacher_profile:
+        if request.user.teacher_profile.designation == 'head_of_department':
+            # HoD can see all programs in their department
+            programs = Program.objects.filter(department=request.user.teacher_profile.department)
+        else:
+            # Regular teachers can see programs they're associated with
+            programs = Program.objects.filter(
+                Q(department=request.user.teacher_profile.department) |
+                Q(courses__assigned_teachers=request.user.teacher_profile)
+            ).distinct()
+    else:
+        # For students, show only their enrolled program
+        student = getattr(request.user, 'student_profile', None)
+        if student and hasattr(student, 'program'):
+            programs = Program.objects.filter(id=student.program.id)
+        else:
+            programs = Program.objects.none()
+
+    sessions = AcademicSession.objects.filter(is_active=True) 
 
     return render(request, 'faculty_staff/notice_board.html', {
         'notices': page_obj,
@@ -2653,16 +2908,6 @@ def notice_board(request):
         'notice_types': dict(Notice.NOTICE_TYPES),
         'priorities': dict(Notice.PRIORITY_LEVELS)
     })
-
-@login_required
-@require_http_methods(['POST'])
-def toggle_pin_notice(request, notice_id):
-    notice = get_object_or_404(Notice, id=notice_id)
-    if request.user.teacher_profile and request.user.teacher_profile.designation == 'head_of_department':
-        notice.is_pinned = not notice.is_pinned
-        notice.save()
-        return JsonResponse({'is_pinned': notice.is_pinned, 'message': 'Pin status updated.'})
-    return JsonResponse({'error': 'Permission denied'}, status=403)
 
 
 @login_required
@@ -2679,262 +2924,311 @@ def search_students(request):
     return JsonResponse({'results': [], 'more': False})
 
 
+
+
 @hod_or_professor_required
-def exam_results(request):
-    course_offering_id = request.GET.get('course_offering_id')
-    if not course_offering_id:
-        return render(request, 'faculty_staff/exam_results.html', {
-            'error': 'Course offering ID is required.'
-        })
-
-    try:
-        course_offering = get_object_or_404(
-            CourseOffering,
-            id=course_offering_id,
-            teacher=request.user.teacher_profile
-        )
-
-        # Get the latest exam results for each student and exam type
-        latest_results = ExamResult.objects.filter(
-            course_offering_id=course_offering_id
-        ).values(
-            'student', 'exam_type'
-        ).annotate(
-            latest_id=Max('id')
-        ).values_list('latest_id', flat=True)
-
-        # Get the actual result objects
-        exam_results = ExamResult.objects.filter(
-            id__in=latest_results
-        ).select_related('student__applicant')
-
-        # Create a dictionary to store the latest results by student
-        student_results = {}
-        for result in exam_results:
-            student_id = result.student_id
-            if student_id not in student_results:
-                student_results[student_id] = {
-                    'student': result.student,
-                    'course': course_offering.course,
-                    'mid': 0,
-                    'sessional': 0,
-                    'practical': 0,
-                    'project': 0,
-                    'final_year': f"{course_offering.academic_session.start_year}-{course_offering.academic_session.end_year}",
-                    'remarks': result.remarks,  # Initialize with the first remarks we find
-                    'id': result.id  # Store the result ID for the edit functionality
-                }
+def exam_results(request, course_offering_id):
+    course_offerings = CourseOffering.objects.filter(
+        teacher=request.user.teacher_profile
+    ).select_related('course', 'semester', 'academic_session').order_by('-academic_session__start_year', 'semester__number')
+    
+    context = {
+        'course_offerings': course_offerings,
+        'course_offering_id': course_offering_id,
+    }
+    
+    if course_offering_id:
+        try:
+            course_offering = get_object_or_404(
+                CourseOffering,
+                id=course_offering_id,
+                teacher=request.user.teacher_profile
+            )
+            print(f'this is offering shift -- {course_offering.shift}')
+            midterm_max = course_offering.course.credits * 4
+            sessional_max = course_offering.course.credits * 2
+            final_max = course_offering.course.credits * 14
+            practical_max = course_offering.course.lab_work * 20
+            total_max = midterm_max + sessional_max + final_max + (practical_max if course_offering.course.lab_work > 0 else 0)
             
-            # Update the marks for the specific exam type
-            if result.exam_type == 'midterm':
-                student_results[student_id]['mid'] = result.marks_obtained
-            elif result.exam_type == 'sessional':
-                student_results[student_id]['sessional'] = result.marks_obtained
-            elif result.exam_type == 'practical':
-                student_results[student_id]['practical'] = result.marks_obtained
-            elif result.exam_type == 'project':
-                student_results[student_id]['project'] = result.marks_obtained
+            exam_results = ExamResult.objects.filter(
+                course_offering_id=course_offering_id
+            ).select_related('student__applicant')
+            
+            existing_results = {
+                result.student_id: {
+                    'midterm': result.midterm_obtained,
+                    'sessional': result.sessional_obtained,
+                    'final': result.final_obtained,
+                    'practical': result.practical_obtained,
+                    'total_marks': result.total_marks,
+                    'percentage': result.percentage,
+                    'remarks': result.remarks,
+                    'id': result.id
+                }
+                for result in exam_results
+            }
+            
+            enrollments = CourseEnrollment.objects.filter(
+                course_offering=course_offering,
+                status='enrolled'
+            ).select_related('student_semester_enrollment__student__applicant').order_by(
+                'student_semester_enrollment__student__university_roll_no'
+            )
+            
+            students = []
+            for enrollment in enrollments:
+                student = enrollment.student_semester_enrollment.student
+                applicant = student.applicant
+                # Filter by matching shift
+                if enrollment.student_semester_enrollment.semester == course_offering.semester and (
+                    course_offering.shift == 'both' or applicant.shift == course_offering.shift
+                ):
+                    student_id = applicant.id
+                    student_data = {
+                        'id': student_id,
+                        'name': str(student),
+                        'university_roll_no': student.university_roll_no or 'N/A',
+                        'college_roll_no': student.college_roll_no or 'N/A',
+                        'midterm': None,
+                        'sessional': None,
+                        'final': None,
+                        'practical': None,
+                        'total_marks': None,
+                        'percentage': None,
+                        'remarks': '',
+                        'result_id': None
+                    }
+                    
+                    if student_id in existing_results:
+                        result = existing_results[student_id]
+                        student_data.update({
+                            'midterm': result['midterm'],
+                            'sessional': result['sessional'],
+                            'final': result['final'],
+                            'practical': result['practical'],
+                            'total_marks': result['total_marks'],
+                            'percentage': result['percentage'],
+                            'remarks': result['remarks'] or '',
+                            'result_id': result['id']
+                        })
+                    
+                    students.append(student_data)
+            
+            aggregated_results = [
+                {
+                    'student': {
+                        'applicant': {
+                            'full_name': s['name'],
+                            'id': s['id']
+                        },
+                        'university_roll_no': s['university_roll_no'],
+                        'college_roll_no': s['college_roll_no']
+                    },
+                    'course_offering': {
+                        'id': course_offering.id,
+                        'course': {
+                            'code': course_offering.course.code,
+                            'title': course_offering.course.name,
+                            'credits': course_offering.course.credits,
+                            'lab_work': course_offering.course.lab_work
+                        }
+                    },
+                    'midterm_obtained': s['midterm'],
+                    'sessional_obtained': s['sessional'],
+                    'final_obtained': s['final'],
+                    'practical_obtained': s['practical'],
+                    'total_marks': s['total_marks'],
+                    'percentage': s['percentage'],
+                    'midterm_total': midterm_max,
+                    'sessional_total': sessional_max,
+                    'final_total': final_max,
+                    'practical_total': practical_max,
+                    'academic_session': f"{course_offering.academic_session.name}",
+                    'remarks': s['remarks'] or 'No Remarks',
+                    'id': s['result_id']
+                }
+                for s in students
+                if s['result_id']  # Only include students with existing results
+            ]
+            
+            context.update({
+                'course_offering': course_offering,
+                'students': students,
+                'exam_results': aggregated_results,
+                'midterm_max': midterm_max,
+                'sessional_max': sessional_max,
+                'final_max': final_max,
+                'practical_max': practical_max,
+                'totalMax': total_max,
+            })
+            
+        except CourseOffering.DoesNotExist:
+            messages.error(request, 'Course offering not found or you do not have permission to access it.')
+    
+    return render(request, 'faculty_staff/exam_results.html', context)
 
-            # Always update remarks to the latest one
-            student_results[student_id]['remarks'] = result.remarks
 
-        # Convert the dictionary values to a list
-        aggregated_results = list(student_results.values())
-
-        # Load students for the course offering
-        enrollments = StudentSemesterEnrollment.objects.filter(
-            semester=course_offering.semester
-        ).select_related('student__applicant')
-        
-        students = [{'id': enrollment.student.applicant.id, 'name': str(enrollment.student)} 
-                   for enrollment in enrollments]
-
-        return render(request, 'faculty_staff/exam_results.html', {
-            'course_offering': course_offering,
-            'course_offering_id': course_offering_id,
-            'students': students,
-            'exam_results': aggregated_results
-        })
-
-    except CourseOffering.DoesNotExist:
-        return render(request, 'faculty_staff/exam_results.html', {
-            'error': 'Invalid course offering or you are not authorized to access it.'
-        })
 
 
 
 @login_required
 def record_exam_results(request):  
     if request.method == "POST":
+        
         course_offering_id = request.POST.get('course_offering_id')
+        student_ids = request.POST.getlist('student_ids[]')  # Get list of student IDs
+        
         if not course_offering_id:
-            return JsonResponse({'success': False, 'message': 'Course offering ID is required.'})
-
-        course_offering = get_object_or_404(CourseOffering, id=course_offering_id, teacher=request.user.teacher_profile)
-        enrollments = CourseEnrollment.objects.filter(
-            course_offering=course_offering,
-            status='enrolled'
-        ).select_related('student_semester_enrollment__student__applicant')
+            messages.error(request, 'Course offering ID is required.')
+            return redirect('faculty_staff:exam_results', course_offering_id=course_offering_id)
 
         try:
-            for enrollment in enrollments:
-                student = enrollment.student_semester_enrollment.student
-                student_id = student.applicant.id
-                mid = request.POST.get(f'mid_{student_id}')
-                sessional = request.POST.get(f'sessional_{student_id}')
-                project = request.POST.get(f'project_{student_id}')
-                practical = request.POST.get(f'practical_{student_id}')
-
-                for exam_type, marks in [('midterm', mid), ('sessional', sessional), ('project', project), ('practical', practical)]:
-                    if marks is not None and marks != '':
-                        try:
-                            marks_value = float(marks)
-                            if 0 <= marks_value <= 100:
-                                ExamResult.objects.update_or_create(
-                                    course_offering=course_offering,
-                                    student=student,
-                                    exam_type=exam_type,
-                                    defaults={
-                                        'total_marks': 100,
-                                        'marks_obtained': marks_value,
-                                        'graded_by': request.user.teacher_profile,
-                                        'graded_at': timezone.now()
-                                    }
-                                )
-                            else:
-                                return JsonResponse({'success': False, 'message': f'Invalid marks for {student.applicant.full_name}: must be between 0 and 100.'})
-                        except ValueError:
-                            return JsonResponse({'success': False, 'message': f'Invalid marks format for {student.applicant.full_name}.'})
-            return JsonResponse({'success': True, 'message': 'Exam results recorded successfully.'})
-        except Exception as e:
-            return JsonResponse({'success': False, 'message': f'Error: {str(e)}'})
-    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
-
-
-def update_exam_result(request):
-    if request.method == "POST":
-        # Log all POST data for debugging
-        print("Raw POST data:", dict(request.POST))
-
-        # Get form data
-        result_id = request.POST.get('result_id')
-        course_offering_id = request.POST.get('course_offering_id')
-        mid = request.POST.get('mid', '')
-        sessional = request.POST.get('sessional', '')
-        practical = request.POST.get('practical', '')
-        project = request.POST.get('project', '')
-        remarks = request.POST.get('remarks', '')
-
-        print(f"Parsed data: result_id={result_id}, course_offering_id={course_offering_id}")
-        print(f"Marks - mid:{mid}, sessional:{sessional}, practical:{practical}, project:{project}, remarks:{remarks}")
-        print(f"Teacher ID: {request.user.teacher_profile.id if hasattr(request.user, 'teacher_profile') else 'None'}")
-
-        # Validate required fields
-        missing_fields = []
-        if not result_id:
-            missing_fields.append('result_id')
-        if not course_offering_id:
-            missing_fields.append('course_offering_id')
-            
-        if missing_fields:
-            error_msg = f'Missing required fields: {", ".join(missing_fields)}'
-            print(error_msg)
-            return JsonResponse({'success': False, 'message': error_msg}, status=400)
-
-        try:
-            # Fetch the CourseOffering to verify teacher authorization
             course_offering = get_object_or_404(
-                CourseOffering,
-                id=course_offering_id,
+                CourseOffering, 
+                id=course_offering_id, 
                 teacher=request.user.teacher_profile
             )
+            
+            if 'result_id' in request.POST:
+                # Update existing record
+                try:
+                    result_id = request.POST.get('result_id')
+                    result = get_object_or_404(ExamResult, pk=result_id, course_offering=course_offering)
 
-            # Fetch the ExamResult using result_id to get the student
-            base_result = get_object_or_404(
-                ExamResult,
-                id=result_id,
-                course_offering=course_offering
-            )
-            student = base_result.student
+                    midterm = request.POST.get('midterm')
+                    sessional = request.POST.get('sessional')
+                    final = request.POST.get('final')
+                    practical = request.POST.get('practical') if course_offering.course.lab_work > 0 else 0
+                    remarks = request.POST.get('remarks')
+                    total_obtained = request.POST.get('total_obtained')
+                    percentage = request.POST.get('percentage')
 
-            print(f"Updating results for student: {student}, course_offering: {course_offering}")
+                    print(f"Updating result for student {result.student.applicant.full_name} with marks: {midterm}, {sessional}, {final}, {practical}, {remarks}, {total_obtained}, {percentage}")
 
-            # Update exam results for each exam type
-            for exam_type, marks in [('midterm', mid), ('sessional', sessional), ('practical', practical), ('project', project)]:
-                if marks:  # Only update if marks are provided (non-empty string)
-                    try:
-                        marks_value = float(marks)
-                        if not (0 <= marks_value <= 100):
-                            error_msg = f'Invalid marks for {exam_type}: must be between 0 and 100.'
-                            print(error_msg)
-                            return JsonResponse({'success': False, 'message': error_msg}, status=400)
-                        ExamResult.objects.update_or_create(
+                    result.total_marks = total_obtained
+                    if percentage and isinstance(percentage, str) and '%' in percentage:
+                        percentage = percentage.replace('%', '').strip()
+                        result.percentage = float(percentage) if percentage else 0.0
+                    result.remarks = remarks or None
+                    result.graded_by = request.user.teacher_profile
+                    result.graded_at = timezone.now()
+                    result.save()
+
+                    messages.success(request, 'Result updated successfully.')
+                    return redirect('faculty_staff:exam_results', course_offering_id)
+                
+                except ExamResult.DoesNotExist:
+                    messages.error(request, 'Exam result not found for update.')
+                    return redirect('faculty_staff:exam_results', course_offering_id)
+
+            
+            if not student_ids:
+                messages.error(request, 'No students selected for this course offering.')
+                return redirect('faculty_staff:exam_results', course_offering_id)
+                
+            midterm_max = course_offering.course.credits * 4
+            sessional_max = course_offering.course.credits * 2
+            final_max = course_offering.course.credits * 14
+            practical_max = course_offering.course.lab_work * 20
+            total_max = midterm_max + sessional_max + final_max + (practical_max if course_offering.course.lab_work > 0 else 0)
+            
+            success_count = 0
+            error_messages = []
+            
+            for student_id in student_ids:
+                try:
+                    student = Student.objects.get(applicant_id=student_id)
+                    
+                    midterm = request.POST.get(f'midterm_{student_id}')
+                    sessional = request.POST.get(f'sessional_{student_id}')
+                    final = request.POST.get(f'final_{student_id}')
+                    practical = request.POST.get(f'practical_{student_id}') if course_offering.course.lab_work > 0 else None
+                    remarks = request.POST.get(f'remarks_{student_id}')
+                    
+                    # Validate marks
+                    defaults = {
+                        'graded_by': request.user.teacher_profile,
+                        'graded_at': timezone.now(),
+                        'remarks': remarks or None,
+                        'midterm_total': midterm_max,
+                        'sessional_total': sessional_max,
+                        'final_total': final_max,
+                        'practical_total': practical_max if course_offering.course.lab_work > 0 else 0
+                    }
+                    
+                    total_obtained = 0
+                    if midterm and midterm.strip():
+                        midterm_value = float(midterm)
+                        if not (0 <= midterm_value <= midterm_max):
+                            error_messages.append(f"{student.applicant.full_name}: Midterm marks must be between 0 and {midterm_max}.")
+                            continue
+                        defaults['midterm_obtained'] = midterm_value
+                        total_obtained += midterm_value
+                    
+                    if sessional and sessional.strip():
+                        sessional_value = float(sessional)
+                        if not (0 <= sessional_value <= sessional_max):
+                            error_messages.append(f"{student.applicant.full_name}: Sessional marks must be between 0 and {sessional_max}.")
+                            continue
+                        defaults['sessional_obtained'] = sessional_value
+                        total_obtained += sessional_value
+                    
+                    if final and final.strip():
+                        final_value = float(final)
+                        if not (0 <= final_value <= final_max):
+                            error_messages.append(f"{student.applicant.full_name}: Final marks must be between 0 and {final_max}.")
+                            continue
+                        defaults['final_obtained'] = final_value
+                        total_obtained += final_value
+                    
+                    if practical and practical.strip() and course_offering.course.lab_work > 0:
+                        practical_value = float(practical)
+                        if not (0 <= practical_value <= practical_max):
+                            error_messages.append(f"{student.applicant.full_name}: Practical marks must be between 0 and {practical_max}.")
+                            continue
+                        defaults['practical_obtained'] = practical_value
+                        total_obtained += practical_value
+                    
+                    # Calculate total and percentage
+                    defaults['total_marks'] = total_obtained
+                    defaults['percentage'] = (total_obtained / total_max * 100) if total_max > 0 else 0.0
+                    
+                    # Only save if at least one mark is provided
+                    if any(key in defaults for key in ['midterm_obtained', 'sessional_obtained', 'final_obtained', 'practical_obtained']):
+                        exam_result, created = ExamResult.objects.update_or_create(
                             course_offering=course_offering,
                             student=student,
-                            exam_type=exam_type,
-                            defaults={
-                                'total_marks': 100,
-                                'marks_obtained': marks_value,
-                                'graded_by': request.user.teacher_profile,
-                                'graded_at': timezone.now(),
-                                'remarks': remarks or None  # Set to None if remarks is empty
-                            }
+                            defaults=defaults
                         )
-                    except ValueError:
-                        error_msg = f'Invalid marks format for {exam_type}.'
-                        print(error_msg)
-                        return JsonResponse({'success': False, 'message': error_msg}, status=400)
-                else:
-                    # Update remarks for existing records even if marks are not provided
-                    ExamResult.objects.filter(
-                        course_offering=course_offering,
-                        student=student,
-                        exam_type=exam_type
-                    ).update(
-                        remarks=remarks or None,
-                        graded_by=request.user.teacher_profile,
-                        graded_at=timezone.now()
-                    )
-
-            print(f"Exam result updated successfully for result_id: {result_id}, student: {student}")
-            return JsonResponse({'success': True, 'message': 'Exam result updated successfully.'})
+                        exam_result.save()
+                        success_count += 1
+                
+                except Student.DoesNotExist:
+                    error_messages.append(f"Student with ID {student_id} not found.")
+                except ValueError as e:
+                    error_messages.append(f"Invalid marks format for student ID {student_id}: {str(e)}")
+                except Exception as e:
+                    error_messages.append(f"Error processing marks for student ID {student_id}: {str(e)}")
+            
+            if success_count > 0:
+                messages.success(request, f'Successfully saved results for {success_count} student(s).')
+            if error_messages:
+                for error in error_messages:
+                    messages.error(request, error)  
+            
+            return redirect ('faculty_staff:exam_results', course_offering_id)
+            
         except CourseOffering.DoesNotExist:
-            error_msg = 'Course offering not found or unauthorized.'
-            print(error_msg)
-            return JsonResponse({'success': False, 'message': error_msg}, status=403)
-        except ExamResult.DoesNotExist:
-            error_msg = 'Exam result not found.'
-            print(error_msg)
-            return JsonResponse({'success': False, 'message': error_msg}, status=404)
+            messages.error(request, 'Course offering not found or you do not have permission to access it.')
+            return redirect('faculty_staff:exam_results', course_offering_id)
         except Exception as e:
-            error_msg = f'Unexpected error: {str(e)}'
-            print(error_msg)
-            return JsonResponse({'success': False, 'message': error_msg}, status=500)
-    else:
-        error_msg = 'Invalid request method.'
-        print(error_msg)
-        return JsonResponse({'success': False, 'message': error_msg}, status=405)
+            messages.error(request, f'An error occurred: {str(e)}')
+            return redirect('faculty_staff:exam_results', course_offering_id)
+    
+    return redirect('faculty_staff:exam_results', course_offering_id)
 
 
-
-@login_required
-def delete_exam_result(request):
-    if request.method == "POST":
-        result_id = request.POST.get('result_id')
-        if not result_id:
-            return JsonResponse({'success': False, 'message': 'Result ID is required.'})
-        
-        try:
-            result = get_object_or_404(
-                ExamResult,
-                id=result_id,
-                course_offering__teacher=request.user.teacher_profile
-            )
-            result.delete()
-            return JsonResponse({'success': True, 'message': 'Exam result deleted successfully.'})
-        except Exception as e:
-            return JsonResponse({'success': False, 'message': f'Error: {str(e)}'})
-    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
 
 
@@ -2981,19 +3275,22 @@ def semester_management(request):
     program_id = request.GET.get('program_id', '')
     session_id = request.GET.get('session_id', '')
     print(f'Semester management search query: {search_query}, program_id: {program_id}, session_id: {session_id}')
+
     # Filter semesters by department
     semesters = Semester.objects.filter(program__department=hod_department).order_by('program', 'number')
+    
+    # Apply filters
     if search_query:
         semesters = semesters.filter(
             Q(name__icontains=search_query) |
             Q(description__icontains=search_query) |
-            Q(program__name__icontains=search_query) |
-            Q(session=search_query)
+            Q(program__name__icontains=search_query)
         )
     if program_id:
         semesters = semesters.filter(program__id=program_id, program__department=hod_department)
     if session_id:
-        session = semesters.filter(session__id=session_id)
+        semesters = semesters.filter(session__id=session_id)
+
     # Debug: Log total semesters and active/inactive breakdown
     total_semesters = semesters.count()
     active_semesters = semesters.filter(is_active=True).count()
@@ -3003,10 +3300,9 @@ def semester_management(request):
         logger.debug(f'Semester: {semester.name}, Program: {semester.program.name}, Is Active: {semester.is_active}')
 
     # Pagination
-    paginator = Paginator(semesters, 20)  # 10 semesters per page
+    paginator = Paginator(semesters, 20)  # 20 semesters per page
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    # logger.debug(f'Paginated page: {page_number}, Items: {page_obj.object_list.count()}')
 
     # Debug: Log programs and their active status
     programs = Program.objects.filter(department=hod_department)
@@ -3021,10 +3317,25 @@ def semester_management(request):
         'search_query': search_query,
         'selected_program': program_id,
         'selected_session': session_id,
-        'academic_sessions': AcademicSession.objects.all().order_by('-start_year'),  # Add all sessions
+        'academic_sessions': AcademicSession.objects.filter(is_active=True).order_by('-start_year'),
     }
     return render(request, 'faculty_staff/semester_management.html', context)
 
+
+
+
+@hod_required
+def get_programs(request):
+    """
+    AJAX view to fetch programs for the Head of Department's department.
+    """
+    if not hasattr(request.user, 'teacher_profile'):
+        return JsonResponse({'success': False, 'message': 'User has no teacher profile.'}, status=403)
+    
+    hod_department = request.user.teacher_profile.department
+    programs = Program.objects.filter(department=hod_department).order_by('name')
+    results = [{'id': program.id, 'text': program.name} for program in programs]
+    return JsonResponse({'results': results})
 
 @hod_required
 def add_semester(request):
@@ -3251,31 +3562,28 @@ def delete_semester(request):
 
 
 @hod_or_professor_required
-def attendance(request):
+def attendance(request, offering_id=None):
     students = []
-    course_offering_id = request.GET.get('course_offering_id')
+    course_offering_id = offering_id
     course_shift = None
     is_active_slot = True
     today_date = timezone.now().astimezone(pytz.timezone('Asia/Karachi')).date()
     current_datetime = timezone.now().astimezone(pytz.timezone('Asia/Karachi'))
-    current_time = current_datetime.time()  # Should be ~10:29 AM PKT
-    current_day = today_date.strftime('%A').lower()  # 'thursday'
+    current_time = current_datetime.time()
+    current_day = today_date.strftime('%A').lower()
 
-    # Log UTC and PKT times for clarity
-    utc_datetime = timezone.now()
     logger.info(
         f"Processing attendance request. "
-        f"UTC: {utc_datetime} ({utc_datetime.tzinfo}), "
-        f"PKT: {current_datetime} ({current_datetime.tzinfo}), "
-        f"Timezone-aware: {timezone.is_aware(current_datetime)}, "
-        f"Current time (PKT): {current_time}, Day: {current_day}"
+        f"UTC: {timezone.now()}, PKT: {current_datetime}, "
+        f"Current time (PKT): {current_time}, Day: {current_day}, "
+        f"Course Offering ID: {course_offering_id}"
     )
 
     if course_offering_id:
         try:
             course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
             course_shift = course_offering.shift
-            logger.info(f"Course offering ID: {course_offering_id}, Shift: {course_shift}")
+            logger.info(f"Course offering found: {course_offering.course.code}, Shift: {course_shift}, Semester: {course_offering.semester}")
 
             # Check for active timetable slot
             timetable_slots = TimetableSlot.objects.filter(
@@ -3286,15 +3594,13 @@ def attendance(request):
             )
             is_active_slot = timetable_slots.exists()
 
-            # Log timetable slot details
             if is_active_slot:
                 for slot in timetable_slots:
                     logger.info(
-                        f"Active timetable slot found: Course: {course_offering.course.code}, "
+                        f"Active timetable slot: Course: {course_offering.course.code}, "
                         f"Day: {slot.day}, Start: {slot.start_time}, End: {slot.end_time}"
                     )
             else:
-                # Log all slots for debugging
                 all_slots = TimetableSlot.objects.filter(course_offering=course_offering)
                 if all_slots.exists():
                     logger.warning(
@@ -3306,33 +3612,46 @@ def attendance(request):
                             f"Slot: Day: {slot.day}, Start: {slot.start_time}, End: {slot.end_time}"
                         )
                 else:
+                    logger.warning(f"No timetable slots defined for Course Offering ID: {course_offering_id}")
+
+            # Fetch students (relaxed semester check to debug)
+            enrollments = CourseEnrollment.objects.filter(
+                course_offering=course_offering,
+                status='enrolled'
+            ).select_related('student_semester_enrollment__student__applicant')
+            logger.info(f"Initial enrollment query returned {enrollments.count()} records")
+
+            students = []
+            for enrollment in enrollments:
+                student = enrollment.student_semester_enrollment.student
+                # Log semester mismatch if any
+                if enrollment.student_semester_enrollment.semester != course_offering.semester:
                     logger.warning(
-                        f"No timetable slots defined for Course Offering ID: {course_offering_id}"
+                        f"Enrollment skipped: Student {student.applicant.full_name}, "
+                        f"Enrollment semester {enrollment.student_semester_enrollment.semester} "
+                        f"does not match course offering semester {course_offering.semester}"
                     )
-
-            # Log is_active_slot flag status
-            logger.info(f"is_active_slot: {is_active_slot}")
-
-            enrollments = StudentSemesterEnrollment.objects.filter(
-                semester=course_offering.semester
-            ).select_related('student')
-            students = [
-                {
-                    'id': enrollment.student.applicant.id,
-                    'name': str(enrollment.student),
-                    'college_roll_no': enrollment.student.college_roll_no,
-                    'university_roll_no': enrollment.student.university_roll_no
-                } for enrollment in enrollments
-            ]
-            logger.info(f"Fetched {len(students)} students for semester: {course_offering.semester}")
+                    continue
+                students.append({
+                    'id': student.applicant.id,
+                    'name': student.applicant.full_name,
+                    'college_roll_no': student.college_roll_no or 'N/A',
+                    'university_roll_no': student.university_roll_no or 'N/A',
+                    'role': student.applicant.role if hasattr(student.applicant, 'role') else None
+                })
+            logger.info(f"Fetched {len(students)} students for course offering: {course_offering_id}")
 
         except Exception as e:
-            logger.error(f"Error processing course offering ID {course_offering_id}: {str(e)}")
-            raise
-
-    else:
-        logger.info("No course_offering_id provided in request")
-
+            logger.error(f"Error processing course offering ID {course_offering_id}: {str(e)}", exc_info=True)
+            return render(request, 'faculty_staff/attendance.html', {
+                'students': [],
+                'course_offering_id': course_offering_id,
+                'course_shift': None,
+                'today_date': today_date,
+                'is_active_slot': True,
+                'error_message': f"Error loading course offering: {str(e)}"
+            })
+    print(f'slot is : {is_active_slot}')
     context = {
         'students': students,
         'course_offering_id': course_offering_id,
@@ -3530,8 +3849,8 @@ def edit_attendance(request):
 
 
 @hod_or_professor_required
-def view_students(request):
-    course_offering_id = request.GET.get('course_offering_id')
+def view_students(request , offering_id):
+    course_offering_id = offering_id
     if not course_offering_id:
         return render(request, 'faculty_staff/error.html', {
             'message': 'No course offering selected.',
@@ -3983,34 +4302,249 @@ def face_attendance(request):
     from courses.models import Attendance
     from django.utils import timezone
     
-    course_offering_id = request.POST.get('course_offering_id')
-    if not course_offering_id:
-        return JsonResponse({'success': False, 'message': 'Course offering ID is required'})
     
-    try:
-        course_offering = CourseOffering.objects.get(id=course_offering_id)
-        session_name = course_offering.academic_session.name
-        program_name = course_offering.program.name
-        shift = course_offering.shift
+    
+    
+    
+    
+# In faculty_staff/views.py
+
+@login_required
+def department_funds_management(request):
+    if request.user.teacher_profile.designation != 'head_of_department':
+        return redirect('faculty_staff:hod_dashboard')
+
+    hod = request.user.teacher_profile
+    active_funds = DepartmentFund.objects.filter(hod=hod, is_active=True)
+    inactive_funds = DepartmentFund.objects.filter(hod=hod, is_active=False)
+    
+    # Get all academic sessions, programs, semesters, and fund types for the HOD's department
+    academic_sessions = AcademicSession.objects.all()
+    programs = Program.objects.filter(department=hod.department)
+    semesters = Semester.objects.filter(program__in=programs)
+    fund_types = DepartmentFund.objects.filter(hod=hod).values_list('fundtype', flat=True).distinct()
+
+    # Handle form submissions
+    if request.method == 'POST':
+        form_type = request.POST.get('form_type')
+        if form_type == 'fund':
+            return handle_fund_form(request, hod)
+        elif form_type == 'delete_fund':
+            return handle_delete_fund(request)
+
+    # Handle student submissions filtering
+    enrollments = StudentSemesterEnrollment.objects.none()  # Start with empty queryset
+    if any(request.GET.get(param) for param in ['academic_session', 'program', 'semester', 'fundtype']):
+        enrollments = StudentSemesterEnrollment.objects.filter(
+            student__program__department=hod.department,
+        )
         
-        # Perform face detection
-        detected_faces = face_attandence_detection(session_name, program_name, shift)
-        
-        if not detected_faces:
-            return JsonResponse({'success': False, 'message': 'No faces detected'})
+        # Apply filters if they exist  
+        if request.GET.get('academic_session'):
+            enrollments = enrollments.filter(semester__session_id=request.GET.get('academic_session'))
+        if request.GET.get('program'):
+            enrollments = enrollments.filter(student__program_id=request.GET.get('program'))
+        if request.GET.get('semester'):
+            enrollments = enrollments.filter(semester_id=request.GET.get('semester'))
+      
+    
+        # Apply fund type filter if it exists
+        fundtype = request.GET.get('fundtype')
+        if fundtype:
+            # Get enrollments that match the fund's programs and semesters
+            fund_filters = {
+                'fundtype': fundtype,
+                'hod': hod,
+                'is_active': True
+            }
             
-        # Get students with embeddings
-        from students.models import Student
-        students = Student.objects.filter(
-            applicant__session__name=session_name,
-            program__name=program_name,
-            applicant__shift=shift
-        ).select_related('applicant', 'face_embedding')
-        
-        # Record attendance for detected students
-        teacher = request.user.teacher_profile
-        today = timezone.now().date()
-        attendance_count = 0
-        
+            # If we have program/semester filters, apply them to the fund query
+            if request.GET.get('program'):
+                fund_filters['programs__id'] = request.GET.get('program')
+            if request.GET.get('semester'):
+                fund_filters['semesters__id'] = request.GET.get('semester')
+            
+            # Get matching funds
+            funds = DepartmentFund.objects.filter(**fund_filters).distinct()
+            
+            if funds.exists():
+                # Get programs and semesters from matching funds
+                program_ids = funds.values_list('programs__id', flat=True).distinct()
+                semester_ids = funds.values_list('semesters__id', flat=True).distinct()
+                
+                # Filter enrollments by these programs and semesters
+                enrollments = enrollments.filter(
+                    student__program_id__in=program_ids,
+                    semester_id__in=semester_ids
+                )
+
+    # Handle edit fund
+    fund = None
+    if 'edit' in request.GET:
+        fund_id = request.GET.get('edit')
+        fund = get_object_or_404(DepartmentFund, id=fund_id, hod=hod)
+
+    context = {
+        'hod': hod,
+        'active_funds': active_funds,
+        'inactive_funds': inactive_funds,
+        'academic_sessions': academic_sessions,
+        'programs': programs,
+        'semesters': semesters,
+        'fund_types': fund_types,  # List of distinct fund types
+        'enrollments': enrollments,
+        'fund': fund,
+    }
+    return render(request, 'faculty_staff/department_fund_management.html', context)
+
+def handle_fund_form(request, hod):
+    fund_id = request.POST.get('fund_id')
+    department = request.POST.get('department')
+    academic_sessions = request.POST.getlist('academic_sessions')
+    programs = request.POST.getlist('programs')
+    semesters = request.POST.getlist('semesters')
+    amount = request.POST.get('amount')
+    fundtype = request.POST.get('fundtype')
+    description = request.POST.get('description')
+    due_date = request.POST.get('due_date')
+    is_active = request.POST.get('is_active') == 'on'
+
+    if not all([department, amount, fundtype, description, due_date]):
+        messages.error(request, 'All fields are required')
+        return redirect('faculty_staff:department_funds_management')
+
+    try:
+        if fund_id:  # Edit existing fund
+            fund = get_object_or_404(DepartmentFund, id=fund_id, hod=hod)
+            fund.department_id = department
+            fund.amount = amount
+            fund.fundtype = fundtype
+            fund.description = description
+            fund.due_date = due_date
+            fund.is_active = is_active
+            fund.save()
+            messages.success(request, 'Department fund updated successfully')
+        else:  # Create new fund
+            fund = DepartmentFund.objects.create(
+                hod=hod,
+                department_id=department,
+                amount=amount,
+                fundtype=fundtype,
+                description=description,
+                due_date=due_date,
+                is_active=is_active
+            )
+            messages.success(request, 'Department fund created successfully')
+            
+            # Get all students in the selected programs and semesters
+            from students.models import Student, StudentSemesterEnrollment, StudentFundPayment
+            
+            # Get active enrollments that match the fund's programs and semesters
+            enrollments = StudentSemesterEnrollment.objects.filter(
+                student__program__in=programs,
+                semester__in=semesters,
+                status='enrolled'
+            ).select_related('student')
+            
+            # Create pending payment records for each student
+            created_count = 0
+            for enrollment in enrollments.distinct('student'):
+                # Create or update payment record
+                _, created = StudentFundPayment.objects.get_or_create(
+                    student=enrollment.student,
+                    fund=fund,
+                    defaults={
+                        'status': 'pending',
+                        'amount_paid': 0,
+                        'notes': 'Auto-created pending payment'
+                    }
+                )
+                if created:
+                    created_count += 1
+            
+            if created_count > 0:
+                messages.success(request, f'Created pending payment records for {created_count} students')
+
+        fund.academic_sessions.set(academic_sessions)
+        fund.programs.set(programs)
+        fund.semesters.set(semesters)
+        return redirect('faculty_staff:department_funds_management')
+
     except Exception as e:
-        pass
+        messages.error(request, f'Error processing fund: {str(e)}')
+        return redirect('faculty_staff:department_funds_management')
+
+def handle_delete_fund(request):
+    fund_id = request.POST.get('fund_id')
+    fund = get_object_or_404(DepartmentFund, id=fund_id, hod=request.user.teacher_profile)
+    try:
+        fund.delete()
+        messages.success(request, 'Department fund deleted successfully')
+    except Exception as e:
+        messages.error(request, f'Error deleting fund: {str(e)}')
+    return redirect('faculty_staff:department_funds_management')
+
+@login_required
+def view_department_fund(request, fund_id):
+    if request.user.teacher_profile.designation != 'head_of_department':
+        return redirect('faculty_staff:hod_dashboard')
+
+    fund = get_object_or_404(DepartmentFund, id=fund_id, hod=request.user.teacher_profile)
+    enrollments = StudentSemesterEnrollment.objects.filter(
+        semester__in=fund.semesters.all(),
+        semester__session__in=fund.academic_sessions.all(),
+        student__program__in=fund.programs.all(),
+        status='enrolled'
+    )
+    students = Student.objects.filter(
+        semester_enrollments__in=enrollments
+    ).distinct()
+
+    return render(request, 'faculty_staff/fund_details.html', {
+        'fund': fund,
+        'students': students
+    })
+
+@login_required
+def get_programs_fund(request):
+    if request.method == 'POST':
+        hod = request.user.teacher_profile
+        programs = Program.objects.filter(department=hod.department).values('id', 'name')
+        preselected_programs = []
+        if 'edit' in request.GET:
+            fund_id = request.GET.get('edit')
+            fund = get_object_or_404(DepartmentFund, id=fund_id, hod=hod)
+            preselected_programs = list(fund.programs.values_list('id', flat=True))
+        return JsonResponse({
+            'programs': list(programs),
+            'preselected_programs': preselected_programs
+        })
+    return JsonResponse({'error': 'Invalid request'}, status=400)
+
+@login_required
+def get_semesters_fund(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            program_ids = data.get('programs', [])
+            session_ids = data.get('academic_sessions', [])
+            semesters = Semester.objects.filter(
+                program__id__in=program_ids,
+                session__id__in=session_ids
+            ).values('id', 'name', 'program__name')
+            semesters = [{'id': s['id'], 'name': s['name'], 'program_name': s['program__name']} for s in semesters]
+            preselected_semesters = []
+            if 'edit' in request.GET:
+                fund_id = request.GET.get('edit')
+                fund = get_object_or_404(DepartmentFund, id=fund_id, hod=request.user.teacher_profile)
+                preselected_semesters = list(fund.semesters.values_list('id', flat=True))
+            return JsonResponse({
+                'semesters': semesters,
+                'preselected_semesters': preselected_semesters
+            })
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+        except Exception as e:
+            print(f"Error in get_semesters_fund: {str(e)}")
+            return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)
+    return JsonResponse({'error': 'Invalid request'}, status=400)

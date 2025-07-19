@@ -72,7 +72,7 @@ class ApplicantAdmin(admin.ModelAdmin):
         }),
         ('Personal Information', {
             'fields': (
-                'applicant_photo', 'full_name', 'religion', 'caste', 
+                'applicant_photo', 'full_name', 'religion', 'caste', 'gender',
                 'cnic', 'dob', 'contact_no', 'identification_mark'
             )
         }),

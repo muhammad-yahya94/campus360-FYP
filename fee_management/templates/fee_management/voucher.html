@@ -1,173 +1,169 @@
 <div class="voucher-container">
-  <!-- Office Copy -->
-  <div class="voucher-copy">
-    <h2 class="text-xl font-bold mb-2 text-center">Office Copy</h2>
-    <div class="grid grid-cols-2 gap-2">
-      <div>
-        <h3 class="font-semibold">Student Details</h3>
-        <p><strong>Name:</strong> {{ student_name }}</p>
-        <p><strong>CNIC:</strong> {{ cnic }}</p>
-        <p><strong>Father's Name:</strong> {{ father_name }}</p>
-        <p><strong>Program:</strong> {{ program }}</p>
-        <p><strong>Semester:</strong> {{ semester }}</p>
-        <p><strong>Shift:</strong> {{ shift|title }}</p>
-        <p><strong>Academic Session:</strong> {{ academic_session }}</p>
+    <!-- Office Copy -->
+    <div class="voucher-copy">
+      <h2 class="text-xl font-bold mb-2 text-center">Office Copy</h2>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <h3 class="font-semibold">Student Details</h3>
+          <p><strong>Name:</strong> {{ student_name }}</p>
+          <p><strong>CNIC:</strong> {{ cnic }}</p>
+          <p><strong>Father's Name:</strong> {{ father_name }}</p>
+          <p><strong>Program:</strong> {{ program }}</p>
+          <p><strong>Semester:</strong> {{ semester }}</p>
+          <p><strong>Shift:</strong> {{ shift|title }}</p>
+          <p><strong>Academic Session:</strong> {{ academic_session }}</p>
+        </div>
+        <div>
+          <h3 class="font-semibold">Voucher Details</h3>
+          <p><strong>Voucher ID:</strong> {{ voucher_id }}</p>
+          <p><strong>Issue Date:</strong> {{ generated_at }}</p>
+          <p><strong>Due Date:</strong> {{ due_date }}</p>
+        </div>
       </div>
-      <div>
-        <h3 class="font-semibold">Voucher Details</h3>
-        <p><strong>Voucher ID:</strong> {{ voucher_id }}</p>
-        <p><strong>Issue Date:</strong> {{ generated_at }}</p>
-        <p><strong>Due Date:</strong> {{ due_date }}</p>
+      <h3 class="font-semibold mt-2">Fee Details</h3>
+      <table class="w-full mt-1">
+        <thead>
+          <tr>
+            <th class="border p-2 text-left">Description</th>
+            <th class="border p-2 text-right">Amount (PKR)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for head, amount in dynamic_fees.items %}
+          <tr>
+            <td class="border p-2">{{ head }}</td>
+            <td class="border p-2 text-right">{{ amount|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td class="border p-2">Semester Fee</td>
+            <td class="border p-2 text-right">{{ total_amount|floatformat:2 }}</td>
+          </tr>
+          {% endfor %}
+          <tr>
+            <td class="border p-2 font-semibold">Total Amount</td>
+            <td class="border p-2 text-right font-semibold">{{ total_amount|floatformat:2 }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="office-details">
+        <h4 class="font-semibold mb-1">Office Details:</h4>
+        <p class="m-0"><strong>Name:</strong> {{ office_name }}</p>
+        <p class="m-0"><strong>Address:</strong> {{ office_address }}</p>
+        <p class="m-0"><strong>Contact:</strong> {{ office_contact }}</p>
+        <p class="m-0 text-xs mt-1">Generated on: {{ generated_at }}</p>
       </div>
     </div>
-    <h3 class="font-semibold mt-2">Fee Details</h3>
-    <table class="w-full mt-1">
-      <thead>
-        <tr>
-          <th class="border p-2 text-left">Description</th>
-          <th class="border p-2 text-right">Amount</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for head, amount in dynamic_fees.items %}
-        <tr>
-          <td class="border p-2">{{ head }}</td>
-          <td class="border p-2 text-right">{{ amount }}</td>
-        </tr>
-        {% empty %}
-        <tr>
-          <td class="border p-2">No fees specified</td>
-          <td class="border p-2 text-right">0</td>
-        </tr>
-        {% endfor %}
-        <tr>
-          <td class="border p-2 font-semibold">Total Amount</td>
-          <td class="border p-2 text-right font-semibold">{{ total_amount }}</td>
-        </tr>
-      </tbody>
-    </table>
-    <div class="office-details">
-      <h4 class="font-semibold mb-1">Office Details:</h4>
-      <p class="m-0"><strong>Name:</strong> {{ office_name }}</p>
-      <p class="m-0"><strong>Address:</strong> {{ office_address }}</p>
-      <p class="m-0"><strong>Contact:</strong> {{ office_contact }}</p>
-      <p class="m-0 text-xs mt-1">Generated on: {{ generated_at }}</p>
+  
+    <!-- Student Copy -->
+    <div class="voucher-copy">
+      <h2 class="text-xl font-bold mb-2 text-center">Student Copy</h2>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <h3 class="font-semibold">Student Details</h3>
+          <p><strong>Name:</strong> {{ student_name }}</p>
+          <p><strong>CNIC:</strong> {{ cnic }}</p>
+          <p><strong>Father's Name:</strong> {{ father_name }}</p>
+          <p><strong>Program:</strong> {{ program }}</p>
+          <p><strong>Semester:</strong> {{ semester }}</p>
+          <p><strong>Shift:</strong> {{ shift|title }}</p>
+          <p><strong>Academic Session:</strong> {{ academic_session }}</p>
+        </div>
+        <div>
+          <h3 class="font-semibold">Voucher Details</h3>
+          <p><strong>Voucher ID:</strong> {{ voucher_id }}</p>
+          <p><strong>Issue Date:</strong> {{ generated_at }}</p>
+          <p><strong>Due Date:</strong> {{ due_date }}</p>
+        </div>
+      </div>
+      <h3 class="font-semibold mt-2">Fee Details</h3>
+      <table class="w-full mt-1">
+        <thead>
+          <tr>
+            <th class="border p-2 text-left">Description</th>
+            <th class="border p-2 text-right">Amount (PKR)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for head, amount in dynamic_fees.items %}
+          <tr>
+            <td class="border p-2">{{ head }}</td>
+            <td class="border p-2 text-right">{{ amount|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td class="border p-2">Semester Fee</td>
+            <td class="border p-2 text-right">{{ total_amount|floatformat:2 }}</td>
+          </tr>
+          {% endfor %}
+          <tr>
+            <td class="border p-2 font-semibold">Total Amount</td>
+            <td class="border p-2 text-right font-semibold">{{ total_amount|floatformat:2 }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="office-details">
+        <h4 class="font-semibold mb-1">Office Details:</h4>
+        <p class="m-0"><strong>Name:</strong> {{ office_name }}</p>
+        <p class="m-0"><strong>Address:</strong> {{ office_address }}</p>
+        <p class="m-0"><strong>Contact:</strong> {{ office_contact }}</p>
+        <p class="m-0 text-xs mt-1">Generated on: {{ generated_at }}</p>
+      </div>
+    </div>
+  
+    <!-- Department Copy -->
+    <div class="voucher-copy">
+      <h2 class="text-xl font-bold mb-2 text-center">Department Copy</h2>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <h3 class="font-semibold">Student Details</h3>
+          <p><strong>Name:</strong> {{ student_name }}</p>
+          <p><strong>CNIC:</strong> {{ cnic }}</p>
+          <p><strong>Father's Name:</strong> {{ father_name }}</p>
+          <p><strong>Program:</strong> {{ program }}</p>
+          <p><strong>Semester:</strong> {{ semester }}</p>
+          <p><strong>Shift:</strong> {{ shift|title }}</p>
+          <p><strong>Academic Session:</strong> {{ academic_session }}</p>
+        </div>
+        <div>
+          <h3 class="font-semibold">Voucher Details</h3>
+          <p><strong>Voucher ID:</strong> {{ voucher_id }}</p>
+          <p><strong>Issue Date:</strong> {{ generated_at }}</p>
+          <p><strong>Due Date:</strong> {{ due_date }}</p>
+        </div>
+      </div>
+      <h3 class="font-semibold mt-2">Fee Details</h3>
+      <table class="w-full mt-1">
+        <thead>
+          <tr>
+            <th class="border p-2 text-left">Description</th>
+            <th class="border p-2 text-right">Amount (PKR)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for head, amount in dynamic_fees.items %}
+          <tr>
+            <td class="border p-2">{{ head }}</td>
+            <td class="border p-2 text-right">{{ amount|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td class="border p-2">Semester Fee</td>
+            <td class="border p-2 text-right">{{ total_amount|floatformat:2 }}</td>
+          </tr>
+          {% endfor %}
+          <tr>
+            <td class="border p-2 font-semibold">Total Amount</td>
+            <td class="border p-2 text-right font-semibold">{{ total_amount|floatformat:2 }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="office-details">
+        <h4 class="font-semibold mb-1">Office Details:</h4>
+        <p class="m-0"><strong>Name:</strong> {{ office_name }}</p>
+        <p class="m-0"><strong>Address:</strong> {{ office_address }}</p>
+        <p class="m-0"><strong>Contact:</strong> {{ office_contact }}</p>
+        <p class="m-0 text-xs mt-1">Generated on: {{ generated_at }}</p>
+      </div>
     </div>
   </div>
-
-  <!-- Student Copy -->
-  <div class="voucher-copy">
-    <h2 class="text-xl font-bold mb-2 text-center">Student Copy</h2>
-    <div class="grid grid-cols-2 gap-2">
-      <div>
-        <h3 class="font-semibold">Student Details</h3>
-        <p><strong>Name:</strong> {{ student_name }}</p>
-        <p><strong>CNIC:</strong> {{ cnic }}</p>
-        <p><strong>Father's Name:</strong> {{ father_name }}</p>
-        <p><strong>Program:</strong> {{ program }}</p>
-        <p><strong>Semester:</strong> {{ semester }}</p>
-        <p><strong>Shift:</strong> {{ shift|title }}</p>
-        <p><strong>Academic Session:</strong> {{ academic_session }}</p>
-      </div>
-      <div>
-        <h3 class="font-semibold">Voucher Details</h3>
-        <p><strong>Voucher ID:</strong> {{ voucher_id }}</p>
-        <p><strong>Issue Date:</strong> {{ generated_at }}</p>
-        <p><strong>Due Date:</strong> {{ due_date }}</p>
-      </div>
-    </div>
-    <h3 class="font-semibold mt-2">Fee Details</h3>
-    <table class="w-full mt-1">
-      <thead>
-        <tr>
-          <th class="border p-2 text-left">Description</th>
-          <th class="border p-2 text-right">Amount</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for head, amount in dynamic_fees.items %}
-        <tr>
-          <td class="border p-2">{{ head }}</td>
-          <td class="border p-2 text-right">{{ amount }}</td>
-        </tr>
-        {% empty %}
-        <tr>
-          <td class="border p-2">No fees specified</td>
-          <td class="border p-2 text-right">0</td>
-        </tr>
-        {% endfor %}
-        <tr>
-          <td class="border p-2 font-semibold">Total Amount</td>
-          <td class="border p-2 text-right font-semibold">{{ total_amount }}</td>
-        </tr>
-      </tbody>
-    </table>
-    <div class="office-details">
-      <h4 class="font-semibold mb-1">Office Details:</h4>
-      <p class="m-0"><strong>Name:</strong> {{ office_name }}</p>
-      <p class="m-0"><strong>Address:</strong> {{ office_address }}</p>
-      <p class="m-0"><strong>Contact:</strong> {{ office_contact }}</p>
-      <p class="m-0 text-xs mt-1">Generated on: {{ generated_at }}</p>
-    </div>
-  </div>
-
-  <!-- Department Copy -->
-  <div class="voucher-copy">
-    <h2 class="text-xl font-bold mb-2 text-center">Department Copy</h2>
-    <div class="grid grid-cols-2 gap-2">
-      <div>
-        <h3 class="font-semibold">Student Details</h3>
-        <p><strong>Name:</strong> {{ student_name }}</p>
-        <p><strong>CNIC:</strong> {{ cnic }}</p>
-        <p><strong>Father's Name:</strong> {{ father_name }}</p>
-        <p><strong>Program:</strong> {{ program }}</p>
-        <p><strong>Semester:</strong> {{ semester }}</p>
-        <p><strong>Shift:</strong> {{ shift|title }}</p>
-        <p><strong>Academic Session:</strong> {{ academic_session }}</p>
-      </div>
-      <div>
-        <h3 class="font-semibold">Voucher Details</h3>
-        <p><strong>Voucher ID:</strong> {{ voucher_id }}</p>
-        <p><strong>Issue Date:</strong> {{ generated_at }}</p>
-        <p><strong>Due Date:</strong> {{ due_date }}</p>
-      </div>
-    </div>
-    <h3 class="font-semibold mt-2">Fee Details</h3>
-    <table class="w-full mt-1">
-      <thead>
-        <tr>
-          <th class="border p-2 text-left">Description</th>
-          <th class="border p-2 text-right">Amount</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for head, amount in dynamic_fees.items %}
-        <tr>
-          <td class="border p-2">{{ head }}</td>
-          <td class="border p-2 text-right">{{ amount }}</td>
-        </tr>
-        {% empty %}
-        <tr>
-          <td class="border p-2">No fees specified</td>
-          <td class="border p-2 text-right">0</td>
-        </tr>
-        {% endfor %}
-        <tr>
-          <td class="border p-2 font-semibold">Total Amount</td>
-          <td class="border p-2 text-right font-semibold">{{ total_amount }}</td>
-        </tr>
-      </tbody>
-    </table>
-    <div class="office-details">
-      <h4 class="font-semibold mb-1">Office Details:</h4>
-      <p class="m-0"><strong>Name:</strong> {{ office_name }}</p>
-      <p class="m-0"><strong>Address:</strong> {{ office_address }}</p>
-      <p class="m-0"><strong>Contact:</strong> {{ office_contact }}</p>
-      <p class="m-0 text-xs mt-1">Generated on: {{ generated_at }}</p>
-    </div>
-  </div>
-  <div class="modal-actions">
-    <button onclick="window.print()">Print Voucher</button>
-    <button onclick="document.getElementById('voucherModal').close()">Close</button>
-  </div>
-</div>

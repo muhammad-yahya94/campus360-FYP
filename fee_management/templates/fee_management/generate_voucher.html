@@ -42,6 +42,15 @@
       page-break-inside: avoid;
     }
 
+    .modal-box {
+      width: 100%;
+      max-width: 100%;
+      margin: 0;
+      padding: 0;
+      border: none;
+      background: #fff;
+    }
+
     .voucher-container {
       display: flex !important;
       flex-direction: row !important;
@@ -85,6 +94,10 @@
 
     .modal-actions {
       display: none !important;
+    }
+
+    .font-bold.text-lg.mb-4 {
+      display: none !important; /* Hide modal header during printing */
     }
 
     table {
@@ -226,7 +239,25 @@
 </div>
 
 <!-- Voucher Modal -->
-<dialog id="voucherModal" class="modal"></dialog>
+<dialog id="voucherModal" class="modal">
+  <div class="modal-box w-11/12 max-w-5xl">
+    <h3 class="font-bold text-lg mb-4">Your Fee Voucher</h3>
+    <div id="voucherContent" class="w-full">
+      <!-- Voucher content will be loaded here -->
+    </div>
+    <div class="modal-actions">
+      <button onclick="printVoucher()" class="btn btn-primary">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        Print Voucher
+      </button>
+      <form method="dialog">
+        <button class="btn">Close</button>
+      </form>
+    </div>
+  </div>
+</dialog>
 
 <script>
 function setLoading(isLoading) {
@@ -250,6 +281,20 @@ function setLoading(isLoading) {
       </svg>
       Search
     `;
+  }
+}
+
+function printVoucher() {
+  if (!window.isPrinting) {
+    window.isPrinting = true;
+    setTimeout(() => {
+      window.print();
+      window.onafterprint = () => {
+        document.getElementById('voucherModal').close();
+        window.isPrinting = false;
+        window.onafterprint = null;
+      };
+    }, 1000);
   }
 }
 
@@ -356,7 +401,8 @@ async function fetchSemesters() {
 document.addEventListener('DOMContentLoaded', function() {
   const form = document.getElementById('voucher-form');
   const modal = document.getElementById('voucherModal');
-  let isPrinting = false;
+  const voucherContent = document.getElementById('voucherContent');
+  window.isPrinting = false;
 
   form.addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -393,20 +439,19 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
       
-      modal.innerHTML = data.voucher_html;
+      voucherContent.innerHTML = data.voucher_html;
       modal.showModal();
       
-      if (!isPrinting) {
-        isPrinting = true;
-        // Ensure modal is fully rendered before printing
+      if (!window.isPrinting) {
+        window.isPrinting = true;
         setTimeout(() => {
           window.print();
           window.onafterprint = () => {
             modal.close();
-            isPrinting = false;
+            window.isPrinting = false;
             window.onafterprint = null;
           };
-        }, 1000); // Increased delay to ensure rendering
+        }, 1000);
       }
       
     } catch (error) {

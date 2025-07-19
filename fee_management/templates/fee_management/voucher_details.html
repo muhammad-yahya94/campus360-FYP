@@ -40,41 +40,24 @@
             <thead>
                 <tr>
                     <th>Description</th>
-                    <th class="text-right">Amount</th>
+                    <th class="text-right">Amount (PKR)</th>
                 </tr>
             </thead>
             <tbody>
+                {% for head, amount in semester_fee.dynamic_fees.items %}
                 <tr>
-                    <td>Tuition Fee</td>
-                    <td class="text-right">{{ voucher.semester_fee.tuition_fee_amount|floatformat:2 }}</td>
+                    <td>{{ head }}</td>
+                    <td class="text-right">{{ amount|floatformat:2 }}</td>
                 </tr>
-                {% if voucher.semester_fee.computer_fee %}
+                {% empty %}
                 <tr>
-                    <td>Computer Fee</td>
-                    <td class="text-right">{{ voucher.semester_fee.computer_fee_amount|floatformat:2 }}</td>
+                    <td>Semester Fee</td>
+                    <td class="text-right">{{ semester_fee.total_amount|floatformat:2 }}</td>
                 </tr>
-                {% endif %}
-                {% if voucher.semester_fee.examination_fund %}
-                <tr>
-                    <td>Examination Fund</td>
-                    <td class="text-right">{{ voucher.semester_fee.examination_fund_amount|floatformat:2 }}</td>
-                </tr>
-                {% endif %}
-                {% if voucher.semester_fee.others %}
-                <tr>
-                    <td>Other Charges</td>
-                    <td class="text-right">{{ voucher.semester_fee.others_amount|floatformat:2 }}</td>
-                </tr>
-                {% endif %}
-                {% if voucher.semester_fee.evening_fund %}
-                <tr>
-                    <td>Evening Fund</td>
-                    <td class="text-right">{{ voucher.semester_fee.evening_fund_amount|floatformat:2 }}</td>
-                </tr>
-                {% endif %}
+                {% endfor %}
                 <tr class="font-bold">
                     <td>Total Amount</td>
-                    <td class="text-right">PKR {{ voucher.semester_fee.total_amount|floatformat:2 }}</td>
+                    <td class="text-right">PKR {{ semester_fee.total_amount|floatformat:2 }}</td>
                 </tr>
             </tbody>
         </table>

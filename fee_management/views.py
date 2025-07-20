@@ -1030,6 +1030,7 @@ def generate_merit_list(request):
         valid_until = request.POST.get('valid_until')
         notes = request.POST.get('notes', '')
         shift = request.POST.get('shift')
+        total_seats = request.POST.get('no_of_seats', 50)  # Default to 50 if not provided
 
         # Validation
         if not program_id:
@@ -1102,7 +1103,7 @@ def generate_merit_list(request):
         if list_number:
             list_num = int(list_number)
             if list_num == 1:
-                total_seats = 50  # Default total seats for the first merit list
+                total_seats = total_seats  # Default total seats for the first merit list
             else:
                 previous_list = MeritList.objects.filter(
                 program=selected_program,

@@ -492,7 +492,8 @@ def hod_required(view_func):
     from django.contrib.auth.decorators import login_required
     return login_required(view_func)
 
-@hod_required
+
+@login_required
 def teacher_lecture_details(request, teacher_id):
     # Ensure teacher_id is an integer
     try:
@@ -544,66 +545,84 @@ def teacher_lecture_details(request, teacher_id):
         replacement_course_offerings = CourseOffering.objects.none()
         replacement_course_offering_ids = []
 
-    # Step 3: Get original (normal) lectures
+    # Step 3: Get unique normal lectures (recorded_by=teacher and teacher is original teacher)
     try:
         normal_lectures = Attendance.objects.filter(
             recorded_by=teacher,
             course_offering__teacher=teacher,
             course_offering__academic_session__id__in=active_sessions
-        ).select_related('course_offering__course', 'course_offering__semester')
-        logger.debug(f"Step 5: Normal lectures (recorded_by and original teacher): {normal_lectures.count()}")
+        ).values('course_offering__id', 'date', 'shift').distinct()
+        normal_lecture_count = normal_lectures.count()
+        logger.debug(f"Step 5: Normal lectures (unique course_offering, date, shift): {normal_lecture_count}")
     except Exception as e:
         logger.error(f"Error querying normal lectures: {str(e)}")
         normal_lectures = Attendance.objects.none()
+        normal_lecture_count = 0
 
-    # Step 4: Get replacement lectures
+    # Step 4: Get unique replacement lectures (recorded_by=teacher and teacher is replacement)
     try:
         replacement_lectures = Attendance.objects.filter(
             recorded_by=teacher,
             course_offering__id__in=replacement_course_offering_ids,
             course_offering__academic_session__id__in=active_sessions
-        ).select_related('course_offering__course', 'course_offering__semester')
-        logger.debug(f"Step 6: Replacement lectures (recorded_by and replacement): {replacement_lectures.count()}")
+        ).values('course_offering__id', 'date', 'shift').distinct()
+        replacement_lecture_count = replacement_lectures.count()
+        logger.debug(f"Step 6: Replacement lectures (unique course_offering, date, shift): {replacement_lecture_count}")
     except Exception as e:
         logger.error(f"Error querying replacement lectures: {str(e)}")
         replacement_lectures = Attendance.objects.none()
+        replacement_lecture_count = 0
 
-    # Combine lectures for total count
+    # Step 5: Calculate replacement lecture salary
+    teacher_details = teacher.details if hasattr(teacher, 'details') else None
+    salary_per_lecture = teacher_details.salary_per_lecture if teacher_details else 0
+    replacement_lecture_salary = replacement_lecture_count * salary_per_lecture
+    logger.debug(f"Step 7: Replacement lecture salary: {replacement_lecture_salary}")
+
+    # Step 6: Combine unique lectures for total count and details
     try:
-        all_lectures = (normal_lectures | replacement_lectures).distinct().order_by('-date')
-        logger.debug(f"Step 7: Total lectures: {all_lectures.count()}")
+        all_lectures = Attendance.objects.filter(
+            recorded_by=teacher,
+            course_offering__academic_session__id__in=active_sessions
+        ).select_related('course_offering__course', 'course_offering__semester').order_by('-date')
+        unique_lectures = all_lectures.values('course_offering__id', 'date', 'shift').distinct()
+        total_lecture_count = unique_lectures.count()
+        logger.debug(f"Step 8: Total unique lectures: {total_lecture_count}")
     except Exception as e:
         logger.error(f"Error combining lectures: {str(e)}")
         return render(request, 'faculty_staff/error.html', {
             'message': f'Error combining lecture data: {str(e)}'
         }, status=500)
 
-    # Step 5: Calculate lecture counts and salary
-    normal_lecture_count = normal_lectures.count()  # Each Attendance = 1 lecture
-    replacement_lecture_count = replacement_lectures.count()
-    total_lecture_count = all_lectures.count()
-    salary_lecture_count = normal_lecture_count + replacement_lecture_count  # Salary based on recorded_by
-
-    teacher_details = teacher.details if hasattr(teacher, 'details') else None
-    salary_per_lecture = teacher_details.salary_per_lecture if teacher_details else 0
-    total_salary = salary_lecture_count * salary_per_lecture
-    logger.debug(f"Step 8: Lecture counts - Normal: {normal_lecture_count}, Replacement: {replacement_lecture_count}, Total: {total_lecture_count}, Salary lectures: {salary_lecture_count}, Total salary: {total_salary}")
-
-    # Prepare lecture details
+    # Step 7: Prepare lecture details (one record per unique lecture)
     lecture_details = []
-    for lecture in all_lectures:
-        is_replacement = lecture.course_offering.id in replacement_course_offering_ids
-        role = 'Replacement' if is_replacement else 'Normal'
-        lecture_details.append({
-            'lecture': lecture,
-            'role': role,
-            'course_code': lecture.course_offering.course.code,
-            'course_name': lecture.course_offering.course.name,
-            'shift': lecture.shift,
-            'date': lecture.date
-        })
+    for lecture in unique_lectures:
+        lecture_record = all_lectures.filter(
+            course_offering__id=lecture['course_offering__id'],
+            date=lecture['date'],
+            shift=lecture['shift']
+        ).first()
+        if lecture_record:
+            is_replacement = lecture['course_offering__id'] in replacement_course_offering_ids
+            role = 'Replacement' if is_replacement else 'Normal'
+            course_shift = lecture_record.course_offering.shift
+            display_shift = lecture['shift'] if lecture['shift'] else course_shift if course_shift != 'both' else 'N/A'
+            lecture_details.append({
+                'lecture': lecture_record,
+                'role': role,
+                'course_code': lecture_record.course_offering.course.code,
+                'course_name': lecture_record.course_offering.course.name,
+                'shift': display_shift,
+                'date': lecture_record.date
+            })
+    logger.debug(f"Step 9: Lecture details prepared (count: {len(lecture_details)})")
 
-    # Get all years for filtering
+    # Step 8: Calculate total salary based on unique lectures
+    salary_lecture_count = normal_lecture_count + replacement_lecture_count
+    total_salary = salary_lecture_count * salary_per_lecture
+    logger.debug(f"Step 10: Lecture counts - Normal: {normal_lecture_count}, Replacement: {replacement_lecture_count}, Total: {total_lecture_count}, Salary lectures: {salary_lecture_count}, Total salary: {total_salary}")
+
+    # Step 9: Get all years for filtering
     years_qs = all_lectures.annotate(year=ExtractYear('date')).values_list('year', flat=True).distinct().order_by('-year')
     years = list(years_qs)
     current_year = timezone.now().year
@@ -614,20 +633,19 @@ def teacher_lecture_details(request, teacher_id):
             selected_year = current_year
     except (TypeError, ValueError):
         selected_year = current_year
-    logger.debug(f"Step 9: Selected year: {selected_year}, Available years: {years}")
+    logger.debug(f"Step 11: Selected year: {selected_year}, Available years: {years}")
 
-    # Monthly statistics
+    # Step 10: Monthly statistics
     monthly_stats = []
     current_month = timezone.now().month if selected_year == current_year else 1
     for month in range(1, 13):
         month_lectures = all_lectures.filter(date__year=selected_year, date__month=month)
-        month_normal = month_lectures.filter(
-            recorded_by=teacher,
+        month_unique_lectures = month_lectures.values('course_offering__id', 'date', 'shift').distinct()
+        month_normal = month_unique_lectures.filter(
             course_offering__teacher=teacher,
             course_offering__replacement_teacher__isnull=True
         )
-        month_replacement = month_lectures.filter(
-            recorded_by=teacher,
+        month_replacement = month_unique_lectures.filter(
             course_offering__id__in=replacement_course_offering_ids
         )
         month_salary = (month_normal.count() + month_replacement.count()) * salary_per_lecture
@@ -638,29 +656,30 @@ def teacher_lecture_details(request, teacher_id):
             'salary': month_salary,
             'is_current': (month == current_month and selected_year == current_year)
         })
-    logger.debug(f"Step 10: Monthly stats generated for {selected_year}")
+    logger.debug(f"Step 12: Monthly stats generated for {selected_year}")
 
-    # Course-wise statistics
+    # Step 11: Course-wise statistics
     course_stats = all_lectures.filter(date__year=selected_year).values(
         'course_offering__course__code',
-        'course_offering__course__name'
+        'course_offering__course__name',
+        'course_offering__shift'
     ).annotate(
         normal_count=Count('id', filter=Q(
             recorded_by=teacher,
             course_offering__teacher=teacher,
             course_offering__replacement_teacher__isnull=True
-        )),
+        ), distinct=True),
         replacement_count=Count('id', filter=Q(
             recorded_by=teacher,
             course_offering__id__in=replacement_course_offering_ids
-        )),
-        salary=Count('id', filter=Q(recorded_by=teacher)) * Value(salary_per_lecture)
+        ), distinct=True),
+        salary=Count('id', filter=Q(recorded_by=teacher), distinct=True) * Value(salary_per_lecture)
     ).order_by('-normal_count', '-replacement_count')
-    logger.debug(f"Step 11: Course stats generated")
+    logger.debug(f"Step 13: Course stats generated")
 
-    # Recent lectures (last 10)
+    # Step 12: Recent lectures (last 10)
     recent_lectures = lecture_details[:10]
-    logger.debug(f"Step 12: Recent lectures prepared (count: {len(recent_lectures)})")
+    logger.debug(f"Step 14: Recent lectures prepared (count: {len(recent_lectures)})")
 
     context = {
         'teacher': teacher,
@@ -672,6 +691,7 @@ def teacher_lecture_details(request, teacher_id):
         'salary_lecture_count': salary_lecture_count,
         'salary_per_lecture': salary_per_lecture,
         'total_salary': total_salary,
+        'replacement_lecture_salary': replacement_lecture_salary,
         'monthly_stats': monthly_stats,
         'course_stats': course_stats,
         'recent_lectures': recent_lectures,
@@ -680,8 +700,6 @@ def teacher_lecture_details(request, teacher_id):
         'current_year': current_year,
     }
     return render(request, 'faculty_staff/teacher_lecture_details.html', context)
-
-
 
 
 
@@ -3227,20 +3245,92 @@ def record_exam_results(request):
     
     return redirect('faculty_staff:exam_results', course_offering_id)
 
-
-
-
-
 def teacher_course_list(request):
-    # Filter course offerings for the current teacher with active semesters
-    course_offerings = CourseOffering.objects.filter(
-        teacher__user_id=request.user.id,
-        semester__is_active=True
-    ).select_related('course', 'semester', 'academic_session')
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Debug: Log the current user
+    logger.info(f"Current user: {request.user} (ID: {request.user.id})")
+    
+    try:
+        # Filter course offerings where the current teacher is either the original or replacement teacher
+        course_offerings = CourseOffering.objects.filter(
+            Q(teacher__user_id=request.user.id) | Q(replacement_teacher__user_id=request.user.id),
+            semester__is_active=True
+        ).select_related('course', 'semester', 'academic_session', 'teacher__user', 'replacement_teacher__user', 'program', 'department')
+        
+        # Debug: Log the number of course offerings found
+        logger.info(f"Found {len(course_offerings)} course offerings for user {request.user.id}")
+        
+        if not course_offerings.exists():
+            logger.warning("No course offerings found for the current user")
+        else:
+            # Debug: Log first few course offerings
+            for i, offering in enumerate(course_offerings[:3], 1):
+                logger.info(f"Offering {i}: {offering.course.code} - {offering.course.name} (Teacher: {getattr(offering.teacher, 'user', None)}, Replacement: {getattr(offering.replacement_teacher, 'user', None)})")
+        
+        # Prefetch related replacements to avoid N+1 queries
+        from courses.models import LectureReplacement
+        
+        # Get active replacements for these course offerings
+        replacements = LectureReplacement.objects.filter(
+            course_offering__in=course_offerings,
+            replacement_teacher__user=request.user,
+            replacement_date__isnull=False
+        ).select_related('course_offering', 'original_teacher__user', 'replacement_teacher__user')
+        
+        # Debug: Log replacements found
+        logger.info(f"Found {len(replacements)} replacements for user {request.user.id}")
+        
+        # Create a dictionary of replacement info keyed by course_offering_id
+        replacement_info = {}
+        for replacement in replacements:
+            replacement_info[replacement.course_offering_id] = {
+                'is_replacement': True,
+                'replacement_type': replacement.replacement_type,
+                'replacement_end_date': replacement.replacement_end_date,
+                'original_teacher': replacement.original_teacher,
+            }
+            logger.info(f"Replacement found: {replacement} (Type: {replacement.replacement_type}, End: {replacement.replacement_end_date})")
 
-    context = {
-        'course_offerings': course_offerings,
-    }
+        # Add replacement info to each course offering
+        for offering in course_offerings:
+            info = replacement_info.get(offering.id, {})
+            offering.is_replacement = info.get('is_replacement', False)
+            offering.replacement_type = info.get('replacement_type')
+            offering.replacement_end_date = info.get('replacement_end_date')
+            
+            # Debug: Log offering details
+            logger.info(f"Processing offering {offering.id}: {offering.course.code} - {offering.course.name}")
+            logger.info(f"  - Teacher: {getattr(offering.teacher, 'user', None)}")
+            logger.info(f"  - Replacement Teacher: {getattr(offering.replacement_teacher, 'user', None)}")
+            logger.info(f"  - Is replacement: {offering.is_replacement}")
+            
+            if not offering.is_replacement and offering.replacement_teacher_id and offering.replacement_teacher.user_id == request.user.id:
+                # This is a permanent replacement
+                logger.info("  - Marked as permanent replacement")
+                offering.is_replacement = True
+                offering.replacement_type = 'permanent'
+                offering.original_teacher = offering.teacher
+            
+            # Ensure we have the original teacher set for display
+            if not hasattr(offering, 'original_teacher') and offering.is_replacement:
+                offering.original_teacher = offering.teacher
+                
+        context = {
+            'course_offerings': course_offerings,
+            'debug_info': {
+                'offerings_count': len(course_offerings),
+                'replacements_count': len(replacements),
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in teacher_course_list: {str(e)}", exc_info=True)
+        context = {
+            'course_offerings': [],
+            'error': str(e)
+        }
     return render(request, 'faculty_staff/teacher_course_list.html', context)    
 
 @login_required
@@ -3569,16 +3659,16 @@ def attendance(request, offering_id=None):
     current_datetime = timezone.now().astimezone(pytz.timezone('Asia/Karachi'))
     current_time = current_datetime.time()
     current_day = today_date.strftime('%A').lower()
+    selected_shift = request.GET.get('shift')  # Get shift from query parameters (if provided)
 
     logger.info(
         f"Processing attendance request. "
         f"UTC: {timezone.now()}, PKT: {current_datetime}, "
         f"Current time (PKT): {current_time}, Day: {current_day}, "
-        f"Course Offering ID: {course_offering_id}"
+        f"Course Offering ID: {course_offering_id}, Selected Shift: {selected_shift}"
     )
 
     if course_offering_id:
-        print(f'entering in if {course_offering_id}')
         try:
             course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
             course_shift = course_offering.shift
@@ -3613,7 +3703,14 @@ def attendance(request, offering_id=None):
                 else:
                     logger.warning(f"No timetable slots defined for Course Offering ID: {course_offering_id}")
 
-            # Fetch students (relaxed semester check to debug)
+            # Determine effective shift for filtering
+            effective_shift = selected_shift if selected_shift in ['morning', 'evening'] else course_shift
+            if course_shift == 'both' and selected_shift in ['morning', 'evening']:
+                effective_shift = selected_shift
+            elif course_shift == 'both':
+                effective_shift = None  # No shift filter for 'both' unless specified
+
+            # Fetch students with shift filtering
             enrollments = CourseEnrollment.objects.filter(
                 course_offering=course_offering,
                 status='enrolled'
@@ -3623,7 +3720,8 @@ def attendance(request, offering_id=None):
             students = []
             for enrollment in enrollments:
                 student = enrollment.student_semester_enrollment.student
-                # Log semester mismatch if any
+                student_shift = getattr(student.applicant, 'shift', None)
+                # Skip if semester does not match
                 if enrollment.student_semester_enrollment.semester != course_offering.semester:
                     logger.warning(
                         f"Enrollment skipped: Student {student.applicant.full_name}, "
@@ -3631,14 +3729,22 @@ def attendance(request, offering_id=None):
                         f"does not match course offering semester {course_offering.semester}"
                     )
                     continue
+                # Apply shift filter if course shift is not 'both' or a specific shift is selected
+                if effective_shift in ['morning', 'evening'] and student_shift != effective_shift:
+                    logger.warning(
+                        f"Student {student.applicant.full_name} skipped: "
+                        f"Student shift {student_shift} does not match effective shift {effective_shift}"
+                    )
+                    continue
                 students.append({
                     'id': student.applicant.id,
                     'name': student.applicant.full_name,
                     'college_roll_no': student.college_roll_no or 'N/A',
                     'university_roll_no': student.university_roll_no or 'N/A',
-                    'role': student.applicant.role if hasattr(student.applicant, 'role') else None
+                    'role': student.applicant.role if hasattr(student.applicant, 'role') else None,
+                    'shift': student_shift
                 })
-            logger.info(f"Fetched {len(students)} students for course offering: {course_offering_id}")
+            logger.info(f"Fetched {len(students)} students for course offering: {course_offering_id}, effective shift: {effective_shift}")
 
         except Exception as e:
             logger.error(f"Error processing course offering ID {course_offering_id}: {str(e)}", exc_info=True)
@@ -3646,81 +3752,98 @@ def attendance(request, offering_id=None):
                 'students': [],
                 'course_offering_id': course_offering_id,
                 'course_shift': None,
+                'selected_shift': selected_shift,
                 'today_date': today_date,
-                'is_active_slot': True,
+                'is_active_slot': is_active_slot,
                 'error_message': f"Error loading course offering: {str(e)}"
             })
-    print(f'slot is : {is_active_slot} , course shift is {course_shift}')
+
+    print(f'slot is: {is_active_slot}, course shift is {course_shift}, selected shift is {selected_shift}')
     context = {
         'students': students,
         'course_offering_id': course_offering_id,
         'course_shift': course_shift,
+        'selected_shift': selected_shift,
         'today_date': today_date,
         'is_active_slot': is_active_slot,
     }
     return render(request, 'faculty_staff/attendance.html', context)
+
+
+
 
 @hod_or_professor_required
 def record_attendance(request):
     if request.method == "POST":
         course_offering_id = request.POST.get('course_offering_id')
         shift = request.POST.get('shift')
+        logger.info(f"Recording attendance for course_offering_id: {course_offering_id}, shift: {shift}")
+
         if not course_offering_id:
             return JsonResponse({'success': False, 'message': 'Course offering is required.'})
 
         course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
-        if course_offering.shift == 'both' and not shift:
+        if course_offering.shift == 'both' and shift not in ['morning', 'evening']:
+            logger.warning(f"Shift required for course with 'both' shifts, received: {shift}")
             return JsonResponse({'success': False, 'message': 'Shift is required for this course.'})
 
         today = timezone.now().date()
         # Check if attendance already exists
-        shifts_to_check = ['morning', 'evening'] if shift == 'both' else [shift if shift in ['morning', 'evening'] else None]
-        for check_shift in shifts_to_check:
-            if Attendance.objects.filter(
-                course_offering=course_offering,
-                date=today,
-                shift=check_shift if course_offering.shift == 'both' else None
-            ).exists():
-                return JsonResponse({'success': False, 'message': f'Attendance already recorded for {check_shift or "this course"} on this date.'})
+        effective_shift = shift if shift in ['morning', 'evening'] else None
+        if Attendance.objects.filter(
+            course_offering=course_offering,
+            date=today,
+            shift=effective_shift if course_offering.shift == 'both' else None
+        ).exists():
+            return JsonResponse({'success': False, 'message': f'Attendance already recorded for {effective_shift or "this course"} on this date.'})
 
         enrollments = CourseEnrollment.objects.filter(
             course_offering=course_offering,
             status='enrolled'
         ).select_related('student_semester_enrollment__student__applicant')
-        if shift in ['morning', 'evening']:
-            enrollments = enrollments.filter(student_semester_enrollment__student__applicant__shift=shift)
-        
-        teacher = get_object_or_404(Teacher, user=request.user)
-        shifts_to_record = ['morning', 'evening'] if shift == 'both' else [shift if shift in ['morning', 'evening'] else None]
+        if effective_shift in ['morning', 'evening']:
+            enrollments = enrollments.filter(student_semester_enrollment__student__applicant__shift=effective_shift)
 
+        teacher = get_object_or_404(Teacher, user=request.user)
         for enrollment in enrollments:
             student = enrollment.student_semester_enrollment.student
             student_id = student.applicant.id
             status = request.POST.get(f'status_{student_id}')
             if status in ['present', 'absent', 'leave']:
-                for record_shift in shifts_to_record:
-                    Attendance.objects.update_or_create(
-                        student=student,
-                        course_offering=course_offering,
-                        date=today,
-                        shift=record_shift if course_offering.shift == 'both' else None,
-                        defaults={
-                            'status': status,
-                            'recorded_by': teacher,
-                            'recorded_at': timezone.now()
-                        }
-                    )
+                Attendance.objects.update_or_create(
+                    student=student,
+                    course_offering=course_offering,
+                    date=today,
+                    shift=effective_shift if course_offering.shift == 'both' else None,
+                    defaults={
+                        'status': status,
+                        'recorded_by': teacher,
+                        'recorded_at': timezone.now()
+                    }
+                )
 
+        logger.info(f"Attendance recorded successfully for course_offering_id: {course_offering_id}, shift: {effective_shift}")
         return JsonResponse({'success': True, 'message': 'Attendance recorded successfully.'})
+
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+
+
 
 @login_required
 def load_students_for_course(request):
     if request.method == "GET":
         course_offering_id = request.GET.get('course_offering_id')
         shift = request.GET.get('shift')
-        if course_offering_id:
+        logger.info(f"Loading students for course_offering_id: {course_offering_id}, shift: {shift}")
+
+        if not course_offering_id:
+            return JsonResponse({'success': False, 'message': 'Course offering ID is required.'})
+
+        try:
             course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
+            effective_shift = shift if shift in ['morning', 'evening'] else course_offering.shift
+            logger.info(f"Effective shift: {effective_shift} (course_shift: {course_offering.shift}, requested shift: {shift})")
+
             enrollments = CourseEnrollment.objects.filter(
                 course_offering=course_offering,
                 status='enrolled'
@@ -3728,25 +3851,49 @@ def load_students_for_course(request):
                 'student_semester_enrollment__student__applicant',
                 'student_semester_enrollment__semester'
             )
-            if shift in ['morning', 'evening'] and course_offering.shift == 'both':
-                enrollments = enrollments.filter(student_semester_enrollment__student__applicant__shift=shift)
-            
-            students = [
-                {
-                    'id': course_enrollment.student_semester_enrollment.student.applicant.pk,
-                    'name': f"{course_enrollment.student_semester_enrollment.student.applicant.full_name}",
-                    'college_roll_no': course_enrollment.student_semester_enrollment.student.college_roll_no,
-                    'university_roll_no': course_enrollment.student_semester_enrollment.student.university_roll_no
-                }
-                for course_enrollment in enrollments
-                if course_enrollment.student_semester_enrollment.semester == course_offering.semester
-            ]
+
+            students = []
+            for enrollment in enrollments:
+                student = enrollment.student_semester_enrollment.student
+                student_shift = getattr(student.applicant, 'shift', None)
+                if enrollment.student_semester_enrollment.semester != course_offering.semester:
+                    logger.warning(
+                        f"Enrollment skipped: Student {student.applicant.full_name}, "
+                        f"Enrollment semester {enrollment.student_semester_enrollment.semester} "
+                        f"does not match course offering semester {course_offering.semester}"
+                    )
+                    continue
+                if effective_shift in ['morning', 'evening'] and student_shift != effective_shift:
+                    logger.warning(
+                        f"Student {student.applicant.full_name} skipped: "
+                        f"Student shift {student_shift} does not match effective shift {effective_shift}"
+                    )
+                    continue
+                students.append({
+                    'id': student.applicant.id,
+                    'name': student.applicant.full_name,
+                    'college_roll_no': student.college_roll_no or 'N/A',
+                    'university_roll_no': student.university_roll_no or 'N/A',
+                    'role': student.role if hasattr(student, 'role') else None,
+                    'shift': student_shift
+                })
+
+            logger.info(f"Fetched {len(students)} students for course offering: {course_offering_id}, effective shift: {effective_shift}")
             return JsonResponse({
                 'success': True,
                 'students': students
             })
-        return JsonResponse({'success': False, 'message': 'Course offering ID is required.'})
+
+        except Exception as e:
+            logger.error(f"Error loading students for course offering {course_offering_id}: {str(e)}", exc_info=True)
+            return JsonResponse({
+                'success': False,
+                'message': f"Error loading students: {str(e)}"
+            })
+
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+
+
 
 @login_required
 def load_attendance(request):
@@ -3789,6 +3936,8 @@ def load_attendance(request):
                 return JsonResponse({'success': False, 'message': 'Invalid date format.'})
         return JsonResponse({'success': False, 'message': 'Course offering ID and date are required.'})
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+
+
 
 @login_required   
 def edit_attendance(request):

@@ -44,7 +44,7 @@
     <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-xl shadow-lg mb-6">
         <div class="text-center py-6">
             <h1 class="text-4xl font-bold">Attendance</h1>
-            <p class="text-lg text-white/80">Manage and track attendance</p>
+            <p class="text-lg text-white/80">Manage and track attendance | {{ course_shift }}</p>
         </div>
     </div>
 
@@ -56,7 +56,6 @@
         </div>
     </div>
 
-   {% comment %} {% if is_active_slot %} {% endcomment %}
     <!-- Record Attendance Section -->
     <div class="card mb-4">
         <div class="card-body">
@@ -81,12 +80,13 @@
                         <label for="shift" class="form-label">Shift</label>
                         <select name="shift" id="shift" class="form-select" required>
                             <option value="">Select shift...</option>
-                            <option value="morning">Morning</option>
-                            <option value="evening">Evening</option>
-                            <option value="both">Both</option>
+                            <option value="morning" {% if selected_shift == 'morning' %}selected{% endif %}>Morning</option>
+                            <option value="evening" {% if selected_shift == 'evening' %}selected{% endif %}>Evening</option>
                         </select>
                         <span id="shift-error" class="error"></span>
                     </div>
+                    {% else %}
+                        <input type="hidden" name="shift" id="shift" value="{{ course_shift }}">
                     {% endif %}
                 </div>
 
@@ -97,9 +97,9 @@
                             <tr>
                                 <th>Sr</th>
                                 <th>Name</th>
-                                <th>shift</th>
                                 <th>College Roll No</th>
                                 <th>University Roll No</th>
+                                <th>Shift</th>
                                 <th>Present</th>
                                 <th>Absent</th>
                                 <th>Leave</th>
@@ -119,6 +119,7 @@
                                 <th>Student</th>
                                 <th>College Roll No</th>
                                 <th>University Roll No</th>
+                                <th>Shift</th>
                                 <th>Attendance Status</th>
                             </tr>
                         </thead>
@@ -135,6 +136,7 @@
                                 </td>
                                 <td>{{ student.college_roll_no|default:'N/A' }}</td>
                                 <td>{{ student.university_roll_no|default:'N/A' }}</td>
+                                <td>{{ student.shift|default:'N/A' }}</td>
                                 <td>
                                     <div class="radio-group">
                                         <label>
@@ -154,7 +156,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="5" class="text-center">No students found for the selected course.</td>
+                                <td colspan="6" class="text-center">No students found for the selected course and shift.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -192,21 +194,6 @@
             </div>
         </div>
     </div>
-    {% comment %} {% else %}
-    <div class="flex items-center justify-center min-h-screen">
-        <div class="card w-full max-w-md shadow-xl bg-white border border-gray-200">
-            <div class="card-body items-center text-center">
-                <h2 class="card-title text-error text-xl font-bold">No Lecture at the Moment</h2>
-                <p class="text-gray-600 mt-2">There is currently no active lecture slot for this course.</p>
-                <div class="mt-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636L5.636 18.364M6.343 6.343L17.657 17.657" />
-                    </svg>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %} {% endcomment %}
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -221,7 +208,9 @@ $(document).ready(function() {
     // Initialize courseOfferingId from URL or template context
     const urlParams = new URLSearchParams(window.location.search);
     courseOfferingId = urlParams.get('course_offering_id') || '{{ course_offering_id|default_if_none:"" }}';
-    console.log(`Initialized courseOfferingId: ${courseOfferingId}`);
+    console.log(`[INIT] Initialized courseOfferingId: ${courseOfferingId}`);
+    console.log(`[INIT] URL Parameters: ${urlParams.toString()}`);
+    console.log(`[INIT] Template course_shift: {{ course_shift|default_if_none:"null" }}, selected_shift: {{ selected_shift|default_if_none:"null" }}`);
 
     // Function to show message card
     function showMessageCard(type, title, message) {
@@ -237,13 +226,13 @@ $(document).ready(function() {
         card.find('.card-title').text(title);
         card.find('p').text(message);
         card.removeClass('hidden');
-        console.log(`Message card shown: Type=${type}, Title=${title}, Message=${message}`);
+        console.log(`[MESSAGE] Type: ${type}, Title: ${title}, Message: ${message}`);
     }
 
     // Function to hide message card
     function hideMessageCard() {
         $('#message-card').addClass('hidden');
-        console.log("Message card hidden");
+        console.log('[MESSAGE] Message card hidden');
     }
 
     // Initialize Select2 for course offering
@@ -254,11 +243,11 @@ $(document).ready(function() {
                 dataType: 'json',
                 delay: 250,
                 data: function(params) {
-                    console.log(`Select2 AJAX data: q=${params.term}, page=${params.page || 1}`);
+                    console.log(`[SELECT2] AJAX data: q=${params.term}, page=${params.page || 1}`);
                     return { q: params.term, page: params.page || 1 };
                 },
                 processResults: function(data, params) {
-                    console.log(`Select2 processResults: results=${JSON.stringify(data.results)}, more=${data.pagination?.more}`);
+                    console.log(`[SELECT2] processResults: results=${JSON.stringify(data.results)}, more=${data.pagination?.more}`);
                     params.page = params.page || 1;
                     return {
                         results: data.results.map(item => ({
@@ -279,24 +268,27 @@ $(document).ready(function() {
 
     // Function to load students and check existing attendance
     function loadStudentsAndAttendance(id, shift = null) {
-        console.log(`loadStudentsAndAttendance called: courseOfferingId=${id}, shift=${shift}, date={{ today_date|date:"Y-m-d" }}`);
+        console.log(`[LOAD_STUDENTS] Called with courseOfferingId=${id}, shift=${shift}, date={{ today_date|date:"Y-m-d" }}`);
         if (!id) {
             showMessageCard('error', 'Error', 'No course offering selected.');
-            console.error("No courseOfferingId provided for loadStudentsAndAttendance");
+            console.error('[LOAD_STUDENTS] No courseOfferingId provided');
             return;
         }
         hideMessageCard();
+        console.log(`[LOAD_STUDENTS] Sending AJAX to load_attendance with data: course_offering_id=${id}, date={{ today_date|date:"Y-m-d" }}, shift=${shift}`);
         $.ajax({
             url: "{% url 'faculty_staff:load_attendance' %}",
             type: 'GET',
             data: { course_offering_id: id, date: '{{ today_date|date:"Y-m-d" }}', shift: shift },
             success: function(response) {
-                console.log(`load_attendance response: ${JSON.stringify(response)}`);
+                console.log(`[LOAD_ATTENDANCE] Response: ${JSON.stringify(response)}`);
                 if (response.success) {
                     if (response.attendances.length > 0) {
+                        console.log(`[LOAD_ATTENDANCE] Found ${response.attendances.length} existing attendance records`);
                         let tbody = $('#existing-attendance-record-body');
                         tbody.empty();
                         response.attendances.forEach((attendance, index) => {
+                            console.log(`[LOAD_ATTENDANCE] Processing attendance record ${index + 1}: ${JSON.stringify(attendance)}`);
                             tbody.append(`
                                 <tr>
                                     <td>${index + 1}</td>
@@ -306,6 +298,7 @@ $(document).ready(function() {
                                     </td>
                                     <td>${attendance.college_roll_no || 'N/A'}</td>
                                     <td>${attendance.university_roll_no || 'N/A'}</td>
+                                    <td>${attendance.shift ? attendance.shift.charAt(0).toUpperCase() + attendance.shift.slice(1) : 'N/A'}</td>
                                     <td>${attendance.status === 'present' ? '<span class="status-check">✔</span>' : ''}</td>
                                     <td>${attendance.status === 'absent' ? '<span class="status-check">✔</span>' : ''}</td>
                                     <td>${attendance.status === 'leave' ? '<span class="status-check">✔</span>' : ''}</td>
@@ -314,14 +307,15 @@ $(document).ready(function() {
                         });
                         $('#existing-attendance-record-container').show();
                         $('#students-table-container').hide();
-                        console.log(`Existing attendance shown: ${response.attendances.length} records`);
+                        console.log(`[LOAD_ATTENDANCE] Existing attendance table shown with ${response.attendances.length} records`);
 
                         let existingTbody = $('#existing-attendance-body');
                         existingTbody.empty();
                         response.attendances.forEach((attendance, index) => {
+                            console.log(`[LOAD_ATTENDANCE] Existing table record ${index + 1}: ${JSON.stringify(attendance)}`);
                             existingTbody.append(`
                                 <tr>
-                                    <td>${index + 1}</td>
+                                    <td>${index + 1}</td>  
                                     <td>${attendance.student_name}
                                         ${attendance.student_role === 'CR' ? '<span class="badge badge-warning ml-1">CR</span>' : ''}
                                         ${attendance.student_role === 'GR' ? '<span class="badge badge-secondary ml-1" style="background-color:#f472b6; color:white;">GR</span>' : ''}
@@ -343,21 +337,25 @@ $(document).ready(function() {
                             `);
                         });
                         $('#existing-attendance-container').show();
-                        console.log(`Existing attendance table updated: ${response.attendances.length} records`);
+                        console.log(`[LOAD_ATTENDANCE] Existing attendance table updated with ${response.attendances.length} records`);
                     } else {
+                        console.log('[LOAD_ATTENDANCE] No existing attendance, loading students');
                         $('#existing-attendance-record-container').hide();
                         // Load students for new attendance
+                        console.log(`[LOAD_STUDENTS] Sending AJAX to load_students_for_course with data: course_offering_id=${id}, shift=${shift}`);
                         $.ajax({
                             url: "{% url 'faculty_staff:load_students_for_course' %}",
                             type: 'GET',
                             data: { course_offering_id: id, shift: shift },
                             success: function(response) {
-                                console.log(`load_students_for_course response: ${JSON.stringify(response)}`);
+                                console.log(`[LOAD_STUDENTS] Response: ${JSON.stringify(response)}`);
                                 if (response.success) {
                                     let tbody = $('#students-table-body');
                                     tbody.empty();
                                     if (response.students.length > 0) {
+                                        console.log(`[LOAD_STUDENTS] Populating table with ${response.students.length} students`);
                                         response.students.forEach((student, index) => {
+                                            console.log(`[LOAD_STUDENTS] Student ${index + 1}: id=${student.id}, name=${student.name}, shift=${student.shift || 'N/A'}, role=${student.role || 'None'}`);
                                             tbody.append(`
                                                 <tr>
                                                     <td>${index + 1}</td>
@@ -367,6 +365,7 @@ $(document).ready(function() {
                                                     </td>
                                                     <td>${student.college_roll_no || 'N/A'}</td>
                                                     <td>${student.university_roll_no || 'N/A'}</td>
+                                                    <td>${student.shift ? student.shift.charAt(0).toUpperCase() + student.shift.slice(1) : 'N/A'}</td>
                                                     <td>
                                                         <div class="radio-group">
                                                             <label>
@@ -387,26 +386,26 @@ $(document).ready(function() {
                                             `);
                                         });
                                         $('#students-table-container').show();
-                                        $('#existing-attendance-container').hide();
-                                        console.log(`Students table populated: ${response.students.length} students`);
+                                        $('#existing-attendance-container').hide;
+                                        console.log(`[LOAD_STUDENTS] Students table populated with ${response.students.length} students`);
                                     } else {
-                                        tbody.append('<tr><td colspan="5" class="text-center">No students found for the selected course and shift.</td></tr>');
+                                        console.log('[LOAD_STUDENTS] No students found for the selected course and shift');
+                                        tbody.append('<tr><td colspan="6" class="text-center">No students found for the selected course and shift.</td></tr>');
                                         $('#students-table-container').show();
-                                        $('#existing-attendance-container').hide();
-                                        console.log("No students found for the selected course and shift");
+                                        $('#existing-attendance-container').hide;
                                     }
                                 } else {
                                     showMessageCard('error', 'Error', response.message);
                                     $('#students-table-container').hide();
                                     $('#existing-attendance-container').hide;
-                                    console.error(`Error loading students: ${response.message}`);
+                                    console.error(`[LOAD_STUDENTS] Error: ${response.message}`);
                                 }
                             },
                             error: function(xhr, status, error) {
                                 showMessageCard('error', 'Error', 'An error occurred while loading students: ' + error);
                                 $('#students-table-container').hide();
                                 $('#existing-attendance-container').hide;
-                                console.error(`AJAX error in load_students_for_course: status=${status}, error=${error}, response=${xhr.responseText}`);
+                                console.error(`[LOAD_STUDENTS] AJAX error: status=${status}, error=${error}, response=${xhr.responseText}`);
                             }
                         });
                     }
@@ -415,11 +414,11 @@ $(document).ready(function() {
                     $('#existing-attendance-record-container').hide();
                     $('#students-table-container').hide();
                     $('#existing-attendance-container').hide;
-                    console.error(`Error in load_attendance: ${response.message}`);
+                    console.error(`[LOAD_ATTENDANCE] Error: ${response.message}`);
                 }
             },
             error: function(xhr, status, error) {
-                console.error(`AJAX error in load_attendance: status=${status}, error=${error}, response=${xhr.responseText}`);
+                console.error(`[LOAD_ATTENDANCE] AJAX error: status=${status}, error=${error}, response=${xhr.responseText}`);
                 showMessageCard('error', 'Error', 'An error occurred while fetching attendance: ' + error);
                 $('#existing-attendance-record-container').hide();
                 $('#students-table-container').hide();
@@ -432,10 +431,10 @@ $(document).ready(function() {
     $('#course_offering_id').on('change', function() {
         if ($(this).is('select')) {
             courseOfferingId = $(this).val();
-            console.log(`Course offering changed: courseOfferingId=${courseOfferingId}`);
+            console.log(`[COURSE_CHANGE] Course offering changed: courseOfferingId=${courseOfferingId}`);
             let selectedOption = $(this).find('option:selected').data('select2-result');
-            let shift = $('#shift').val() || null;
-            console.log(`Selected option: ${JSON.stringify(selectedOption)}, shift=${shift}`);
+            let shift = $('#shift').val() || '{{ selected_shift|default_if_none:"" }}' || '{{ course_shift|default_if_none:"" }}';
+            console.log(`[COURSE_CHANGE] Selected option: ${JSON.stringify(selectedOption)}, shift=${shift}`);
             if (courseOfferingId) {
                 if (selectedOption && selectedOption.shift === 'both' && !shift) {
                     $('#students-table-container').hide();
@@ -443,9 +442,10 @@ $(document).ready(function() {
                     $('#existing-attendance-container').hide;
                     $('#shift-error').text('Please select a shift.');
                     showMessageCard('warning', 'Shift Required', 'Please select a shift to proceed.');
-                    console.log("Shift required but not selected");
+                    console.log('[COURSE_CHANGE] Shift required but not selected');
                 } else {
                     $('#shift-error').text('');
+                    console.log(`[COURSE_CHANGE] Loading students with shift=${shift}`);
                     loadStudentsAndAttendance(courseOfferingId, shift);
                 }
             } else {
@@ -453,7 +453,7 @@ $(document).ready(function() {
                 $('#existing-attendance-record-container').hide();
                 $('#existing-attendance-container').hide;
                 hideMessageCard();
-                console.log("No course offering selected");
+                console.log('[COURSE_CHANGE] No course offering selected');
             }
         }
     });
@@ -461,9 +461,10 @@ $(document).ready(function() {
     // Load students when shift is selected
     $('#shift').on('change', function() {
         let shift = $(this).val();
-        console.log(`Shift changed: shift=${shift}, courseOfferingId=${courseOfferingId}`);
+        console.log(`[SHIFT_CHANGE] Shift changed: shift=${shift}, courseOfferingId=${courseOfferingId}`);
         if (shift && courseOfferingId) {
             $('#shift-error').text('');
+            console.log(`[SHIFT_CHANGE] Loading students with shift=${shift}`);
             loadStudentsAndAttendance(courseOfferingId, shift);
         } else if (!shift) {
             $('#shift-error').text('Please select a shift.');
@@ -471,29 +472,29 @@ $(document).ready(function() {
             $('#existing-attendance-record-container').hide();
             $('#existing-attendance-container').hide;
             showMessageCard('warning', 'Shift Required', 'Please select a shift to proceed.');
-            console.log("No shift selected");
+            console.log('[SHIFT_CHANGE] No shift selected');
         } else {
             showMessageCard('error', 'Error', 'No course offering selected.');
-            console.error("No courseOfferingId for shift change");
+            console.error('[SHIFT_CHANGE] No courseOfferingId for shift change');
         }
     });
 
     // Initialize with course_offering_id from URL or template
     if (courseOfferingId) {
-        console.log(`Loading data for course_offering_id: ${courseOfferingId}`);
+        console.log(`[INIT] Loading data for course_offering_id: ${courseOfferingId}`);
         $.ajax({
             url: "{% url 'faculty_staff:search_course_offerings' %}",
             type: 'GET',
             data: { id: courseOfferingId },
             success: function(response) {
-                console.log(`search_course_offerings response: ${JSON.stringify(response)}`);
+                console.log(`[INIT] search_course_offerings response: ${JSON.stringify(response)}`);
                 if (response.success && response.results.length > 0) {
                     const course = response.results[0];
+                    console.log(`[INIT] Course details: code=${course.course_code}, shift=${course.shift}`);
                     $('#course-offering-text').text(
                         `${course.course_code} - ${course.program_name} (${course.semester_name}, ${course.session_name})`
                     );
                     if ($('#course_offering_id').is('select')) {
-                        // Programmatically set Select2 value
                         const option = new Option(
                             `${course.course_code} - ${course.program_name} (${course.semester_name}, ${course.session_name})`,
                             course.id,
@@ -502,29 +503,38 @@ $(document).ready(function() {
                         );
                         $('#course_offering_id').append(option).trigger('change');
                         $('#course_offering_id').data('select2-result', course);
+                        console.log('[INIT] Select2 course offering set');
                     }
+                    let shift = '{{ selected_shift|default_if_none:"" }}' || course.shift;
+                    console.log(`[INIT] Initial shift: ${shift}`);
                     if (course.shift === 'both') {
                         $('#shift').prop('required', true);
                         $('#shift').parent().show();
-                        showMessageCard('warning', 'Shift Required', 'Please select a shift to proceed.');
-                        console.log("Course shift is 'both', showing shift selector");
+                        if ('{{ selected_shift }}') {
+                            $('#shift').val('{{ selected_shift }}').trigger('change');
+                            console.log(`[INIT] Shift dropdown set to {{ selected_shift }}`);
+                        } else {
+                            showMessageCard('warning', 'Shift Required', 'Please select a shift to proceed.');
+                            console.log('[INIT] Course shift is "both", showing shift selector');
+                        }
                     } else {
-                        loadStudentsAndAttendance(courseOfferingId, course.shift);
+                        console.log(`[INIT] Loading students with course shift: ${course.shift}`);
+                        loadStudentsAndAttendance(courseOfferingId, shift);
                     }
                 } else {
-                    showMessageCard('error', 'Error', 'Course offering not found.');
+                    showMessageCard('error', 'Error', 'Course offering not found.     |      this is maybe due to internet issue , please one check students by changing shift');
                     $('#course-offering-text').text('Course offering not found.');
-                    console.error("Course offering not found in search_course_offerings");
+                    console.error('[INIT] Course offering not found');
                 }
             },
             error: function(xhr, status, error) {
                 showMessageCard('error', 'Error', 'An error occurred while fetching course offering: ' + error);
                 $('#course-offering-text').text('Error loading course offering.');
-                console.error(`AJAX error in search_course_offerings: status=${status}, error=${error}, response=${xhr.responseText}`);
+                console.error(`[INIT] AJAX error in search_course_offerings: status=${status}, error=${error}, response=${xhr.responseText}`);
             }
         });
     } else {
-        console.log("No course_offering_id provided in URL or template");
+        console.log('[INIT] No course_offering_id provided in URL or template');
         if ($('#course_offering_id').is('select')) {
             showMessageCard('info', 'Select Course', 'Please select a course offering to view students.');
         }
@@ -534,17 +544,17 @@ $(document).ready(function() {
     $('#record-attendance-form').on('submit', function(e) {
         e.preventDefault();
         let formData = $(this).serialize();
-        console.log(`Submitting attendance form: ${formData}, courseOfferingId=${courseOfferingId}`);
+        console.log(`[SUBMIT] Submitting attendance form: ${formData}, courseOfferingId=${courseOfferingId}`);
         if (!courseOfferingId) {
             $('#course-offering-error').text('Course offering is required.');
             showMessageCard('error', 'Error', 'Please select a course offering.');
-            console.error("Form submission failed: No course offering selected");
+            console.error('[SUBMIT] Form submission failed: No course offering selected');
             return;
         }
         if ($('#shift').is(':visible') && !$('#shift').val()) {
             $('#shift-error').text('Shift is required.');
             showMessageCard('error', 'Error', 'Please select a shift.');
-            console.error("Form submission failed: No shift selected");
+            console.error('[SUBMIT] Form submission failed: No shift selected');
             return;
         }
         $.ajax({
@@ -552,17 +562,17 @@ $(document).ready(function() {
             type: 'POST',
             data: formData,
             success: function(response) {
-                console.log(`record_attendance response: ${JSON.stringify(response)}`);
+                console.log(`[SUBMIT] record_attendance response: ${JSON.stringify(response)}`);
                 if (response.success) {
                     showMessageCard('success', 'Success', response.message);
                     setTimeout(() => location.reload(), 1500);
                 } else {
                     showMessageCard('error', 'Error', response.message);
-                    console.error(`Error recording attendance: ${response.message}`);
+                    console.error(`[SUBMIT] Error recording attendance: ${response.message}`);
                 }
             },
             error: function(xhr, status, error) {
-                console.error(`AJAX error in record_attendance: status=${status}, error=${error}, response=${xhr.responseText}`);
+                console.error(`[SUBMIT] AJAX error in record_attendance: status=${status}, error=${error}, response=${xhr.responseText}`);
                 showMessageCard('error', 'Error', 'An error occurred: ' + error);
             }
         });
@@ -574,7 +584,7 @@ $(document).ready(function() {
         let studentId = $(this).data('student-id');
         let currentStatus = $(this).data('status');
         let currentShift = $(this).data('shift');
-        console.log(`Editing attendance: attendanceId=${attendanceId}, studentId=${studentId}, currentStatus=${currentStatus}, shift=${currentShift}, courseOfferingId=${courseOfferingId}`);
+        console.log(`[EDIT] Editing attendance: attendanceId=${attendanceId}, studentId=${studentId}, currentStatus=${currentStatus}, shift=${currentShift}, courseOfferingId=${courseOfferingId}`);
         let newStatus = prompt('Enter new status (present/absent/leave):', currentStatus);
         if (newStatus && ['present', 'absent', 'leave'].includes(newStatus.toLowerCase())) {
             $.ajax({
@@ -589,23 +599,23 @@ $(document).ready(function() {
                     csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
                 },
                 success: function(response) {
-                    console.log(`edit_attendance response: ${JSON.stringify(response)}`);
+                    console.log(`[EDIT] edit_attendance response: ${JSON.stringify(response)}`);
                     if (response.success) {
                         showMessageCard('success', 'Success', response.message);
                         setTimeout(() => location.reload(), 1500);
                     } else {
                         showMessageCard('error', 'Error', response.message);
-                        console.error(`Error editing attendance: ${response.message}`);
+                        console.error(`[EDIT] Error editing attendance: ${response.message}`);
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error(`AJAX error in edit_attendance: status=${status}, error=${error}, response=${xhr.responseText}`);
+                    console.error(`[EDIT] AJAX error in edit_attendance: status=${status}, error=${error}, response=${xhr.responseText}`);
                     showMessageCard('error', 'Error', 'An error occurred: ' + error);
                 }
             });
         } else if (newStatus) {
             showMessageCard('error', 'Error', 'Invalid status. Please enter "present", "absent", or "leave".');
-            console.error(`Invalid status entered: ${newStatus}`);
+            console.error(`[EDIT] Invalid status entered: ${newStatus}`);
         }
     });
 });

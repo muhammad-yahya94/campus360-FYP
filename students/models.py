@@ -23,6 +23,13 @@ class Student(models.Model):
         blank=True,
         help_text="Select the user account linked to this student profile (optional, automatically linked if available)."
     )
+    Registration_number = models.CharField(
+        max_length=20,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text="Enter the student's unique registration number."
+    )
     university_roll_no = models.IntegerField(blank=True,null=True, help_text="Enter the student's official university roll number.")
     college_roll_no = models.IntegerField(blank=True,null=True, help_text="Enter the student's college roll number (if applicable).")
     enrollment_date = models.DateField(help_text="Select the official date when the student was enrolled.")

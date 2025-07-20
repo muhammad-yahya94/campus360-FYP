@@ -4,6 +4,25 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 py-6">
+  <!-- Debug Info (Temporary) -->
+  {% if debug_info %}
+  <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded">
+    <div class="flex">
+      <div class="flex-shrink-0">
+        <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+        </svg>
+      </div>
+      <div class="ml-3">
+        <p class="text-sm text-yellow-700">
+          Debug Info: Found {{ debug_info.offerings_count }} course offerings and {{ debug_info.replacements_count }} replacements.
+          {% if error %}<br>Error: {{ error }}{% endif %}
+        </p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- Hero Section -->
   <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-xl shadow-lg mb-6">
     <div class="text-center py-6">
@@ -18,15 +37,69 @@
     {% for offering in course_offerings %}
     <div class="card bg-base-100 shadow-md hover:shadow-lg transition duration-300 border border-base-200">
       <div class="card-body space-y-3">
+        <!-- Debug Info for Each Offering (Temporary) -->
+        <div class="text-xs text-gray-500 bg-gray-50 p-2 rounded mb-2">
+          <p>ID: {{ offering.id }}</p>
+          <p>Teacher: {{ offering.teacher.id }} - {{ offering.teacher.user.get_full_name|default:'No teacher' }}</p>
+          <p>Replacement: {{ offering.replacement_teacher.id|default:'None' }} - {{ offering.replacement_teacher.user.get_full_name|default:'' }}</p>
+        </div>
+        
         <div>
-          <h2 class="card-title text-indigo-700">{{ offering.course.code }} — {{ offering.course.name }}</h2>
-          <p class="text-sm text-gray-500">{{ offering.program.name }} | {{ offering.department.name }}</p>
+          <div class="flex justify-between items-start">
+            <h2 class="card-title text-indigo-700">
+              {% if offering.course %}
+                {{ offering.course.code|default:'N/A' }} — {{ offering.course.name|default:'Unnamed Course' }}
+              {% else %}
+                Course #{{ offering.id }}
+              {% endif %}
+            </h2>
+            
+            {% if offering.is_replacement %}
+              <div class="flex flex-col items-end gap-1">
+                <span class="badge {% if offering.replacement_type == 'permanent' %}badge-warning{% else %}badge-info{% endif %}">
+                  {{ offering.replacement_type|default:'replacement'|title }}
+                </span>
+                {% if offering.replacement_type == 'temporary' and offering.replacement_end_date %}
+                  <span class="text-xs text-gray-500">Until: {{ offering.replacement_end_date|date:"M d, Y" }}</span>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+          
+          <p class="text-sm text-gray-500">
+            {% if offering.program %}{{ offering.program.name }}{% endif %}
+            {% if offering.department %}| {{ offering.department.name }}{% endif %}
+          </p>
+          
+          {% if offering.is_replacement %}
+            <p class="text-xs text-gray-500 mt-1">
+              Originally taught by: 
+              {% if offering.original_teacher and offering.original_teacher.user %}
+                {{ offering.original_teacher.user.get_full_name }}
+              {% elif offering.teacher and offering.teacher.user %}
+                {{ offering.teacher.user.get_full_name }}
+              {% else %}
+                Unknown Teacher
+              {% endif %}
+            </p>
+          {% endif %}
         </div>
 
         <ul class="text-sm text-gray-600 space-y-1">
-          <li><i class="fas fa-calendar-week mr-1 text-indigo-400"></i><strong>Semester:</strong> {{ offering.semester.name }} ({{ offering.semester.number }})</li>
-          <li><i class="fas fa-clock mr-1 text-indigo-400"></i><strong>Session:</strong> {{ offering.academic_session.name }}</li>
-          <li><i class="fas fa-exchange-alt mr-1 text-indigo-400"></i><strong>Shift:</strong> {{ offering.shift|capfirst }}</li>
+          {% if offering.semester %}
+            <li><i class="fas fa-calendar-week mr-1 text-indigo-400"></i><strong>Semester:</strong> 
+              {{ offering.semester.name }}
+              {% if offering.semester.number %}({{ offering.semester.number }}){% endif %}
+            </li>
+          {% endif %}
+          
+          {% if offering.academic_session %}
+            <li><i class="fas fa-clock mr-1 text-indigo-400"></i><strong>Session:</strong> {{ offering.academic_session.name }}</li>
+          {% endif %}
+          
+          {% if offering.shift %}
+            <li><i class="fas fa-exchange-alt mr-1 text-indigo-400"></i><strong>Shift:</strong> {{ offering.shift|capfirst }}</li>
+          {% endif %}
         </ul>
 
         <div class="mt-4 grid grid-cols-2 gap-2 text-sm">
@@ -54,7 +127,12 @@
   </div>
   {% else %}
   <div class="alert alert-info mt-6 text-center">
-    <i class="fas fa-info-circle mr-2"></i> No courses are currently assigned to you.
+    <i class="fas fa-info-circle mr-2"></i> 
+    {% if error %}
+      Error loading courses: {{ error }}
+    {% else %}
+      No courses are currently assigned to you.
+    {% endif %}
   </div>
   {% endif %}
 </div>

@@ -12,7 +12,7 @@
                 <h1 class="text-3xl sm:text-4xl font-bold mb-2">Student Profile</h1>
                 <p class="text-base sm:text-lg text-base-content/90">
                     View and manage your academic and personal information
-                </p>
+                </p> 
             </div>
         </div>
     </div>
@@ -38,7 +38,7 @@
                         
                         <h2 class="card-title">{{ student.applicant.full_name|default:"-" }}</h2>
                         <p class="text-primary">{{ student.program.name|default:"-" }}</p>
-                        <p class="text-sm text-gray-500">ID: {{ student.university_roll_no|default:"-" }}</p>
+                        <p class="text-sm text-gray-500">Registration Number: {{ student.Registration_number|default:"-" }}</p>
                         
                         <div class="divider my-2"></div>
                         

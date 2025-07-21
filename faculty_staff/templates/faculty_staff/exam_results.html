@@ -55,11 +55,20 @@
     </div>
     
 
-    <!-- Record Exam Results Form -->
-    {% comment %} {% if not  exam_results %} {% endcomment %}
+    <!-- Record/Edit Exam Results Form -->
+    {% if show_form %}
     <div class="card bg-base-100 shadow-xl mb-6">
         <div class="card-body">
-            <h2 class="card-title">Record Exam Results</h2>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="card-title">
+                    {% if exam_results %}Edit Exam Results{% else %}Record Exam Results{% endif %}
+                </h2>
+                {% if exam_results %}
+                <a href="?" class="btn btn-outline btn-sm">
+                    <i class="fas fa-eye mr-2"></i>View Results
+                </a>
+                {% endif %}
+            </div>
             <form method="post" action="{% url 'faculty_staff:record_exam_results' %}">
                 {% csrf_token %}
                 <input type="hidden" name="course_offering_id" value="{{ course_offering_id }}">
@@ -134,17 +143,30 @@
             </form>
         </div>
     </div>
-    {% comment %} {% endif %} {% endcomment %}
+    {% endif %}
 
     <!-- Existing Exam Results Table -->
-    {% if course_offering %}
+    {% if exam_results %}
     <div class="card bg-base-100 shadow-xl print-section">
         <div class="card-body">
             <div class="flex justify-between items-center mb-4">
-                <h2 class="card-title">Existing Exam Results</h2>
-                <button id="printButton" class="btn btn-primary no-print">
-                    <i class="fas fa-print mr-2"></i>Print Results
-                </button>
+                <h2 class="card-title">
+                    {% if students|length == exam_results|length %}
+                        All Results Submitted
+                    {% else %}
+                        Existing Exam Results ({{ exam_results|length }} of {{ students|length }} students)
+                    {% endif %}
+                </h2>
+                <div class="flex gap-2">
+                    {% if not edit_mode %}
+                    <a href="?edit=1" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-edit mr-2"></i>Edit Results
+                    </a>
+                    {% endif %}
+                    <button id="printButton" class="btn btn-primary btn-sm print:hidden">
+                        <i class="fas fa-print mr-2"></i>Print Results
+                    </button>
+                </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="table w-full">
@@ -187,19 +209,22 @@
                             <td>{{ result.academic_session }}</td>
                             <td>{{ result.remarks|default:"No Remarks" }}</td>
                             <td class="no-print">
-                                <label for="editResultModal" class="btn btn-warning btn-sm edit-result" 
-                                       data-result-id="{{ result.id }}"
-                                       data-course-offering-id="{{ result.course_offering.id }}"
-                                       data-student-id="{{ result.student.id }}"
-                                       data-midterm="{{ result.midterm_obtained|floatformat:0|default_if_none:'0' }}"
-                                       data-sessional="{{ result.sessional_obtained|floatformat:0|default_if_none:'0' }}"
-                                       data-final="{{ result.final_obtained|floatformat:0|default_if_none:'0' }}"
-                                       data-totalmarks="{{ result.total_marks }}"
-                                       data-percentage="{{ result.percentage }}"
-                                       data-practical="{{ result.practical_obtained|floatformat:0|default_if_none:'0' }}"
-                                       data-remarks="{{ result.remarks|default:''|escapejs }}">
-                                    <i class="fas fa-edit"></i>
-                                </label>
+                                <button type="button" class="btn btn-info btn-xs edit-result" 
+                                        data-result-id="{{ result.id }}"
+                                        data-course-offering-id="{{ result.course_offering.id }}"
+                                        data-student-id="{{ result.student.applicant.id }}"
+                                        data-midterm="{{ result.midterm_obtained|default:'' }}"
+                                        data-sessional="{{ result.sessional_obtained|default:'' }}"
+                                        data-final="{{ result.final_obtained|default:'' }}"
+                                        data-practical="{{ result.practical_obtained|default:'' }}"
+                                        data-remarks="{{ result.remarks|default:'' }}"
+                                        data-midterm-max="{{ result.midterm_total }}"
+                                        data-sessional-max="{{ result.sessional_total }}"
+                                        data-final-max="{{ result.final_total }}"
+                                        data-practical-max="{{ result.practical_total }}"
+                                        title="Edit {{ result.student.applicant.full_name }}'s results">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
                             </td>
                         </tr>
                         {% empty %}
@@ -410,7 +435,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Print functionality
-    document.getElementById('printButton').addEventListener('click', () => {
+    const printButton = document.getElementById('printButton');
+    if (printButton) {
+        printButton.addEventListener('click', () => {
         const printWindow = window.open('', '', 'width=1000,height=600');
         const tableRows = Array.from(document.querySelectorAll('.print-section .overflow-x-auto tbody tr'))
             .filter(row => row.querySelectorAll('td').length > 1)
@@ -503,6 +530,7 @@ document.addEventListener('DOMContentLoaded', () => {
             printWindow.close();
         };
     });
+    }
 
     // Form validation
     document.querySelectorAll('form').forEach(form => {

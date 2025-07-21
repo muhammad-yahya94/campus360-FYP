@@ -2951,9 +2951,13 @@ def exam_results(request, course_offering_id):
         teacher=request.user.teacher_profile
     ).select_related('course', 'semester', 'academic_session').order_by('-academic_session__start_year', 'semester__number')
     
+    # Check if we're in edit mode
+    edit_mode = request.GET.get('edit') == '1'
+    
     context = {
         'course_offerings': course_offerings,
         'course_offering_id': course_offering_id,
+        'edit_mode': edit_mode,
     }
     
     if course_offering_id:
@@ -2963,7 +2967,9 @@ def exam_results(request, course_offering_id):
                 id=course_offering_id,
                 teacher=request.user.teacher_profile
             )
-            print(f'this is offering shift -- {course_offering.shift}')
+            print(f'[DEBUG] Offering shift: {course_offering.shift}')
+            print(f'[DEBUG] Course: {course_offering.course.code} - {course_offering.course.name}')
+            print(f'[DEBUG] Semester: {course_offering.semester.name}')
             midterm_max = course_offering.course.credits * 4
             sessional_max = course_offering.course.credits * 2
             final_max = course_offering.course.credits * 14
@@ -2988,21 +2994,35 @@ def exam_results(request, course_offering_id):
                 for result in exam_results
             }
             
+            # Include both enrolled and completed enrollments for viewing/editing
             enrollments = CourseEnrollment.objects.filter(
                 course_offering=course_offering,
-                status='enrolled'
-            ).select_related('student_semester_enrollment__student__applicant').order_by(
+                status__in=['enrolled', 'completed']
+            ).select_related(
+                'student_semester_enrollment__student__applicant',
+                'student_semester_enrollment__semester'
+            ).order_by(
                 'student_semester_enrollment__student__university_roll_no'
             )
             
             students = []
+            print(f'[DEBUG] Total enrollments found: {enrollments.count()}')
+            student_count = 0
             for enrollment in enrollments:
                 student = enrollment.student_semester_enrollment.student
                 applicant = student.applicant
+                student_shift = getattr(applicant, 'shift', 'N/A')
+                
+                # Debug print for each enrollment
+                print(f'[DEBUG] Processing enrollment - Student: {student}, Shift: {student_shift}, Semester: {enrollment.student_semester_enrollment.semester}')
+                
                 # Filter by matching shift
-                if enrollment.student_semester_enrollment.semester == course_offering.semester and (
-                    course_offering.shift == 'both' or applicant.shift == course_offering.shift
-                ):
+                semester_match = enrollment.student_semester_enrollment.semester == course_offering.semester
+                shift_match = course_offering.shift == 'both' or str(student_shift).lower() == str(course_offering.shift).lower()
+                
+                print(f'[DEBUG] Semester match: {semester_match}, Shift match: {shift_match}')
+                
+                if semester_match and shift_match:
                     student_id = applicant.id
                     student_data = {
                         'id': student_id,
@@ -3033,6 +3053,9 @@ def exam_results(request, course_offering_id):
                         })
                     
                     students.append(student_data)
+                    student_count += 1
+            
+            print(f'[DEBUG] Total students after filtering: {student_count}')
             
             aggregated_results = [
                 {
@@ -3071,6 +3094,9 @@ def exam_results(request, course_offering_id):
                 if s['result_id']  # Only include students with existing results
             ]
             
+            # Always show students, but filter results based on edit mode
+            show_form = not aggregated_results or edit_mode
+            
             context.update({
                 'course_offering': course_offering,
                 'students': students,
@@ -3080,6 +3106,7 @@ def exam_results(request, course_offering_id):
                 'final_max': final_max,
                 'practical_max': practical_max,
                 'totalMax': total_max,
+                'show_form': show_form,
             })
             
         except CourseOffering.DoesNotExist:
@@ -3133,8 +3160,21 @@ def record_exam_results(request):
                     result.graded_by = request.user.teacher_profile
                     result.graded_at = timezone.now()
                     result.save()
+                    
+                    # Mark the course enrollment as completed
+                    try:
+                        enrollment = CourseEnrollment.objects.get(
+                            student_semester_enrollment__student=result.student,
+                            course_offering=course_offering,
+                            status='enrolled'
+                        )
+                        enrollment.status = 'completed'
+                        enrollment.completed_at = timezone.now()
+                        enrollment.save()
+                    except CourseEnrollment.DoesNotExist:
+                        pass  # Handle case where enrollment doesn't exist
 
-                    messages.success(request, 'Result updated successfully.')
+                    messages.success(request, 'Result updated successfully and course enrollment marked as completed.')
                     return redirect('faculty_staff:exam_results', course_offering_id)
                 
                 except ExamResult.DoesNotExist:
@@ -3221,6 +3261,20 @@ def record_exam_results(request):
                             defaults=defaults
                         )
                         exam_result.save()
+                        
+                        # Mark the course enrollment as completed
+                        try:
+                            enrollment = CourseEnrollment.objects.get(
+                                student_semester_enrollment__student=student,
+                                course_offering=course_offering,
+                                status='enrolled'
+                            )
+                            enrollment.status = 'completed'
+                            enrollment.completed_at = timezone.now()
+                            enrollment.save()
+                        except CourseEnrollment.DoesNotExist:
+                            pass  # Handle case where enrollment doesn't exist
+                            
                         success_count += 1
                 
                 except Student.DoesNotExist:
@@ -3246,6 +3300,9 @@ def record_exam_results(request):
             return redirect('faculty_staff:exam_results', course_offering_id)
     
     return redirect('faculty_staff:exam_results', course_offering_id)
+
+
+
 
 def teacher_course_list(request):
     import logging

@@ -66,14 +66,34 @@
                             </span>
                         </p>
                     </div>
+                    {% if student.phone %}
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Personal Phone</span></label>
+                        <div class="flex items-center gap-2">
+                            <a href="https://wa.me/{{ student.phone|cut:' '|cut:'-'|cut:'('|cut:')'|cut:'+' }}" target="_blank" class="btn btn-ghost btn-sm">
+                                <i class="fab fa-whatsapp text-green-500 text-xl"></i>
+                                <span>WhatsApp</span>
+                            </a>
+                            <span>{{ student.phone }}</span>
+                        </div>
+                    </div>
+                    {% endif %}
                     <div class="form-control">
                         <label class="label"><span class="label-text">Emergency Contact</span></label>
                         <p>{{ student.emergency_contact|default:"N/A" }}</p>
                     </div>
+                    {% if student.emergency_phone %}
                     <div class="form-control">
                         <label class="label"><span class="label-text">Emergency Phone</span></label>
-                        <p>{{ student.emergency_phone|default:"N/A" }}</p>
+                        <div class="flex items-center gap-2">
+                            <a href="https://wa.me/{{ student.emergency_phone|cut:' '|cut:'-'|cut:'('|cut:')'|cut:'+' }}" target="_blank" class="btn btn-ghost btn-sm">
+                                <i class="fab fa-whatsapp text-green-500 text-xl"></i>
+                                <span>WhatsApp</span>
+                            </a>
+                            <span>{{ student.emergency_phone }}</span>
+                        </div>
                     </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -119,7 +139,13 @@
                     </div>
                     <div class="form-control">
                         <label class="label"><span class="label-text">Contact No</span></label>
-                        <p>{{ student.applicant.contact_no }}</p>
+                        <div class="flex items-center gap-2">
+                            <a href="https://wa.me/{{ student.applicant.contact_no|cut:' '|cut:'-'|cut:'('|cut:')'|cut:'+' }}" target="_blank" class="btn btn-ghost btn-sm">
+                                <i class="fab fa-whatsapp text-green-500 text-xl"></i>
+                                <span>WhatsApp</span>
+                            </a>
+                            <span>{{ student.applicant.contact_no }}</span>
+                        </div>
                     </div>
                     <div class="form-control">
                         <label class="label"><span class="label-text">Religion</span></label>

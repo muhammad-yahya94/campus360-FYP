@@ -58,7 +58,7 @@ from students.models import Student, StudentSemesterEnrollment, CourseEnrollment
 # Forms
 from .forms import (
     UserUpdateForm, TeacherUpdateForm, TeacherStatusForm,
-    PasswordChangeForm, QuestionForm, QuizForm, AssignmentForm
+    PasswordChangeForm, QuestionForm, QuizForm
 )
 
 # Decorators

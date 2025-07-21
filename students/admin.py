@@ -163,8 +163,8 @@ class StudentSemesterEnrollmentAdmin(admin.ModelAdmin):
 
 @admin.register(CourseEnrollment)
 class CourseEnrollmentAdmin(admin.ModelAdmin):
-    list_display = ('student_roll_no', 'student_name', 'course_offering', 'enrollment_date', 'status')
-    list_filter = ('status', 'enrollment_date', 'course_offering__course', 'course_offering__semester')
+    list_display = ('student_roll_no', 'student_name', 'course_offering', 'enrollment_date', 'status', 'is_repeat')
+    list_filter = ('status', 'is_repeat', 'enrollment_date', 'course_offering__course', 'course_offering__semester')
     search_fields = (
         'student_semester_enrollment__student__applicant__full_name', 
         'student_semester_enrollment__student__university_roll_no',

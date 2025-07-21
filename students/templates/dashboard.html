@@ -65,9 +65,16 @@
             </thead>
             <tbody>
               {% for enrollment in semester_data.courses %}
-              <tr>
+              <tr class="{% if enrollment.is_repeat %}bg-warning/10{% endif %}">
                 <td>{{ enrollment.course_offering.course.code }}</td>
-                <td>{{ enrollment.course_offering.course.name }}</td>
+                <td>
+                  <div class="flex items-center gap-2">
+                    {{ enrollment.course_offering.course.name }}
+                    {% if enrollment.is_repeat %}
+                    <span class="badge badge-warning badge-sm">Repeat</span>
+                    {% endif %}
+                  </div>
+                </td>
                 <td>{{ enrollment.course_offering.teacher.user.get_full_name|default:"TBA" }}</td>
                 <td>{{ enrollment.course_offering.get_offering_type_display }}</td>
                 <td>

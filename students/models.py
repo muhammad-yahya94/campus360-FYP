@@ -95,6 +95,7 @@ class CourseEnrollment(models.Model):
         ('completed', 'Completed'),
         ('dropped', 'Dropped'),
     ], default='enrolled', help_text="Select the status of this course enrollment.")
+    is_repeat = models.BooleanField(default=False, help_text="Indicates if this is a repeat enrollment in the course.")
 
     class Meta:
         verbose_name = "Course Enrollment"

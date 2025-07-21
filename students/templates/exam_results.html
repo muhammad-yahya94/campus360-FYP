@@ -44,7 +44,7 @@
                     </thead>
                     <tbody>
                         {% for result in semester_results %}
-                        <tr class="hover">
+                        <tr class="hover{% if result.grade == 'F' or result.is_fail %} bg-error text-error-content{% endif %}">
                             <td class="p-3 text-center">{{ forloop.counter }}</td>
                             <td class="p-3">{{ result.course_offering.course.code }}</td>
                             <td class="p-3">{{ result.course_offering.course.name }}</td>

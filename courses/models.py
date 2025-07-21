@@ -61,7 +61,7 @@ class CourseOffering(models.Model):
         ('internship', 'Internship / Training'),
         ('service', 'Service Course'),
         ('remedial', 'Remedial / Non-Credit'),
-    ]
+    ]   
 
     offering_type = models.CharField(
         max_length=30,
@@ -111,41 +111,56 @@ class TimetableSlot(models.Model):
     class Meta:
         unique_together = ['course_offering', 'day', 'start_time', 'venue']
 
-def clean(self):
-    # Validate time logic
-    if self.start_time >= self.end_time:
-        raise ValidationError("End time must be after start time.")
+    def clean(self):
+        # Validate time logic
+        if self.start_time >= self.end_time:
+            raise ValidationError("End time must be after start time.")
 
-    # ✅ Venue conflict check
-    overlapping_slots = TimetableSlot.objects.filter(
-        course_offering__academic_session=self.course_offering.academic_session,
-        day=self.day,
-        venue=self.venue,
-        start_time__lt=self.end_time,
-        end_time__gt=self.start_time
-    ).exclude(id=self.id)
+        # Skip conflict checks if this is part of a replacement being created
+        is_replacement = hasattr(self, '_is_replacement') and self._is_replacement
+        
+        # Only check for conflicts if the semester is active
+        if self.course_offering.semester.is_active:
+            # Venue conflict check - only check against other active semesters
+            overlapping_slots = TimetableSlot.objects.filter(
+                course_offering__academic_session=self.course_offering.academic_session,
+                course_offering__semester__is_active=True,  # Only check against active semesters
+                day=self.day,
+                venue=self.venue,
+                start_time__lt=self.end_time,
+                end_time__gt=self.start_time
+            ).exclude(id=self.id)
 
-    if overlapping_slots.exists():
-        raise ValidationError(
-            f"Venue {self.venue.name} is already booked on {self.get_day_display()} from {self.start_time} to {self.end_time}."
-        )
+            if overlapping_slots.exists() and not is_replacement:
+                raise ValidationError(
+                    f"Venue {self.venue.name} is already booked on {self.get_day_display()} from {self.start_time} to {self.end_time} "
+                    f"for an active semester."
+                )
 
-    # ✅ Teacher conflict check (only if both semesters are active)
-    teacher_slots = TimetableSlot.objects.filter(
-        course_offering__teacher=self.course_offering.teacher,
-        day=self.day,
-        start_time__lt=self.end_time,
-        end_time__gt=self.start_time
-    ).exclude(id=self.id)
+        # Get the teacher to check - use replacement_teacher if this is a replacement
+        teacher_to_check = self.course_offering.replacement_teacher if is_replacement else self.course_offering.teacher
+        
+        if teacher_to_check:  # Only check if we have a teacher to check
+            # Teacher conflict check - only check against active semesters
+            teacher_slots = TimetableSlot.objects.filter(
+                course_offering__teacher=teacher_to_check,
+                course_offering__semester__is_active=True,  # Only check against active semesters
+                day=self.day,
+                start_time__lt=self.end_time,
+                end_time__gt=self.start_time
+            ).exclude(id=self.id)
 
-    for slot in teacher_slots:
-        if slot.course_offering.semester.is_active and self.course_offering.semester.is_active:
-            raise ValidationError(
-                f"Time conflict: Teacher {self.course_offering.teacher.user.get_full_name()} is already scheduled on "
-                f"{self.get_day_display()} from {slot.start_time} to {slot.end_time} for an active semester."
-            )
-
-
+            for slot in teacher_slots:
+                # Only check if both semesters are active
+                if slot.course_offering.semester.is_active and self.course_offering.semester.is_active:
+                    # Skip if this is the same course being replaced
+                    if is_replacement and slot.course_offering_id == self.course_offering_id:
+                        continue
+                        
+                    raise ValidationError(
+                        f"Time conflict: Teacher {teacher_to_check.user.get_full_name()} is already scheduled on "
+                        f"{self.get_day_display()} from {slot.start_time} to {slot.end_time} for an active semester."
+                    )
 
 
 # New LectureReplacement model
@@ -400,6 +415,7 @@ class ExamResult(models.Model):
     percentage = models.FloatField(null=True, blank=True, help_text="Overall percentage for the exam result.")
     
     # Common fields
+    is_fail = models.BooleanField(default=False, help_text="Indicates if the student failed this course.")
     graded_by = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True, related_name='graded_results', help_text="The teacher who graded this exam.")
     graded_at = models.DateTimeField(auto_now_add=True, help_text="The date and time when the result was recorded.")
     remarks = models.TextField(blank=True, null=True, help_text="Additional remarks or comments on the student's performance.")

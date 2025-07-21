@@ -87,8 +87,8 @@ class NoticeAdmin(admin.ModelAdmin):
 
 @admin.register(ExamResult)
 class ExamResultAdmin(admin.ModelAdmin):
-    list_display = ('course_offering', 'student', 'remarks', 'graded_by', 'graded_at')
-    list_filter = ('course_offering__academic_session', 'course_offering__semester', 'graded_at')
+    list_display = ('course_offering', 'student', 'is_fail', 'remarks', 'graded_by', 'graded_at')
+    list_filter = ('is_fail', 'course_offering__academic_session', 'course_offering__semester', 'graded_at')
     search_fields = ('student__applicant__full_name', 'course_offering__course__name')
     raw_id_fields = ('course_offering', 'student', 'graded_by')
     date_hierarchy = 'graded_at'

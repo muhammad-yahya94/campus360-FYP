@@ -1388,13 +1388,11 @@ def grant_admission_single(request, entry_id):
 
 
 
-
 @login_required
 def manual_course_enrollment(request):
-    # Initialize context with minimal data initially
     context = {
-        'semesters': Semester.objects.none(),  # Start with empty queryset
-        'courses': CourseOffering.objects.none(),  # Start with empty queryset
+        'semesters': Semester.objects.none(),
+        'courses': CourseOffering.objects.none(),
     }
 
     if request.method == 'POST':
@@ -1409,33 +1407,45 @@ def manual_course_enrollment(request):
             try:
                 student = Student.objects.select_related('applicant').get(university_roll_no=university_roll_no)
                 context['student'] = student
-                # Get student's program
                 student_program = student.applicant.program
                 
-                # Filter semesters by student's program and order by start time and number
                 context['semesters'] = Semester.objects.filter(
                     program=student_program
                 ).select_related('session').order_by('start_time', 'number')
                 
-                # Filter courses by student's program, include semester and academic session data, and order by session year and course code
                 courses = CourseOffering.objects.filter(
                     program=student_program
                 ).select_related('course', 'semester', 'academic_session').order_by('academic_session__start_year', 'course__code')
                 
-                # Convert to list of dicts with required fields for the template
+                # Check for previously taken courses
+                previously_taken_courses = set(
+                    CourseEnrollment.objects.filter(
+                        student_semester_enrollment__student=student,
+                        course_offering__course__in=[c.course for c in courses]
+                    ).values_list('course_offering__course_id', flat=True)
+                )
+                
+                # Create course data with repeat status
+                course_data = []
+                for course in courses:
+                    is_repeat = course.course.id in previously_taken_courses
+                    course_data.append({
+                        'course': course,
+                        'is_repeat': is_repeat
+                    })
+                
                 context['courses_json'] = [
                     {
                         'id': course.id,
                         'name': f"{course.course.code} - {course.course.name}",
-                        'semester_id': course.semester.id
+                        'semester_id': course.semester.id,
+                        'is_repeat': course.course.id in previously_taken_courses
                     }
                     for course in courses
                 ]
-                context['courses'] = courses  # Keep original queryset for backward compatibility
+                context['course_data'] = course_data
                 
-                # Debug information
-                print(f"Found {context['semesters'].count()} semesters and {context['courses'].count()} "
-                      f"courses for program: {student_program}")
+                print(f"Found {context['semesters'].count()} semesters and {len(courses)} courses for program: {student_program}")
                 return render(request, 'fee_management/manual_course_enrollment.html', context)
                 
             except Student.DoesNotExist:
@@ -1464,8 +1474,6 @@ def manual_course_enrollment(request):
                 with transaction.atomic():
                     student = Student.objects.select_related('applicant').get(pk=student_id)
                     semester = Semester.objects.get(pk=semester_id)
-
-                    # Create or get semester enrollment
                     semester_enrollment, created = StudentSemesterEnrollment.objects.get_or_create(
                         student=student,
                         semester=semester,
@@ -1475,17 +1483,43 @@ def manual_course_enrollment(request):
                         }
                     )
 
-                    # Create course enrollments
                     enrolled_courses = []
+                    repeat_enrollments = []
+                    previous_enrollments = CourseEnrollment.objects.filter(
+                        student_semester_enrollment__student=student,
+                        course_offering__course__in=[CourseOffering.objects.get(pk=cid).course for cid in course_ids]
+                    ).select_related('course_offering__course')
+                    previous_course_ids = {e.course_offering.course.id for e in previous_enrollments}
+                    
                     for course_id in course_ids:
                         course_offering = CourseOffering.objects.get(pk=course_id)
-                        enrollment, created = CourseEnrollment.objects.get_or_create(
+                        is_repeat = course_offering.course.id in previous_course_ids
+                        existing_enrollment = CourseEnrollment.objects.filter(
+                            student_semester_enrollment=semester_enrollment,
+                            course_offering=course_offering
+                        ).first()
+                        
+                        if existing_enrollment:
+                            messages.info(request, f"Already enrolled in {course_offering.course.name} for this semester.")
+                            continue
+                            
+                        enrollment = CourseEnrollment.objects.create(
                             student_semester_enrollment=semester_enrollment,
                             course_offering=course_offering,
-                            defaults={'status': 'enrolled'}
+                            status='enrolled',
+                            is_repeat=is_repeat
                         )
-                        if created:
-                            enrolled_courses.append(course_offering.course.name)
+                        
+                        if is_repeat:
+                            repeat_enrollments.append(course_offering.course.name)
+                        enrolled_courses.append(course_offering.course.name)
+                    
+                    if repeat_enrollments:
+                        messages.info(
+                            request, 
+                            f"The following courses are being repeated: {', '.join(repeat_enrollments)}. "
+                            "The repeat flag has been set for these enrollments."
+                        )
 
                     if enrolled_courses:
                         messages.success(
@@ -1506,7 +1540,6 @@ def manual_course_enrollment(request):
             except Exception as e:
                 messages.error(request, f"An error occurred: {str(e)}")
                 
-            # If we get here, there was an error - repopulate the form
             try:
                 context['student'] = Student.objects.get(pk=student_id)
             except Student.DoesNotExist:
@@ -1514,5 +1547,4 @@ def manual_course_enrollment(request):
                 
             return render(request, 'fee_management/manual_course_enrollment.html', context)
 
-    # GET request or any other case
     return render(request, 'fee_management/manual_course_enrollment.html', context)

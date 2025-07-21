@@ -91,6 +91,9 @@ def student_login(request):
 
     return render(request, 'login.html')
 
+
+
+
 def student_dashboard(request):
     logger.info("Starting student_dashboard view for user: %s", request.user)
     
@@ -122,6 +125,25 @@ def student_dashboard(request):
     course_enrollments = []
     semester_courses = {}
     
+    # Get all course enrollments with is_repeat flag
+    all_enrollments = CourseEnrollment.objects.filter(
+        student_semester_enrollment__student=student
+    ).select_related(
+        'course_offering__course',
+        'student_semester_enrollment__semester'
+    ).order_by('student_semester_enrollment__semester__start_time')
+    
+    # Debug: Print course enrollment status
+    logger.debug("Course enrollments for student %s:", student.applicant.full_name)
+    for enroll in all_enrollments:
+        logger.debug(
+            "  Course %s (ID: %s) - Status: %s, is_repeat: %s",
+            enroll.course_offering.course.code,
+            enroll.id,
+            enroll.status,
+            enroll.is_repeat
+        )
+    
     for sem_enrollment in semester_enrollments:
         # Get all course enrollments for this semester
         sem_courses = CourseEnrollment.objects.filter(
@@ -134,14 +156,25 @@ def student_dashboard(request):
             'course_offering__academic_session'
         ).order_by('course_offering__course__code')
         
-        if sem_courses.exists():
+        # Use the is_repeat flag directly from the model
+        annotated_courses = list(sem_courses)
+        for course in annotated_courses:
+            logger.debug(
+                "Course %s (ID: %s) - Status: %s, is_repeat: %s",
+                course.course_offering.course.code,
+                course.id,
+                course.status,
+                course.is_repeat
+            )
+        
+        if annotated_courses:
             semester_courses[sem_enrollment.semester.id] = {
                 'semester': sem_enrollment.semester,
-                'courses': sem_courses,
+                'courses': annotated_courses,
                 'session': sem_enrollment.semester.session,
                 'is_active': sem_enrollment.semester.is_active
             }
-            course_enrollments.extend(sem_courses)
+            course_enrollments.extend(annotated_courses)
 
     # Get the most recent active semester for the student's program and session
     active_semester = Semester.objects.filter(
@@ -618,6 +651,12 @@ def exam_results(request):
     for result in non_opt_results:
         result.quality_points = calculate_quality_points(result)
         result.grade = calculate_grade(result.percentage)
+        
+        # Set is_fail based on grade and save to database
+        if result.grade == 'F' and not result.is_fail:
+            result.is_fail = True
+            result.save(update_fields=['is_fail'])
+        
         result.effective_credit_hour = result.course_offering.course.credits
         result.course_marks = result.course_offering.course.credits * 20 + (
             result.course_offering.course.lab_work * 20 if result.course_offering.course.lab_work > 0 else 0

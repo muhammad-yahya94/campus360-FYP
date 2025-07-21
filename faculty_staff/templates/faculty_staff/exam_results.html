@@ -410,26 +410,41 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalMarks = button.dataset.totalmarks || 0;
             const percentage = button.dataset.percentage || 0;
             const remarks = button.dataset.remarks || '';
+            const hasPractical = {{ course_offering.course.lab_work|default:0 }} > 0;
 
             document.getElementById('edit_result_id').value = resultId;
             document.getElementById('edit_course_offering_id').value = courseOfferingId;
             document.getElementById('edit_student_id').value = studentId;
-            document.getElementById('edit_midterm').value = midterm;
-            document.getElementById('edit_sessional').value = sessional;
-            document.getElementById('edit_final').value = final;
-            if (hasPractical) {
-                document.getElementById('edit_practical').value = practical;
+            // Set form values
+            const midtermInput = document.getElementById('edit_midterm');
+            const sessionalInput = document.getElementById('edit_sessional');
+            const finalInput = document.getElementById('edit_final');
+            const practicalInput = document.getElementById('edit_practical');
+            const totalObtainedInput = document.getElementById('edit_total_obtained');
+            const percentageInput = document.getElementById('edit_percentage');
+            const remarksInput = document.getElementById('edit_remarks');
+
+            if (midtermInput) midtermInput.value = midterm || 0;
+            if (sessionalInput) sessionalInput.value = sessional || 0;
+            if (finalInput) finalInput.value = final || 0;
+            if (hasPractical && practicalInput) {
+                practicalInput.value = practical || 0;
             }
-            document.getElementById('edit_total_obtained').value = parseFloat(totalMarks).toFixed(2);
-            document.getElementById('edit_percentage').value = parseFloat(percentage).toFixed(2) + '%';
-            document.getElementById('edit_remarks').value = remarks;
+            if (totalObtainedInput) totalObtainedInput.value = parseFloat(totalMarks || 0).toFixed(2);
+            if (percentageInput) percentageInput.value = parseFloat(percentage || 0).toFixed(2) + '%';
+            if (remarksInput) remarksInput.value = remarks;
 
             // Update max marks in modal
-            document.getElementById('edit_midterm_max').textContent = midtermMax;
-            document.getElementById('edit_sessional_max').textContent = sessionalMax;
-            document.getElementById('edit_final_max').textContent = finalMax;
-            if (hasPractical) {
-                document.getElementById('edit_practical_max').textContent = practicalMax;
+            const midtermMaxEl = document.getElementById('edit_midterm_max');
+            const sessionalMaxEl = document.getElementById('edit_sessional_max');
+            const finalMaxEl = document.getElementById('edit_final_max');
+            const practicalMaxEl = document.getElementById('edit_practical_max');
+            
+            if (midtermMaxEl) midtermMaxEl.textContent = {{ midterm_max|default:0 }};
+            if (sessionalMaxEl) sessionalMaxEl.textContent = {{ sessional_max|default:0 }};
+            if (finalMaxEl) finalMaxEl.textContent = {{ final_max|default:0 }};
+            if (hasPractical && practicalMaxEl) {
+                practicalMaxEl.textContent = {{ practical_max|default:0 }};
             }
         });
     });

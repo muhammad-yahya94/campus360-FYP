@@ -41,6 +41,9 @@
                     <div class="form-control w-full mt-4">
                         <label class="label">
                             <span class="label-text">Password</span>
+                            <a href="#" class="label-text-alt link link-hover" onclick="event.preventDefault(); document.getElementById('forgotPasswordModal').showModal()">
+                                Forgot password?
+                            </a>
                         </label>
                         <input type="password" class="input input-bordered w-full" id="password" name="password" placeholder="Password" required>
                     </div>
@@ -67,6 +70,27 @@
             </div>
         </div>
     </div>
+
+    <!-- Forgot Password Modal -->
+    <dialog id="forgotPasswordModal" class="modal">
+        <div class="modal-box">
+            <h3 class="font-bold text-lg">Reset Password</h3>
+            <p class="py-4">Enter your email address and we'll send you a link to reset your password.</p>
+            <form id="forgotPasswordForm" method="post" action="{% url 'students:password_reset' %}">
+                {% csrf_token %}
+                <div class="form-control w-full mb-4">
+                    <input type="email" name="email" class="input input-bordered w-full" placeholder="Enter your email" required>
+                </div>
+                <div class="modal-action">
+                    <button type="button" class="btn btn-ghost" onclick="document.getElementById('forgotPasswordModal').close()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Send Reset Link</button>
+                </div>
+            </form>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
 
     <!-- DaisyUI Theme Switcher -->
     <script>

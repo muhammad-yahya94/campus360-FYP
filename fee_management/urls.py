@@ -1,5 +1,9 @@
-from django.urls import path
+from django.urls import path, include
 from . import views
+from .auth_views import (
+    OfficePasswordResetView, OfficePasswordResetDoneView,
+    OfficePasswordResetConfirmView, OfficePasswordResetCompleteView
+)
 from django.shortcuts import render
 
 app_name = 'fee_management'
@@ -40,4 +44,15 @@ urlpatterns = [
     path('get_programs/', views.get_programs, name='get_programs'),  # 7.1 Get Programs (AJAX)
     path('get_semesters/', views.get_semesters, name='get_semesters'),  # 7.2 Get Semesters (AJAX)
     path('get_semesters_by_roll/', views.get_semesters_by_roll, name='get_semesters_by_roll'),  # 7.3 Get Semesters by Roll (AJAX)
+    
+    
+    
+    # ========= 8. course enrollment ========
+    path('manual-course-enrollment/', views.manual_course_enrollment, name='manual_course_enrollment'),
+    
+    # ========== 9. Password Reset ==========
+    path('password-reset/', OfficePasswordResetView.as_view(), name='password_reset'),
+    path('password-reset/done/', OfficePasswordResetDoneView.as_view(), name='password_reset_done'),
+    path('reset/<uidb64>/<token>/', OfficePasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('reset/done/', OfficePasswordResetCompleteView.as_view(), name='password_reset_complete'),
 ] 

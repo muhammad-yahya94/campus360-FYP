@@ -1,5 +1,7 @@
 from django.urls import path
 from . import views
+from . import auth_views
+
 
 app_name = 'students'
 
@@ -7,6 +9,12 @@ urlpatterns = [
     # ========== 1. Authentication ==========
     path('login/', views.student_login, name='login'),  # 1.1 Login
     path('logout/', views.logout_view, name='logout'),  # 1.2 Logout
+    
+    # ========== 2. Password Reset ==========
+    path('password-reset/', auth_views.StudentPasswordResetView.as_view(), name='password_reset'),
+    path('password-reset/done/', auth_views.StudentPasswordResetDoneView.as_view(), name='password_reset_done'),
+    path('reset/<uidb64>/<token>/', auth_views.StudentPasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('reset/done/', auth_views.StudentPasswordResetCompleteView.as_view(), name='password_reset_complete'),
 
     # ========== 2. Dashboard ==========
     path('dashboard/', views.student_dashboard, name='dashboard'),  # 2.1 Student Dashboard

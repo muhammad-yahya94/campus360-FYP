@@ -109,6 +109,40 @@ def student_dashboard(request):
         messages.error(request, 'You are not authorized as a student.')
         return redirect('students:login')
 
+    # Get all semester enrollments for the student with related data
+    semester_enrollments = StudentSemesterEnrollment.objects.filter(
+        student=student
+    ).select_related(
+        'semester',
+        'semester__session',
+        'semester__program'
+    ).order_by('-semester__start_time', '-semester__number')
+
+    # Get all course enrollments across all semesters, including reattempts
+    course_enrollments = []
+    semester_courses = {}
+    
+    for sem_enrollment in semester_enrollments:
+        # Get all course enrollments for this semester
+        sem_courses = CourseEnrollment.objects.filter(
+            student_semester_enrollment=sem_enrollment,
+            status__in=['enrolled', 'reattempt']  # Include both regular and reattempt enrollments
+        ).select_related(
+            'course_offering__course',
+            'course_offering__semester',
+            'course_offering__teacher__user',
+            'course_offering__academic_session'
+        ).order_by('course_offering__course__code')
+        
+        if sem_courses.exists():
+            semester_courses[sem_enrollment.semester.id] = {
+                'semester': sem_enrollment.semester,
+                'courses': sem_courses,
+                'session': sem_enrollment.semester.session,
+                'is_active': sem_enrollment.semester.is_active
+            }
+            course_enrollments.extend(sem_courses)
+
     # Get the most recent active semester for the student's program and session
     active_semester = Semester.objects.filter(
         program=student.program,
@@ -116,40 +150,8 @@ def student_dashboard(request):
         is_active=True
     ).order_by('-number').first()
 
-    if not active_semester:
-        return render(request, 'dashboard.html', {
-            'student': student,
-            'active_semester': None,
-            'enrollments': [],
-        })
-
-    # Get the student's enrollment for the active semester
-    try:
-        enrolled = StudentSemesterEnrollment.objects.get(
-            student=student,
-            semester=active_semester
-        )
-    except StudentSemesterEnrollment.DoesNotExist:
-        logger.warning("Student is not enrolled in active semester: %s", active_semester)
-        enrolled = None
-
-    if enrolled:
-        enrollments = CourseEnrollment.objects.filter(
-            student_semester_enrollment=enrolled,
-            status='enrolled'  # show only enrolled courses
-        ).select_related(
-            'course_offering__course',
-            'course_offering__semester',
-            'course_offering__teacher__user'
-        )
-    else:
-        enrollments = []
-
-    logger.debug("Found %d course(s) in active semester", len(enrollments))
-
-    # Start with base queryset
+    # Get recent notices
     from django.utils import timezone
-    
     notices = Notice.objects.filter(
         Q(programs__in=[student.program]) | Q(programs__isnull=True)
     ).filter(
@@ -157,12 +159,16 @@ def student_dashboard(request):
         valid_from__lte=timezone.now(),
     ).distinct().order_by('-created_at')[:3]
 
-    print(notices)
+    logger.debug("Found %d course enrollment(s) across %d semesters", 
+                len(course_enrollments), len(semester_courses))
+
     return render(request, 'dashboard.html', {
         'student': student,
         'active_semester': active_semester,
-        'enrollments': enrollments,
-        'notices': notices
+        'semester_courses': semester_courses,
+        'notices': notices,
+        'current_session': current_session,
+        'all_enrollments': course_enrollments,
     })
 
 

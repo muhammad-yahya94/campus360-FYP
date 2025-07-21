@@ -522,7 +522,7 @@ $(document).ready(function() {
                         loadStudentsAndAttendance(courseOfferingId, shift);
                     }
                 } else {
-                    showMessageCard('error', 'Error', 'Course offering not found.     |      this is maybe due to internet issue , please one check students by changing shift');
+                    showMessageCard('error', 'Error', 'Course offering not found.     |      Please Select shift first');
                     $('#course-offering-text').text('Course offering not found.');
                     console.error('[INIT] Course offering not found');
                 }
@@ -620,4 +620,4 @@ $(document).ready(function() {
     });
 });
 </script>
-{% endblock %}
+{% endblock %}  

@@ -16,14 +16,20 @@ from .models import SemesterFee, FeeType, FeeVoucher, StudentFeePayment, FeeToPr
 from academics.models import Program, Semester  # Added Semester import
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.conf import settings
-from django.http import HttpResponse, Http404
+from django.http import HttpResponse, Http404, JsonResponse
 from django.utils import timezone
+from django.views.decorators.http import require_http_methods
+from django.contrib import messages
+from django.shortcuts import render, redirect
+from django.db import transaction
+from students.models import StudentSemesterEnrollment, CourseEnrollment
 
 from .models import SemesterFee, FeeType, FeeVoucher, StudentFeePayment
 from students.models import Student
 from academics.models import Program
 from admissions.models import AcademicSession
 from fee_management.models import FeeToProgram
+from courses.models import CourseOffering
 from faculty_staff.models import Office, OfficeStaff
 from students.models import Student
 from decimal import Decimal
@@ -1373,3 +1379,140 @@ def grant_admission_single(request, entry_id):
             'success': False,
             'message': f"{applicant.full_name} is already admitted."
         })
+
+
+
+
+
+
+
+
+
+
+@login_required
+def manual_course_enrollment(request):
+    # Initialize context with minimal data initially
+    context = {
+        'semesters': Semester.objects.none(),  # Start with empty queryset
+        'courses': CourseOffering.objects.none(),  # Start with empty queryset
+    }
+
+    if request.method == 'POST':
+        step = request.POST.get('step')
+
+        if step == 'lookup':
+            university_roll_no = request.POST.get('university_roll_no')
+            if not university_roll_no:
+                messages.error(request, "Please enter a university roll number.")
+                return render(request, 'fee_management/manual_course_enrollment.html', context)
+                
+            try:
+                student = Student.objects.select_related('applicant').get(university_roll_no=university_roll_no)
+                context['student'] = student
+                # Get student's program
+                student_program = student.applicant.program
+                
+                # Filter semesters by student's program and order by start time and number
+                context['semesters'] = Semester.objects.filter(
+                    program=student_program
+                ).select_related('session').order_by('start_time', 'number')
+                
+                # Filter courses by student's program, include semester and academic session data, and order by session year and course code
+                courses = CourseOffering.objects.filter(
+                    program=student_program
+                ).select_related('course', 'semester', 'academic_session').order_by('academic_session__start_year', 'course__code')
+                
+                # Convert to list of dicts with required fields for the template
+                context['courses_json'] = [
+                    {
+                        'id': course.id,
+                        'name': f"{course.course.code} - {course.course.name}",
+                        'semester_id': course.semester.id
+                    }
+                    for course in courses
+                ]
+                context['courses'] = courses  # Keep original queryset for backward compatibility
+                
+                # Debug information
+                print(f"Found {context['semesters'].count()} semesters and {context['courses'].count()} "
+                      f"courses for program: {student_program}")
+                return render(request, 'fee_management/manual_course_enrollment.html', context)
+                
+            except Student.DoesNotExist:
+                messages.error(request, f"No student found with university roll number {university_roll_no}.")
+                return render(request, 'fee_management/manual_course_enrollment.html', context)
+                
+            except Exception as e:
+                messages.error(request, f"An error occurred: {str(e)}")
+                return render(request, 'fee_management/manual_course_enrollment.html', context)
+
+        elif step == 'enroll':
+            student_id = request.POST.get('student_id')
+            semester_id = request.POST.get('semester')
+            course_ids = request.POST.getlist('courses')
+
+            if not course_ids:
+                messages.error(request, "Please select at least one course.")
+                if student_id:
+                    try:
+                        context['student'] = Student.objects.get(pk=student_id)
+                    except Student.DoesNotExist:
+                        pass
+                return render(request, 'fee_management/manual_course_enrollment.html', context)
+
+            try:
+                with transaction.atomic():
+                    student = Student.objects.select_related('applicant').get(pk=student_id)
+                    semester = Semester.objects.get(pk=semester_id)
+
+                    # Create or get semester enrollment
+                    semester_enrollment, created = StudentSemesterEnrollment.objects.get_or_create(
+                        student=student,
+                        semester=semester,
+                        defaults={
+                            'status': 'enrolled',
+                            'enrollment_date': timezone.now().date()
+                        }
+                    )
+
+                    # Create course enrollments
+                    enrolled_courses = []
+                    for course_id in course_ids:
+                        course_offering = CourseOffering.objects.get(pk=course_id)
+                        enrollment, created = CourseEnrollment.objects.get_or_create(
+                            student_semester_enrollment=semester_enrollment,
+                            course_offering=course_offering,
+                            defaults={'status': 'enrolled'}
+                        )
+                        if created:
+                            enrolled_courses.append(course_offering.course.name)
+
+                    if enrolled_courses:
+                        messages.success(
+                            request, 
+                            f"Successfully enrolled {student.applicant.full_name} in: {', '.join(enrolled_courses)}"
+                        )
+                    else:
+                        messages.info(request, "No new courses were enrolled. The student was already enrolled in all selected courses.")
+                    
+                    return redirect('fee_management:manual_course_enrollment')
+
+            except Student.DoesNotExist:
+                messages.error(request, "Selected student does not exist.")
+            except Semester.DoesNotExist:
+                messages.error(request, "Selected semester does not exist.")
+            except CourseOffering.DoesNotExist:
+                messages.error(request, "One or more selected courses are invalid.")
+            except Exception as e:
+                messages.error(request, f"An error occurred: {str(e)}")
+                
+            # If we get here, there was an error - repopulate the form
+            try:
+                context['student'] = Student.objects.get(pk=student_id)
+            except Student.DoesNotExist:
+                pass
+                
+            return render(request, 'fee_management/manual_course_enrollment.html', context)
+
+    # GET request or any other case
+    return render(request, 'fee_management/manual_course_enrollment.html', context)

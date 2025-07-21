@@ -1,0 +1,213 @@
+{% extends 'fee_management/office_base.html' %}
+
+{% block title %}Manual Course Enrollment{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-bold mb-6">Manual Course Enrollment</h1>
+
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <!-- Step 1: Student Roll Number Input -->
+            <form method="POST" class="space-y-6" id="student-lookup-form">
+                {% csrf_token %}
+                <input type="hidden" name="step" value="lookup">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Enter University Roll Number</span>
+                    </label>
+                    <div class="flex gap-2">
+                        <input type="number" name="university_roll_no" class="input input-bordered w-full" placeholder="Enter student's university roll number" min="1" required>
+                        <button type="submit" class="btn btn-primary">Find Student</button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Step 2: Display Student Details and Enrollment Form -->
+            {% if student %}
+            <div class="mt-6">
+                <h2 class="text-xl font-semibold mb-4">Student Details</h2>
+                <div class="bg-base-200 p-4 rounded-lg">
+                    <p><strong>Name:</strong> {{ student.applicant.full_name }}</p>
+                    <p><strong>University Roll No:</strong> {{ student.university_roll_no }}</p>
+                    <p><strong>Registration No:</strong> {{ student.Registration_number|default:"Not set" }}</p>
+                    <p><strong>Program:</strong> {{ student.program }}</p>
+                    <p><strong>Current Status:</strong> {{ student.get_current_status_display }}</p>
+                    <p><strong>Enrollment Date:</strong> {{ student.enrollment_date }}</p>
+                    {% if student.graduation_date %}
+                    <p><strong>Graduation Date:</strong> {{ student.graduation_date }}</p>
+                    {% endif %}
+                </div>
+
+                <form method="POST" class="space-y-6 mt-6" id="enrollment-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="step" value="enroll">
+                    <input type="hidden" name="student_id" value="{{ student.pk }}">
+
+                    <!-- Semester Selection -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-semibold">Select Semester</span>
+                        </label>
+                        <select name="semester" class="select select-bordered w-full" required>
+                            <option value="" disabled selected>Select a semester</option>
+                            {% for semester in semesters %}
+                            <option value="{{ semester.pk }}">{{ semester }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Course Selection -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-semibold">Select Courses</span>
+                        </label>
+                        <div class="max-h-64 overflow-y-auto border rounded-lg p-2" id="course-container">
+                            {% for course in courses %}
+                            <div class="form-control course-item" data-semester="{{ course.semester.id }}">
+                                <label class="label cursor-pointer justify-start gap-2 hover:bg-base-200 p-2 rounded">
+                                    <input type="checkbox" name="courses" value="{{ course.pk }}" class="checkbox checkbox-primary" data-semester="{{ course.semester.id }}" />
+                                    <span class="label-text ml-2">{{ course.course.name }} ({{ course.semester }})</span>
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="form-control mt-6">
+                        <button type="submit" class="btn btn-primary w-full">Enroll Student</button>
+                    </div>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Prevent form submission on Enter key for lookup form
+        document.getElementById('student-lookup-form')?.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                this.querySelector('button[type="submit"]').click();
+            }
+        });
+
+        // Ensure at least one course is selected before submitting enrollment form
+        document.getElementById('enrollment-form')?.addEventListener('submit', function(event) {
+            const coursesChecked = this.querySelectorAll('input[name="courses"]:checked').length;
+            if (coursesChecked === 0) {
+                event.preventDefault();
+                alert('Please select at least one course.');
+            }
+        });
+
+        // Auto-select semester when a course is selected
+        const courseCheckboxes = document.querySelectorAll('input[name="courses"]');
+        const semesterSelect = document.querySelector('select[name="semester"]');
+        
+        // Create a map of course IDs to their semester IDs
+        const courseSemesterMap = {
+            {% for course in courses %}
+                '{{ course.id }}': '{{ course.semester.id }}',
+            {% endfor %}
+        };
+
+        // Add change event listeners to all course checkboxes
+        courseCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    // When a course is checked, set the corresponding semester
+                    const semesterId = courseSemesterMap[this.value];
+                    if (semesterId && semesterSelect) {
+                        semesterSelect.value = semesterId;
+                        
+                        // Trigger change event in case there are other listeners
+                        const event = new Event('change');
+                        semesterSelect.dispatchEvent(event);
+                    }
+                }
+            });
+        });
+        
+        // Filter courses based on selected semester
+        function filterCoursesBySemester() {
+            const selectedSemester = semesterSelect.value;
+            const courseItems = document.querySelectorAll('.course-item');
+            
+            courseItems.forEach(item => {
+                const itemSemester = item.dataset.semester;
+                if (selectedSemester === '' || itemSemester === selectedSemester) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+        
+        // Update semester selection when any course checkbox changes
+        function updateSemesterSelection() {
+            const checkedCourses = Array.from(document.querySelectorAll('input[name="courses"]:checked'));
+            
+            if (checkedCourses.length === 0) {
+                return;
+            }
+            
+            const semesterIds = checkedCourses
+                .map(checkbox => checkbox.dataset.semester)
+                .filter((v, i, a) => a.indexOf(v) === i); // Get unique semester IDs
+                
+            if (semesterIds.length === 1) {
+                // All selected courses are from the same semester
+                if (semesterSelect.value !== semesterIds[0]) {
+                    semesterSelect.value = semesterIds[0];
+                    filterCoursesBySemester();
+                }
+            } else if (semesterIds.length > 1) {
+                // Courses from multiple semesters selected
+                console.warn('Courses from multiple semesters selected');
+            }
+        }
+        
+        // Handle course selection changes
+        function handleCourseSelection(event) {
+            const checkbox = event.target;
+            const courseItem = checkbox.closest('.course-item');
+            
+            if (!checkbox.checked) {
+                // If unchecking, just update the semester selection
+                updateSemesterSelection();
+                return;
+            }
+            
+            // If checking, first update the semester
+            const semesterId = courseItem.dataset.semester;
+            if (semesterSelect.value !== semesterId) {
+                semesterSelect.value = semesterId;
+                filterCoursesBySemester();
+            }
+            
+            // Then update the semester selection
+            updateSemesterSelection();
+        }
+        
+        // Add event listeners
+        if (semesterSelect) {
+            semesterSelect.addEventListener('change', filterCoursesBySemester);
+        }
+        
+        // Use event delegation for course checkboxes
+        document.getElementById('course-container').addEventListener('change', function(event) {
+            if (event.target.matches('input[type="checkbox"]')) {
+                handleCourseSelection(event);
+            }
+        });
+        
+        // Initial filter on page load
+        filterCoursesBySemester();
+    });
+</script>
+{% endblock %}

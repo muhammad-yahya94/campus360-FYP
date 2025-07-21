@@ -1,0 +1,42 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %} | Campus360 Admin</title>
+    <link rel="stylesheet" href="{% static 'admin/css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'admin/css/login.css' %}">
+    {% block extrastyle %}{% endblock %}
+</head>
+<body class="{% block bodyclass %}{% endblock %}">
+    <div id="container">
+        {% block nav-sidebar %}
+            <div id="nav-sidebar">
+                <div id="branding">
+                    <h1 id="site-name">{% block branding %}{% endblock %}</h1>
+                </div>
+                {% block nav-global %}{% endblock %}
+            </div>
+        {% endblock %}
+
+        <div id="main">
+            {% block breadcrumbs %}
+                <div class="breadcrumbs">
+                    {% block breadcrumb %}{% endblock %}
+                </div>
+            {% endblock %}
+
+            {% block content %}{% endblock %}
+
+            {% block footer %}
+                <div id="footer">
+                    <div class="footer-text">
+                        {% trans 'Thank you for using Campus360.' %}
+                    </div>
+                </div>
+            {% endblock %}
+        </div>
+    </div>
+</body>
+</html>

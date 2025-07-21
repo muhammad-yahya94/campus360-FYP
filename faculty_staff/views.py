@@ -667,7 +667,7 @@ def teacher_lecture_details(request, teacher_id):
         normal_count=Count('id', filter=Q(
             recorded_by=teacher,
             course_offering__teacher=teacher,
-            course_offering__replacement_teacher__isnull=True
+            course_offering__replacement_teacher__isnull=True   
         ), distinct=True),
         replacement_count=Count('id', filter=Q(
             recorded_by=teacher,
@@ -2939,6 +2939,8 @@ def search_students(request):
             'more': False
         })
     return JsonResponse({'results': [], 'more': False})
+
+
 
 
 

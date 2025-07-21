@@ -6,17 +6,16 @@ from faculty_staff.models import Teacher
 from django.utils import timezone
 
 
-# ===== Student Model =====
 class Student(models.Model):
     applicant = models.OneToOneField(
-        Applicant,
+        'admissions.Applicant',
         on_delete=models.CASCADE,
         related_name='student_profile',
         primary_key=True,
         help_text="Select the applicant record associated with this student."
     )
     user = models.OneToOneField(
-        CustomUser,
+        'users.CustomUser',
         on_delete=models.CASCADE,
         related_name='student_profile',
         null=True,
@@ -34,7 +33,7 @@ class Student(models.Model):
     college_roll_no = models.IntegerField(blank=True,null=True, help_text="Enter the student's college roll number (if applicable).")
     enrollment_date = models.DateField(help_text="Select the official date when the student was enrolled.")
     graduation_date = models.DateField(null=True, blank=True, help_text="Select the date when the student graduated (optional).")
-    program = models.ForeignKey(Program, on_delete=models.CASCADE, related_name='students', help_text="The program the student is enrolled in")
+    program = models.ForeignKey('academics.Program', on_delete=models.CASCADE, related_name='students', help_text="The program the student is enrolled in")
     
     current_status = models.CharField(
         max_length=20,
@@ -85,26 +84,6 @@ class StudentSemesterEnrollment(models.Model):
         return f"{self.student.applicant.full_name} - {self.semester}"
 
     def save(self, *args, **kwargs):
-        # Update the student's current_semester
-        if self.status == 'enrolled':
-            self.student.current_semester = self.semester
-            self.student.save()
-        elif self.status in ['completed', 'dropped']:
-            # Find the most recent active semester enrollment
-            latest_enrollment = StudentSemesterEnrollment.objects.filter(
-                student=self.student,
-                status='enrolled'
-            ).exclude(id=self.id).order_by('-enrollment_date').first()
-            if latest_enrollment:
-                self.student.current_semester = latest_enrollment.semester
-            else:
-                # Fall back to the first semester of the program
-                first_semester = Semester.objects.filter(
-                    program=self.student.program,
-                    number=1
-                ).first()
-                self.student.current_semester = first_semester
-            self.student.save()
         super().save(*args, **kwargs)
 
 class CourseEnrollment(models.Model):
@@ -126,8 +105,6 @@ class CourseEnrollment(models.Model):
         return f"{self.student_semester_enrollment.student.applicant.full_name} - {self.course_offering}"
     
     
-    
-# Add this new model for tracking payment status
 class StudentFundPayment(models.Model):
     PAYMENT_STATUS_CHOICES = [
         ('pending', 'Pending'),
@@ -191,4 +168,4 @@ class StudentFundPayment(models.Model):
         verbose_name_plural = "Student Fund Payments"
 
     def __str__(self):
-        return f"{self.student} - {self.fund}: {self.get_status_display()}"    
+        return f"{self.student} - {self.fund}: {self.get_status_display()}"

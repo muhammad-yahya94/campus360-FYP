@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django import forms
-from .models import Student, StudentSemesterEnrollment, CourseEnrollment  # Added CourseEnrollment
+from .models import Student, StudentSemesterEnrollment, CourseEnrollment
 from courses.models import CourseOffering, Course
 from admissions.models import Applicant
 from users.models import CustomUser
@@ -9,7 +9,6 @@ from django.contrib.admin.views.autocomplete import AutocompleteJsonView
 from django.urls import path
 from django.db.models import Q
 
-# ===== Custom Forms =====
 class StudentAdminForm(forms.ModelForm):
     class Meta:
         model = Student
@@ -19,25 +18,6 @@ class StudentAdminForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         for field in ['applicant', 'user', 'program']:
             self.fields[field].widget.can_add_related = False
-        
-        # if 'program' in self.data:
-        #     try:
-        #         program_id = int(self.data.get('program'))
-        #         self.fields['current_semester'].queryset = Semester.objects.filter(program_id=program_id).order_by('number')
-        #     except (ValueError, TypeError):
-        #         self.fields['current_semester'].queryset = Semester.objects.none()
-        # elif self.instance.pk and self.instance.program:
-        #     self.fields['current_semester'].queryset = Semester.objects.filter(program=self.instance.program).order_by('number')
-        # else:
-        #     self.fields['current_semester'].queryset = Semester.objects.none()
-
-    def clean(self):
-        cleaned_data = super().clean()
-        if not cleaned_data.get('current_semester') and cleaned_data.get('program'):
-            first_semester = Semester.objects.filter(program=cleaned_data['program'], number=1).first()
-            if first_semester:
-                cleaned_data['current_semester'] = first_semester
-        return cleaned_data
 
 class StudentSemesterEnrollmentAdminForm(forms.ModelForm):
     class Meta:
@@ -48,7 +28,6 @@ class StudentSemesterEnrollmentAdminForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         for field in ['student', 'semester']:
             self.fields[field].widget.can_add_related = False
-        # Remove course_offering from form fields since it's not a model field anymore
 
 class CourseOfferingAdminForm(forms.ModelForm):
     class Meta:
@@ -60,7 +39,6 @@ class CourseOfferingAdminForm(forms.ModelForm):
         for field in ['course', 'teacher', 'semester']:
             self.fields[field].widget.can_add_related = False
 
-# ===== Custom Autocomplete Views =====
 class ApplicantAutocompleteView(AutocompleteJsonView):
     def get_queryset(self):
         qs = Applicant.objects.all()
@@ -137,7 +115,6 @@ class StudentAdmin(admin.ModelAdmin):
             'applicant', 'user', 'program'
         )
 
-
     def get_urls(self):
         urls = super().get_urls()
         urls += [
@@ -151,16 +128,16 @@ class StudentAdmin(admin.ModelAdmin):
 @admin.register(StudentSemesterEnrollment)
 class StudentSemesterEnrollmentAdmin(admin.ModelAdmin):
     form = StudentSemesterEnrollmentAdminForm
-    list_display = ('student', 'semester', 'enrollment_date', 'status')  # Removed course_offering
-    list_filter = ('status', 'enrollment_date', 'semester__program', 'semester__number')  # Removed course_offering__course
-    search_fields = ('student__applicant__full_name', 'semester__name')  # Removed course_offering references
-    autocomplete_fields = ('student', 'semester')  # Removed course_offering
+    list_display = ('student', 'semester', 'enrollment_date', 'status')
+    list_filter = ('status', 'enrollment_date', 'semester__program', 'semester__number')
+    search_fields = ('student__applicant__full_name', 'semester__name')
+    autocomplete_fields = ('student', 'semester')
     readonly_fields = ('enrollment_date',)
     ordering = ('-enrollment_date',)
     
     fieldsets = (
         ('Enrollment Information', {
-            'fields': ('student', 'semester')  # Removed course_offering
+            'fields': ('student', 'semester')
         }),
         ('Status', {
             'fields': ('status',)
@@ -171,18 +148,9 @@ class StudentSemesterEnrollmentAdmin(admin.ModelAdmin):
         return super().get_queryset(request).select_related(
             'student__applicant',
             'semester__program',
-            # Removed course_offering__course since it's not a field
         )
 
     def save_model(self, request, obj, form, change):
-        if obj.status == 'enrolled' and not change:
-            latest_enrollment = StudentSemesterEnrollment.objects.filter(
-                student=obj.student,
-                status='enrolled'
-            ).order_by('-enrollment_date').first()
-            if not latest_enrollment or obj.enrollment_date > latest_enrollment.enrollment_date:
-                obj.student.current_semester = obj.semester
-                obj.student.save()
         super().save_model(request, obj, form, change)
 
     def get_urls(self):
@@ -190,18 +158,36 @@ class StudentSemesterEnrollmentAdmin(admin.ModelAdmin):
         urls += [
             path('student-autocomplete/', self.admin_site.admin_view(StudentAutocompleteView.as_view()), name='student_autocomplete'),
             path('semester-autocomplete/', self.admin_site.admin_view(SemesterAutocompleteView.as_view()), name='semester_autocomplete'),
-            # Removed course-offering-autocomplete since it's not needed
         ]
         return urls
 
-# Optionally register CourseEnrollment if you want to manage it in admin
 @admin.register(CourseEnrollment)
 class CourseEnrollmentAdmin(admin.ModelAdmin):
-    list_display = ('student_semester_enrollment', 'course_offering', 'enrollment_date', 'status')
+    list_display = ('student_roll_no', 'student_name', 'course_offering', 'enrollment_date', 'status')
     list_filter = ('status', 'enrollment_date', 'course_offering__course', 'course_offering__semester')
-    search_fields = ('student_semester_enrollment__student__applicant__full_name', 'course_offering__course__code')
+    search_fields = (
+        'student_semester_enrollment__student__applicant__full_name', 
+        'student_semester_enrollment__student__university_roll_no',
+        'course_offering__course__code',
+        'course_offering__course__name'
+    )
     autocomplete_fields = ('student_semester_enrollment', 'course_offering')
-    readonly_fields = ('enrollment_date',)
+    list_select_related = (
+        'student_semester_enrollment__student',
+        'student_semester_enrollment__student__applicant',
+        'course_offering__course',
+        'course_offering__semester'
+    )
+    
+    def student_roll_no(self, obj):
+        return obj.student_semester_enrollment.student.university_roll_no
+    student_roll_no.short_description = 'Roll No'
+    student_roll_no.admin_order_field = 'student_semester_enrollment__student__university_roll_no'
+    
+    def student_name(self, obj):
+        return obj.student_semester_enrollment.student.applicant.full_name
+    student_name.short_description = 'Student Name'
+    student_name.admin_order_field = 'student_semester_enrollment__student__applicant__full_name'
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related(

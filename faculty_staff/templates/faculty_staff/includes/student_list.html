@@ -1,46 +1,257 @@
-{% for program, students in students_by_program.items %}
-<div class="card bg-base-100 shadow-lg mb-6">
-    <div class="card-body">
-        <h3 class="text-lg font-bold mb-4">{{ program.name }} Students</h3>
-        <div class="overflow-x-auto">
-            <table class="table table-sm w-full">
-                <thead class="bg-base-200">
-                    <tr>
-                        <th class="text-xs text-base-content/80">Name</th>
-                        <th class="text-xs text-base-content/80">University Roll No</th>
-                        <th class="text-xs text-base-content/80 hidden sm:table-cell">College Roll No</th>
-                        <th class="text-xs text-base-content/80">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for student in students %}
-                    <tr class="hover:bg-base-200/50">
-                        <td class="text-sm">
-                            <div class="flex items-center gap-2">
-                                <a href="{% url 'faculty_staff:student_detail' student.pk %}" class="link link-primary">
-                                    {{ student.applicant.full_name }}
-                                </a>
-                                {% if student.role %}
-                                    <span class="badge badge-secondary ml-1" style="background-color:#f472b6; color:white;">{{ student.role }}</span>
-                                {% endif %}
-                                <a href="{% url 'faculty_staff:student_semester_performance' student.pk %}" class="btn btn-sm btn-outline">
-                                    <i class="fas fa-chart-line mr-1"></i>
-                                    Performance
-                                </a>
-                            </div>
-                        </td>
-                        <td class="text-sm">{{ student.university_roll_no }}</td>
-                        <td class="text-sm hidden sm:table-cell">{{ student.college_roll_no }}</td>
-                        <td class="text-sm">
-                            <span class="badge badge-xs {% if student.current_status == 'active' %}badge-success{% else %}badge-warning{% endif %}">
-                                {{ student.get_current_status_display }}
-                            </span>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+<form id="status-update-form" method="post" action="{% url 'faculty_staff:session_students_by_id' session.id %}">
+    {% csrf_token %}
+    <input type="hidden" name="update_status" value="1">
+    
+    <!-- Status Update Controls -->
+    <div class="flex flex-wrap items-center gap-4 mb-4 p-4 bg-base-200 rounded-lg">
+        <div class="form-control
+            <label class="label cursor-pointer">
+                <input type="checkbox" id="select-all-checkbox" class="checkbox checkbox-primary">
+                <span class="label-text ml-2 font-medium">Select All</span>
+            </label>
+        </div>
+        
+        <div class="flex-1 flex items-center gap-2">
+            <select name="status" class="select select-bordered select-sm w-full max-w-xs">
+                <option value="" disabled selected>Select Status</option>
+                {% for value, label in status_choices.items %}
+                    <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary btn-sm">
+                <i class="fas fa-save mr-1"></i>
+                Update Status
+            </button>
         </div>
     </div>
-</div>
-{% endfor %}
+
+    {% for program, students in students_by_program.items %}
+    <div class="card bg-base-100 shadow-lg mb-6">
+        <div class="card-body">
+            <h3 class="text-lg font-bold mb-4">{{ program.name }} Students</h3>
+            <div class="overflow-x-auto">
+                <table class="table table-sm w-full">
+                    <thead class="bg-base-200">
+                        <tr>
+                            <th class="w-12">
+                                <!-- Empty for checkbox -->
+                            </th>
+                            <th class="text-xs text-base-content/80">Name</th>
+                            <th class="text-xs text-base-content/80">University Roll No</th>
+                            <th class="text-xs text-base-content/80 hidden sm:table-cell">College Roll No</th>
+                            <th class="text-xs text-base-content/80">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                        <tr class="hover:bg-base-200/50">
+                            <td>
+                                <input type="checkbox" name="student_ids" value="{{ student.applicant_id }}" class="student-checkbox checkbox checkbox-sm">
+                            </td>
+                            <td class="text-sm">
+                                <div class="flex items-center gap-2">
+                                    <a href="{% url 'faculty_staff:student_detail' student.pk %}" class="link link-primary">
+                                        {{ student.applicant.full_name }}
+                                    </a>
+                                    {% if student.role %}
+                                        <span class="badge badge-secondary ml-1" style="background-color:#f472b6; color:white;">{{ student.role }}</span>
+                                    {% endif %}
+                                    <a href="{% url 'faculty_staff:student_semester_performance' student.pk %}" class="btn btn-xs btn-outline">
+                                        <i class="fas fa-chart-line"></i>
+                                    </a>
+                                </div>
+                            </td>
+                            <td class="text-sm">{{ student.university_roll_no }}</td>
+                            <td class="text-sm hidden sm:table-cell">{{ student.college_roll_no }}</td>
+                            <td class="text-sm">
+                                <div class="dropdown dropdown-hover dropdown-end">
+                                    <div tabindex="0" class="badge badge-xs cursor-pointer {% if student.current_status == 'active' %}badge-success{% elif student.current_status == 'graduated' %}badge-info{% elif student.current_status == 'suspended' %}badge-warning{% else %}badge-error{% endif %}">
+                                        {{ student.get_current_status_display }}
+                                    </div>
+                                    <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+                                        {% for value, label in status_choices.items %}
+                                        <li>
+                                            <a class="status-update-link" 
+                                               href="#" 
+                                               data-student-id="{{ student.applicant_id }}" 
+                                               data-status="{{ value }}">
+                                                {{ label }}
+                                            </a>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</form>
+
+<script>
+$(document).ready(function() {
+    // Select all checkboxes
+    $('#select-all-checkbox').on('change', function() {
+        $('.student-checkbox').prop('checked', $(this).prop('checked'));
+    });
+
+    // Individual status update via dropdown
+    $('.status-update-link').on('click', function(e) {
+        e.preventDefault();
+        const studentId = $(this).data('student-id');
+        const status = $(this).data('status');
+        
+        // Update the form and submit for single student
+        $('#status-update-form')
+            .find('input[name="student_ids"]')
+            .prop('checked', false);
+            
+        // Find the checkbox with the matching student ID and check it
+        $(`#status-update-form input[value="${studentId}"]`)
+            .prop('checked', true);
+            
+        // Set the status dropdown
+        $('#status-update-form select[name="status"]')
+            .val(status);
+            
+        // Submit the form
+        $('#status-update-form').submit();
+    });
+    
+    // Update the data-student-id attribute on status update links to use applicant_id
+    $('.status-update-link').each(function() {
+        const $link = $(this);
+        const studentId = $link.closest('tr').find('input[name="student_ids"]').val();
+        $link.attr('data-student-id', studentId);
+    });
+
+    // Function to get CSRF token from cookies
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Handle form submission with AJAX
+    $('#status-update-form').on('submit', function(e) {
+        e.preventDefault();
+        
+        // Check if any students are selected
+        const selectedStudents = $('input[name="student_ids"]:checked').length;
+        const status = $('select[name="status"]').val();
+        
+        if (selectedStudents === 0) {
+            alert('Please select at least one student.');
+            return false;
+        }
+        
+        if (!status) {
+            alert('Please select a status.');
+            return false;
+        }
+        
+        // Show loading state
+        const $form = $(this);
+        const $submitBtn = $form.find('button[type="submit"]');
+        const originalBtnText = $submitBtn.html();
+        $submitBtn.prop('disabled', true).html('<span class="loading loading-spinner loading-xs"></span> Updating...');
+        
+        // Get CSRF token
+        const csrftoken = getCookie('csrftoken');
+        
+        // Submit the form
+        const formData = $form.serialize();
+        
+        $.ajax({
+            url: $form.attr('action'),
+            type: 'POST',
+            data: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrftoken
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Show success message
+                    const successHtml = `
+                        <div class="alert alert-success shadow-lg mb-4">
+                            <div>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span>${response.message || 'Student status updated successfully!'}</span>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Insert success message
+                    $('#students-container').prepend(successHtml);
+                    
+                    // Reload the page after a short delay to show the success message
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showError(response.message || 'An error occurred while updating student status.');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', xhr.responseText);
+                let errorMessage = 'An error occurred while updating student status.';
+                
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.error) {
+                        errorMessage = response.error;
+                    }
+                } catch (e) {
+                    console.error('Error parsing error response:', e);
+                }
+                
+                showError(errorMessage);
+            },
+            complete: function() {
+                // Re-enable the submit button
+                $submitBtn.prop('disabled', false).html(originalBtnText);
+            }
+        });
+    });
+    
+    // Function to show error messages
+    function showError(message) {
+        const errorHtml = `
+            <div class="alert alert-error shadow-lg mb-4">
+                <div>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>${message}</span>
+                </div>
+            </div>
+        `;
+        
+        // Insert error message
+        $('#students-container').prepend(errorHtml);
+        
+        // Auto-hide error after 5 seconds
+        setTimeout(() => {
+            $('.alert-error').fadeOut(500, function() {
+                $(this).remove();
+            });
+        }, 5000);
+    }
+});
+</script>

@@ -713,11 +713,48 @@ def session_students(request, session_id=None):
     session = None
     students_by_program = {}
     
+    # Handle status updates (both bulk and single)
+    if request.method == 'POST' and 'update_status' in request.POST:
+        student_ids = request.POST.getlist('student_ids')
+        status = request.POST.get('status')
+        
+        if not student_ids or not status:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'message': 'No students selected or status not specified.'}, status=400)
+            messages.error(request, 'No students selected or status not specified.')
+            return redirect('faculty_staff:session_students', session_id=session_id)
+        
+        try:
+            # Update status for selected students
+            # Convert string IDs to integers and filter by applicant_id (primary key)
+            student_ids = [int(sid) for sid in student_ids if sid.isdigit()]
+            updated = Student.objects.filter(
+                applicant_id__in=student_ids,
+                program__department=hod_department  # Security: Only update students in HOD's department
+            ).update(current_status=status)
+            
+            message = f'Successfully updated status for {updated} student(s).'
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True, 
+                    'message': message,
+                    'updated_count': updated
+                })
+                
+            messages.success(request, message)
+            return redirect('faculty_staff:session_students', session_id=session_id)
+            
+        except Exception as e:
+            error_message = f'Error updating student statuses: {str(e)}'
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'message': error_message}, status=500)
+            messages.error(request, error_message)
+            return redirect('faculty_staff:session_students', session_id=session_id)
+    
     if session_id:
         # Get the selected session
         session = get_object_or_404(AcademicSession, id=session_id)
-        print(f"Debug - Selected Session: {session}")
-        print(f"Debug - Programs in department: {list(programs.values_list('name', flat=True))}")
         
         # Get students for this session and department's programs
         students = Student.objects.filter(
@@ -725,39 +762,64 @@ def session_students(request, session_id=None):
             program__in=programs
         ).select_related('applicant', 'program').order_by('program__name', 'university_roll_no')
         
-        # Debug: Print initial student count and query
-        print(f"Debug - Initial student count: {students.count()}")
-        print(f"Debug - SQL Query: {str(students.query)}")
-        
         # Get the selected program filter if any
         program_id = request.GET.get('program_id')
-        print(f"Debug - Program ID from request: {program_id}")
-        
         if program_id and program_id != 'all':
             students = students.filter(program_id=program_id)
-            print(f"Debug - Filtered by program ID {program_id}, student count: {students.count()}")
         
         # Group students by program
         for program in programs:
             program_students = students.filter(program=program)
-            print(f"Debug - Program: {program.name}, Student count: {program_students.count()}")
             if program_students.exists():
                 students_by_program[program] = program_students
-        
-        print(f"Debug - Final students_by_program keys: {list(students_by_program.keys())}")
-        print(f"Debug - Total students found: {sum(len(s) for s in students_by_program.values())}")
+    
+    # Status choices for the dropdown
+    status_choices = dict(Student._meta.get_field('current_status').choices)
     
     # Handle AJAX requests
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        if not session_id:
-            return JsonResponse({'error': 'Session ID is required'}, status=400)
+        try:
+            # Try to get session_id from GET parameters if not in URL
+            if not session_id:
+                session_id = request.GET.get('session_id')
+                if not session_id:
+                    return JsonResponse({'error': 'Session ID is required'}, status=400)
+                
+                session = get_object_or_404(AcademicSession, id=session_id)
+                
+                # Re-fetch students with the new session_id
+                students = Student.objects.filter(
+                    applicant__session=session,
+                    program__in=programs
+                ).select_related('applicant', 'program').order_by('program__name', 'university_roll_no')
+                
+                # Re-apply program filter if any
+                program_id = request.GET.get('program_id')
+                if program_id and program_id != 'all':
+                    students = students.filter(program_id=program_id)
+                
+                # Re-group students by program
+                students_by_program = {}
+                for program in programs:
+                    program_students = students.filter(program=program)
+                    if program_students.exists():
+                        students_by_program[program] = program_students
             
-        html = render_to_string('faculty_staff/includes/student_list.html', {
-            'students_by_program': students_by_program,
-            'session': session,
-            'programs': programs,  # Add programs to AJAX context
-        })
-        return JsonResponse({'html': html})
+            html = render_to_string('faculty_staff/includes/student_list.html', {
+                'students_by_program': students_by_program,
+                'session': session,
+                'programs': programs,
+                'status_choices': status_choices,
+            })
+            return JsonResponse({'html': html})
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({
+                'error': str(e),
+                'traceback': traceback.format_exc()
+            }, status=500)
     
     # For regular GET requests
     context = {
@@ -765,7 +827,8 @@ def session_students(request, session_id=None):
         'department': hod_department,
         'academic_sessions': academic_sessions,
         'students_by_program': students_by_program,
-        'programs': programs,  # Add programs to regular context
+        'programs': programs,
+        'status_choices': status_choices,
     }
     return render(request, 'faculty_staff/session_students.html', context)
 
@@ -3134,7 +3197,7 @@ def is_course_repeated(student, course_offering):
     
     return previous_results.exists(), previous_results
 
-@login_required
+@login_required    
 def record_exam_results(request):  
     if request.method == "POST":
         course_offering_id = request.POST.get('course_offering_id')

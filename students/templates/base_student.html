@@ -9,8 +9,9 @@
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.0/dist/full.min.css" rel="stylesheet" type="text/css" />
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-
+    {% block extra_css %}{% endblock extra_css %}
     <script>  
+        {% block extra_head %}{% endblock extra_head %}
         // Theme management   
         function changeTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
@@ -334,6 +335,6 @@
         </div>
     </div>    
 
-    {% block extra_js %}{% endblock %}
+    {% block extra_js %}{% endblock extra_js %}
 </body>
 </html>

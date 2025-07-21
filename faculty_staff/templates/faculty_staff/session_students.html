@@ -179,6 +179,14 @@
                 loadStudents(sessionId);
             }
         });
+        
+        // Function to get URL parameters
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            const regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            const results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        };
 
         // Handle search input
         let searchTimeout;
@@ -191,11 +199,12 @@
             if (sessionId) {
                 searchTimeout = setTimeout(() => {
                     $.ajax({
-                        url: `/faculty/session/${sessionId}/students/`,
+                        url: `/faculty/students/${sessionId}/`,
                         type: 'GET',
                         data: {
                             program_id: programId,
-                            search: searchQuery
+                            search: searchQuery,
+                            session_id: sessionId
                         },
                         success: function(response) {
                             if (response.html) {
@@ -210,7 +219,8 @@
         // Function to load students via AJAX
         function loadStudents(sessionId) {
             const programId = $('#program-selector').val();
-            const url = `/faculty/session/${sessionId}/students/`;
+            // Use the correct URL pattern that matches our URL configuration
+            const url = `/faculty/students/${sessionId}/`;
             
             console.log('AJAX Request:', {
                 url: url,
@@ -230,7 +240,8 @@
                 url: url,
                 type: 'GET',
                 data: {
-                    program_id: programId
+                    program_id: programId,
+                    session_id: sessionId  // Make sure session_id is included in the request
                 },
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest'
@@ -264,32 +275,13 @@
                                         </svg>
                                         <div>
                                             <p>No students found for the selected criteria.</p>
-                                            <p class="text-sm opacity-75 mt-1">Session ID: ${sessionId} | Program ID: ${programId || 'All'}</p>
+                                            <p class="text-sm opacity-75 mt-1">Please try different filters.</p>
                                         </div>
                                     </div>
                                 </div>
                             `;
                             $('#students-container').html(noStudentsHtml);
-                        } else {
-                            console.log('Found student rows:', $studentRows.length);
                         }
-                    } else {
-                        console.error('Empty or invalid response received');
-                        const errorHtml = `
-                            <div class="alert alert-error shadow-lg">
-                                <div>
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    <div>
-                                        <p>Error loading students. Please try again.</p>
-                                        <p class="text-sm opacity-75 mt-1">Session ID: ${sessionId} | Program ID: ${programId || 'All'}</p>
-                                        <p class="text-xs opacity-50 mt-1">Check browser console for details</p>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                        $('#students-container').html(errorHtml);
                     }
                 },
                 error: function(xhr, status, error) {

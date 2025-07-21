@@ -195,6 +195,9 @@ def student_dashboard(request):
     logger.debug("Found %d course enrollment(s) across %d semesters", 
                 len(course_enrollments), len(semester_courses))
 
+    # Check if student has graduated
+    is_graduated = student.current_status == 'graduated'
+    
     return render(request, 'dashboard.html', {
         'student': student,
         'active_semester': active_semester,
@@ -202,9 +205,8 @@ def student_dashboard(request):
         'notices': notices,
         'current_session': current_session,
         'all_enrollments': course_enrollments,
+        'is_graduated': is_graduated,
     })
-
-
 
 
 def my_courses(request):

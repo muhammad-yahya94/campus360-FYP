@@ -1,0 +1,115 @@
+*{
+    margin:0;
+    padding:0;
+}
+@media print {
+    /* Hide all elements except for the content to be printed */
+    body * {
+        visibility: hidden;
+    }
+    .printable-area, .printable-area * {
+        visibility: visible;
+    }
+    /* Adjust the positioning so the content is properly positioned when printed */
+    .printable-area {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        padding: 20px;
+    }
+    /* Hide the print button during printing */
+    button, .btn-secondary {
+        display: none;
+    }
+    @media print {
+        /* Ensure cards take the full width in print layout */
+        .card {
+            width: 100% !important; /* Set cards to occupy full width */
+            border: 1px solid #ddd; /* Optional: Add border for clarity in print */
+            margin: 0; /* Remove margins to prevent truncation */
+            padding: 10px; /* Add padding for spacing */
+            box-shadow: none; /* Remove shadow to avoid unnecessary artifacts in print */
+        }
+        
+        /* Ensure all other print adjustments are in place */
+        .card, .row {
+            width: 100%; /* Make containers full-width */
+            margin: 0; /* Remove margin to maximize space */
+            padding: 0; /* Remove padding to avoid cutoffs */
+        }
+    
+        table {
+            width: 100%; /* Ensure tables span the full width */
+        }
+    
+        .printable-area {
+            width: 100%; /* Ensure printable area spans the page */
+        }
+    }
+    
+}
+
+/* Custom styles for the table */
+th {
+    background-color: #007bff;
+    color: white;
+    text-align: center;
+}
+
+td {
+    text-align: center;
+}
+
+/* Position the print button on the right side */
+.print-button-container {
+    text-align: right;
+}
+
+.btn-secondary {
+    margin-top: 10px;
+}
+
+/* Optional: Add a border to the table */
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+table, th, td {
+    border: 1px solid #ddd;
+}
+
+/* Optional: Add some padding for better readability */
+th, td {
+    padding: 8px;
+}
+
+#heading-text {
+    font-size: 5.5rem;
+    color: lightgrey;
+    text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+/* Responsive message styling */
+.msg-text {
+    font-size: 3rem;
+    color: lightgrey;
+    text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+/* Adjust the font size for smaller devices */
+@media (max-width: 768px) {
+    .msg-text {
+        font-size: 2.5rem;
+    }
+
+    #heading-text {
+        font-size: 3.5rem;
+    }
+}
+
+/* Make the search bar responsive */
+.search-bar input {
+    max-width: 100%;
+}            

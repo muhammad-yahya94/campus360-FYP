@@ -2,7 +2,32 @@
 
 {% block title %}Student Dashboard - {{ student.applicant.full_name }}{% endblock %}
 
+{% block extra_head %}
+<!-- Canvas for fireworks -->
+<canvas id="fireworks-canvas" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000; display: none;"></canvas>
+
+<!-- Graduation Celebration Modal -->
+<div id="graduation-modal" class="modal modal-bottom sm:modal-middle" style="display: none;">
+  <div class="modal-box bg-gradient-to-br from-primary to-secondary text-primary-content">
+    <h3 class="font-bold text-3xl text-center mb-4">🎓 Congratulations! 🎓</h3>
+    <p class="py-4 text-center text-xl">You've successfully graduated! We're so proud of your achievement!</p>
+    <div class="flex justify-center mt-6">
+      <button onclick="stopCelebration()" class="btn btn-accent">Continue to Dashboard</button>
+    </div>
+  </div>
+</div>
+
+<!-- Audio for celebration -->
+<audio id="celebration-audio" loop>
+  <source src="https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3" type="audio/mp3">
+</audio>
+{% endblock %}
+
 {% block content %}
+{% if is_graduated %}
+  {% include 'students/includes/graduation_celebration.html' %}
+{% endif %}
+
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
   <!-- Hero Section -->
   <div class="hero bg-base-200 rounded-lg shadow-lg mb-6">

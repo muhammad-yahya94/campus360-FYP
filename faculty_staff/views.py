@@ -3118,10 +3118,25 @@ def exam_results(request, course_offering_id):
 
 
 
+def is_course_repeated(student, course_offering):
+    """
+    Check if a student has previously taken and failed this course
+    Returns tuple of (is_repeated, previous_results)
+    """
+    # Get all previous exam results for this student and course
+    previous_results = ExamResult.objects.filter(
+        student=student,
+        course_offering__course=course_offering.course,
+        is_fail=True  # Only count previous failures as repeats
+    ).exclude(  # Exclude the current course offering
+        course_offering__id=course_offering.id
+    ).select_related('course_offering')
+    
+    return previous_results.exists(), previous_results
+
 @login_required
 def record_exam_results(request):  
     if request.method == "POST":
-        
         course_offering_id = request.POST.get('course_offering_id')
         student_ids = request.POST.getlist('student_ids[]')  # Get list of student IDs
         
@@ -3149,6 +3164,28 @@ def record_exam_results(request):
                     remarks = request.POST.get('remarks')
                     total_obtained = request.POST.get('total_obtained')
                     percentage = request.POST.get('percentage')
+                    
+                    # Check if student is repeating this course
+                    is_repeat, previous_results = is_course_repeated(result.student, course_offering)
+                    if is_repeat:
+                        remarks = 'Repeat' + (f' - {remarks}' if remarks else '')
+                        
+                        # Update the current enrollment to mark as repeat
+                        try:
+                            enrollment = CourseEnrollment.objects.get(
+                                student_semester_enrollment__student=result.student,
+                                course_offering=course_offering
+                            )
+                            enrollment.is_repeat = True
+                            enrollment.save()
+                        except CourseEnrollment.DoesNotExist:
+                            pass
+                            
+                        # Update previous failed attempts to mark them as replaced
+                        for prev_result in previous_results:
+                            if 'Repeated in' not in (prev_result.remarks or ''):
+                                prev_result.remarks = f"Repeated in {course_offering.semester.name} {course_offering.academic_session.name}"
+                                prev_result.save()
 
                     print(f"Updating result for student {result.student.applicant.full_name} with marks: {midterm}, {sessional}, {final}, {practical}, {remarks}, {total_obtained}, {percentage}")
 
@@ -3252,6 +3289,29 @@ def record_exam_results(request):
                     # Calculate total and percentage
                     defaults['total_marks'] = total_obtained
                     defaults['percentage'] = (total_obtained / total_max * 100) if total_max > 0 else 0.0
+                    
+                    # Check if student is repeating this course
+                    is_repeat, previous_results = is_course_repeated(student, course_offering)
+                    if is_repeat:
+                        # Set remarks for current attempt
+                        defaults['remarks'] = 'Repeat' + (f' - {defaults["remarks"]}' if defaults.get('remarks') else '')
+                        
+                        # Update the current enrollment to mark as repeat
+                        try:
+                            enrollment = CourseEnrollment.objects.get(
+                                student_semester_enrollment__student=student,
+                                course_offering=course_offering
+                            )
+                            enrollment.is_repeat = True
+                            enrollment.save()
+                        except CourseEnrollment.DoesNotExist:
+                            pass
+                            
+                        # Update previous failed attempts to mark them as replaced
+                        for prev_result in previous_results:
+                            if 'Repeat' not in (prev_result.remarks or ''):
+                                prev_result.remarks = f"Repeated in {course_offering.semester.name} {course_offering.academic_session.name}"
+                                prev_result.save()
                     
                     # Only save if at least one mark is provided
                     if any(key in defaults for key in ['midterm_obtained', 'sessional_obtained', 'final_obtained', 'practical_obtained']):

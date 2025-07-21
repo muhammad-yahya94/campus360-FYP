@@ -37,7 +37,7 @@ from django.contrib.auth import (
     authenticate, login, logout, update_session_auth_hash,
     get_user_model
 )
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required   
 from django.db.models import Q
 # Local App Imports
 from academics.models import Department, Program, Semester
@@ -657,15 +657,34 @@ def exam_results(request):
             result.is_fail = True
             result.save(update_fields=['is_fail'])
         
+        # Get enrollment info to check if this is a repeat course
+        try:
+            enrollment = CourseEnrollment.objects.get(
+                student_semester_enrollment__student=result.student,
+                course_offering=result.course_offering
+            )
+            result.is_repeat = enrollment.is_repeat
+        except CourseEnrollment.DoesNotExist:
+            result.is_repeat = False
+        
         result.effective_credit_hour = result.course_offering.course.credits
         result.course_marks = result.course_offering.course.credits * 20 + (
             result.course_offering.course.lab_work * 20 if result.course_offering.course.lab_work > 0 else 0
         )
         print(f"Result: {result.student.university_roll_no}, Quality Points: {result.quality_points}, "
               f"Effective Credit Hours: {result.effective_credit_hour}, Course Marks: {result.course_marks}")
-    # Add grades to optional results
+    # Add grades and repeat status to optional results
     for opt_result in opt_results:
         opt_result.grade = calculate_grade(opt_result.percentage)
+        # Get enrollment info to check if this is a repeat course
+        try:
+            enrollment = CourseEnrollment.objects.get(
+                student_semester_enrollment__student=opt_result.student,
+                course_offering=opt_result.course_offering
+            )
+            opt_result.is_repeat = enrollment.is_repeat
+        except CourseEnrollment.DoesNotExist:
+            opt_result.is_repeat = False
 
     # Group non-optional results by semester
     semester_results = defaultdict(list)

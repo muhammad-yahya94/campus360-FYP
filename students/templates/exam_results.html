@@ -44,7 +44,7 @@
                     </thead>
                     <tbody>
                         {% for result in semester_results %}
-                        <tr class="hover{% if result.grade == 'F' or result.is_fail %} bg-error text-error-content{% endif %}">
+                        <tr class="hover{% if result.is_repeat %} bg-repeat text-repeat-content{% elif result.grade == 'F' or result.is_fail %} bg-error text-error-content{% endif %}">
                             <td class="p-3 text-center">{{ forloop.counter }}</td>
                             <td class="p-3">{{ result.course_offering.course.code }}</td>
                             <td class="p-3">{{ result.course_offering.course.name }}</td>
@@ -129,7 +129,7 @@
                     </thead>
                     <tbody>
                         {% for opt_result in opt_results %}
-                        <tr class="hover">
+                        <tr class="hover{% if result.is_repeat %} bg-repeat text-repeat-content{% endif %}">
                             <td class="p-3 text-center">{{ forloop.counter }}</td>
                             <td class="p-3">{{ opt_result.course_offering.course.code }}</td>
                             <td class="p-3">{{ opt_result.course_offering.course.name }}</td>
@@ -154,10 +154,36 @@
                         <tr>
                             <td colspan="12" class="p-3 text-center">No optional courses found.</td>
                         </tr>
-                        {% endfor USGS.gov %}
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>
+            <style>
+        .bg-error {
+            background-color: #fecaca;
+        }
+        .text-error-content {
+            color: #7f1d1d;
+        }
+        .bg-warning {
+            background-color: #fef3c7;
+        }
+        .text-warning-content {
+            color: #78350f;
+        }
+        .bg-success {
+            background-color: #d1fae5;
+        }
+        .text-success-content {
+            color: #064e3b;
+        }
+        .bg-repeat {
+            background-color: #e0f2fe;
+        }
+        .text-repeat-content {
+            color: #075985;
+        }
+    </style>
         </div>
     </div>
     {% endif %}

@@ -3,10 +3,15 @@ import os
 import logging
 import datetime
 import json
+import random
+import string
 from datetime import time, date
 
 # Third-party Imports
 import pytz
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 
 # Django Core Imports
 from django import forms
@@ -53,7 +58,7 @@ from students.models import Student, StudentSemesterEnrollment, CourseEnrollment
 # Forms
 from .forms import (
     UserUpdateForm, TeacherUpdateForm, TeacherStatusForm,
-    PasswordChangeForm, QuestionForm, QuizForm
+    PasswordChangeForm, QuestionForm, QuizForm, AssignmentForm
 )
 
 # Decorators
@@ -264,14 +269,40 @@ def add_staff(request):
             })
 
         try:
+            # Generate random 8-digit password
+            password = ''.join(random.choices(string.digits, k=8))
+            
             user = CustomUser.objects.create(
                 email=email,
                 first_name=first_name,
                 last_name=last_name,
                 is_staff=True
             )
-            user.set_password('defaultpassword123')
+            user.set_password(password)
             user.save()
+            
+            # Send email with credentials
+            subject = 'Your Campus360 Faculty Account Has Been Created'
+            html_message = render_to_string('faculty_staff/account_created_email.html', {
+                'first_name': first_name,
+                'email': email,
+                'password': password,
+                # 'login_url': request.build_absolute_uri('/faculty/login/')
+            })
+            plain_message = strip_tags(html_message)
+            
+            try:
+                send_mail(
+                    subject=subject,
+                    message=plain_message,
+                    from_email=None,  # Will use DEFAULT_FROM_EMAIL from settings
+                    recipient_list=[email],
+                    html_message=html_message,
+                    fail_silently=False,
+                )
+            except Exception as e:
+                # Log the error but don't fail the user creation
+                logger.error(f'Failed to send email to {email}: {str(e)}')
 
             teacher = Teacher.objects.create(
                 user=user,
@@ -2177,6 +2208,51 @@ def lecture_replacement_create(request):
                     course_offering.teacher = None
                     course_offering.save()
 
+            # Send email notification to the replacement teacher
+            try:
+                # Prepare email content
+                subject = f'Lecture Replacement: {course_offering.course.code} - {replacement_type.capitalize()} Replacement'
+                
+                # Get replacement type display name
+                replacement_type_display = 'Permanent' if replacement_type == 'permanent' else 'Temporary'
+                
+                # Format replacement date if exists
+                formatted_replacement_date = None
+                if replacement_date:
+                    from django.utils.formats import date_format
+                    from django.utils import timezone
+                    formatted_replacement_date = timezone.make_naive(replacement.replacement_date)
+                
+                # Render the email template
+                message = render_to_string('emails/lecture_replacement_notification.html', {
+                    'course_offering': course_offering,
+                    'original_teacher': original_teacher,
+                    'replacement_teacher': replacement_teacher,
+                    'replacement_type': replacement_type,
+                    'replacement_type_display': replacement_type_display,
+                    'replacement_date': formatted_replacement_date,
+                    'site_name': 'Campus360'
+                })
+                
+                # Send email to the replacement teacher
+                if hasattr(replacement_teacher, 'user') and hasattr(replacement_teacher.user, 'email') and replacement_teacher.user.email:
+                    send_mail(
+                        subject=subject,
+                        message='',  # Empty message since we're using html_message
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[replacement_teacher.user.email],
+                        html_message=message,
+                        fail_silently=True
+                    )
+                    logger.info(f"Sent lecture replacement notification to {replacement_teacher.user.email}")
+                else:
+                    logger.warning(f"Replacement teacher {replacement_teacher} has no valid email address")
+            
+            except Exception as e:
+                logger.error(f"Error sending lecture replacement notification email: {str(e)}")
+                # Don't fail the request if email sending fails
+                pass
+
             messages.success(request, 'Lecture replacement created successfully.')
             return redirect('faculty_staff:weekly_timetable')
         except CourseOffering.DoesNotExist:
@@ -2480,6 +2556,74 @@ def create_study_material(request):
             if not created_materials:
                 return JsonResponse({'success': False, 'message': 'At least one valid material is required.'})
             
+            # Send email notifications to CR and GR for the first material only (to avoid multiple emails)
+            if created_materials:
+                try:
+                    # Get all students enrolled in the course offering
+                    from students.models import Student
+                    enrolled_students = Student.objects.filter(
+                        courses_enrolled__course_offering=course_offering,
+                        courses_enrolled__status='enrolled'
+                    ).distinct()
+                    
+                    # Find class representatives (CR) and girls' representatives (GR)
+                    crs = enrolled_students.filter(role='CR')
+                    grs = enrolled_students.filter(role='GR')
+                    
+                    # Combine and deduplicate recipients
+                    recipients = list(crs) + list(grs)
+                    
+                    if recipients:
+                        # Prepare email content
+                        subject = f'New Study Material: {topic} - {course_offering.course.code}'
+                        
+                        # Get the course name and teacher name
+                        teacher_name = request.user.get_full_name() or 'Your teacher'
+                        
+                        # Get the first material for the notification
+                        first_material = created_materials[0]
+                        
+                        # Prepare useful_links as a list
+                        useful_links = []
+                        if first_material.get('useful_links'):
+                            if isinstance(first_material['useful_links'], str):
+                                useful_links = [link.strip() for link in first_material['useful_links'].split('\n') if link.strip()]
+                            else:
+                                useful_links = [link for link in first_material['useful_links'] if link.strip()]
+                        
+                        # Render the email template
+                        message = render_to_string('emails/new_study_material_notification.html', {
+                            'material': {
+                                'topic': topic,
+                                'title': first_material.get('title', ''),
+                                'description': first_material.get('description', ''),
+                                'useful_links': useful_links,
+                                'video_link': first_material.get('video_link'),
+                                'image': first_material.get('image')
+                            },
+                            'course_offering': course_offering,
+                            'teacher_name': teacher_name,
+                            'site_name': 'Campus360'
+                        })
+                        
+                        # Send email to each recipient
+                        for recipient in recipients:
+                            if getattr(recipient, 'user', None) and recipient.user.email:
+                                send_mail(
+                                    subject=subject,
+                                    message='',  # Empty message since we're using html_message
+                                    from_email=settings.DEFAULT_FROM_EMAIL,
+                                    recipient_list=[recipient.user.email],
+                                    html_message=message,
+                                    fail_silently=True
+                                )
+                                logger.info(f"Sent study material notification email to {recipient.user.email}")
+                
+                except Exception as e:
+                    logger.error(f"Error sending study material notification emails: {str(e)}")
+                    # Don't fail the request if email sending fails
+                    pass
+            
             return JsonResponse({
                 'success': True,
                 'message': 'Study materials created successfully.',
@@ -2487,6 +2631,8 @@ def create_study_material(request):
             })
     
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+
+
 
 @hod_or_professor_required
 def edit_study_material(request):
@@ -2741,6 +2887,64 @@ def create_assignment(request):
         resource_file=resource_file  
     )
     logger.info(f"Assignment '{title}' created for course offering {course_offering_id} by {request.user}")
+    
+    # Send email notifications to CR and GR
+    try:
+        # Get all students enrolled in the course offering
+        from students.models import Student
+        enrolled_students = Student.objects.filter(
+            courses_enrolled__course_offering=course_offering,
+            courses_enrolled__status='enrolled'
+        ).distinct()
+        
+        # Find class representatives (CR) and girls' representatives (GR)
+        crs = enrolled_students.filter(role='CR')
+        grs = enrolled_students.filter(role='GR')
+        
+        # Combine and deduplicate recipients
+        recipients = list(crs) + list(grs)
+        
+        if recipients:
+            # Prepare email content
+            subject = f'New Assignment: {assignment.title} - {course_offering.course.code}'
+            
+            # Get the course name and teacher name
+            course_name = course_offering.course.name
+            teacher_name = request.user.get_full_name() or 'Your teacher'
+            
+            # Format the due date
+            from django.utils import timezone
+            from django.utils.formats import date_format
+            due_date_formatted = date_format(timezone.make_naive(assignment.due_date)) if assignment.due_date else 'Not specified'
+            
+            # Render the email template
+            message = render_to_string('emails/new_assignment_notification.html', {
+                'assignment': assignment,
+                'course_offering': course_offering,
+                'teacher_name': teacher_name,
+                'due_date': due_date_formatted,
+                'max_points': assignment.max_points,
+                'has_attachment': bool(assignment.resource_file)
+            })
+            
+            # Send email to each recipient
+            for recipient in recipients:
+                if getattr(recipient, 'user', None) and recipient.user.email:
+                    send_mail(
+                        subject=subject,
+                        message='',  # Empty message since we're using html_message
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[recipient.user.email],
+                        html_message=message,
+                        fail_silently=True
+                    )
+                    logger.info(f"Sent assignment notification email to {recipient.user.email}")
+    
+    except Exception as e:
+        logger.error(f"Error sending assignment notification emails: {str(e)}")
+        # Don't fail the request if email sending fails
+        pass
+    
     return JsonResponse({'success': True, 'message': 'Assignment created successfully.'})
 
 @hod_or_professor_required
@@ -4600,6 +4804,61 @@ def create_quiz(request, course_offering_id):
             quiz.publish_flag = True
             quiz.save()
             logger.info("Published quiz %s", quiz.id)
+            
+            # Send email notifications to CR and GR
+            try:
+                # Get all students enrolled in the course offering
+                enrolled_students = Student.objects.filter(
+                    courses_enrolled__course_offering=course_offering,
+                    courses_enrolled__status='enrolled'
+                ).distinct()
+                
+                # Find class representatives (CR) and girls' representatives (GR)
+                crs = enrolled_students.filter(role='CR')
+                grs = enrolled_students.filter(role='GR')
+                
+                # Combine and deduplicate recipients
+                recipients = list(crs) + list(grs)
+                
+                if recipients:
+                    # Prepare email content
+                    subject = f'New Quiz Published: {quiz.title} - {course_offering.course.code}'
+                    
+                    # Get the course name and teacher name
+                    course_name = course_offering.course.name
+                    teacher_name = course_offering.teacher.user.get_full_name() or 'Your teacher'
+                    
+                    # Get the number of questions and total marks
+                    question_count = quiz.questions.count()
+                    total_marks = quiz.questions.aggregate(total=Sum('marks'))['total'] or 0
+                    
+                    # Render the email template
+                    message = render_to_string('emails/new_quiz_notification.html', {
+                        'quiz': quiz,
+                        'course_offering': course_offering,
+                        'teacher_name': teacher_name,
+                        'question_count': question_count,
+                        'total_marks': total_marks,
+                        'timer_minutes': quiz.timer_seconds // 60,
+                    })
+                    
+                    # Send email to each recipient
+                    for recipient in recipients:
+                        if getattr(recipient, 'user', None) and recipient.user.email:
+                            send_mail(
+                                subject=subject,
+                                message='',  # Empty message since we're using html_message
+                                from_email=settings.DEFAULT_FROM_EMAIL,
+                                recipient_list=[recipient.user.email],
+                                html_message=message,
+                                fail_silently=True
+                            )
+                            logger.info(f"Sent quiz notification email to {recipient.user.email}")
+                
+            except Exception as e:
+                logger.error(f"Error sending quiz notification emails: {str(e)}")
+                # Don't fail the request if email sending fails
+                pass
 
         logger.info("Quiz %s saved successfully.", quiz.id)
         return JsonResponse({'success': True, 'message': 'Quiz saved successfully.'})

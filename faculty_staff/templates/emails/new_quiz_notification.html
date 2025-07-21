@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>New Quiz: {{ quiz.title }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #5cb85c;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 15px 0;
+            background-color: #5cb85c;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .quiz-details {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .footer {
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #777;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>New Quiz: {{ quiz.title }}</h1>
+    </div>
+    <div class="content">
+        <p>Dear {{ recipient_name }} ({{ role }}),</p>
+        
+        <p>A new quiz has been scheduled for <strong>{{ course_name }}</strong>.</p>
+        
+        <div class="quiz-details">
+            <h3>Quiz Details</h3>
+            <p><strong>Title:</strong> {{ quiz.title }}</p>
+            <p><strong>Total Questions:</strong> {{ total_questions }}</p>
+            <p><strong>Total Marks:</strong> {{ total_marks }}</p>
+            <p><strong>Time Limit:</strong> {{ time_limit }}</p>
+            {% if quiz.instructions %}
+                <p><strong>Instructions:</strong><br>{{ quiz.instructions|linebreaksbr }}</p>
+            {% endif %}
+        </div>
+        
+        <p>Please inform your fellow students about this quiz. The quiz will be available on the course page during the scheduled time.</p>
+        
+        <p>Best regards,<br>The {{ course_name }} Teaching Team</p>
+    </div>
+    
+    <div class="footer">
+        <p>This is an automated message. Please do not reply to this email.</p>
+    </div>
+</body>
+</html>

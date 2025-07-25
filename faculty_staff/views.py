@@ -3559,29 +3559,42 @@ def record_exam_results(request):
                     
                     # Check if student is repeating this course
                     is_repeat, previous_results = is_course_repeated(student, course_offering)
-                    if is_repeat:
-                        # Set remarks for current attempt
-                        defaults['remarks'] = 'Repeat' + (f' - {defaults["remarks"]}' if defaults.get('remarks') else '')
+                    
+                    if is_repeat and previous_results.exists():
+                        # Get the most recent failed attempt
+                        prev_result = previous_results.latest('graded_at')
                         
-                        # Update the current enrollment to mark as repeat
+                        # Update the previous failed attempt with new marks
+                        prev_result.midterm_obtained = defaults.get('midterm_obtained')
+                        prev_result.sessional_obtained = defaults.get('sessional_obtained')
+                        prev_result.final_obtained = defaults.get('final_obtained')
+                        prev_result.practical_obtained = defaults.get('practical_obtained')
+                        prev_result.total_marks = defaults.get('total_marks')
+                        prev_result.percentage = defaults.get('percentage')
+                        prev_result.graded_by = request.user.teacher_profile
+                        prev_result.graded_at = timezone.now()
+                        prev_result.remarks = f"Retake passed in {course_offering.semester.name} {course_offering.academic_session.name}"
+                        prev_result.save()
+                        
+                        # Update the current enrollment to mark as retake
                         try:
                             enrollment = CourseEnrollment.objects.get(
                                 student_semester_enrollment__student=student,
                                 course_offering=course_offering
                             )
                             enrollment.is_repeat = True
+                            enrollment.status = 'retake'
                             enrollment.save()
                         except CourseEnrollment.DoesNotExist:
                             pass
                             
-                        # Update previous failed attempts to mark them as replaced
-                        for prev_result in previous_results:
-                            if 'Repeat' not in (prev_result.remarks or ''):
-                                prev_result.remarks = f"Repeated in {course_offering.semester.name} {course_offering.academic_session.name}"
-                                prev_result.save()
+                        # Skip creating a new result record
+                        success_count += 1
+                        continue
                     
-                    # Only save if at least one mark is provided
+                    # Only save if at least one mark is provided and it's not a retake case (handled above)
                     if any(key in defaults for key in ['midterm_obtained', 'sessional_obtained', 'final_obtained', 'practical_obtained']):
+                        # For new attempts (not retakes)
                         exam_result, created = ExamResult.objects.update_or_create(
                             course_offering=course_offering,
                             student=student,

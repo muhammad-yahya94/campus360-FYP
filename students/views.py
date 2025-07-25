@@ -78,12 +78,12 @@ def student_login(request):
             # Check if the user is associated with a Student profile
             try:
                 student = Student.objects.get(user=user)
-                if student.current_status in ['active', 'suspended']:  # Optional: Only allow active or suspended students
+                if student.current_status in ['active', 'graduated']:  
                     login(request, user)
                     messages.success(request, 'Login successful!')
                     return redirect('students:dashboard')
                 else:
-                    messages.error(request, 'Your account is not in an active or suspended status.')
+                    messages.error(request, 'Your account is not in an active or graduated status.')
             except Student.DoesNotExist:
                 messages.error(request, 'You are not authorized as a student. Only students can log in.')
         else:

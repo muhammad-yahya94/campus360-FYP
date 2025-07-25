@@ -23,9 +23,10 @@ urlpatterns = [
     # ========== 3. Student Management ==========
     path('student-management/', views.student_management, name='student_management'),  # 3.1 Student Management
     # path('add-student/', views.add_student_manually, name='add_student_manually'),  # 3.2 Add Student (Commented Out)
-    
+    #=========== Results ===================
+    path('results/', views.results, name='results'),  # 3.3 Results
     # ========== 4. Fee Management ==========
-    path('admission-fee/', views.admission_fee, name='admission_fee'),  # 4.1 Admission Fee
+ # 4.1 Admission Fee
     path('semester-fee/', views.semester_fee, name='semester-fee'),  # 4.2 Semester Fee
     path('fee-verification/', views.fee_verification, name='fee_verification'),  # 4.3 Fee Verification
     
@@ -48,7 +49,7 @@ urlpatterns = [
     
     
     # ========= 8. course enrollment ========
-    path('manual-course-enrollment/', views.manual_course_enrollment, name='manual_course_enrollment'),
+    path('repeat-course-enrollment/', views.manual_course_enrollment, name='manual_course_enrollment'),
     
     # ========== 9. Password Reset ==========
     path('password-reset/', OfficePasswordResetView.as_view(), name='password_reset'),

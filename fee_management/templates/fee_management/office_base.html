@@ -9,7 +9,8 @@
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.0/dist/full.min.css" rel="stylesheet" type="text/css" />
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script>
+    {% block extra_css %}{% endblock %}
+    <script> 
         function changeTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
             localStorage.setItem('selectedTheme', theme);
@@ -48,8 +49,8 @@
                         </a>
                     </li>
                     <li>
-                        <a href="{% url 'fee_management:admission_fee' %}" class="{% if request.resolver_match.url_name == 'admission_fee' %}active{% endif %} text-base">
-                            <i class="fas fa-money-bill-wave text-lg w-6"></i> Admission Fee
+                        <a href="{% url 'fee_management:results' %}" class="{% if request.resolver_match.url_name == 'results' %}active{% endif %} text-base">
+                            <i class="fas fa-money-bill-wave text-lg w-6"></i> Results
                         </a>
                     </li>
                     <li>
@@ -65,6 +66,12 @@
                     <li>
                         <a href="{% url 'fee_management:manage_merit_lists' %}" class="{% if request.resolver_match.url_name == 'manage_merit_lists' %}active{% endif %} text-base">
                             <i class="fas fa-check-circle text-lg w-6"></i> Merit Lists
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'fee_management:manual_course_enrollment' %}" 
+                           class="{% if request.resolver_match.url_name == 'manual_course_enrollment' %}active{% endif %} text-base">
+                            <i class="fas fa-user-graduate text-lg w-6"></i> Repeat Course Enrollment
                         </a>
                     </li>
                     <li>
@@ -250,8 +257,8 @@
                             </a>
                         </li>
                         <li>
-                            <a href="{% url 'fee_management:admission_fee' %}" class="{% if request.resolver_match.url_name == 'admission_fee' %}active{% endif %} text-lg py-3">
-                                <i class="fas fa-money-bill-wave text-lg w-6"></i> Admission Fee
+                            <a href="{% url 'fee_management:results' %}" class="{% if request.resolver_match.url_name == 'results' %}active{% endif %} text-lg py-3">
+                                <i class="fas fa-money-bill-wave text-lg w-6"></i> Results
                             </a>
                         </li>
                         <li>
@@ -278,7 +285,7 @@
                         <li>
                             <a href="{% url 'fee_management:manual_course_enrollment' %}" 
                                class="{% if request.resolver_match.url_name == 'manual_course_enrollment' %}active{% endif %} text-lg py-3">
-                                <i class="fas fa-user-graduate text-lg w-6"></i> Manual Course Enrollment
+                                <i class="fas fa-user-graduate text-lg w-6"></i> Repeat Course Enrollment
                             </a>
                         </li>
                         <div class="divider"></div>

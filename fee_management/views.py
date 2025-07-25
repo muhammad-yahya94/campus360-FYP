@@ -12,6 +12,8 @@ from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.http import HttpResponse, JsonResponse
 from .models import SemesterFee, FeeType, FeeVoucher, StudentFeePayment, FeeToProgram, MeritList, MeritListEntry
+from courses.models import CourseOffering, Course, ExamResult
+from students.models import Student
 # from admissions.models import Applicant, AcademicSession, AcademicQualification, ExtraCurricularActivity
 from academics.models import Program, Semester  # Added Semester import
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -228,9 +230,242 @@ def view_applicant(request, applicant_id):
 def student_management(request):
     return render(request, 'fee_management/student_management.html')
 
-@office_required
-def admission_fee(request):
-    return render(request, 'fee_management/admission_fee.html')
+
+
+
+
+
+
+def calculate_grade(percentage):
+    """Calculate grade based on percentage according to the provided conversion table."""
+    if percentage is None:
+        return 'N/A'
+    percentage = float(percentage)
+    if percentage >= 85:
+        return 'A+'
+    elif percentage >= 80:
+        return 'A'
+    elif percentage >= 75:
+        return 'B+'
+    elif percentage >= 70:
+        return 'B'
+    elif percentage >= 65:
+        return 'C+'
+    elif percentage >= 60:
+        return 'C'
+    elif percentage >= 50:
+        return 'D'
+    else:
+        return 'F'
+
+
+from django.db.models import Q
+from students.models import Student
+from django.contrib import messages
+from collections import defaultdict
+import math
+
+@login_required
+def results(request):
+    # Initialize context with default values
+    context = {
+        'student': None,
+        'semester_results': {},
+        'semester_gpas': {},
+        'opt_results': [],
+        'roll_no': None,
+        'session': None,
+        'semester_totals': {},
+        'total_credit_hours': 0,
+        'total_full_marks': 0,
+        'max_marks': 0,
+        'avg_percentage': 0,
+        'total_quality_points': 0,
+        'cgpa': 0,
+    }
+    
+    search_query = request.GET.get('search', '').strip()
+    
+    if not search_query:
+        return render(request, 'fee_management/results.html', context)
+    
+    try:
+        # Try to find student by university_roll_no or Registration_number
+        student = Student.objects.get(
+            Q(university_roll_no__iexact=search_query) |
+            Q(Registration_number__iexact=search_query)
+        )
+    except Student.DoesNotExist:
+        messages.error(request, f"No student found with ID: {search_query}")
+        return render(request, 'fee_management/results.html', context)
+    except Exception as e:
+        messages.error(request, f"Error searching for student: {str(e)}")
+        return render(request, 'fee_management/results.html', context)
+    
+    roll_no = student.university_roll_no or 'N/A'
+    session = student.applicant.session
+
+
+    # Fetch exam results with shift filter
+    results = ExamResult.objects.filter(
+        student=student,
+    ).select_related('course_offering__course', 'course_offering__semester', 'course_offering__academic_session').order_by(
+        'course_offering__semester__name', 'course_offering__course__code'
+    )
+    print(f"Results fetched: {results.count()} entries.")
+
+    # Handle case where no results are found
+    not_found_roll = f"No results found for roll number {roll_no}" if roll_no and not results else None
+
+    # Separate optional and non-optional results
+    opt_results = results.filter(course_offering__course__opt=True)
+    non_opt_results = results.exclude(course_offering__course__opt=True)
+    print(f"Optional results count: {opt_results.count()}, Non-optional results count: {non_opt_results.count()}.")
+
+    def calculate_quality_points(result):
+        credit_hour = result.course_offering.course.credits
+        total_marks = math.ceil(float(result.percentage or 0))
+        print(f"Result for {result.student.university_roll_no}: Percentage: {result.percentage}, Ceiled: {total_marks}")
+
+        quality_points_mapping = {
+            40: 1.0, 41: 1.1, 42: 1.2, 43: 1.3, 44: 1.4, 45: 1.5,
+            46: 1.6, 47: 1.7, 48: 1.8, 49: 1.9, 50: 2.0, 51: 2.07,
+            52: 2.14, 53: 2.21, 54: 2.28, 55: 2.35, 56: 2.42, 57: 2.49,
+            58: 2.56, 59: 2.63, 60: 2.70, 61: 2.76, 62: 2.82, 63: 2.88,
+            64: 2.94, 65: 3.00, 66: 3.05, 67: 3.10, 68: 3.15, 69: 3.20,
+            70: 3.25, 71: 3.30, 72: 3.35, 73: 3.40, 74: 3.45, 75: 3.50,
+            76: 3.55, 77: 3.60, 78: 3.65, 79: 3.70, 80: 3.75, 81: 3.80,
+            82: 3.85, 83: 3.90, 84: 3.95, 85: 4.0, 86: 4.0, 87: 4.0,
+            88: 4.0, 89: 4.0, 90: 4.0, 91: 4.0, 92: 4.0, 93: 4.0,
+            94: 4.0, 95: 4.0, 96: 4.0, 97: 4.0, 98: 4.0, 99: 4.0,
+            100: 4.0
+        }
+        quality_points = quality_points_mapping.get(total_marks, 0.0) * credit_hour
+        print(f"Result: {result.student.university_roll_no}, Marks: {total_marks}, Quality Points: {quality_points}")
+        return round(quality_points, 2)
+
+    # Add calculated fields to non-optional results
+    for result in non_opt_results:
+        result.quality_points = calculate_quality_points(result)
+        result.grade = calculate_grade(result.percentage)
+        
+        # Set is_fail based on grade and save to database
+        if result.grade == 'F' and not result.is_fail:
+            result.is_fail = True
+            result.save(update_fields=['is_fail'])
+        
+        # Get enrollment info to check if this is a repeat course
+        try:
+            enrollment = CourseEnrollment.objects.get(
+                student_semester_enrollment__student=result.student,
+                course_offering=result.course_offering
+            )
+            result.is_repeat = enrollment.is_repeat
+        except CourseEnrollment.DoesNotExist:
+            result.is_repeat = False
+        
+        result.effective_credit_hour = result.course_offering.course.credits
+        result.course_marks = result.course_offering.course.credits * 20 + (
+            result.course_offering.course.lab_work * 20 if result.course_offering.course.lab_work > 0 else 0
+        )
+        print(f"Result: {result.student.university_roll_no}, Quality Points: {result.quality_points}, "
+              f"Effective Credit Hours: {result.effective_credit_hour}, Course Marks: {result.course_marks}")
+    # Add grades and repeat status to optional results
+    for opt_result in opt_results:
+        opt_result.grade = calculate_grade(opt_result.percentage)
+        # Get enrollment info to check if this is a repeat course
+        try:
+            enrollment = CourseEnrollment.objects.get(
+                student_semester_enrollment__student=opt_result.student,
+                course_offering=opt_result.course_offering
+            )
+            opt_result.is_repeat = enrollment.is_repeat
+        except CourseEnrollment.DoesNotExist:
+            opt_result.is_repeat = False
+
+    # Group non-optional results by semester
+    semester_results = defaultdict(list)
+    for result in non_opt_results:
+        semester_results[result.course_offering.semester.name].append(result)
+
+    # Calculate semester-wise metrics
+    semester_gpas = {}
+    semester_totals = {}
+    for semester, semester_data in semester_results.items():
+        total_qp = sum(calculate_quality_points(result) for result in semester_data)
+        total_credit_hours = sum(result.course_offering.course.credits for result in semester_data)
+        semester_gpas[semester] = round(total_qp / total_credit_hours, 2) if total_credit_hours > 0 else 0
+
+        total_marks = sum(float(result.percentage or 0) * result.course_offering.course.credits for result in semester_data)
+        avg_percentage = math.ceil(total_marks / total_credit_hours) if total_credit_hours > 0 else 0
+        total_full_marks = sum(
+            (result.course_offering.course.credits * 20 + (
+                result.course_offering.course.lab_work * 20 if result.course_offering.course.lab_work > 0 else 0
+            )) for result in semester_data
+        )
+        max_marks = sum(result.total_marks or 0 for result in semester_data)
+        total_quality_points = round(sum(calculate_quality_points(result) for result in semester_data), 2)
+
+        semester_totals[semester] = {
+            'total_credit_hours': total_credit_hours,
+            'total_full_marks': total_full_marks,
+            'max_marks': max_marks,
+            'average_percentage': avg_percentage,
+            'total_quality_points': total_quality_points
+        }
+        print(f"Semester: {semester}")
+        print(f"  Total Credit Hours: {total_credit_hours}")
+        print(f"  Total Full Marks: {total_full_marks}")
+        print(f"  Max Marks: {max_marks}")
+        print(f"  Average Percentage: {avg_percentage}%")
+        print(f"  Total Quality Points: {total_quality_points}")
+
+    # Calculate overall CGPA (excluding optional courses)
+    total_quality_points = round(sum(result.quality_points for result in non_opt_results), 2)
+    total_credit_hours = sum(result.course_offering.course.credits for result in non_opt_results)
+    cgpa = round(total_quality_points / total_credit_hours, 2) if total_credit_hours > 0 else 0
+    print(f"Total Quality Points: {total_quality_points}, Total Credit Hours: {total_credit_hours}, CGPA: {cgpa}")
+
+    total_marks = sum(float(result.percentage or 0) * result.course_offering.course.credits for result in non_opt_results)
+    avg_percentage = math.ceil(total_marks / total_credit_hours) if total_credit_hours > 0 else 0
+    print(f"Total Marks: {total_marks}, Average Percentage: {avg_percentage}")
+
+    total_full_marks = sum(
+        (result.course_offering.course.credits * 20 + (
+            result.course_offering.course.lab_work * 20 if result.course_offering.course.lab_work > 0 else 0
+        )) for result in non_opt_results
+    )
+    max_marks = sum(result.total_marks or 0 for result in non_opt_results)
+    print(f"Total Full Marks: {total_full_marks}, Max Marks: {max_marks}")
+
+    context.update({
+        'student': student,
+        'semester_results': dict(semester_results),
+        'semester_gpas': semester_gpas,
+        'opt_results': opt_results,
+        'roll_no': roll_no,
+        'session': session,
+        'semester_totals': semester_totals,
+        'msg': not_found_roll,
+        'total_credit_hours': total_credit_hours,
+        'total_full_marks': total_full_marks,
+        'max_marks': max_marks,
+        'avg_percentage': avg_percentage,
+        'total_quality_points': total_quality_points,
+        'cgpa': cgpa,
+        'search_query': search_query,
+    })
+
+    return render(request, 'fee_management/results.html', context)
+
+
+
+
+
+
+
+
+
 
 
 from django.shortcuts import render, redirect, get_object_or_404
@@ -298,7 +533,7 @@ def semester_fee(request):
                     else:
                         FeeType.objects.create(
                             name=name,
-                            description=description,
+                            description=description, 
                             is_active=is_active
                         )
                         messages.success(request, 'Fee Type added successfully.')

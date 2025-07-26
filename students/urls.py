@@ -42,6 +42,7 @@ urlpatterns = [
     path('settings/', views.settings_view, name='settings'),  # 9.2 Settings Page
     path('settings/update-account/', views.update_account, name='update_account'),  # 9.3 Update Account
     path('settings/change-password/', views.change_password, name='change_password'),  # 9.4 Change Password
+    path('settings/upload-attendance-photos/', views.upload_attendance_photos, name='upload_attendance_photos'),  # New API endpoint for photo upload
     
     # ========== 10. Online IDE ==========
     path('ide/', views.ide, name='ide'),  # 10.1 Online Code Editor

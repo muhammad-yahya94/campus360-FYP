@@ -89,6 +89,32 @@
             </div>
         </div>
 
+        <!-- Upload Photos for Attendance Section -->
+        <div class="collapse collapse-arrow bg-base-100 shadow-md">
+            <input type="checkbox" name="upload_photos" />
+            <div class="collapse-title text-xl font-medium">
+                <i class="fas fa-camera mr-2"></i> Upload Photos for Attendance
+            </div>
+            <div class="collapse-content space-y-4">
+                <p class="text-sm sm:text-base text-gray-700">
+                    Please follow the instructions and capture 10 photos with good resolution.<br>
+                    Keep your face straight, turn a little bit left, right, and so on.
+                </p>
+                <button id="start-camera" class="btn btn-primary">Start Camera</button>
+                <div id="camera-container" class="hidden space-y-4">
+                    <video id="video" width="320" height="240" autoplay muted></video>
+                    <div>
+                        <button id="capture-photo" class="btn btn-secondary" disabled>Capture Photo</button>
+                        <button id="stop-camera" class="btn btn-error">Stop Camera</button>
+                    </div>
+                    <p>Photos captured: <span id="photo-count">0</span>/10</p>
+                    <div id="photo-preview" class="grid grid-cols-5 gap-2"></div>
+                    <button id="upload-photos" class="btn btn-success" disabled>Upload Photos</button>
+                    <p id="upload-status" class="text-sm"></p>
+                </div>
+            </div>
+        </div>
+
         <!-- Security Section -->
         <div class="collapse collapse-arrow bg-base-100 shadow-md">
             <input type="checkbox" name="security" {% if password_errors %}checked{% endif %} />
@@ -121,12 +147,12 @@
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Profile picture preview logic
         const input = document.getElementById('profile_picture');
         const preview = document.getElementById('profile-preview');
         const placeholder = preview ? preview.parentElement.querySelector('div') : null;
 
         if (input && preview && placeholder) {
-            // Set initial state
             if (!preview.src || preview.src === '#') {
                 preview.classList.add('hidden');
                 placeholder.classList.remove('hidden');
@@ -143,7 +169,6 @@
                     };
                     reader.readAsDataURL(file);
                 } else {
-                    // Revert to current image or hide if none
                     {% if user.profile_picture %}
                         preview.src = "{{ user.profile_picture.url }}";
                         preview.classList.remove('hidden');
@@ -155,6 +180,108 @@
                 }
             });
         }
+
+        // Camera and photo capture logic
+        const startCameraBtn = document.getElementById('start-camera');
+        const stopCameraBtn = document.getElementById('stop-camera');
+        const capturePhotoBtn = document.getElementById('capture-photo');
+        const uploadPhotosBtn = document.getElementById('upload-photos');
+        const video = document.getElementById('video');
+        const cameraContainer = document.getElementById('camera-container');
+        const photoCountSpan = document.getElementById('photo-count');
+        const photoPreview = document.getElementById('photo-preview');
+        const uploadStatus = document.getElementById('upload-status');
+
+        let stream = null;
+        let photos = [];
+
+        startCameraBtn.addEventListener('click', async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+                video.srcObject = stream;
+                cameraContainer.classList.remove('hidden');
+                startCameraBtn.disabled = true;
+                capturePhotoBtn.disabled = false;
+                uploadStatus.textContent = '';
+                photos = [];
+                photoPreview.innerHTML = '';
+                photoCountSpan.textContent = '0';
+            } catch (err) {
+                alert('Error accessing camera: ' + err.message);
+            }
+        });
+
+        stopCameraBtn.addEventListener('click', () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            cameraContainer.classList.add('hidden');
+            startCameraBtn.disabled = false;
+            capturePhotoBtn.disabled = true;
+            uploadPhotosBtn.disabled = true;
+            photos = [];
+            photoPreview.innerHTML = '';
+            photoCountSpan.textContent = '0';
+            uploadStatus.textContent = '';
+        });
+
+        capturePhotoBtn.addEventListener('click', () => {
+            if (photos.length >= 10) {
+                alert('You have already captured 10 photos.');
+                return;
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+            photos.push(dataUrl);
+
+            // Show preview
+            const img = document.createElement('img');
+            img.src = dataUrl;
+            img.className = 'w-16 h-16 object-cover rounded';
+            photoPreview.appendChild(img);
+
+            photoCountSpan.textContent = photos.length.toString();
+
+            if (photos.length === 10) {
+                capturePhotoBtn.disabled = true;
+                uploadPhotosBtn.disabled = false;
+            }
+        });
+
+        uploadPhotosBtn.addEventListener('click', async () => {
+            uploadStatus.textContent = 'Uploading photos...';
+            try {
+                const formData = new FormData();
+                for (const photo of photos) {
+                    // Convert base64 to Blob
+                    const res = await fetch(photo);
+                    const blob = await res.blob();
+                    formData.append('photos', blob, `photo_${photos.indexOf(photo) + 1}.jpg`);
+                }
+
+                const response = await fetch("{% url 'students:upload_attendance_photos' %}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: formData
+                });
+
+                if (response.ok) {
+                    uploadStatus.textContent = 'Photos uploaded and embeddings generated successfully.';
+                } else {
+                    const data = await response.json();
+                    uploadStatus.textContent = 'Error: ' + (data.error || 'Unknown error');
+                }
+            } catch (err) {
+                uploadStatus.textContent = 'Upload failed: ' + err.message;
+            }
+        });
     });
 </script>
 {% endblock %}

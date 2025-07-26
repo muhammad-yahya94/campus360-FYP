@@ -129,9 +129,9 @@ LOGOUT_REDIRECT_URL = '//'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'projectdb',
+        'NAME': 'camp',
         'USER': 'postgres',
-        'PASSWORD': '0000pppp',
+        'PASSWORD': '727422',
         'HOST': 'localhost',
         'PORT': '5432',
         'CONN_MAX_AGE': 600,

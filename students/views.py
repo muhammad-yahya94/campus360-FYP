@@ -50,7 +50,7 @@ from courses.models import (
     Quiz, Question, Option, QuizSubmission, LectureReplacement
 )
 from faculty_staff.models import Teacher, TeacherDetails, DepartmentFund
-from students.models import Student, StudentSemesterEnrollment, CourseEnrollment, StudentFundPayment
+from students.models import Student, StudentSemesterEnrollment, CourseEnrollment, StudentFundPayment , FaceEmbedding
 from fee_management.models import SemesterFee, StudentFeePayment, FeeToProgram, FeeVoucher
 from collections import defaultdict
 import math
@@ -517,25 +517,6 @@ def notices(request):
     return render(request, 'notice.html', context)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 def calculate_grade(percentage):
     """Calculate grade based on percentage according to the provided conversion table."""
     if percentage is None:
@@ -695,17 +676,6 @@ def exam_results(request):
     }
 
     return render(request, 'exam_results.html', context)
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1293,6 +1263,97 @@ def settings_view(request):
         logger.error(f"Error in settings_view: {str(e)}")
         messages.error(request, 'An error occurred while loading settings.')
         return redirect('students:dashboard')
+
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.http import JsonResponse
+import numpy as np
+import base64
+import cv2
+from students.generate_encodings import generate_embeddings
+
+@login_required
+@require_POST
+@csrf_exempt
+def upload_attendance_photos(request):
+    try:
+        student = Student.objects.get(user=request.user)
+        cnic = student.applicant.cnic if hasattr(student.applicant, 'cnic') else ''
+
+        # Check if embeddings exist and were updated within last 4 months
+        from django.utils import timezone
+        from datetime import timedelta
+        four_months_ago = timezone.now() - timedelta(days=4*30)  # Approximate 4 months as 120 days
+
+        recent_embeddings = FaceEmbedding.objects.filter(
+            cnic=cnic,
+            updated_at__gte=four_months_ago
+        )
+
+        if recent_embeddings.exists():
+            return JsonResponse({
+                'error': 'You can submit photos after 4 months or updated in previous 4 months.',
+                'disable_upload': True
+            }, status=403)
+
+        session_name = student.applicant.session.name if student.applicant.session else ''
+        program_name = student.program.name if student.program else ''
+        shift = student.applicant.shift if hasattr(student.applicant, 'shift') else 'Morning'
+
+        photos = []
+        files = request.FILES.getlist('photos')
+        if len(files) != 10:
+            return JsonResponse({'error': 'Exactly 10 photos are required.'}, status=400)
+
+        for file in files:
+            # Read image file to numpy array
+            img_bytes = file.read()
+            nparr = np.frombuffer(img_bytes, np.uint8)
+            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            if img is None:
+                return JsonResponse({'error': f'Invalid image file: {file.name}'}, status=400)
+            photos.append(img)
+
+        # Call generate_embeddings function
+        success, error = generate_embeddings(photos, session_name, program_name, shift, cnic)
+        if success:
+            return JsonResponse({'message': 'Embeddings generated successfully.'})
+        else:
+            return JsonResponse({'error': error}, status=500)
+    except Student.DoesNotExist:
+        return JsonResponse({'error': 'Student profile not found.'}, status=404)
+    except Exception as e:
+        logger.error(f"Error in upload_attendance_photos: {str(e)}")
+        return JsonResponse({'error': 'An error occurred while processing photos.'}, status=500)
+
+@login_required
+def check_embedding_status(request):
+    try:
+        student = Student.objects.get(user=request.user)
+        cnic = student.applicant.cnic if hasattr(student.applicant, 'cnic') else ''
+        from django.utils import timezone
+        from datetime import timedelta
+        four_months_ago = timezone.now() - timedelta(days=4*30)  # Approximate 4 months as 120 days
+
+        recent_embeddings = FaceEmbedding.objects.filter(
+            cnic=cnic,
+            updated_at__gte=four_months_ago
+        )
+
+        if recent_embeddings.exists():
+            return JsonResponse({
+                'disable_upload': True,
+                'message': 'You can submit photos after 4 months or updated in previous 4 months.'
+            })
+        else:
+            return JsonResponse({
+                'disable_upload': False
+            })
+    except Student.DoesNotExist:
+        return JsonResponse({'error': 'Student profile not found.'}, status=404)
+    except Exception as e:
+        logger.error(f"Error in check_embedding_status: {str(e)}")
+        return JsonResponse({'error': 'An error occurred while checking embedding status.'}, status=500)
     
     
 @login_required

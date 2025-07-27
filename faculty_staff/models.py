@@ -192,3 +192,95 @@ class OfficeStaff(models.Model):
         verbose_name = "Office Staff"
         verbose_name_plural = "Office Staff"
 
+
+
+
+
+
+
+from django.db import models
+from django.core.exceptions import ValidationError
+from django.utils import timezone
+
+class ExamDateSheet(models.Model):
+    EXAM_TYPES = [
+        ('midterm', 'Midterm'),
+        ('final', 'Final'),
+        ('practical', 'Practical'),
+        ('other', 'Other'),
+    ]
+
+    course_offering = models.ForeignKey(
+        'courses.CourseOffering',
+        on_delete=models.CASCADE,
+        related_name='exam_datesheets',
+        help_text="Select the course offering for this exam."
+    )
+    academic_session = models.ForeignKey(
+        'admissions.AcademicSession',
+        on_delete=models.CASCADE,
+        related_name='exam_datesheets',
+        help_text="Select the academic session for this exam."
+    )
+    semester = models.ForeignKey(
+        'academics.Semester',
+        on_delete=models.CASCADE,
+        related_name='exam_datesheets',
+        help_text="Select the semester for this exam."
+    )
+    program = models.ForeignKey(
+        'academics.Program',
+        on_delete=models.CASCADE,
+        related_name='exam_datesheets',
+        help_text="Select the program for this exam."
+    )
+    exam_type = models.CharField(
+        max_length=20,
+        choices=EXAM_TYPES,
+        help_text="Select the type of exam."
+    )
+    exam_date = models.DateField(
+        help_text="Select the date of the exam."
+    )
+    start_time = models.TimeField(
+        help_text="Select the start time of the exam."
+    )
+    end_time = models.TimeField(
+        help_text="Select the end time of the exam."
+    )
+    exam_center = models.CharField(
+        max_length=100,
+        help_text="Enter the exam center or location (e.g., Room 101, Building A)."
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When this exam schedule was created."
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text="When this exam schedule was last updated."
+    )
+
+    def clean(self):
+        # Ensure end_time is after start_time
+        if self.start_time and self.end_time:
+            if self.end_time <= self.start_time:
+                raise ValidationError("End time must be after start time.")
+        # Ensure exam_date is not in the past
+        if self.exam_date and self.exam_date < timezone.now().date():
+            raise ValidationError("Exam date cannot be in the past.")
+        # Ensure course_offering matches the selected semester, program, and session
+        if self.course_offering:
+            if (self.course_offering.semester != self.semester or
+                self.course_offering.program != self.program or
+                self.course_offering.academic_session != self.academic_session):
+                raise ValidationError("Course offering must belong to the selected semester, program, and academic session.")
+
+    def __str__(self):
+        return f"{self.course_offering.course.code} - {self.exam_type} ({self.academic_session.name}, {self.semester.name})"
+
+    class Meta:
+        verbose_name = "Exam Datesheet"
+        verbose_name_plural = "Exam Datesheets"
+        unique_together = ('course_offering', 'exam_type', 'academic_session', 'semester')
+        ordering = ['exam_date', 'start_time']

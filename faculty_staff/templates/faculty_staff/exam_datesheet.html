@@ -1,0 +1,268 @@
+{% extends 'faculty_staff/base_dashboard.html' %}
+{% load static %}
+
+{% block title %}Exam Datesheet Management{% endblock %}
+
+{% block content %}
+<div class="container mx-auto">
+    <h1 class="text-2xl font-bold mb-6">Exam Datesheet Management</h1>
+
+    <form method="POST" id="exam-datesheet-form" class="space-y-6">
+        {% csrf_token %}
+        <div class="card bg-base-100 shadow-xl p-6">
+            <h2 class="text-xl font-semibold mb-4">Select Exam Details</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Academic Session -->
+                <div>
+                    <label class="label">
+                        <span class="label-text">Academic Session</span>
+                    </label>
+                    <select name="academic_session" id="academic_session" class="select select-bordered w-full" required>
+                        <option value="">Select Session</option>
+                        {% for session in academic_sessions %}
+                            <option value="{{ session.id }}">{{ session.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <!-- Program -->
+                <div>
+                    <label class="label">
+                        <span class="label-text">Program</span>
+                    </label>
+                    <select name="program" id="program" class="select select-bordered w-full" required disabled>
+                        <option value="">Select Program</option>
+                    </select>
+                </div>
+                <!-- Semester -->
+                <div>
+                    <label class="label">
+                        <span class="label-text">Semester</span>
+                    </label>
+                    <select name="semester" id="semester" class="select select-bordered w-full" required disabled>
+                        <option value="">Select Semester</option>
+                    </select>
+                </div>
+                <!-- Exam Type -->
+                <div>
+                    <label class="label">
+                        <span class="label-text">Exam Type</span>
+                    </label>
+                    <select name="exam_type" id="exam_type" class="select select-bordered w-full" required>
+                        <option value="">Select Exam Type</option>
+                        <option value="midterm">Midterm</option>
+                        <option value="final">Final</option>
+                        <option value="quiz">Quiz</option>
+                        <option value="practical">Practical</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mt-4">
+                <button type="button" id="load-courses" class="btn btn-primary" disabled>Load Courses</button>
+            </div>
+        </div>
+
+        <!-- Course Exam Schedule Table -->
+        <div id="courses-table" class="hidden card bg-base-100 shadow-xl p-6">
+            <h2 class="text-xl font-semibold mb-4">Exam Schedule</h2>
+            <div id="no-courses" class="text-center text-base-content/70">
+                No courses available. Please select a session, program, semester, and exam type to load courses.
+            </div>
+            <div id="courses-content" class="hidden">
+                <div class="overflow-x-auto">
+                    <table class="table w-full">
+                        <thead>
+                            <tr>
+                                <th>Course Code</th>
+                                <th>Course Name</th>
+                                <th>Exam Date</th>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                                <th>Exam Center</th>
+                            </tr>
+                        </thead>
+                        <tbody id="course-rows">
+                            <!-- Course rows will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-success">Save Exam Datesheet</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sessionSelect = document.getElementById('academic_session');
+    const programSelect = document.getElementById('program');
+    const semesterSelect = document.getElementById('semester');
+    const examTypeSelect = document.getElementById('exam_type');
+    const loadCoursesButton = document.getElementById('load-courses');
+    const coursesTable = document.getElementById('courses-table');
+    const courseRows = document.getElementById('course-rows');
+    const noCoursesMsg = document.getElementById('no-courses');
+    const coursesContent = document.getElementById('courses-content');
+
+    // Enable/disable load courses button
+    function updateLoadButton() {
+        if (sessionSelect.value && programSelect.value && semesterSelect.value && examTypeSelect.value) {
+            loadCoursesButton.disabled = false;
+        } else {
+            loadCoursesButton.disabled = true;
+        }
+    }
+
+    // Fetch programs based on session
+    sessionSelect.addEventListener('change', function() {
+        programSelect.disabled = true;
+        semesterSelect.disabled = true;
+        programSelect.innerHTML = '<option value="">Select Program</option>';
+        semesterSelect.innerHTML = '<option value="">Select Semester</option>';
+        coursesTable.classList.add('hidden');
+        updateLoadButton();
+
+        if (this.value) {
+            fetch(`{% url 'faculty_staff:get_programs_ds' %}?session_id=${this.value}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.programs && data.programs.length > 0) {
+                        data.programs.forEach(program => {
+                            const option = document.createElement('option');
+                            option.value = program.id;
+                            option.textContent = program.name;
+                            programSelect.appendChild(option);
+                        });
+                        programSelect.disabled = false;
+                    } else {
+                        programSelect.disabled = true;
+                        programSelect.innerHTML = '<option value="">No programs available</option>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching programs:', error);
+                    programSelect.innerHTML = '<option value="">Error loading programs</option>';
+                });
+        }
+    });
+
+    // Fetch semesters based on session and program
+    programSelect.addEventListener('change', function() {
+        semesterSelect.disabled = true;
+        semesterSelect.innerHTML = '<option value="">Select Semester</option>';
+        coursesTable.classList.add('hidden');
+        updateLoadButton();
+
+        if (sessionSelect.value && this.value) {
+            fetch(`{% url 'faculty_staff:get_semesters_ds' %}?session_id=${sessionSelect.value}&program_id=${this.value}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.semesters && data.semesters.length > 0) {
+                        data.semesters.forEach(semester => {
+                            const option = document.createElement('option');
+                            option.value = semester.id;
+                            option.textContent = semester.name;
+                            semesterSelect.appendChild(option);
+                        });
+                        semesterSelect.disabled = false;
+                    } else {
+                        semesterSelect.disabled = true;
+                        semesterSelect.innerHTML = '<option value="">No semesters available</option>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching semesters:', error);
+                    semesterSelect.innerHTML = '<option value="">Error loading semesters</option>';
+                });
+        }
+    });
+
+    // Update load button on semester or exam type change
+    semesterSelect.addEventListener('change', updateLoadButton);
+    examTypeSelect.addEventListener('change', updateLoadButton);
+
+    // Load courses via AJAX
+    loadCoursesButton.addEventListener('click', function() {
+        if (!sessionSelect.value || !programSelect.value || !semesterSelect.value || !examTypeSelect.value) {
+            console.error('Missing required fields');
+            return;
+        }
+        
+        // Show loading state
+        loadCoursesButton.disabled = true;
+        loadCoursesButton.textContent = 'Loading...';
+        
+        const url = `{% url 'faculty_staff:get_courses_ds' %}?session_id=${sessionSelect.value}&program_id=${programSelect.value}&semester_id=${semesterSelect.value}`;
+        console.log('Fetching courses from:', url);
+        
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Received courses data:', data);
+                
+                // Reset button state
+                loadCoursesButton.disabled = false;
+                loadCoursesButton.textContent = 'Reload Courses';
+                
+                // Show the courses table
+                coursesTable.classList.remove('hidden');
+                
+                // Clear existing rows
+                courseRows.innerHTML = '';
+                
+                if (data.courses && data.courses.length > 0) {
+                    // Show courses content and hide 'no courses' message
+                    coursesContent.classList.remove('hidden');
+                    noCoursesMsg.classList.add('hidden');
+                    
+                    // Add each course as a row
+                    data.courses.forEach((course, index) => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td class="align-middle">${course.course__code || ''}</td>
+                            <td class="align-middle">${course.course__name || ''}</td>
+                            <td>
+                                <input type="hidden" name="course_offering_${index}" value="${course.id}">
+                                <input type="date" name="exam_date_${index}" class="input input-bordered w-full" required>
+                            </td>
+                            <td><input type="time" name="start_time_${index}" class="input input-bordered w-full" required></td>
+                            <td><input type="time" name="end_time_${index}" class="input input-bordered w-full" required></td>
+                            <td><input type="text" name="exam_center_${index}" class="input input-bordered w-full" placeholder="e.g., Room 101" required></td>
+                            <input type="hidden" name="academic_session_${index}" value="${sessionSelect.value}">
+                            <input type="hidden" name="program_${index}" value="${programSelect.value}">
+                            <input type="hidden" name="semester_${index}" value="${semesterSelect.value}">
+                            <input type="hidden" name="exam_type_${index}" value="${examTypeSelect.value}">
+                        `;
+                        courseRows.appendChild(row);
+                    });
+                    
+                    // Add hidden field with total number of courses
+                    const totalCourses = document.createElement('input');
+                    totalCourses.type = 'hidden';
+                    totalCourses.name = 'total_courses';
+                    totalCourses.value = data.courses.length;
+                    document.getElementById('exam-datesheet-form').appendChild(totalCourses);
+                } else {
+                    // Show 'no courses' message and hide courses content
+                    coursesContent.classList.add('hidden');
+                    noCoursesMsg.classList.remove('hidden');
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching courses:', error);
+                alert('Failed to load courses. Please try again.');
+                // Reset button state on error
+                loadCoursesButton.disabled = false;
+                loadCoursesButton.textContent = 'Load Courses';
+            });
+    });
+});
+</script>
+{% endblock %}

@@ -114,3 +114,29 @@ class QuestionForm(forms.ModelForm):
     class Meta:
         model = Question
         fields = ['text', 'marks']        
+        
+        
+        
+        
+from django import forms
+from django.forms import formset_factory
+from .models import ExamDateSheet
+
+class ExamDateSheetForm(forms.ModelForm):
+    class Meta:
+        model = ExamDateSheet
+        fields = ['exam_date', 'start_time', 'end_time', 'exam_center']
+        widgets = {
+            'exam_date': forms.DateInput(attrs={'type': 'date', 'class': 'input input-bordered w-full'}),
+            'start_time': forms.TimeInput(attrs={'type': 'time', 'class': 'input input-bordered w-full'}),
+            'end_time': forms.TimeInput(attrs={'type': 'time', 'class': 'input input-bordered w-full'}),
+            'exam_center': forms.TextInput(attrs={'class': 'input input-bordered w-full', 'placeholder': 'e.g., Room 101, Building A'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.required = True
+
+# Create a formset for multiple courses
+ExamDateSheetFormSet = formset_factory(ExamDateSheetForm, extra=0)        

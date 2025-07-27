@@ -136,4 +136,10 @@ urlpatterns = [
     path('department-funds/view/<int:fund_id>/', views.view_department_fund, name='view_department_fund'),
     path('department-funds/get-programs/', views.get_programs_fund, name='get_programs_fund'),
     path('department-funds/get-semesters/', views.get_semesters_fund, name='get_semesters_fund'),
+    
+    #============ 19. Exam Datesheet ==========
+    path('exam-datesheet/', views.exam_datesheet, name='exam_datesheet'),
+    path('get-programs-exam-ds/', views.get_programs_exam_ds, name='get_programs_ds'),
+    path('get-semesters-exam-ds/', views.get_semesters_exam_ds, name='get_semesters_ds'),
+    path('get-courses-exam-ds/', views.get_courses_exam_ds, name='get_courses_ds'),
 ]

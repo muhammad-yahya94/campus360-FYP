@@ -311,6 +311,12 @@
                                 <i class="fas fa-calendar-week text-lg w-6"></i> Weekly Timetable
                             </a>
                         </li>
+                        <li>
+                            <a href="{% url 'faculty_staff:exam_datesheet' %}" 
+                               class="{% if request.resolver_match.url_name == 'exam_datesheet' %}active{% endif %} text-lg py-3">
+                                <i class="fas fa-calendar-day text-lg w-6"></i> Exam Datesheet
+                            </a>
+                        </li>
                         {% elif request.user.teacher_profile.designation == 'professor' %}
                         <li>
                             <a href="{% url 'faculty_staff:professor_dashboard' %}" class="{% if request.resolver_match.url_name == 'professor_dashboard' %}active{% endif %} text-lg py-3">

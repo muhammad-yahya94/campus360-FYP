@@ -49,7 +49,7 @@ from courses.models import (
     AssignmentSubmission, Notice, Attendance, Venue, TimetableSlot,
     Quiz, Question, Option, QuizSubmission, LectureReplacement
 )
-from faculty_staff.models import Teacher, TeacherDetails, DepartmentFund
+from faculty_staff.models import Teacher, TeacherDetails, DepartmentFund,ExamDateSheet
 from students.models import Student, StudentSemesterEnrollment, CourseEnrollment, StudentFundPayment
 from fee_management.models import SemesterFee, StudentFeePayment, FeeToProgram, FeeVoucher
 from collections import defaultdict
@@ -1863,3 +1863,64 @@ def fund_payments(request):
         'now': current_date,
     }
     return render(request, 'fund_payments.html', context)
+
+
+
+
+def exam_slip(request):
+    user = request.user
+    try:
+        student = Student.objects.get(user=user)
+    except Student.DoesNotExist:
+        logger.warning(f"Unauthorized access attempt to exam_slip by non-student user: {user}")
+        messages.error(request, "You are not registered as a student.")
+        return redirect('students:login')
+
+    # Get the student's program and session
+    program = student.program
+    current_session = student.applicant.session
+    if not program or not current_session:
+        messages.error(request, "No program or session associated with your profile.")
+        return redirect('students:login')
+
+    # Get all semesters for the student's program and session
+    semester_numbers = Semester.objects.filter(
+        program=program,
+        session=current_session,
+        is_active=True
+    ).order_by('number').values_list('number', flat=True).distinct()
+
+    # Get the selected semester number from the query parameter
+    selected_semester_number = request.GET.get('semester')
+    if selected_semester_number:
+        try:
+            selected_semester_number = int(selected_semester_number)
+        except ValueError:
+            selected_semester_number = None
+    else:
+        selected_semester_number = semester_numbers.first() if semester_numbers else None
+
+    # Get exam slips for the selected semester, filtered by the student's enrollments
+    if selected_semester_number:
+        exam_slips = ExamDateSheet.objects.filter(
+            semester__number=selected_semester_number,
+            semester__is_active=True,
+            program=program,
+            academic_session=current_session
+        ).select_related(
+            'course_offering__course',
+            'program',
+            'academic_session',
+            'semester'
+        ).order_by('exam_date', 'start_time')
+    else:
+        exam_slips = ExamDateSheet.objects.none()
+
+    context = {
+        'student': student,
+        'semester_numbers': semester_numbers,
+        'selected_semester_number': selected_semester_number,
+        'exam_slips': exam_slips,
+        'current_session': current_session.name,
+    }
+    return render(request, 'exam_slip.html', context)

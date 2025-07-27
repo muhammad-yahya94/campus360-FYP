@@ -10,21 +10,6 @@
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     {% block extra_css %}{% endblock extra_css %}
-    <script>  
-        {% block extra_head %}{% endblock extra_head %}
-        // Theme management   
-        function changeTheme(theme) {
-            document.documentElement.setAttribute('data-theme', theme);
-            localStorage.setItem('selectedTheme', theme);
-            document.getElementById('theme-modal').checked = false;
-        }
-        
-        // Load saved theme on page load
-        window.addEventListener('DOMContentLoaded', function() {
-            const savedTheme = localStorage.getItem('selectedTheme') || 'light';
-            document.documentElement.setAttribute('data-theme', savedTheme);
-        });
-    </script>
 </head>
 <body class="bg-base-100">
     <!-- Mobile menu button -->
@@ -262,7 +247,7 @@
                         </label>
                     </div>
                     
-                    <ul class="menu p-0 w-full text-base">
+                    <ul class="menu p-0 w-full text-base">  
                         <li>
                             <a href="{% url 'students:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %} text-lg py-3">
                                 <i class="fas fa-tachometer-alt text-lg w-6"></i> Dashboard
@@ -281,6 +266,11 @@
                         <li>
                             <a href="{% url 'students:semester_fees' %}" class="{% if request.resolver_match.url_name == 'semester_fees' %}active{% endif %} text-lg py-3">
                                 <i class="fas fa-money-bill-wave text-lg w-6"></i> Semester Fees
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'students:exam_slip' %}" class="{% if request.resolver_match.url_name == 'exam_slip' %}active{% endif %} text-lg py-3">
+                                <i class="fas fa-clipboard-check text-lg w-6"></i> Exam Slips
                             </a>
                         </li>
                         <li>
@@ -335,6 +325,21 @@
         </div>
     </div>    
 
-    {% block extra_js %}{% endblock extra_js %}
+    {% block extra_js %}
+    <script>
+        // Theme management   
+        function changeTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('selectedTheme', theme);
+            document.getElementById('theme-modal').checked = false;
+        }
+        
+        // Load saved theme on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('selectedTheme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        });
+    </script>
+    {% endblock extra_js %}
 </body>
 </html>

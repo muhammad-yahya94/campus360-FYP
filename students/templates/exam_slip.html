@@ -1,0 +1,165 @@
+{% extends 'base_student.html' %}
+{% load static %}
+
+{% block title %}Exam Roll Number Slips - {{ student.applicant.full_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .student-info {
+        background-color: #f9fafb;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .student-photo {
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+        border-radius: 0.5rem;
+    }
+    .exam-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        border-radius: 0.5rem;
+        overflow: hidden;
+    }
+    .exam-table th,
+    .exam-table td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .exam-table th {
+        background-color: #f3f4f6;
+        font-weight: 600;
+        color: #1f2937;
+    }
+    .exam-table tr:last-child td {
+        border-bottom: none;
+    }
+    .instructions-card {
+        background-color: #f9fafb;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin-top: 1.5rem;
+    }
+    .instructions-card ol {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        list-style-position: inside;
+    }
+    .instructions-card li {
+        flex: 1 1 45%;
+        color: #4b5563;
+        line-height: 1.5;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- Hero Section -->
+    <div class="hero bg-base-200 rounded-lg shadow-lg mb-6">
+        <div class="hero-content text-center">
+            <div class="max-w-md">
+                <h1 class="text-3xl sm:text-4xl font-bold text-base-content mb-2">Exam Roll Number Slips</h1>
+                <p class="text-base sm:text-lg text-base-content/90">Welcome, {{ student.applicant.full_name }}! View your exam schedule for {{ selected_semester_number|default:"current semester" }}.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Information -->
+    <div class="student-info mb-6">
+        <div class="flex flex-col sm:flex-row items-center gap-4">
+            {% if student.applicant.applicant_photo %}
+                <img src="{{ student.applicant.applicant_photo.url }}" alt="Student Photo" class="student-photo">
+            {% else %}
+                <div class="student-photo bg-base-300 flex items-center justify-center text-base-content/70">
+                    No Photo
+                </div>
+            {% endif %}
+            <div>
+                <p class="text-lg"><strong>Student Name:</strong> {{ student.applicant.full_name }}</p>
+                <p class="text-lg"><strong>Roll Number:</strong> {{ student.university_roll_no }}</p>
+                <p class="text-lg"><strong>Program:</strong> {{ student.program.name }}</p>
+                <p class="text-lg"><strong>Session:</strong> {{ current_session }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Semester Tabs -->
+    <div class="mb-6">
+        <div class="tabs tabs-bordered flex flex-wrap gap-2">
+            {% for semester_num in semester_numbers %}
+                <a href="?semester={{ semester_num }}"
+                   class="tab tab-lg {% if selected_semester_number|add:'0' == semester_num %}tab-active bg-primary text-primary-content{% else %}text-base-content/70 hover:text-base-content{% endif %}">
+                    Semester {{ semester_num }}
+                </a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Exam Slips Table -->
+    {% if exam_slips %}
+        <div class="card bg-base-100 shadow-lg rounded-lg overflow-hidden mb-6">
+            <div class="card-body">
+                <h2 class="card-title text-2xl text-base-content mb-4">Exam Schedule for Semester {{ selected_semester_number }}</h2>
+                <div class="overflow-x-auto">
+                    <table class="exam-table">
+                        <thead>
+                            <tr>
+                                <th>Course Name</th>
+                                <th>Course Code</th>
+                                <th>Exam Type</th>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Exam Center</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for slip in exam_slips %}
+                                <tr>
+                                    <td>{{ slip.course_offering.course.name }}</td>
+                                    <td>{{ slip.course_offering.course.code }}</td>
+                                    <td>{{ slip.get_exam_type_display }}</td>
+                                    <td>{{ slip.exam_date|date:"F d, Y" }}</td>
+                                    <td>{{ slip.start_time|time:"H:i" }} - {{ slip.end_time|time:"H:i" }}</td>
+                                    <td>{{ slip.exam_center }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions for Candidates -->
+        <div class="instructions-card">
+            <h3 class="text-xl font-semibold text-base-content mb-4">Instructions for Candidates</h3>
+            <ol>
+                <li>No student will be allowed to enter the Examination Hall after 30 minutes of the start of the paper.</li>
+                <li>Students are directed to follow the timings given in the date sheet.</li>
+                <li>No student will be allowed to enter the Examination Center without ID card and Roll Number Slip.</li>
+                <li>No student will be allowed to leave the Examination Hall before half of the time is over.</li>
+                <li>No change of Centre is allowed without the permission of Controller of Examinations.</li>
+                <li>Any kind of programmable calculator is not allowed in the Examination Hall.</li>
+                <li>Mobile Phone is not allowed in the Examination Hall.</li>
+                <li>The order in which the candidates are seated will be forwarded to the Examiner. As and when a candidate is discovered to have copied/cheated from another source, UMC will be filed under rules and he/she will be expelled from the Examination. Moreover, the candidate from whom he/she copied will also be penalized.</li>
+                <li>No candidate shall be allowed to speak without prior permission of the superintendent during exam.</li>
+                <li>Before attempting the answer sheet, each candidate must fill the title page of the answer sheet completely. The blank pages/portion of the answer sheet must be crossed before handing over to Superintendent.</li>
+                <li>No candidate shall give any mark of identification inside his/her answer script at specified places, otherwise the paper of the candidate will be cancelled.</li>
+                <li>Highlighter, ink remover, and all kinds of erasers are not allowed in the Examination Hall, only blue ink pen is allowed.</li>
+            </ol>
+        </div>
+    {% else %}
+        <div class="alert alert-info shadow-lg mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span>No exam slips found for Semester {{ selected_semester_number|default:"current semester" }}.</span>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -129,7 +129,7 @@ LOGOUT_REDIRECT_URL = '//'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'projectdb',
+        'NAME': 'postgres',
         'USER': 'postgres',
         'PASSWORD': '0000pppp',
         'HOST': 'localhost',

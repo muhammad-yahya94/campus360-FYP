@@ -1883,11 +1883,10 @@ def exam_slip(request):
         messages.error(request, "No program or session associated with your profile.")
         return redirect('students:login')
 
-    # Get all semesters for the student's program and session
+    # Get all semesters for the student's program and session (without is_active filter)
     semester_numbers = Semester.objects.filter(
         program=program,
-        session=current_session,
-        is_active=True
+        session=current_session
     ).order_by('number').values_list('number', flat=True).distinct()
 
     # Get the selected semester number from the query parameter
@@ -1900,11 +1899,10 @@ def exam_slip(request):
     else:
         selected_semester_number = semester_numbers.first() if semester_numbers else None
 
-    # Get exam slips for the selected semester, filtered by the student's enrollments
+    # Get exam slips for the selected semester, filtered by the student's enrollments (without is_active filter)
     if selected_semester_number:
         exam_slips = ExamDateSheet.objects.filter(
             semester__number=selected_semester_number,
-            semester__is_active=True,
             program=program,
             academic_session=current_session
         ).select_related(

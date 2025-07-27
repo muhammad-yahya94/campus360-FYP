@@ -6,7 +6,6 @@
 {% block extra_css %}
 <style>
     .student-info {
-        background-color: #f9fafb;
         padding: 1rem;
         border-radius: 0.5rem;
         margin-bottom: 1.5rem;
@@ -28,18 +27,16 @@
     .exam-table td {
         padding: 0.75rem;
         text-align: left;
-        border-bottom: 1px solid #e5e7eb;
+        border-bottom: 1px solid;
+        border-color: inherit; /* Inherits from theme's border color */
     }
     .exam-table th {
-        background-color: #f3f4f6;
         font-weight: 600;
-        color: #1f2937;
     }
     .exam-table tr:last-child td {
         border-bottom: none;
     }
     .instructions-card {
-        background-color: #f9fafb;
         padding: 1.5rem;
         border-radius: 0.5rem;
         margin-top: 1.5rem;
@@ -52,7 +49,6 @@
     }
     .instructions-card li {
         flex: 1 1 45%;
-        color: #4b5563;
         line-height: 1.5;
     }
 </style>
@@ -71,7 +67,7 @@
     </div>
 
     <!-- Student Information -->
-    <div class="student-info mb-6">
+    <div class="student-info bg-base-100 shadow-md mb-6">
         <div class="flex flex-col sm:flex-row items-center gap-4">
             {% if student.applicant.applicant_photo %}
                 <img src="{{ student.applicant.applicant_photo.url }}" alt="Student Photo" class="student-photo">
@@ -136,9 +132,9 @@
         </div>
 
         <!-- Instructions for Candidates -->
-        <div class="instructions-card">
+        <div class="instructions-card bg-base-100 shadow-md">
             <h3 class="text-xl font-semibold text-base-content mb-4">Instructions for Candidates</h3>
-            <ol>
+            <ol class="text-base-content/80">
                 <li>No student will be allowed to enter the Examination Hall after 30 minutes of the start of the paper.</li>
                 <li>Students are directed to follow the timings given in the date sheet.</li>
                 <li>No student will be allowed to enter the Examination Center without ID card and Roll Number Slip.</li>

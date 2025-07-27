@@ -5182,24 +5182,27 @@ def get_semesters_fund(request):
 
 
 
-
-from .models import ExamDateSheet
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.http import JsonResponse
 from django.core.exceptions import PermissionDenied
-from .forms import ExamDateSheetForm, ExamDateSheetFormSet
+from django.db.models import Q
+import logging
 
+logger = logging.getLogger(__name__)
 
+# Assuming @hod_required is a custom decorator defined elsewhere
+from .decorators import hod_required
 
+@hod_required
 @hod_required
 def exam_datesheet(request):
     academic_sessions = AcademicSession.objects.filter(is_active=True)
     
     if request.method == 'POST':
         try:
-            # Get total number of courses from the form
             total_courses = int(request.POST.get('total_courses', 0))
             saved_count = 0
-            
-            # Process each course
             for i in range(total_courses):
                 course_offering_id = request.POST.get(f'course_offering_{i}')
                 exam_date = request.POST.get(f'exam_date_{i}')
@@ -5211,14 +5214,12 @@ def exam_datesheet(request):
                 semester_id = request.POST.get(f'semester_{i}')
                 exam_type = request.POST.get(f'exam_type_{i}')
                 
-                # Skip if any required field is missing
                 if not all([course_offering_id, exam_date, start_time, end_time, 
                            academic_session_id, program_id, semester_id, exam_type]):
-                    logger.warning(f"Skipping incomplete form data for index {i}")
+                    print(f"[WARNING] Skipping incomplete form data for index {i}")
                     continue
                 
                 try:
-                    # Get or create the exam datesheet entry
                     exam_schedule, created = ExamDateSheet.objects.update_or_create(
                         course_offering_id=course_offering_id,
                         academic_session_id=academic_session_id,
@@ -5233,30 +5234,24 @@ def exam_datesheet(request):
                         }
                     )
                     saved_count += 1
-                    logger.info(f"{'Created' if created else 'Updated'} exam schedule for course {course_offering_id}")
-                    
+                    print(f"[INFO] {'Created' if created else 'Updated'} exam schedule for course {course_offering_id}")
                 except Exception as e:
-                    logger.error(f"Error saving exam schedule for course {course_offering_id}: {str(e)}")
+                    print(f"[ERROR] Error saving exam schedule for course {course_offering_id}: {str(e)}")
                     messages.error(request, f"Error saving schedule for course {course_offering_id}: {str(e)}")
             
             if saved_count > 0:
                 messages.success(request, f'Successfully saved exam schedule for {saved_count} course(s).')
             else:
                 messages.warning(request, 'No exam schedules were saved. Please check your input.')
-            
             return redirect('faculty_staff:exam_datesheet')
-            
         except Exception as e:
-            logger.error(f"Error in exam_datesheet view: {str(e)}", exc_info=True)
+            print(f"[ERROR] Error in exam_datesheet view: {str(e)}")
+            import traceback
+            traceback.print_exc()
             messages.error(request, f"An error occurred while processing the form: {str(e)}")
-            # Return to the form with the current data
             return redirect('faculty_staff:exam_datesheet')
     
-    # GET request - show the form
-    context = {
-        'academic_sessions': academic_sessions,
-        'title': 'Exam Datesheet Management',
-    }
+    context = {'academic_sessions': academic_sessions, 'title': 'Exam Datesheet Management'}
     return render(request, 'faculty_staff/exam_datesheet.html', context)
 
 @hod_required
@@ -5264,19 +5259,14 @@ def get_programs_exam_ds(request):
     session_id = request.GET.get('session_id')
     if not session_id:
         return JsonResponse({'programs': []})
-    
-    # Get the teacher's department
     teacher = getattr(request.user, 'teacher_profile', None)
     if not teacher:
         return JsonResponse({'programs': [], 'error': 'No teacher profile found'}, status=403)
-    
-    # Filter programs by the teacher's department and active status
     programs = Program.objects.filter(
         department=teacher.department,
         course_offerings__academic_session_id=session_id,
         is_active=True
     ).distinct().values('id', 'name')
-    
     return JsonResponse({'programs': list(programs)})
 
 @hod_required
@@ -5295,19 +5285,17 @@ def get_semesters_exam_ds(request):
 @hod_required
 def get_courses_exam_ds(request):
     try:
-        # Log the incoming request parameters
-        print(f"[DEBUG] get_courses_exam_ds called with params: {request.GET}")
+        print(f"[DEBUG] get_courses_exam_ds called at {datetime.datetime.now()} with params: {request.GET}")
         
-        # Get and validate parameters
         session_id = request.GET.get('session_id')
         program_id = request.GET.get('program_id')
         semester_id = request.GET.get('semester_id')
+        exam_type = request.GET.get('exam_type', '').lower()
         
         if not all([session_id, program_id, semester_id]):
             print("[ERROR] Missing required parameters")
             return JsonResponse({'error': 'Missing required parameters', 'courses': []}, status=400)
             
-        # Convert to integers to prevent SQL injection
         try:
             session_id = int(session_id)
             program_id = int(program_id)
@@ -5316,30 +5304,27 @@ def get_courses_exam_ds(request):
             print(f"[ERROR] Invalid parameter format: {e}")
             return JsonResponse({'error': 'Invalid parameter format', 'courses': []}, status=400)
         
-        print(f"[DEBUG] Querying courses for session_id={session_id}, program_id={program_id}, semester_id={semester_id}")
+        print(f"[DEBUG] Querying courses for session_id={session_id}, program_id={program_id}, semester_id={semester_id}, exam_type={exam_type}")
         
-        # Get courses with related data
-        courses = CourseOffering.objects.filter(
+        courses_query = CourseOffering.objects.filter(
             academic_session_id=session_id,
             program_id=program_id,
             semester_id=semester_id,
             is_active=True
-        ).select_related('course').values(
-            'id', 'course__code', 'course__name'
-        )
+        ).select_related('course').values('id', 'course__code', 'course__name', 'course__lab_work')
         
-        courses_list = list(courses)
-        print(f"[DEBUG] Found {len(courses_list)} courses")
+        if exam_type == 'practical':
+            print("[DEBUG] Filtering for practical courses (course__lab_work > 0)")
+            courses_query = courses_query.filter(course__lab_work__gt=0)
+            print(f"[DEBUG] After filter, query: {courses_query.query}")
         
-        # Log first few courses for debugging
-        if courses_list:
-            print("[DEBUG] Sample courses:", courses_list[:3])
+        courses_list = list(courses_query)
+        print(f"[DEBUG] Found {len(courses_list)} courses: {courses_list}")
         
         return JsonResponse({
             'success': True,
             'courses': courses_list
         })
-        
     except Exception as e:
         print(f"[ERROR] Error in get_courses_exam_ds: {str(e)}")
         import traceback

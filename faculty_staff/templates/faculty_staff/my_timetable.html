@@ -11,7 +11,7 @@
       font-size: 13px;
       line-height: 1.4;
     }
-    .bg-blue-100, .bg-purple-100, .bg-green-100 {
+    .bg-blue-100, .bg-purple-100, .bg-green-100, .bg-yellow-100 {
       -webkit-print-color-adjust: exact;
       break-inside: avoid;
       page-break-inside: avoid;
@@ -23,8 +23,6 @@
     }
     .bg-white, .print-tooltip, .bg-opacity-50 {
       background-color: #fff !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
       border: 1px solid #f3f4f6 !important;
     }
     [class*='from-'], [class*='to-'] {
@@ -38,7 +36,6 @@
       opacity: 1 !important;
       visibility: visible !important;
       position: static !important;
-      transform: none !important;
       margin-top: 8px;
       padding: 8px 12px;
       border-radius: 6px;
@@ -69,7 +66,7 @@
     <div class="flex flex-wrap items-center gap-4">
       <div class="flex items-center gap-2">
         <label for="session-filter" class="text-sm font-medium text-gray-700">Session:</label>
-        <select id="session-filter" onchange="window.location.href='?session_id=' + this.value + '&shift=' + document.getElementById('shift-filter').value" class="border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+        <select id="session-filter" onchange="window.location.href='?session_id=' + this.value + '&shift=' + document.getElementById('shift-filter').value + '&include_inactive={{ include_inactive|yesno:'1,0' }}'" class="border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
           {% for session in academic_sessions %}
             <option value="{{ session.id }}" {% if request.GET.session_id|default:'' == session.id|stringformat:'s' %}selected{% endif %}>
               {{ session.name }}
@@ -79,7 +76,7 @@
       </div>
       <div class="flex items-center gap-2">
         <label for="shift-filter" class="text-sm font-medium text-gray-700">Shift:</label>
-        <select id="shift-filter" onchange="window.location.href='?session_id=' + document.getElementById('session-filter').value + '&shift=' + this.value" class="border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+        <select id="shift-filter" onchange="window.location.href='?session_id=' + document.getElementById('session-filter').value + '&shift=' + this.value + '&include_inactive={{ include_inactive|yesno:'1,0' }}'" class="border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
           {% for value, label in shift_options %}
             <option value="{{ value }}" {% if shift_filter == value %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
@@ -109,7 +106,9 @@
             <div id="slots-{{ day.day_value }}" class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for slot in day.slots %}
                 <div class="relative overflow-hidden rounded-xl shadow-lg transition-all duration-300 transform hover:scale-[1.02] 
-                  {% if slot.shift == 'Morning' %}bg-gradient-to-br from-blue-50 to-blue-100 border-l-4 border-blue-400
+                  {% if slot.is_replacement and slot.replacement_type == 'temporary' %}bg-gradient-to-br from-yellow-50 to-yellow-100 border-l-4 border-yellow-400
+                  {% elif slot.is_replacement and slot.replacement_type == 'permanent' %}bg-gradient-to-br from-orange-50 to-orange-100 border-l-4 border-orange-400
+                  {% elif slot.shift == 'Morning' %}bg-gradient-to-br from-blue-50 to-blue-100 border-l-4 border-blue-400
                   {% elif slot.shift == 'Evening' %}bg-gradient-to-br from-purple-50 to-purple-100 border-l-4 border-purple-400
                   {% else %}bg-gradient-to-br from-green-50 to-green-100 border-l-4 border-green-400{% endif %}
                   hover:shadow-xl">
@@ -117,14 +116,26 @@
                     <!-- Course Header -->
                     <div class="flex items-start justify-between mb-3">
                       <div>
-                        <span class="inline-block px-3 py-1 text-xs font-semibold rounded-full 
-                          {% if slot.shift == 'Morning' %}bg-blue-100 text-blue-800
-                          {% elif slot.shift == 'Evening' %}bg-purple-100 text-purple-800
-                          {% else %}bg-green-100 text-green-800{% endif %} mb-2">
-                          {{ slot.shift }}
-                        </span>
+                        <div class="flex items-center gap-2 mb-2">
+                          <span class="inline-block px-3 py-1 text-xs font-semibold rounded-full 
+                            {% if slot.is_replacement and slot.replacement_type == 'temporary' %}bg-yellow-100 text-yellow-800
+                            {% elif slot.is_replacement and slot.replacement_type == 'permanent' %}bg-orange-100 text-orange-800
+                            {% elif slot.shift == 'Morning' %}bg-blue-100 text-blue-800
+                            {% elif slot.shift == 'Evening' %}bg-purple-100 text-purple-800
+                            {% else %}bg-green-100 text-green-800{% endif %}">
+                            {{ slot.shift }}
+                            {% if slot.is_replacement %}
+                              ({{ slot.replacement_type|title }} Replacement)
+                            {% endif %}
+                          </span>
+                          {% if slot.is_replacement and slot.replacement_type == 'temporary' and slot.replacement_end_date %}
+                            <span class="text-xs text-gray-500">Until: {{ slot.replacement_end_date|date:"M d, Y" }}</span>
+                          {% endif %}
+                        </div>
                         <h3 class="text-lg font-bold 
-                          {% if slot.shift == 'Morning' %}text-blue-900
+                          {% if slot.is_replacement and slot.replacement_type == 'temporary' %}text-yellow-900
+                          {% elif slot.is_replacement and slot.replacement_type == 'permanent' %}text-orange-900
+                          {% elif slot.shift == 'Morning' %}text-blue-900
                           {% elif slot.shift == 'Evening' %}text-purple-900
                           {% else %}text-green-900{% endif %} mb-1">
                           {{ slot.course_code }}
@@ -133,7 +144,9 @@
                       </div>
                       <div class="text-right">
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                          {% if slot.shift == 'Morning' %}bg-blue-100 text-blue-800
+                          {% if slot.is_replacement and slot.replacement_type == 'temporary' %}bg-yellow-100 text-yellow-800
+                          {% elif slot.is_replacement and slot.replacement_type == 'permanent' %}bg-orange-100 text-orange-800
+                          {% elif slot.shift == 'Morning' %}bg-blue-100 text-blue-800
                           {% elif slot.shift == 'Evening' %}bg-purple-100 text-purple-800
                           {% else %}bg-green-100 text-green-800{% endif %}">
                           <i class="fas fa-clock mr-1"></i>{{ slot.start_time }}–{{ slot.end_time }}
@@ -145,7 +158,9 @@
                     <div class="mt-4 p-3 bg-white rounded-lg border border-gray-100 shadow-sm">
                       <div class="flex items-start">
                         <div class="flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center 
-                          {% if slot.shift == 'Morning' %}bg-blue-100 text-blue-600
+                          {% if slot.is_replacement and slot.replacement_type == 'temporary' %}bg-yellow-100 text-yellow-600
+                          {% elif slot.is_replacement and slot.replacement_type == 'permanent' %}bg-orange-100 text-orange-600
+                          {% elif slot.shift == 'Morning' %}bg-blue-100 text-blue-600
                           {% elif slot.shift == 'Evening' %}bg-purple-100 text-purple-600
                           {% else %}bg-green-100 text-green-600{% endif %}">
                           <i class="fas fa-chalkboard-teacher"></i>
@@ -155,6 +170,11 @@
                           <p class="text-xs text-gray-500 flex items-center">
                             <i class="fas fa-graduation-cap mr-1"></i>{{ slot.program|default:'No Program' }}
                           </p>
+                          {% if slot.is_replacement %}
+                            <p class="text-xs text-gray-500 mt-1">
+                              Originally taught by: {{ slot.original_teacher|default:'Unknown' }}
+                            </p>
+                          {% endif %}
                         </div>
                       </div>
                     </div>
@@ -177,6 +197,8 @@
           </div>
         {% endfor %}
       </div>
+    {% else %}
+      <p class="text-center text-gray-500">No timetable slots available for the selected session.</p>
     {% endif %}
   </div>
 </div>
@@ -195,7 +217,6 @@ function toggleDay(dayId) {
   }
 }
 
-// Function to reorder days with current day first
 function reorderDays() {
   const daysContainer = document.querySelector('.space-y-4');
   if (!daysContainer) return;
@@ -203,51 +224,35 @@ function reorderDays() {
   const days = Array.from(daysContainer.children);
   if (days.length === 0) return;
   
-  // Get current day (0 = Sunday, 1 = Monday, etc.)
   const currentDay = new Date().getDay();
   const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   const currentDayName = dayNames[currentDay];
   
-  // Find current day element
   const currentDayElement = days.find(day => {
     const dayLabel = day.querySelector('.text-lg')?.textContent.toLowerCase();
     return dayLabel === currentDayName;
   });
   
   if (currentDayElement) {
-    // Move current day to top
     daysContainer.insertBefore(currentDayElement, daysContainer.firstChild);
-    
-    // Show current day and hide others
     days.forEach(day => {
       const dayLabel = day.querySelector('.text-lg')?.textContent.toLowerCase();
       const slots = day.querySelector('[id^="slots-"]');
       const icon = day.querySelector('i.fa-chevron-down, i.fa-chevron-up');
       
       if (dayLabel === currentDayName) {
-        // Show current day
         if (slots) slots.classList.remove('hidden');
-        if (icon) {
-          icon.classList.remove('fa-chevron-down');
-          icon.classList.add('fa-chevron-up');
-        }
+        if (icon) icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
       } else {
-        // Hide other days
         if (slots) slots.classList.add('hidden');
-        if (icon) {
-          icon.classList.remove('fa-chevron-up');
-          icon.classList.add('fa-chevron-down');
-        }
+        if (icon) icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
       }
     });
   }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  // Reorder days with current day first and hide others
   reorderDays();
-  
-  // Add click handlers for day toggles
   document.querySelectorAll('[id^="toggle-icon-"]').forEach(icon => {
     const dayId = icon.id.replace('toggle-icon-', '');
     const dayElement = document.querySelector(`[onclick="toggleDay('${dayId}')"]`);
@@ -259,12 +264,9 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
-  /* Day toggle styles */
   [id^="slots-"] {
     transition: all 0.3s ease;
   }
-  
-  /* Print-specific styles */
   @media print {
     .no-print {
       display: none !important;
@@ -273,30 +275,22 @@ document.addEventListener('DOMContentLoaded', function() {
       padding: 0;
       box-shadow: none;
     }
-    
     .print-container {
       max-width: 100%;
       margin: 0;
       padding: 0;
     }
-    
-    /* Ensure proper page breaks */
     .break-after-page {
       page-break-after: always;
       break-after: page;
     }
-    
-    /* Ensure tables don't break across pages */
     table {
       page-break-inside: auto;
     }
-    
     tr {
       page-break-inside: avoid;
       page-break-after: auto;
     }
-    
-    /* Ensure cards don't break across pages */
     [class*='grid-cols-'] > * {
       page-break-inside: avoid;
       break-inside: avoid;

@@ -3,7 +3,7 @@ import os
 import logging
 # import datetime
 import json
-import random
+import random   
 import string
 from datetime import time, date
 from datetime import datetime, timedelta
@@ -2401,21 +2401,50 @@ def weekly_timetable(request):
     if shift_filter not in valid_shifts:
         shift_filter = 'all'
 
+    # Deactivate expired temporary replacements
+    expired_replacements = LectureReplacement.objects.filter(
+        replacement_type='temporary',
+        replacement_date__lt=timezone.now().date(),
+        is_active=True
+    )
+    for replacement in expired_replacements:
+        try:
+            replacement.is_active = False
+            replacement.save()
+            logger.info(f"Deactivated replacement {replacement.id} for course {replacement.course_offering.id}")
+        except ValidationError as e:
+            logger.error(f"Failed to deactivate replacement {replacement.id}: {e}")
+            replacement.course_offering.replacement_teacher = None
+            replacement.course_offering.teacher = replacement.original_teacher
+            replacement.course_offering.save()
+            replacement.is_active = False
+            replacement.save(update_fields=['is_active'], force_update=True)
+
+    # Fetch timetable slots
     queryset = TimetableSlot.objects.filter(
         course_offering__department=department,
         course_offering__academic_session=current_session,
         course_offering__semester__is_active=True
     ).select_related('course_offering__course', 'course_offering__teacher', 'course_offering__replacement_teacher', 'course_offering__program', 'venue')
 
+    # Apply shift filter
     if shift_filter != 'all':
         if shift_filter == 'morning':
             queryset = queryset.filter(Q(course_offering__shift='morning') | 
-                                     (Q(course_offering__shift='both') & Q(start_time__lt='12:00:00')))
+                                      Q(course_offering__shift='both', start_time__lt='12:00:00'))
         elif shift_filter == 'evening':
             queryset = queryset.filter(Q(course_offering__shift='evening') | 
-                                     (Q(course_offering__shift='both') & Q(start_time__gte='12:00:00')))
+                                      Q(course_offering__shift='both', start_time__gte='12:00:00'))
         else:
             queryset = queryset.filter(course_offering__shift='both')
+
+    # Prefetch replacements
+    replacements = LectureReplacement.objects.filter(
+        Q(replacement_type='permanent') | Q(replacement_type='temporary', replacement_date__gte=timezone.now().date()),
+        course_offering__in=queryset.values('course_offering'),
+        is_active=True,
+    ).select_related('original_teacher__user', 'replacement_teacher__user')
+    replacement_map = {r.course_offering_id: r for r in replacements}
 
     timetable_data = []
     days_of_week = TimetableSlot.DAYS_OF_WEEK
@@ -2434,9 +2463,9 @@ def weekly_timetable(request):
                         else ('Morning' if slot.start_time.hour < 12 else 'Evening')
                     ),
                     'teacher': (
-                        f"{slot.course_offering.replacement_teacher.user.get_full_name()}"
+                        slot.course_offering.replacement_teacher.user.get_full_name()
                         if slot.course_offering.replacement_teacher
-                        else f"{slot.course_offering.teacher.user.get_full_name()}"
+                        else slot.course_offering.teacher.user.get_full_name()
                     ),
                     'teacher_id': (
                         slot.course_offering.replacement_teacher.id
@@ -2446,6 +2475,13 @@ def weekly_timetable(request):
                     'original_teacher_id': slot.course_offering.teacher.id,
                     'program': slot.course_offering.program.name if slot.course_offering.program else 'No Program',
                     'course_offering_id': slot.course_offering.id,
+                    'is_replacement': slot.course_offering.id in replacement_map,
+                    'replacement_type': replacement_map.get(slot.course_offering.id).replacement_type if slot.course_offering.id in replacement_map else None,
+                    'replacement_end_date': replacement_map.get(slot.course_offering.id).replacement_date if slot.course_offering.id in replacement_map else None,
+                    'original_teacher': (
+                        replacement_map.get(slot.course_offering.id).original_teacher.user.get_full_name()
+                        if slot.course_offering.id in replacement_map else None
+                    ),
                 }
                 for slot in queryset.filter(day=day_value)
             ],
@@ -2474,11 +2510,9 @@ def weekly_timetable(request):
         'academic_sessions': academic_sessions,
         'programs': programs,
         'teachers': teachers,
-    })
+    })    
     
     
-    
-@hod_required
 def lecture_replacement_create(request):
     if request.method == 'POST':
         course_offering_id = request.POST.get('course_offering')
@@ -2492,48 +2526,27 @@ def lecture_replacement_create(request):
             original_teacher = Teacher.objects.get(id=original_teacher_id)
             replacement_teacher = Teacher.objects.get(id=replacement_teacher_id)
 
-            # Create LectureReplacement instance
+            # Parse replacement_date
+            if replacement_date:
+                replacement_date = date.fromisoformat(replacement_date)
+
+            # Create LectureReplacement
             replacement = LectureReplacement(
                 course_offering=course_offering,
                 original_teacher=original_teacher,
                 replacement_teacher=replacement_teacher,
                 replacement_type=replacement_type,
-                replacement_date=replacement_date
+                replacement_date=replacement_date,
+                is_active=(replacement_type == 'permanent' or (replacement_date and replacement_date >= timezone.now().date()))
             )
-            replacement.full_clean()
-            replacement.save()
+            replacement.save()  # Triggers clean and update_course_offering
 
-            # Update CourseOffering.replacement_teacher and teacher
-            if replacement_type == 'permanent':
-                course_offering.replacement_teacher = replacement_teacher
-                course_offering.teacher = replacement_teacher
-                course_offering.save()
-            elif replacement_type == 'temporary' and replacement_date:
-                if date.today() >= date.fromisoformat(replacement_date):
-                    course_offering.replacement_teacher = replacement_teacher
-                    course_offering.teacher = replacement_teacher
-                    course_offering.save()
-                else:
-                    course_offering.replacement_teacher = None  # Clear if not yet active
-                    course_offering.teacher = None
-                    course_offering.save()
-
-            # Send email notification to the replacement teacher
+            # Send email notification
             try:
-                # Prepare email content
                 subject = f'Lecture Replacement: {course_offering.course.code} - {replacement_type.capitalize()} Replacement'
-                
-                # Get replacement type display name
                 replacement_type_display = 'Permanent' if replacement_type == 'permanent' else 'Temporary'
+                formatted_replacement_date = replacement.replacement_date if replacement_date else None
                 
-                # Format replacement date if exists
-                formatted_replacement_date = None
-                if replacement_date:
-                    from django.utils.formats import date_format
-                    from django.utils import timezone
-                    formatted_replacement_date = timezone.make_naive(replacement.replacement_date)
-                
-                # Render the email template
                 message = render_to_string('emails/lecture_replacement_notification.html', {
                     'course_offering': course_offering,
                     'original_teacher': original_teacher,
@@ -2544,24 +2557,21 @@ def lecture_replacement_create(request):
                     'site_name': 'Campus360'
                 })
                 
-                # Send email to the replacement teacher
-                if hasattr(replacement_teacher, 'user') and hasattr(replacement_teacher.user, 'email') and replacement_teacher.user.email:
+                if hasattr(replacement_teacher, 'user') and replacement_teacher.user.email:
                     send_mail(
                         subject=subject,
-                        message='',  # Empty message since we're using html_message
+                        message='',
                         from_email=settings.DEFAULT_FROM_EMAIL,
                         recipient_list=[replacement_teacher.user.email],
                         html_message=message,
                         fail_silently=True
                     )
-                    logger.info(f"Sent lecture replacement notification to {replacement_teacher.user.email}")
+                    logger.info(f"Sent notification to {replacement_teacher.user.email}")
                 else:
-                    logger.warning(f"Replacement teacher {replacement_teacher} has no valid email address")
+                    logger.warning(f"No email for {replacement_teacher}")
             
             except Exception as e:
-                logger.error(f"Error sending lecture replacement notification email: {str(e)}")
-                # Don't fail the request if email sending fails
-                pass
+                logger.error(f"Error sending email: {str(e)}")
 
             messages.success(request, 'Lecture replacement created successfully.')
             return redirect('faculty_staff:weekly_timetable')
@@ -2570,89 +2580,95 @@ def lecture_replacement_create(request):
         except Teacher.DoesNotExist:
             messages.error(request, 'Invalid teacher selected.')
         except ValidationError as e:
-            error_message = 'Error creating replacement: '
-            if hasattr(e, 'message_dict') and '__all__' in e.message_dict:
-                error_message += e.message_dict['__all__'][0]
-            else:
-                error_message += str(e)
-            messages.error(request, error_message)
+            messages.error(request, f'Validation error: {e}')
         except Exception as e:
-            messages.error(request, f'An unexpected error occurred: {e}')
+            messages.error(request, f'Unexpected error: {e}')
 
     return redirect('faculty_staff:weekly_timetable')
 
 
+
+
+
+
+
 @hod_or_professor_required
 def my_timetable(request):
-    teacher = request.user.teacher_profile   
-    # department = teacher.department  # Removed department restriction
-    # Get all active sessions (relaxed filter to include sessions with inactive semesters)
+    teacher = request.user.teacher_profile
     academic_sessions = AcademicSession.objects.filter(is_active=True).distinct().order_by('-start_year')
     logger.debug(f"All active academic sessions: {academic_sessions}")
     selected_session_id = request.GET.get('session_id')
 
     # Determine the current session
     if selected_session_id:
-        current_session = AcademicSession.objects.filter(
-            id=selected_session_id,
-            is_active=True
-        ).first()  # Allow selection of any active session, even with inactive semesters
+        current_session = AcademicSession.objects.filter(id=selected_session_id, is_active=True).first()
     else:
         current_session = AcademicSession.objects.filter(is_active=True).order_by('-start_year').first()
     
     if not current_session:
-        return render(request, 'faculty_staff/error.html', {
-            'message': 'No active academic session found.'
-        }, status=404)
+        return render(request, 'faculty_staff/error.html', {'message': 'No active academic session found.'}, status=404)
     logger.debug(f"Selected current session: {current_session}, Semesters: {current_session.semesters.all()}")
 
-    # Debug: Log active and inactive semesters per program for the selected session
-    programs = Program.objects.all().distinct()  # Changed to include all programs, not just department-specific
+    # Debug: Log semesters per program
+    programs = Program.objects.all().distinct()
     for program in programs:
         semesters = Semester.objects.filter(program=program, session=current_session)
         active_semesters = semesters.filter(is_active=True).count()
-        inactive_semesters = semesters.count() - active_semesters
-        logger.debug(f"Program: {program.name}, Active Semesters: {active_semesters}, Inactive Semesters: {inactive_semesters}")
+        logger.debug(f"Program: {program.name}, Active Semesters: {active_semesters}, Inactive Semesters: {semesters.count() - active_semesters}")
         for semester in semesters:
             logger.debug(f"  Semester: {semester.name}, Is Active: {semester.is_active}")
 
-    # Get shift filter and include_inactive flag from GET parameters
+    # Get filters
     shift_filter = request.GET.get('shift', 'all').lower()
-    include_inactive = request.GET.get('include_inactive', '0') == '1'  # True if ?include_inactive=1
+    include_inactive = request.GET.get('include_inactive', '0') == '1'
     valid_shifts = ['morning', 'evening', 'both', 'all']
     if shift_filter not in valid_shifts:
         shift_filter = 'all'
 
-    # Fetch timetable slots for the teacher's courses across all departments
-    queryset = TimetableSlot.objects.filter(
-        course_offering__teacher=teacher,
-        course_offering__academic_session=current_session
-    ).select_related('course_offering__course', 'course_offering__program', 'venue')
+    # Deactivate expired temporary replacements
+    expired_replacements = LectureReplacement.objects.filter(
+        replacement_type='temporary',
+        replacement_date__lt=timezone.now().date(),
+        is_active=True
+    )
+    for replacement in expired_replacements:
+        replacement.is_active = False
+        replacement.save()  # Triggers update_course_offering
+        logger.info(f"Deactivated replacement {replacement.id} for course {replacement.course_offering.id}")
 
-    # Filter by semester activity unless include_inactive is True
+    # Fetch timetable slots for teacher's courses and active replacements
+    replacement_course_ids = LectureReplacement.objects.filter(
+        Q(replacement_type='permanent') | Q(replacement_type='temporary', replacement_date__gte=timezone.now().date()),
+        replacement_teacher=teacher,
+        is_active=True,
+    ).values_list('course_offering__id', flat=True)
+
+    queryset = TimetableSlot.objects.filter(
+        Q(course_offering__teacher=teacher) | Q(course_offering__id__in=replacement_course_ids),
+        course_offering__academic_session=current_session
+    ).select_related('course_offering__course', 'course_offering__program', 'course_offering__teacher', 'course_offering__replacement_teacher', 'venue')
+
+    # Filter by semester activity
     if not include_inactive:
         queryset = queryset.filter(course_offering__semester__is_active=True)
-        logger.debug(f"Filtering for active semesters only: {queryset}")
-    else:
-        logger.debug("Including slots from inactive semesters")
-    logger.debug(f"Raw queryset for slots: {queryset.query}")
-    logger.debug(f"Retrieved slots count: {queryset.count()}, Slots: {list(queryset)}")
+        logger.debug(f"Filtering for active semesters only: {queryset.count()} slots")
+    logger.debug(f"Raw queryset for slots: {queryset.query}, Count: {queryset.count()}")
 
     # Apply shift filter
     if shift_filter != 'all':
         if shift_filter == 'morning':
             queryset = queryset.filter(Q(course_offering__shift='morning') | 
-                                      (Q(course_offering__shift='both') & Q(start_time__lt='12:00:00')))
+                                      Q(course_offering__shift='both', start_time__lt='12:00:00'))
         elif shift_filter == 'evening':
             queryset = queryset.filter(Q(course_offering__shift='evening') | 
-                                      (Q(course_offering__shift='both') & Q(start_time__gte='12:00:00')))
-        else:  # both
+                                      Q(course_offering__shift='both', start_time__gte='12:00:00'))
+        else:
             queryset = queryset.filter(course_offering__shift='both')
-    logger.debug(f"Filtered queryset by shift ({shift_filter}): {list(queryset)}")
+    logger.debug(f"Filtered queryset by shift ({shift_filter}): {queryset.count()} slots")
 
     # Organize slots by day
     timetable_data = []
-    days_of_week = TimetableSlot.DAYS_OF_WEEK  # [('monday', 'Monday'), ...]
+    days_of_week = TimetableSlot.DAYS_OF_WEEK
     for day_value, day_label in days_of_week:
         day_slots = sorted(
             [
@@ -2669,6 +2685,28 @@ def my_timetable(request):
                         else ('Morning' if slot.start_time.hour < 12 else 'Evening')
                     ),
                     'program': slot.course_offering.program.name,
+                    'is_replacement': slot.course_offering.id in replacement_course_ids,
+                    'replacement_type': (
+                        LectureReplacement.objects.get(
+                            course_offering=slot.course_offering,
+                            replacement_teacher=teacher,
+                            is_active=True
+                        ).replacement_type if slot.course_offering.id in replacement_course_ids else None
+                    ),
+                    'replacement_end_date': (
+                        LectureReplacement.objects.get(
+                            course_offering=slot.course_offering,
+                            replacement_teacher=teacher,
+                            is_active=True
+                        ).replacement_date if slot.course_offering.id in replacement_course_ids else None
+                    ),
+                    'original_teacher': (
+                        LectureReplacement.objects.get(
+                            course_offering=slot.course_offering,
+                            replacement_teacher=teacher,
+                            is_active=True
+                        ).original_teacher.user.get_full_name() if slot.course_offering.id in replacement_course_ids else None
+                    ),
                 }
                 for slot in queryset.filter(day=day_value)
             ],
@@ -2681,28 +2719,25 @@ def my_timetable(request):
         })
     logger.debug(f"Final timetable data: {timetable_data}")
 
-    # Debug: Check offerings and their semester status
+    # Debug: Log offerings
     offerings = CourseOffering.objects.filter(
-        academic_session=current_session,
-        teacher=teacher
+        Q(teacher=teacher) | Q(id__in=replacement_course_ids),
+        academic_session=current_session
     )
     active_offerings = offerings.filter(semester__is_active=True)
-    inactive_offerings = offerings.exclude(semester__is_active=True)
-    logger.debug(f"Total Offerings: {offerings.count()}")
-    logger.debug(f"Active Offerings: {active_offerings.count()}")
-    logger.debug(f"Inactive Offerings: {inactive_offerings.count()}")
+    logger.debug(f"Total Offerings: {offerings.count()}, Active: {active_offerings.count()}, Inactive: {offerings.count() - active_offerings.count()}")
     for offering in offerings:
-        logger.debug(f"Offering: {offering.course.code} - {offering.course.name}, Semester: {offering.semester}, Is Active: {offering.semester.is_active if offering.semester else 'None'}")
+        replacement = LectureReplacement.objects.filter(course_offering=offering, replacement_teacher=teacher, is_active=True).first()
+        logger.debug(f"Offering: {offering.course.code}, Semester Active: {offering.semester.is_active if offering.semester else False}, Replacement: {replacement}")
 
     return render(request, 'faculty_staff/my_timetable.html', {
         'timetable_data': timetable_data,
-        # 'department': department,  # Removed since not used
         'academic_session': current_session,
         'shift_filter': shift_filter,
         'shift_options': [('all', 'All'), ('morning', 'Morning'), ('evening', 'Evening'), ('both', 'Both')],
         'teacher': teacher,
         'academic_sessions': academic_sessions,
-        'include_inactive': include_inactive,  # Pass to template for UI feedback
+        'include_inactive': include_inactive,
     })
     
         
@@ -3955,40 +3990,52 @@ def record_exam_results(request):
 
 
 def teacher_course_list(request):
-    import logging
-    logger = logging.getLogger(__name__)
-    
-    # Debug: Log the current user
     logger.info(f"Current user: {request.user} (ID: {request.user.id})")
     
     try:
-        # Filter course offerings where the current teacher is either the original or replacement teacher
+        # Deactivate expired temporary replacements
+        expired_replacements = LectureReplacement.objects.filter(
+            replacement_type='temporary',
+            replacement_date__lt=timezone.now().date(),
+            is_active=True
+        )
+        for replacement in expired_replacements:
+            replacement.is_active = False
+            replacement.save()  # Triggers update_course_offering
+            logger.info(f"Deactivated replacement {replacement.id} for course {replacement.course_offering.id}")
+
+        # Filter course offerings for active assignments
         course_offerings = CourseOffering.objects.filter(
-            Q(teacher__user_id=request.user.id) | Q(replacement_teacher__user_id=request.user.id),
+            Q(teacher__user_id=request.user.id) |
+            Q(
+                id__in=LectureReplacement.objects.filter(
+                    Q(replacement_type='permanent') |
+                    Q(replacement_type='temporary', replacement_date__gte=timezone.now().date()),
+                    replacement_teacher__user_id=request.user.id,
+                    is_active=True,
+                ).values('course_offering__id')
+            ),
             semester__is_active=True
         ).select_related('course', 'semester', 'academic_session', 'teacher__user', 'replacement_teacher__user', 'program', 'department')
         
-        # Debug: Log the number of course offerings found
         logger.info(f"Found {len(course_offerings)} course offerings for user {request.user.id}")
         
         if not course_offerings.exists():
             logger.warning("No course offerings found for the current user")
         else:
-            # Debug: Log first few course offerings
-            for i, offering in enumerate(course_offerings[:3], 1):
+            for i, offering in enumerate(course_offerings, 1):
                 logger.info(f"Offering {i}: {offering.course.code} - {offering.course.name} (Teacher: {getattr(offering.teacher, 'user', None)}, Replacement: {getattr(offering.replacement_teacher, 'user', None)})")
         
-        # Get active replacements for these course offerings
+        # Get active replacements
         replacements = LectureReplacement.objects.filter(
+            Q(replacement_type='permanent') | Q(replacement_type='temporary', replacement_date__gte=timezone.now().date()),
             course_offering__in=course_offerings,
             replacement_teacher__user=request.user,
-            replacement_date__isnull=False
+            is_active=True,
         ).select_related('course_offering', 'original_teacher__user', 'replacement_teacher__user')
         
-        # Debug: Log replacements found
         logger.info(f"Found {len(replacements)} replacements for user {request.user.id}")
         
-        # Create a dictionary of replacement info keyed by course_offering_id
         replacement_info = {}
         for replacement in replacements:
             replacement_info[replacement.course_offering_id] = {
@@ -3999,28 +4046,22 @@ def teacher_course_list(request):
             }
             logger.info(f"Replacement found: {replacement} (Type: {replacement.replacement_type}, End: {replacement.replacement_date})")
 
-        # Add replacement info to each course offering
         for offering in course_offerings:
             info = replacement_info.get(offering.id, {})
             offering.is_replacement = info.get('is_replacement', False)
             offering.replacement_type = info.get('replacement_type')
             offering.replacement_end_date = info.get('replacement_end_date')
+            offering.original_teacher = info.get('original_teacher', offering.teacher)
             
-            # Debug: Log offering details
             logger.info(f"Processing offering {offering.id}: {offering.course.code} - {offering.course.name}")
             logger.info(f"  - Teacher: {getattr(offering.teacher, 'user', None)}")
             logger.info(f"  - Replacement Teacher: {getattr(offering.replacement_teacher, 'user', None)}")
             logger.info(f"  - Is replacement: {offering.is_replacement}")
             
             if not offering.is_replacement and offering.replacement_teacher_id and offering.replacement_teacher.user_id == request.user.id:
-                # This is a permanent replacement
                 logger.info("  - Marked as permanent replacement")
                 offering.is_replacement = True
                 offering.replacement_type = 'permanent'
-                offering.original_teacher = offering.teacher
-            
-            # Ensure we have the original teacher set for display
-            if not hasattr(offering, 'original_teacher') and offering.is_replacement:
                 offering.original_teacher = offering.teacher
                 
         context = {
@@ -4609,7 +4650,7 @@ def load_attendance(request):
         shift = request.GET.get('shift')
         if course_offering_id and date_str:
             try:
-                date = datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
+                date = datetime.strptime(date_str, '%Y-%m-%d').date()
                 course_offering = get_object_or_404(CourseOffering, id=course_offering_id)
                 attendances = Attendance.objects.filter(
                     course_offering=course_offering,

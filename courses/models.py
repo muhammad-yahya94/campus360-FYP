@@ -162,8 +162,6 @@ class TimetableSlot(models.Model):
                         f"{self.get_day_display()} from {slot.start_time} to {slot.end_time} for an active semester."
                     )
 
-
-# New LectureReplacement model
 class LectureReplacement(models.Model):
     REPLACEMENT_TYPES = [
         ('temporary', 'Temporary'),
@@ -203,6 +201,10 @@ class LectureReplacement(models.Model):
         auto_now_add=True,
         help_text="Timestamp when the replacement was created."
     )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Indicates if the replacement is still active."
+    )
 
     def __str__(self):
         return f"{self.replacement_teacher} replacing {self.original_teacher} for {self.course_offering} ({self.replacement_type})"
@@ -213,25 +215,16 @@ class LectureReplacement(models.Model):
         unique_together = ['course_offering', 'original_teacher', 'replacement_date']
 
     def clean(self):
-        # Ensure original teacher matches the course offering's teacher
         if self.course_offering.teacher != self.original_teacher:
             raise ValidationError(
                 f"The original teacher {self.original_teacher} does not match the course offering's assigned teacher {self.course_offering.teacher}."
             )
-
-        # Ensure replacement teacher is not the same as the original teacher
         if self.original_teacher == self.replacement_teacher:
             raise ValidationError("The replacement teacher cannot be the same as the original teacher.")
-
-        # For temporary replacements, ensure replacement_date is provided
         if self.replacement_type == 'temporary' and not self.replacement_date:
             raise ValidationError("A replacement date must be provided for temporary replacements.")
-
-        # For permanent replacements, ensure replacement_date is not provided
         if self.replacement_type == 'permanent' and self.replacement_date:
             raise ValidationError("Permanent replacements should not have a specific replacement date.")
-
-        # Check for replacement teacher conflicts on the same day and time
         if self.replacement_date:
             timetable_slots = self.course_offering.timetable_slots.all()
             for slot in timetable_slots:
@@ -245,7 +238,27 @@ class LectureReplacement(models.Model):
                     raise ValidationError(
                         f"Replacement teacher {self.replacement_teacher} has a scheduling conflict on {slot.get_day_display()} from {slot.start_time} to {slot.end_time}."
                     )
+        if self.replacement_type == 'temporary' and self.replacement_date and self.replacement_date < timezone.now().date():
+            self.is_active = False
 
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+        self.update_course_offering()
+
+    def update_course_offering(self):
+        """Update CourseOffering based on replacement status."""
+        if not self.is_active or (self.replacement_type == 'temporary' and self.replacement_date and self.replacement_date < timezone.now().date()):
+            self.course_offering.replacement_teacher = None
+            self.course_offering.teacher = self.original_teacher
+            self.course_offering.save()
+            if self.is_active:
+                self.is_active = False
+                super().save(update_fields=['is_active'])
+        else:
+            self.course_offering.replacement_teacher = self.replacement_teacher
+            self.course_offering.teacher = self.replacement_teacher
+            self.course_offering.save()
 
 
 

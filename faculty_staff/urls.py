@@ -1,16 +1,14 @@
-# faculty_staff/urls.py
 from django.urls import path
 from . import views, auth_views
+from .views_face_attendance import face_attendance_detect_simple
 
-
-app_name = 'faculty_staff'   
+app_name = 'faculty_staff'
 
 urlpatterns = [
-
     # ========== 1. Authentication ==========
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
-    
+
     # ========== 2. Password Reset ==========
     path('password-reset/', auth_views.FacultyStaffPasswordResetView.as_view(), name='password_reset'),
     path('password-reset/done/', auth_views.FacultyStaffPasswordResetDoneView.as_view(), name='password_reset_done'),
@@ -28,7 +26,6 @@ urlpatterns = [
     path('staff/delete/<int:staff_id>/', views.delete_staff, name='delete_staff'),
 
     # ========== 4. Students & Enrollment ==========
-    # Students URL - handles both with and without session_id
     path('students/', views.session_students, name='session_students'),
     path('students/<int:session_id>/', views.session_students, name='session_students_by_id'),
     path('student/<int:student_id>/', views.student_detail, name='student_detail'),
@@ -54,8 +51,7 @@ urlpatterns = [
     path('search-timetable-slots/', views.search_timetable_slots, name='search_timetable_slots'),
     path('my-timetable/', views.my_timetable, name='my_timetable'),
     path('timetable/replacement/create/', views.lecture_replacement_create, name='lecture_replacement_create'),
-  
-  
+
     # ========== 7. Search APIs ==========
     path('search-courses/', views.search_courses, name='search_courses'),
     path('search-teachers/', views.search_teachers, name='search_teachers'),
@@ -84,29 +80,26 @@ urlpatterns = [
     path('assignment-submissions/<int:assignment_id>/', views.assignment_submissions, name='assignment_submissions'),
     path('grade-submission/', views.grade_submission, name='grade_submission'),
 
-
     # ========== 12. Exam Results ==========
     path('exam-results/<int:course_offering_id>/', views.exam_results, name='exam_results'),
     path('record-exam-results/', views.record_exam_results, name='record_exam_results'),
-    
-    
-    
-    
+
     # ==========  student performace ==========
     path('course/<int:course_offering_id>/student/<int:student_id>/performance/', views.student_performance, name='student_performance'),
     path('student/<int:student_id>/performance/', views.student_semester_performance, name='student_semester_performance'),
- 
- 
- 
+
     # ========== 13. Notice Board ==========
     path('notices/', views.notice_board, name='notice_board'),
-    
+
     # ========== 14. Attendance ==========
     path('attendance/<int:offering_id>/', views.attendance, name='attendance'),
     path('load-students-for-course/', views.load_students_for_course, name='load_students_for_course'),
     path('record-attendance/', views.record_attendance, name='record_attendance'),
     path('load-attendance/', views.load_attendance, name='load_attendance'),
     path('edit-attendance/', views.edit_attendance, name='edit_attendance'),
+    # path('face-attendance/', views.face_attendance_detect, name='face_attendance_detect'),
+    path("face_attendance_detect_simple/",face_attendance_detect_simple, name="face_attendance_detect_simple"),
+
 
     # ========== 14. Semester Management ==========
     path('semester-management/', views.semester_management, name='semester_management'),
@@ -136,4 +129,6 @@ urlpatterns = [
     path('department-funds/view/<int:fund_id>/', views.view_department_fund, name='view_department_fund'),
     path('department-funds/get-programs/', views.get_programs_fund, name='get_programs_fund'),
     path('department-funds/get-semesters/', views.get_semesters_fund, name='get_semesters_fund'),
+
+    path('face-attendance-detect/', face_attendance_detect_simple, name='face_attendance_detect'),
 ]

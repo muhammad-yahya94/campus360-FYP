@@ -164,6 +164,9 @@
                     <div class="text-end mt-3">
                         <button type="submit" class="btn btn-primary">Submit Attendance</button>
                     </div>
+                    {% if course_offering_id %}
+                    <button type="button" id="start-face-attendance" class="btn btn-success ms-3">Start Face Attendance</button>
+                    {% endif %}
                 </div>
             </form>
         </div>
@@ -616,6 +619,67 @@ $(document).ready(function() {
         } else if (newStatus) {
             showMessageCard('error', 'Error', 'Invalid status. Please enter "present", "absent", or "leave".');
             console.error(`[EDIT] Invalid status entered: ${newStatus}`);
+        }
+    });
+});
+$(document).ready(function() {
+    // Face attendance button click handler
+    $(document).on('click', '#start-face-attendance', function() {
+        console.log('Face attendance button clicked');
+        
+        let courseOfferingId = $(this).data('course-offering-id') || $('#course_offering_id').val() || '{{ course_offering_id }}';
+        console.log(`Start Face Attendance clicked. courseOfferingId: ${courseOfferingId}`);
+        
+        if (!courseOfferingId) {
+            alert('Please select a course offering first.');
+            console.error("Start Face Attendance aborted: No course offering selected");
+            return;
+        }
+        
+        if (confirm('Start face attendance detection? This will activate the camera.')) {
+            console.log(`Sending POST request to face_attendance with offering_id: ${courseOfferingId}`);
+            
+            $.ajax({
+                url: "{% url 'faculty_staff:face_attendance_detect_simple' %}",
+                type: 'POST',
+                headers: { 
+                    'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val(),
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                },
+                data: { 
+                    course_offering_id: courseOfferingId,
+                    csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val()
+                },
+                beforeSend: function() {
+                    console.log('AJAX request starting...');
+                    $('#start-face-attendance').prop('disabled', true).text('Processing...');
+                    if (typeof showMessageCard === 'function') {
+                        showMessageCard('info', 'Processing', 'Face attendance detection in progress...');
+                    }
+                },
+                success: function(response) {
+                    console.log(`face_attendance response: ${JSON.stringify(response)}`);
+                    alert(response.message || 'Face attendance completed.');
+                    location.reload();
+                },
+                error: function(xhr, status, error) {
+                    console.error(`AJAX error in face_attendance: status=${status}, error=${error}, response=${xhr.responseText}`);
+                    console.error(`XHR status: ${xhr.status}, readyState: ${xhr.readyState}`);
+                    alert('Error during face attendance: ' + error);
+                    if (typeof showMessageCard === 'function') {
+                        showMessageCard('error', 'Error', 'An error occurred during face attendance: ' + error);
+                    }
+                },
+                complete: function() {
+                    console.log('AJAX request completed');
+                    $('#start-face-attendance').prop('disabled', false).text('Start Face Attendance');
+                    if (typeof hideMessageCard === 'function') {
+                        hideMessageCard();
+                    }
+                }
+            });
+        } else {
+            console.log('Face attendance cancelled by user');
         }
     });
 });

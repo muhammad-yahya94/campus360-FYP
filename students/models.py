@@ -4,6 +4,10 @@ from academics.models import Program, Department, Faculty , Semester
 from admissions.models import Applicant, AcademicSession
 from faculty_staff.models import Teacher
 from django.utils import timezone
+import logging
+import pickle  
+
+logger = logging.getLogger(__name__)
 
 
 class Student(models.Model):
@@ -170,3 +174,61 @@ class StudentFundPayment(models.Model):
 
     def __str__(self):
         return f"{self.student} - {self.fund}: {self.get_status_display()}"
+    
+
+import pickle
+import logging
+import numpy as np
+from django.db import models
+from django.core.exceptions import ValidationError
+
+logger = logging.getLogger(__name__)
+
+class StudentEmbedding(models.Model):
+    student = models.ForeignKey(
+        'Student', 
+        on_delete=models.CASCADE, 
+        related_name='face_embeddings',
+        help_text="Reference to the associated student"
+    )
+    university_roll_no = models.IntegerField(help_text="The student's university roll number.")
+    embedding_data = models.BinaryField(
+        help_text="Serialized NumPy face embedding data"
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True, 
+        help_text="Timestamp when this embedding was created"
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True, 
+        help_text="Timestamp when this embedding was last updated"
+    )
+
+    class Meta:
+        verbose_name = "Student Embedding"
+        verbose_name_plural = "Student Embeddings"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['student']),
+        ]
+
+    def __str__(self):
+        return f"Embedding for {self.student} (Created: {self.created_at})"
+
+    def set_embedding(self, embedding_array: np.ndarray) -> None:
+        """Serialize NumPy array to binary for storage."""
+        if not isinstance(embedding_array, np.ndarray):
+            raise ValidationError("Embedding must be a NumPy ndarray.")
+        try:
+            self.embedding_data = pickle.dumps(embedding_array, protocol=pickle.HIGHEST_PROTOCOL)
+        except pickle.PickleError as e:
+            logger.error(f"Pickle serialization error: {e}")
+            raise ValidationError("Failed to serialize embedding.")
+
+    def get_embedding(self) -> np.ndarray | None:
+        """Deserialize binary data back to NumPy array."""
+        try:
+            return pickle.loads(self.embedding_data)
+        except (pickle.PickleError, EOFError) as e:
+            logger.warning(f"Pickle deserialization error: {e}")
+            return None

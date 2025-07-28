@@ -115,6 +115,34 @@
                 </form>
             </div>
         </div>
+
+        <!-- Photo Upload Section -->
+        <div class="collapse collapse-arrow bg-base-100 shadow-md">
+            <input type="checkbox" name="photo_upload" />
+            <div class="collapse-title text-xl font-medium">
+                <i class="fas fa-camera mr-2"></i> Upload Photos
+            </div>
+            <div class="collapse-content">
+                <form id="photo-upload-form" class="space-y-4 p-4" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text text-sm sm:text-base">Capture up to 10 photos from camera</span>
+                        </label>
+                        <!-- Removed file input to disallow uploading existing photos -->
+                        <span id="photo-error" class="text-error text-xs sm:text-sm hidden"></span>
+                    </div>
+                    <div id="photo-preview" class="grid grid-cols-5 gap-2"></div>
+                    <div class="flex space-x-2">
+                        <button type="button" id="open-camera-btn" class="btn btn-secondary">Capture from Camera</button>
+                        <button type="submit" class="btn btn-primary">Upload Photos</button>
+                    </div>
+                </form>
+                <video id="camera-stream" class="w-full mt-4 hidden" autoplay playsinline></video>
+                <button type="button" id="capture-btn" class="btn btn-primary mt-2 hidden">Capture Photo</button>
+                <button type="button" id="close-camera-btn" class="btn btn-error mt-2 hidden">Close Camera</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -155,6 +183,128 @@
                 }
             });
         }
+
+        // Photo upload section JS
+        // Removed photoInput and related event listener to disallow uploading existing photos
+        const photoPreview = document.getElementById('photo-preview');
+        const photoError = document.getElementById('photo-error');
+        const photoForm = document.getElementById('photo-upload-form');
+        const openCameraBtn = document.getElementById('open-camera-btn');
+        const cameraStream = document.getElementById('camera-stream');
+        const captureBtn = document.getElementById('capture-btn');
+        const closeCameraBtn = document.getElementById('close-camera-btn');
+
+        let stream = null;
+        let capturedPhotos = [];
+
+        function updatePhotoPreview() {
+            photoPreview.innerHTML = '';
+            capturedPhotos.forEach((photo, index) => {
+                const img = document.createElement('img');
+                img.src = photo;
+                img.className = 'w-full h-20 object-cover rounded';
+                img.title = `Photo ${index + 1}`;
+                photoPreview.appendChild(img);
+            });
+        }
+
+        openCameraBtn.addEventListener('click', async function() {
+            photoError.classList.add('hidden');
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    cameraStream.srcObject = stream;
+                    cameraStream.classList.remove('hidden');
+                    captureBtn.classList.remove('hidden');
+                    closeCameraBtn.classList.remove('hidden');
+                    openCameraBtn.disabled = true;
+                } catch (err) {
+                    photoError.textContent = 'Could not access the camera.';
+                    photoError.classList.remove('hidden');
+                }
+            } else {
+                photoError.textContent = 'Camera not supported in this browser.';
+                photoError.classList.remove('hidden');
+            }
+        });
+
+        captureBtn.addEventListener('click', function() {
+            if (capturedPhotos.length >= 10) {
+                photoError.textContent = 'You can upload a maximum of 10 photos.';
+                photoError.classList.remove('hidden');
+                return;
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = cameraStream.videoWidth;
+            canvas.height = cameraStream.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(cameraStream, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/png');
+            capturedPhotos.push(dataUrl);
+            updatePhotoPreview();
+        });
+
+        closeCameraBtn.addEventListener('click', function() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            cameraStream.classList.add('hidden');
+            captureBtn.classList.add('hidden');
+            closeCameraBtn.classList.add('hidden');
+            openCameraBtn.disabled = false;
+        });
+
+        photoForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            photoError.classList.add('hidden');
+
+            if (capturedPhotos.length !== 10) {
+                photoError.textContent = 'Please upload exactly 10 photos.';
+                photoError.classList.remove('hidden');
+                return;
+            }
+
+            const formData = new FormData();
+            capturedPhotos.forEach((dataUrl, index) => {
+                // Convert base64 to Blob
+                const arr = dataUrl.split(',');
+                const mime = arr[0].match(/:(.*?);/)[1];
+                const bstr = atob(arr[1]);
+                let n = bstr.length;
+                const u8arr = new Uint8Array(n);
+                while (n--) {
+                    u8arr[n] = bstr.charCodeAt(n);
+                }
+                const blob = new Blob([u8arr], { type: mime });
+                formData.append('photos', blob, `photo_${index + 1}.png`);
+            });
+
+            // Add CSRF token
+            const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+            formData.append('csrfmiddlewaretoken', csrfToken);
+
+            fetch("{% url 'students:upload_attendance_photos' %}", {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    photoError.textContent = data.error;
+                    photoError.classList.remove('hidden');
+                } else {
+                    alert(data.message || 'Photos uploaded successfully.');
+                    capturedPhotos = [];
+                    updatePhotoPreview();
+                }
+            })
+            .catch(() => {
+                photoError.textContent = 'An error occurred while uploading photos.';
+                photoError.classList.remove('hidden');
+            });
+        });
     });
 </script>
 {% endblock %}

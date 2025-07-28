@@ -58,4 +58,5 @@ urlpatterns = [
     path('fees/', views.semester_fees, name='semester_fees'),  # 11.1 Semester Fees
     
     path('fund_payments/', views.fund_payments, name='fund_payments'),
+    path('settings/upload-photos/', views.upload_attendance_photos, name='upload_attendance_photos'),
 ]

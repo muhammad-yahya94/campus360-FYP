@@ -6,6 +6,10 @@ import datetime
 from datetime import time
 import random
 import uuid
+import numpy as np
+import pickle
+import cv2
+
 
 # Third-Party Imports
 import pytz
@@ -50,11 +54,12 @@ from courses.models import (
     Quiz, Question, Option, QuizSubmission, LectureReplacement
 )
 from faculty_staff.models import Teacher, TeacherDetails, DepartmentFund
-from students.models import Student, StudentSemesterEnrollment, CourseEnrollment, StudentFundPayment
+from students.models import Student, StudentSemesterEnrollment, CourseEnrollment, StudentFundPayment , StudentEmbedding
 from fee_management.models import SemesterFee, StudentFeePayment, FeeToProgram, FeeVoucher
 from collections import defaultdict
 import math
 from django.core.exceptions import PermissionDenied
+from .generate_encodings import generate_embeddings
 
 
 # Set up logging
@@ -1863,3 +1868,50 @@ def fund_payments(request):
         'now': current_date,
     }
     return render(request, 'fund_payments.html', context)
+
+
+@login_required
+def upload_attendance_photos(request):
+    try:
+        student = Student.objects.get(user=request.user)
+
+        # Check if embeddings exist and were updated within last 4 months
+        from django.utils import timezone
+        from datetime import timedelta
+        four_months_ago = timezone.now() - timedelta(days=4*30)  # Approximate 4 months as 120 days
+
+        recent_embeddings = StudentEmbedding.objects.filter(
+            student=student,
+            updated_at__gte=four_months_ago
+        )
+
+        if recent_embeddings.exists():
+            return JsonResponse({
+                'error': 'You can submit photos after 4 months or updated in previous 4 months.',
+                'disable_upload': True
+            }, status=403)
+
+        photos = []
+        files = request.FILES.getlist('photos')
+        if len(files) != 10:
+            return JsonResponse({'error': 'Exactly 10 photos are required.'}, status=400)
+        for file in files:
+            # Read image file to numpy array
+            img_bytes = file.read()
+            nparr = np.frombuffer(img_bytes, np.uint8)
+            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            if img is None:
+                return JsonResponse({'error': f'Invalid image file: {file.name}'}, status=400)
+            photos.append(img)
+
+        # Call generate_embeddings function
+        success, error = generate_embeddings(photos, student)
+        if success:
+            return JsonResponse({'message': 'Embeddings generated successfully.'})
+        else:
+            return JsonResponse({'error': error}, status=500)
+    except Student.DoesNotExist:
+        return JsonResponse({'error': 'Student profile not found.'}, status=404)
+    except Exception as e:
+        logger.error(f"Error in upload_attendance_photos: {str(e)}")
+        return JsonResponse({'error': 'An error occurred while processing photos.'}, status=500)

@@ -65,6 +65,17 @@
             </div>
         </div>
     </div>
+        <!-- Semester Tabs -->
+        <div class="mb-6">
+            <div class="tabs tabs-bordered flex flex-wrap gap-2">
+                {% for semester_num in semester_numbers %}
+                    <a href="?semester={{ semester_num }}"
+                       class="tab tab-lg {% if selected_semester_number|add:'0' == semester_num %}tab-active bg-primary text-primary-content{% else %}text-base-content/70 hover:text-base-content{% endif %}">
+                        Semester {{ semester_num }}
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
 
     <!-- Student Information -->
     <div class="student-info bg-base-100 shadow-md mb-6">
@@ -82,18 +93,6 @@
                 <p class="text-lg"><strong>Program:</strong> {{ student.program.name }}</p>
                 <p class="text-lg"><strong>Session:</strong> {{ current_session }}</p>
             </div>
-        </div>
-    </div>
-
-    <!-- Semester Tabs -->
-    <div class="mb-6">
-        <div class="tabs tabs-bordered flex flex-wrap gap-2">
-            {% for semester_num in semester_numbers %}
-                <a href="?semester={{ semester_num }}"
-                   class="tab tab-lg {% if selected_semester_number|add:'0' == semester_num %}tab-active bg-primary text-primary-content{% else %}text-base-content/70 hover:text-base-content{% endif %}">
-                    Semester {{ semester_num }}
-                </a>
-            {% endfor %}
         </div>
     </div>
 

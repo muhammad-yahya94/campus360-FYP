@@ -23,7 +23,9 @@ class FreezeTimeMiddleware:
         freeze_value = freeze_dt or self.default_freeze_time
 
         if freeze_value:
+            print(f"[🔒 FreezeTimeMiddleware] Using frozen time: {freeze_value}")
             with freeze_time(freeze_value):
                 return self.get_response(request)
 
+        print("[⏱️ FreezeTimeMiddleware] No frozen time applied.")
         return self.get_response(request)

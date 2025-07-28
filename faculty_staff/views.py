@@ -1,11 +1,14 @@
 # Standard Library Imports
 import os
 import logging
-import datetime
+# import datetime
 import json
 import random
 import string
 from datetime import time, date
+from datetime import datetime, timedelta
+from calendar import month_name
+from django.db.models.functions import ExtractWeek
 
 # Third-party Imports
 import pytz
@@ -60,6 +63,7 @@ from .forms import (
     UserUpdateForm, TeacherUpdateForm, TeacherStatusForm,
     PasswordChangeForm, QuestionForm, QuizForm
 )
+from django.db.models.functions import ExtractWeek
 
 # Decorators
 from .decorators import hod_or_professor_required, hod_required
@@ -524,7 +528,219 @@ def hod_required(view_func):
     return login_required(view_func)
 
 
-@login_required
+# @login_required
+# def teacher_lecture_details(request, teacher_id):
+#     # Ensure teacher_id is an integer
+#     try:
+#         teacher_id = int(teacher_id)
+#     except (ValueError, TypeError):
+#         logger.error(f"Invalid teacher_id: {teacher_id}")
+#         return render(request, 'faculty_staff/error.html', {
+#             'message': 'Invalid teacher ID provided.'
+#         }, status=400)
+
+#     # Ensure the teacher is in the HOD's department
+#     hod_department = request.user.teacher_profile.department
+#     teacher = get_object_or_404(Teacher, id=teacher_id, department=hod_department)
+#     logger.debug(f"Step 1: Teacher retrieved: {teacher}, ID: {teacher_id}, Type: {type(teacher)}")
+
+#     # Step 1: Get total course offerings for active sessions
+#     try:
+#         current_year = timezone.now().year
+#         active_sessions = AcademicSession.objects.filter(
+#             Q(is_active=True) | Q(end_year__gte=current_year)
+#         ).values_list('id', flat=True)
+#         logger.debug(f"Step 2: Active sessions: {list(active_sessions)}")
+
+#         course_offerings = CourseOffering.objects.filter(
+#             teacher=teacher,
+#             academic_session__id__in=active_sessions
+#         ).select_related('course', 'semester', 'program', 'academic_session')
+#         course_offering_ids = course_offerings.values_list('id', flat=True)
+#         logger.debug(f"Step 3: Total course offerings: {list(course_offering_ids)}")
+#     except Exception as e:
+#         logger.error(f"Error querying CourseOffering: {str(e)}")
+#         return render(request, 'faculty_staff/error.html', {
+#             'message': f'Error retrieving course offerings: {str(e)}'
+#         }, status=500)
+
+#     # Step 2: Get replacement course offerings
+#     try:
+#         replacement_course_offerings = CourseOffering.objects.filter(
+#             Q(replacement_teacher=teacher) |
+#             Q(id__in=LectureReplacement.objects.filter(
+#                 replacement_teacher=teacher,
+#                 course_offering__academic_session__id__in=active_sessions
+#             ).values_list('course_offering__id', flat=True))
+#         ).select_related('course', 'semester', 'program', 'academic_session')
+#         replacement_course_offering_ids = replacement_course_offerings.values_list('id', flat=True)
+#         logger.debug(f"Step 4: Replacement course offerings: {list(replacement_course_offering_ids)}")
+#     except Exception as e:
+#         logger.error(f"Error querying replacement CourseOffering: {str(e)}")
+#         replacement_course_offerings = CourseOffering.objects.none()
+#         replacement_course_offering_ids = []
+
+#     # Step 3: Get unique normal lectures (recorded_by=teacher and teacher is original teacher)
+#     try:
+#         normal_lectures = Attendance.objects.filter(
+#             recorded_by=teacher,
+#             course_offering__teacher=teacher,
+#             course_offering__academic_session__id__in=active_sessions
+#         ).values('course_offering__id', 'date', 'shift').distinct()
+#         normal_lecture_count = normal_lectures.count()
+#         logger.debug(f"Step 5: Normal lectures (unique course_offering, date, shift): {normal_lecture_count}")
+#     except Exception as e:
+#         logger.error(f"Error querying normal lectures: {str(e)}")
+#         normal_lectures = Attendance.objects.none()
+#         normal_lecture_count = 0
+
+#     # Step 4: Get unique replacement lectures (recorded_by=teacher and teacher is replacement)
+#     try:
+#         replacement_lectures = Attendance.objects.filter(
+#             recorded_by=teacher,
+#             course_offering__id__in=replacement_course_offering_ids,
+#             course_offering__academic_session__id__in=active_sessions
+#         ).values('course_offering__id', 'date', 'shift').distinct()
+#         replacement_lecture_count = replacement_lectures.count()
+#         logger.debug(f"Step 6: Replacement lectures (unique course_offering, date, shift): {replacement_lecture_count}")
+#     except Exception as e:
+#         logger.error(f"Error querying replacement lectures: {str(e)}")
+#         replacement_lectures = Attendance.objects.none()
+#         replacement_lecture_count = 0
+
+#     # Step 5: Calculate replacement lecture salary
+#     teacher_details = teacher.details if hasattr(teacher, 'details') else None
+#     salary_per_lecture = teacher_details.salary_per_lecture if teacher_details else 0
+#     replacement_lecture_salary = replacement_lecture_count * salary_per_lecture
+#     logger.debug(f"Step 7: Replacement lecture salary: {replacement_lecture_salary}")
+
+#     # Step 6: Combine unique lectures for total count and details
+#     try:
+#         all_lectures = Attendance.objects.filter(
+#             recorded_by=teacher,
+#             course_offering__academic_session__id__in=active_sessions
+#         ).select_related('course_offering__course', 'course_offering__semester').order_by('-date')
+#         unique_lectures = all_lectures.values('course_offering__id', 'date', 'shift').distinct()
+#         total_lecture_count = unique_lectures.count()
+#         logger.debug(f"Step 8: Total unique lectures: {total_lecture_count}")
+#     except Exception as e:
+#         logger.error(f"Error combining lectures: {str(e)}")
+#         return render(request, 'faculty_staff/error.html', {
+#             'message': f'Error combining lecture data: {str(e)}'
+#         }, status=500)
+
+#     # Step 7: Prepare lecture details (one record per unique lecture)
+#     lecture_details = []
+#     for lecture in unique_lectures:
+#         lecture_record = all_lectures.filter(
+#             course_offering__id=lecture['course_offering__id'],
+#             date=lecture['date'],
+#             shift=lecture['shift']
+#         ).first()
+#         if lecture_record:
+#             is_replacement = lecture['course_offering__id'] in replacement_course_offering_ids
+#             role = 'Replacement' if is_replacement else 'Normal'
+#             course_shift = lecture_record.course_offering.shift
+#             display_shift = lecture['shift'] if lecture['shift'] else course_shift if course_shift != 'both' else 'N/A'
+#             lecture_details.append({
+#                 'lecture': lecture_record,
+#                 'role': role,
+#                 'course_code': lecture_record.course_offering.course.code,
+#                 'course_name': lecture_record.course_offering.course.name,
+#                 'shift': display_shift,
+#                 'date': lecture_record.date
+#             })
+#     logger.debug(f"Step 9: Lecture details prepared (count: {len(lecture_details)})")
+
+#     # Step 8: Calculate total salary based on unique lectures
+#     salary_lecture_count = normal_lecture_count + replacement_lecture_count
+#     total_salary = salary_lecture_count * salary_per_lecture
+#     logger.debug(f"Step 10: Lecture counts - Normal: {normal_lecture_count}, Replacement: {replacement_lecture_count}, Total: {total_lecture_count}, Salary lectures: {salary_lecture_count}, Total salary: {total_salary}")
+
+#     # Step 9: Get all years for filtering
+#     years_qs = all_lectures.annotate(year=ExtractYear('date')).values_list('year', flat=True).distinct().order_by('-year')
+#     years = list(years_qs)
+#     current_year = timezone.now().year
+#     selected_year = request.GET.get('year')
+#     try:
+#         selected_year = int(selected_year)
+#         if selected_year not in years:
+#             selected_year = current_year
+#     except (TypeError, ValueError):
+#         selected_year = current_year
+#     logger.debug(f"Step 11: Selected year: {selected_year}, Available years: {years}")
+
+#     # Step 10: Monthly statistics
+#     monthly_stats = []
+#     current_month = timezone.now().month if selected_year == current_year else 1
+#     for month in range(1, 13):
+#         month_lectures = all_lectures.filter(date__year=selected_year, date__month=month)
+#         month_unique_lectures = month_lectures.values('course_offering__id', 'date', 'shift').distinct()
+#         month_normal = month_unique_lectures.filter(
+#             course_offering__teacher=teacher,
+#             course_offering__replacement_teacher__isnull=True
+#         )
+#         month_replacement = month_unique_lectures.filter(
+#             course_offering__id__in=replacement_course_offering_ids
+#         )
+#         month_salary = (month_normal.count() + month_replacement.count()) * salary_per_lecture
+#         monthly_stats.append({
+#             'month': calendar.month_name[month],
+#             'normal_count': month_normal.count(),
+#             'replacement_count': month_replacement.count(),
+#             'salary': month_salary,
+#             'is_current': (month == current_month and selected_year == current_year)
+#         })
+#     logger.debug(f"Step 12: Monthly stats generated for {selected_year}")
+
+#     # Step 11: Course-wise statistics
+#     course_stats = all_lectures.filter(date__year=selected_year).values(
+#         'course_offering__course__code',
+#         'course_offering__course__name',
+#         'course_offering__shift'
+#     ).annotate(
+#         normal_count=Count('id', filter=Q(
+#             recorded_by=teacher,
+#             course_offering__teacher=teacher,
+#             course_offering__replacement_teacher__isnull=True   
+#         ), distinct=True),
+#         replacement_count=Count('id', filter=Q(
+#             recorded_by=teacher,
+#             course_offering__id__in=replacement_course_offering_ids
+#         ), distinct=True),
+#         salary=Count('id', filter=Q(recorded_by=teacher), distinct=True) * Value(salary_per_lecture)
+#     ).order_by('-normal_count', '-replacement_count')
+#     logger.debug(f"Step 13: Course stats generated")
+
+#     # Step 12: Recent lectures (last 10)
+#     recent_lectures = lecture_details[:10]
+#     logger.debug(f"Step 14: Recent lectures prepared (count: {len(recent_lectures)})")
+
+#     context = {
+#         'teacher': teacher,
+#         'course_offerings': course_offerings,
+#         'replacement_course_offerings': replacement_course_offerings,
+#         'normal_lecture_count': normal_lecture_count,
+#         'replacement_lecture_count': replacement_lecture_count,
+#         'total_lecture_count': total_lecture_count,
+#         'salary_lecture_count': salary_lecture_count,
+#         'salary_per_lecture': salary_per_lecture,
+#         'total_salary': total_salary,
+#         'replacement_lecture_salary': replacement_lecture_salary,
+#         'monthly_stats': monthly_stats,
+#         'course_stats': course_stats,
+#         'recent_lectures': recent_lectures,
+#         'years': years,
+#         'selected_year': selected_year,
+#         'current_year': current_year,
+#     }
+#     return render(request, 'faculty_staff/teacher_lecture_details.html', context)
+
+
+
+
+
+
 def teacher_lecture_details(request, teacher_id):
     # Ensure teacher_id is an integer
     try:
@@ -689,28 +905,119 @@ def teacher_lecture_details(request, teacher_id):
         })
     logger.debug(f"Step 12: Monthly stats generated for {selected_year}")
 
-    # Step 11: Course-wise statistics
-    course_stats = all_lectures.filter(date__year=selected_year).values(
+    # Step 11: Course-wise statistics with unique lecture counts and replacement details
+    unique_replacement_lectures = Attendance.objects.filter(
+        recorded_by=teacher,
+        course_offering__id__in=replacement_course_offering_ids,
+        course_offering__academic_session__id__in=active_sessions,
+        date__year=selected_year
+    ).select_related('course_offering__course').values(
+        'course_offering__id',
         'course_offering__course__code',
         'course_offering__course__name',
-        'course_offering__shift'
-    ).annotate(
-        normal_count=Count('id', filter=Q(
-            recorded_by=teacher,
-            course_offering__teacher=teacher,
-            course_offering__replacement_teacher__isnull=True   
-        ), distinct=True),
-        replacement_count=Count('id', filter=Q(
-            recorded_by=teacher,
-            course_offering__id__in=replacement_course_offering_ids
-        ), distinct=True),
-        salary=Count('id', filter=Q(recorded_by=teacher), distinct=True) * Value(salary_per_lecture)
-    ).order_by('-normal_count', '-replacement_count')
-    logger.debug(f"Step 13: Course stats generated")
+        'date',
+        'shift'
+    ).distinct()
 
-    # Step 12: Recent lectures (last 10)
+    # Join with LectureReplacement to get replacement_type, replacement_date, created_at
+    course_stats = []
+    for lecture in unique_replacement_lectures:
+        replacement_record = LectureReplacement.objects.filter(
+            Q(replacement_date=lecture['date']) | Q(replacement_date__isnull=True),
+            course_offering__id=lecture['course_offering__id'],
+            replacement_teacher=teacher,
+        ).values('replacement_type', 'replacement_date', 'created_at').first()
+        
+        if replacement_record:
+            course_stats.append({
+                'course_offering__course__code': lecture['course_offering__course__code'],
+                'course_offering__course__name': lecture['course_offering__course__name'],
+                'replacement_count': 1,  # Each entry is one unique lecture
+                'replacement_type': replacement_record['replacement_type'],
+                'replacement_date': replacement_record['replacement_date'],
+                'created_at': replacement_record['created_at']
+            })
+
+    # Aggregate by course to sum replacement_count
+    aggregated_course_stats = {}
+    for stat in course_stats:
+        course_key = (stat['course_offering__course__code'], stat['course_offering__course__name'])
+        if course_key not in aggregated_course_stats:
+            aggregated_course_stats[course_key] = {
+                'course_offering__course__code': stat['course_offering__course__code'],
+                'course_offering__course__name': stat['course_offering__course__name'],
+                'replacement_count': 0,
+                'replacement_types': set(),
+                'replacement_dates': set(),
+                'created_ats': set()
+            }
+        aggregated_course_stats[course_key]['replacement_count'] += stat['replacement_count']
+        aggregated_course_stats[course_key]['replacement_types'].add(stat['replacement_type'])
+        if stat['replacement_date']:
+            aggregated_course_stats[course_key]['replacement_dates'].add(stat['replacement_date'])
+        aggregated_course_stats[course_key]['created_ats'].add(stat['created_at'])
+
+    course_stats = [
+        {
+            'course_offering__course__code': stat['course_offering__course__code'],
+            'course_offering__course__name': stat['course_offering__course__name'],
+            'replacement_count': stat['replacement_count'],
+            'replacement_type': ', '.join(stat['replacement_types']),
+            'replacement_date': ', '.join(str(d) for d in sorted(stat['replacement_dates'])) if stat['replacement_dates'] else 'N/A',
+            'created_at': ', '.join(str(c) for c in sorted(stat['created_ats'])) if stat['created_ats'] else 'N/A'
+        }
+        for stat in aggregated_course_stats.values()
+    ]
+    course_stats = sorted(course_stats, key=lambda x: x['replacement_count'], reverse=True)
+    logger.debug(f"Step 13: Course stats generated: {course_stats}")
+
+    # Step 12: Monthly replacement statistics
+    monthly_replacement_stats = []
+    for month in range(1, 13):
+        month_lectures = unique_replacement_lectures.filter(date__month=month)
+        month_count = month_lectures.count()
+        month_salary = month_count * salary_per_lecture
+        monthly_replacement_stats.append({
+            'month': calendar.month_name[month],
+            'replacement_count': month_count,
+            'salary': month_salary,
+            'is_current': (month == current_month and selected_year == current_year)
+        })
+    logger.debug(f"Step 14: Monthly replacement stats generated for {selected_year}")
+
+    # Step 13: Weekly replacement statistics
+    weekly_replacement_stats = unique_replacement_lectures.annotate(
+        week=ExtractWeek('date')
+    ).values('week').annotate(
+        replacement_count=Count('course_offering__id', distinct=True)
+    ).order_by('week')
+
+    # Calculate week start dates
+    weekly_stats_with_dates = []
+    for week_stat in weekly_replacement_stats:
+        week_number = week_stat['week']
+        # Get the first day of the week (Monday) for the given week number in selected_year
+        try:
+            week_start = datetime.strptime(f"{selected_year}-W{week_number-1}-1", "%Y-W%W-%w").date()
+        except ValueError:
+            # Handle edge cases for week 53 or invalid weeks
+            week_start = datetime(selected_year, 1, 1).date()
+            while week_start.isocalendar()[1] != week_number:
+                week_start += timedelta(days=7)
+        week_salary = week_stat['replacement_count'] * salary_per_lecture
+        weekly_stats_with_dates.append({
+            'week_number': week_number,
+            'week_start': week_start,
+            'replacement_count': week_stat['replacement_count'],
+            'salary': week_salary,
+            'is_current': (week_start <= timezone.now().date() <= week_start + timedelta(days=6) and selected_year == current_year)
+        })
+    weekly_replacement_stats = sorted(weekly_stats_with_dates, key=lambda x: x['week_number'])
+    logger.debug(f"Step 15: Weekly replacement stats generated for {selected_year}")
+
+    # Step 14: Recent lectures (last 10)
     recent_lectures = lecture_details[:10]
-    logger.debug(f"Step 14: Recent lectures prepared (count: {len(recent_lectures)})")
+    logger.debug(f"Step 16: Recent lectures prepared (count: {len(recent_lectures)})")
 
     context = {
         'teacher': teacher,
@@ -725,12 +1032,15 @@ def teacher_lecture_details(request, teacher_id):
         'replacement_lecture_salary': replacement_lecture_salary,
         'monthly_stats': monthly_stats,
         'course_stats': course_stats,
+        'monthly_replacement_stats': monthly_replacement_stats,
+        'weekly_replacement_stats': weekly_replacement_stats,
         'recent_lectures': recent_lectures,
         'years': years,
         'selected_year': selected_year,
         'current_year': current_year,
     }
     return render(request, 'faculty_staff/teacher_lecture_details.html', context)
+
 
 
 
@@ -1311,7 +1621,7 @@ def save_course_offering(request):
         course=course,
         program=program,
         academic_session=academic_session,
-        semester=semester,
+        semester=semester,   
         offering_type=offering_type
     )
     for existing_offering in teacher_existing_offerings:
@@ -3684,10 +3994,10 @@ def teacher_course_list(request):
             replacement_info[replacement.course_offering_id] = {
                 'is_replacement': True,
                 'replacement_type': replacement.replacement_type,
-                'replacement_end_date': replacement.replacement_end_date,
+                'replacement_end_date': replacement.replacement_date,
                 'original_teacher': replacement.original_teacher,
             }
-            logger.info(f"Replacement found: {replacement} (Type: {replacement.replacement_type}, End: {replacement.replacement_end_date})")
+            logger.info(f"Replacement found: {replacement} (Type: {replacement.replacement_type}, End: {replacement.replacement_date})")
 
         # Add replacement info to each course offering
         for offering in course_offerings:

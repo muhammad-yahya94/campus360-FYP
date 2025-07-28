@@ -74,11 +74,11 @@
     </div>
     <div class="stats-card bg-white p-4 rounded-lg shadow-md border-l-4 border-green-600">
       <h3 class="text-sm font-semibold text-gray-700">Total Salary</h3>
-      <p class="text-xl font-bold text-green-600">PKR {{ total_salary|intcomma }} ({{ salary_lecture_count|intcomma }} lectures)</p>
+      <p class="text-xl font-bold text-green-600">PKR {{ total_salary|floatformat:2 }} ({{ salary_lecture_count|intcomma }} lectures)</p>
     </div>
     <div class="stats-card bg-white p-4 rounded-lg shadow-md border-l-4 border-pink-600">
       <h3 class="text-sm font-semibold text-gray-700">Replacement Lecture Salary</h3>
-      <p class="text-xl font-bold text-pink-600">PKR {{ replacement_lecture_salary|intcomma }} ({{ replacement_lecture_count|intcomma }} lectures)</p>
+      <p class="text-xl font-bold text-pink-600">PKR {{ replacement_lecture_salary|floatformat:2 }} ({{ replacement_lecture_count|intcomma }} lectures)</p>
     </div>
   </div>
 
@@ -162,11 +162,114 @@
               <td class="px-3 py-2 text-sm text-gray-600">{{ stat.month }}</td>
               <td class="px-3 py-2 text-sm text-blue-600">{{ stat.normal_count|intcomma }}</td>
               <td class="px-3 py-2 text-sm text-purple-600">{{ stat.replacement_count|intcomma }}</td>
-              <td class="px-3 py-2 text-sm text-green-600">{{ stat.salary|intcomma }}</td>
+              <td class="px-3 py-2 text-sm text-green-600">{{ stat.salary|floatformat:2 }}</td>
             </tr>
           {% empty %}
             <tr>
               <td colspan="4" class="px-3 py-2 text-center text-gray-500">No lecture data for {{ selected_year }}.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Monthly Replacement Analysis -->
+  <div class="bg-white shadow-md rounded-lg p-4 mb-6 print-section border-l-4 border-pink-600">
+    <h2 class="text-xl font-semibold mb-3 text-pink-600">Monthly Replacement Analysis ({{ selected_year }})</h2>
+    <div class="table-responsive">
+      <table class="min-w-full table-auto" id="monthly-replacement-table">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Month</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Replacement Lectures</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Salary (PKR)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for stat in monthly_replacement_stats %}
+            {% if stat.replacement_count > 0 %}
+              <tr class="{% if stat.is_current %}bg-indigo-50{% else %}bg-white{% endif %} hover:bg-gray-50">
+                <td class="px-3 py-2 text-sm text-gray-600">{{ stat.month }}</td>
+                <td class="px-3 py-2 text-sm text-pink-600 replacement-count" data-count="{{ stat.replacement_count }}">{{ stat.replacement_count|intcomma }}</td>
+                <td class="px-3 py-2 text-sm text-pink-600 salary-cell"></td>
+              </tr>
+            {% endif %}
+          {% empty %}
+            <tr>
+              <td colspan="3" class="px-3 py-2 text-center text-gray-500">No replacement lectures found for {{ selected_year }}.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Weekly Replacement Analysis -->
+  <div class="bg-white shadow-md rounded-lg p-4 mb-6 print-section border-l-4 border-pink-600">
+    <h2 class="text-xl font-semibold mb-3 text-pink-600">Weekly Replacement Analysis ({{ selected_year }})</h2>
+    <div class="table-responsive">
+      <table class="min-w-full table-auto" id="weekly-replacement-table">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Week</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Start Date</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Replacement Lectures</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Salary (PKR)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for stat in weekly_replacement_stats %}
+            {% if stat.replacement_count > 0 %}
+              <tr class="{% if stat.is_current %}bg-indigo-50{% else %}bg-white{% endif %} hover:bg-gray-50">
+                <td class="px-3 py-2 text-sm text-gray-600">{{ stat.week_number }}</td>
+                <td class="px-3 py-2 text-sm text-gray-600">{{ stat.week_start|date:"Y-m-d" }}</td>
+                <td class="px-3 py-2 text-sm text-pink-600 replacement-count" data-count="{{ stat.replacement_count }}">{{ stat.replacement_count|intcomma }}</td>
+                <td class="px-3 py-2 text-sm text-pink-600 salary-cell"></td>
+              </tr>
+            {% endif %}
+          {% empty %}
+            <tr>
+              <td colspan="4" class="px-3 py-2 text-center text-gray-500">No replacement lectures found for {{ selected_year }}.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Replacement Lecture Analysis -->
+  <div class="bg-white shadow-md rounded-lg p-4 mb-6 print-section border-l-4 border-pink-600">
+    <h2 class="text-xl font-semibold mb-3 text-pink-600">Replacement Lecture Analysis ({{ selected_year }})</h2>
+    <div class="table-responsive">
+      <table class="min-w-full table-auto" id="replacement-lecture-table">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Course Code</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Course Name</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Replacement Lectures</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Replacement Type</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Replacement Date(s)</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Created At</th>
+            <th class="px-3 py-2 text-left text-sm font-medium text-gray-700">Salary (PKR)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for stat in course_stats %}
+            {% if stat.replacement_count > 0 %}
+              <tr class="bg-white hover:bg-gray-50">
+                <td class="px-3 py-2 text-sm text-gray-600">{{ stat.course_offering__course__code }}</td>
+                <td class="px-3 py-2 text-sm text-gray-600">{{ stat.course_offering__course__name }}</td>
+                <td class="px-3 py-2 text-sm text-pink-600 replacement-count" data-count="{{ stat.replacement_count }}">{{ stat.replacement_count|intcomma }}</td>
+                <td class="px-3 py-2 text-sm text-gray-600">{{ stat.replacement_type }}</td>
+                <td class="px-3 py-2 text-sm text-gray-600">{{ stat.replacement_date }}</td>
+                <td class="px-3 py-2 text-sm text-gray-600">{{ stat.created_at }}</td>
+                <td class="px-3 py-2 text-sm text-pink-600 salary-cell"></td>
+              </tr>
+            {% endif %}
+          {% empty %}
+            <tr>
+              <td colspan="7" class="px-3 py-2 text-center text-gray-500">No replacement lectures found for {{ selected_year }}.</td>
             </tr>
           {% endfor %}
         </tbody>
@@ -205,4 +308,48 @@
     </div>
   </div>
 </div>
+
+<!-- JavaScript for Salary Calculation -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const salaryPerLecture = {{ salary_per_lecture|default:0 }};
+    
+    // Helper function to calculate and format salary
+    function calculateSalary(count, targetCell) {
+      const countValue = parseInt(count) || 0;
+      const salary = countValue * salaryPerLecture;
+      targetCell.textContent = 'PKR ' + salary.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // Replacement Lecture Analysis
+    const replacementRows = document.querySelectorAll('#replacement-lecture-table tbody tr');
+    replacementRows.forEach(row => {
+      const countCell = row.querySelector('.replacement-count');
+      const salaryCell = row.querySelector('.salary-cell');
+      if (countCell && salaryCell) {
+        calculateSalary(countCell.getAttribute('data-count'), salaryCell);
+      }
+    });
+
+    // Monthly Replacement Analysis
+    const monthlyRows = document.querySelectorAll('#monthly-replacement-table tbody tr');
+    monthlyRows.forEach(row => {
+      const countCell = row.querySelector('.replacement-count');
+      const salaryCell = row.querySelector('.salary-cell');
+      if (countCell && salaryCell) {
+        calculateSalary(countCell.getAttribute('data-count'), salaryCell);
+      }
+    });
+
+    // Weekly Replacement Analysis
+    const weeklyRows = document.querySelectorAll('#weekly-replacement-table tbody tr');
+    weeklyRows.forEach(row => {
+      const countCell = row.querySelector('.replacement-count');
+      const salaryCell = row.querySelector('.salary-cell');
+      if (countCell && salaryCell) {
+        calculateSalary(countCell.getAttribute('data-count'), salaryCell);
+      }
+    });
+  });
+</script>
 {% endblock %}

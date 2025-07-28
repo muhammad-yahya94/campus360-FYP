@@ -43,7 +43,7 @@ SITE_URL = 'https://knows-sender-necessarily-jeff.trycloudflare.com'
 PAYMENT_SUCCESS_URL = urljoin(SITE_URL, '/payments/success/?session_id={CHECKOUT_SESSION_ID}')
 PAYMENT_CANCEL_URL = urljoin(SITE_URL, '/payments/cancel/?session_id={CHECKOUT_SESSION_ID}')
 
-
+FREEZE_TIME = "2025-07-28 10:00:00"
 
 
 AUTH_USER_MODEL = 'users.CustomUser'
@@ -87,6 +87,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+if DEBUG:
+    MIDDLEWARE.insert(0, 'utils.middleware.FreezeTimeMiddleware')
+
 
 ROOT_URLCONF = 'campus360FYP.urls'
 

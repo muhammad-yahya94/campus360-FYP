@@ -502,7 +502,7 @@ class Question(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.text[:50]}... (MCQ)"
+        return f"{self.text[:50]}... (MCQ)"  
 
 class Option(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='options')

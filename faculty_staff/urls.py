@@ -139,6 +139,7 @@ urlpatterns = [
     
     #============ 19. Exam Datesheet ==========
     path('exam-datesheet/', views.exam_datesheet, name='exam_datesheet'),
+    path('exam-datesheet/view/', views.view_exam_schedules, name='view_exam_schedules'),
     path('get-programs-exam-ds/', views.get_programs_exam_ds, name='get_programs_ds'),
     path('get-semesters-exam-ds/', views.get_semesters_exam_ds, name='get_semesters_ds'),
     path('get-courses-exam-ds/', views.get_courses_exam_ds, name='get_courses_ds'),

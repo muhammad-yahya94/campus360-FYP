@@ -5334,3 +5334,68 @@ def get_courses_exam_ds(request):
             'error': 'An error occurred while fetching courses',
             'courses': []
         }, status=500)
+
+@hod_required
+def view_exam_schedules(request):
+    """
+    View to fetch exam schedules based on session and program filters.
+    """
+    try:
+        session_id = request.GET.get('session_id')
+        program_id = request.GET.get('program_id')
+        
+        if not all([session_id, program_id]):
+            return JsonResponse({
+                'success': False,
+                'error': 'Both session_id and program_id are required',
+                'schedules': []
+            }, status=400)
+        
+        # Get the teacher's department
+        teacher = getattr(request.user, 'teacher_profile', None)
+        if not teacher or not hasattr(teacher, 'department'):
+            return JsonResponse({
+                'success': False,
+                'error': 'Teacher profile or department not found',
+                'schedules': []
+            }, status=403)
+        
+        # Query exam schedules
+        schedules = ExamDateSheet.objects.filter(
+            academic_session_id=session_id,
+            program_id=program_id,
+            program__department=teacher.department
+        ).select_related(
+            'course_offering__course',
+            'academic_session',
+            'program',
+            'semester'
+        ).order_by('exam_type', 'exam_date', 'start_time')
+        
+        # Prepare the response data
+        schedules_data = []
+        for schedule in schedules:
+            schedules_data.append({
+                'id': schedule.id,
+                'course_code': schedule.course_offering.course.code if schedule.course_offering and schedule.course_offering.course else 'N/A',
+                'course_name': schedule.course_offering.course.name if schedule.course_offering and schedule.course_offering.course else 'N/A',
+                'semester_name': schedule.semester.name if schedule.semester else 'N/A',
+                'exam_type': schedule.exam_type,
+                'exam_date': schedule.exam_date.strftime('%Y-%m-%d') if schedule.exam_date else None,
+                'start_time': schedule.start_time.strftime('%H:%M') if schedule.start_time else None,
+                'end_time': schedule.end_time.strftime('%H:%M') if schedule.end_time else None,
+                'exam_center': schedule.exam_center
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'schedules': schedules_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in view_exam_schedules: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'schedules': []
+        }, status=500)

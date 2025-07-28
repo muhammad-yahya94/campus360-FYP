@@ -6,6 +6,65 @@
 {% block content %}
 <div class="container mx-auto">
     <h1 class="text-2xl font-bold mb-6">Exam Datesheet Management</h1>
+    
+    <!-- View Existing Datesheets Section -->
+    <div class="card bg-base-100 shadow-xl p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4">View Exam Schedules</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <!-- Academic Session -->
+            <div>
+                <label class="label">
+                    <span class="label-text">Academic Session</span>
+                </label>
+                <select id="view-session" class="select select-bordered w-full">
+                    <option value="">Select Session</option>
+                    {% for session in academic_sessions %}
+                        <option value="{{ session.id }}">{{ session.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <!-- Program -->
+            <div>
+                <label class="label">
+                    <span class="label-text">Program</span>
+                </label>
+                <select id="view-program" class="select select-bordered w-full" disabled>
+                    <option value="">Select Program</option>
+                </select>
+            </div>
+            <div class="flex items-end">
+                <button id="view-schedule" class="btn btn-primary" disabled>View Schedule</button>
+            </div>
+        </div>
+        
+        <!-- Results Table -->
+        <div id="schedule-results" class="mt-6">
+            <div class="overflow-x-auto">
+                <table class="table w-full">
+                    <thead>
+                        <tr>
+                            <th>Course Code</th>
+                            <th>Course Name</th>
+                            <th>Exam Type</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Exam Center</th>
+                        </tr>
+                    </thead>
+                    <tbody id="schedule-rows">
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <div class="text-gray-500">
+                                    <i class="fas fa-calendar-alt text-3xl mb-2"></i>
+                                    <p>Select filters to view exam schedule</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
     <form method="POST" id="exam-datesheet-form" class="space-y-6">
         {% csrf_token %}
@@ -181,13 +240,166 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Update load button on semester or exam type change
-    semesterSelect.addEventListener('change', updateLoadButton);
-    examTypeSelect.addEventListener('change', function() {
-        hiddenExamType.value = this.value; // Sync hidden input with exam type
-        updateLoadButton();
+    // View Schedule functionality
+    const viewSessionSelect = document.getElementById('view-session');
+    const viewProgramSelect = document.getElementById('view-program');
+    const viewScheduleBtn = document.getElementById('view-schedule');
+    const scheduleRows = document.getElementById('schedule-rows');
+
+    // Enable/disable view schedule button
+    function updateViewButton() {
+        viewScheduleBtn.disabled = !(viewSessionSelect.value && viewProgramSelect.value);
+    }
+
+    // Fetch programs for view section
+    viewSessionSelect.addEventListener('change', function() {
+        viewProgramSelect.disabled = true;
+        viewProgramSelect.innerHTML = '<option value="">Select Program</option>';
+        updateViewButton();
+
+        if (this.value) {
+            fetch(`{% url 'faculty_staff:get_programs_ds' %}?session_id=${this.value}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.programs && data.programs.length > 0) {
+                        data.programs.forEach(program => {
+                            const option = document.createElement('option');
+                            option.value = program.id;
+                            option.textContent = program.name;
+                            viewProgramSelect.appendChild(option);
+                        });
+                        viewProgramSelect.disabled = false;
+                    } else {
+                        viewProgramSelect.disabled = true;
+                        viewProgramSelect.innerHTML = '<option value="">No programs available</option>';
+                    }
+                    updateViewButton();
+                })
+                .catch(error => {
+                    console.error('Error fetching programs for view:', error);
+                    viewProgramSelect.innerHTML = '<option value="">Error loading programs</option>';
+                });
+        }
     });
 
+    // Handle program selection change in view section
+    viewProgramSelect.addEventListener('change', updateViewButton);
+
+    // View schedule button click handler
+    viewScheduleBtn.addEventListener('click', function() {
+        if (!viewSessionSelect.value || !viewProgramSelect.value) {
+            console.error('Missing required fields for view');
+            return;
+        }
+
+        // Show loading state
+        viewScheduleBtn.disabled = true;
+        viewScheduleBtn.textContent = 'Loading...';
+        
+        // Clear existing rows and show loading
+        scheduleRows.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-4">
+                    <div class="flex justify-center items-center space-x-2">
+                        <span class="loading loading-spinner loading-sm"></span>
+                        <span>Loading exam schedules...</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+        
+        // Fetch exam schedules
+        fetch(`{% url 'faculty_staff:view_exam_schedules' %}?session_id=${viewSessionSelect.value}&program_id=${viewProgramSelect.value}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Reset button state
+                viewScheduleBtn.disabled = false;
+                viewScheduleBtn.textContent = 'View Schedule';
+                
+                // Clear existing rows
+                scheduleRows.innerHTML = '';
+                
+                if (data.schedules && data.schedules.length > 0) {
+                    // Group schedules by exam type
+                    const groupedSchedules = {};
+                    data.schedules.forEach(schedule => {
+                        if (!groupedSchedules[schedule.exam_type]) {
+                            groupedSchedules[schedule.exam_type] = [];
+                        }
+                        groupedSchedules[schedule.exam_type].push(schedule);
+                    });
+                    
+                    // Add each group of schedules
+                    Object.entries(groupedSchedules).forEach(([examType, schedules]) => {
+                        // Add exam type header
+                        const headerRow = document.createElement('tr');
+                        headerRow.className = 'bg-base-200';
+                        headerRow.innerHTML = `
+                            <td colspan="6" class="font-bold">
+                                ${examType.charAt(0).toUpperCase() + examType.slice(1)} Exams
+                            </td>
+                        `;
+                        scheduleRows.appendChild(headerRow);
+                        
+                        // Add schedules for this exam type
+                        schedules.forEach(schedule => {
+                            const row = document.createElement('tr');
+                            row.className = 'hover:bg-base-200';
+                            row.innerHTML = `
+                                <td>${schedule.course_code || 'N/A'}</td>
+                                <td>${schedule.course_name || 'N/A'}</td>
+                                <td>${schedule.semester_name || 'N/A'}</td>
+                                <td>${schedule.exam_date || 'Not set'}</td>
+                                <td>${schedule.start_time ? schedule.start_time + (schedule.end_time ? ' - ' + schedule.end_time : '') : 'Not set'}</td>
+                                <td>${schedule.exam_center || 'Not set'}</td>
+                            `;
+                            scheduleRows.appendChild(row);
+                        });
+                    });
+                } else {
+                    // Show no results message
+                    scheduleRows.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center py-8">
+                                <div class="text-gray-500">
+                                    <i class="fas fa-calendar-times text-4xl mb-2"></i>
+                                    <p class="text-lg">No exam schedules found</p>
+                                    <p class="text-sm mt-2">Try different filters or create new schedules</p>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching exam schedules:', error);
+                viewScheduleBtn.disabled = false;
+                viewScheduleBtn.textContent = 'View Schedule';
+                
+                // Show error message
+                scheduleRows.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-error">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            Error loading exam schedules. Please try again.
+                            <div class="text-xs mt-1 text-gray-500">${error.message}</div>
+                        </td>
+                    </tr>
+                `;
+            });
+    });
+
+    // Update load button when any selection changes
+    sessionSelect.addEventListener('change', updateLoadButton);
+    programSelect.addEventListener('change', updateLoadButton);
+    semesterSelect.addEventListener('change', updateLoadButton);
+    examTypeSelect.addEventListener('change', updateLoadButton);
+    
     // Load courses via AJAX
     loadCoursesButton.addEventListener('click', function() {
         if (!sessionSelect.value || !programSelect.value || !semesterSelect.value || !examTypeSelect.value) {

@@ -1,5 +1,6 @@
 # Standard Library Imports
 import os
+import re
 import logging
 import datetime
 import json
@@ -1235,49 +1236,106 @@ def edit_enrollment_status(request):
 
 # Course Form Definition
 class CourseForm(forms.Form):
-    code = forms.CharField(max_length=10, required=True, help_text="Enter the unique course code (e.g., CS101).")
-    name = forms.CharField(max_length=200, required=True, help_text="Enter the full name of the course.")
-    credits = forms.IntegerField(min_value=1, required=True, help_text="Enter the number of credit hours.")
-    lab_work = forms.IntegerField(min_value=0, required=False, help_text="Enter the number of lab hours per week for this course (if applicable).")
-    is_active = forms.BooleanField(required=False, initial=True, help_text="Check this if the course is active.")
-    opt = forms.BooleanField(required=False, initial=True, help_text="Check this if the course is just optional")
-    description = forms.CharField(widget=forms.Textarea, required=False, help_text="Provide a brief description or syllabus summary for the course.")
+    code = forms.CharField(
+        max_length=10,
+        required=True,
+        help_text="Enter the unique course code (e.g., CS101). Must be alphanumeric.",
+        widget=forms.TextInput(attrs={'class': 'input input-bordered text-sm text-base-content', 'required': True})
+    )
+    name = forms.CharField(
+        max_length=200,
+        required=True,
+        help_text="Enter the full name of the course.",
+        widget=forms.TextInput(attrs={'class': 'input input-bordered text-sm text-base-content', 'required': True})
+    )
+    credits = forms.IntegerField(
+        min_value=1,
+        required=True,
+        help_text="Enter the number of credit hours.",
+        widget=forms.NumberInput(attrs={'class': 'input input-bordered text-sm text-base-content', 'min': 1, 'required': True})
+    )
+    lab_work = forms.IntegerField(
+        min_value=0,
+        required=False,
+        initial=0,
+        help_text="Enter the number of lab hours per week for this course (if applicable).",
+        widget=forms.NumberInput(attrs={'class': 'input input-bordered text-sm text-base-content', 'min': 0})
+    )
+    is_active = forms.BooleanField(
+        required=False,
+        initial=True,
+        help_text="Check this if the course is active.",
+        widget=forms.Select(
+            choices=[(True, 'Yes'), (False, 'No')],
+            attrs={'class': 'select select-bordered text-sm text-base-content'}
+        )
+    )
+    opt = forms.BooleanField(
+        required=False,
+        initial=True,
+        help_text="Check this if the course is optional.",
+        widget=forms.Select(
+            choices=[(True, 'Yes'), (False, 'No')],
+            attrs={'class': 'select select-bordered text-sm text-base-content'}
+        )
+    )
+    description = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'textarea textarea-bordered text-sm text-base-content', 'rows': 4}),
+        required=False,
+        help_text="Provide a brief description or syllabus summary for the course."
+    )
     prerequisites = forms.ModelMultipleChoiceField(
         queryset=Course.objects.all(),
         required=False,
-        widget=forms.SelectMultiple(attrs={'class': 'form-control'}),
+        widget=forms.SelectMultiple(attrs={'class': 'select select-bordered text-sm text-base-content', 'style': 'height: 300px;'}),
         help_text="Select any courses that are required to be completed before taking this course (optional)."
     )
 
+    def clean_code(self):
+        code = self.cleaned_data['code'].upper()  # Convert to uppercase
+        # Validate alphanumeric
+        if not re.match(r'^[A-Za-z0-9]+$', code):
+            raise ValidationError('Course code must contain only letters and numbers.')
+        # Check uniqueness
+        if Course.objects.filter(code=code).exists():
+            raise ValidationError('This course code already exists.')
+        return code
 
-@hod_required
+    def clean(self):
+        cleaned_data = super().clean()
+        # Ensure prerequisites don't include the course itself (if created)
+        prerequisites = cleaned_data.get('prerequisites')
+        code = cleaned_data.get('code')
+        if code and prerequisites:
+            for prereq in prerequisites:
+                if prereq.code == code.upper():
+                    raise ValidationError('A course cannot be a prerequisite for itself.')
+        return cleaned_data
+
+
 def add_course(request):
     hod_department = request.user.teacher_profile.department
     form = CourseForm(request.POST or None)
 
     if request.method == 'POST' and form.is_valid():
-        code = form.cleaned_data['code']
-        if Course.objects.filter(code=code).exists():
-            form.add_error('code', 'This course code already exists.')
-        else:
-            # Create the course first
-            course = Course.objects.create(
-                code=code,
-                name=form.cleaned_data['name'],
-                credits=form.cleaned_data['credits'],
-                lab_work=form.cleaned_data['lab_work'],
-                is_active=form.cleaned_data['is_active'],
-                opt=form.cleaned_data['opt'],
-                description=form.cleaned_data['description']
-            )
-            
-            # Add prerequisites if any selected
-            prerequisites = form.cleaned_data['prerequisites']
-            if prerequisites:
-                course.prerequisites.set(prerequisites)
-            
-            messages.success(request, f'Course {code} added successfully.')
-            return redirect('faculty_staff:course_offerings')
+        # Create the course
+        course = Course.objects.create(
+            code=form.cleaned_data['code'],  # Already uppercase from form
+            name=form.cleaned_data['name'],
+            credits=form.cleaned_data['credits'],
+            lab_work=form.cleaned_data['lab_work'] or 0,
+            is_active=form.cleaned_data['is_active'],
+            opt=form.cleaned_data['opt'],
+            description=form.cleaned_data['description']
+        )
+        
+        # Add prerequisites if any selected
+        prerequisites = form.cleaned_data['prerequisites']
+        if prerequisites:
+            course.prerequisites.set(prerequisites)
+        
+        messages.success(request, f'Course {course.code} added successfully.')
+        return redirect('faculty_staff:add_course')
 
     context = {
         'form': form,
@@ -1285,6 +1343,8 @@ def add_course(request):
         'session_id': None,
     }
     return render(request, 'faculty_staff/add_course.html', context)
+
+
 
 
 @hod_required

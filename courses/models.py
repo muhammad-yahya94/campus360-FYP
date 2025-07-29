@@ -9,16 +9,33 @@ import os
 from django.utils import timezone
 
 
-# ===== Course =====
+import re
+from django.core.exceptions import ValidationError
+from django.db import models
+
 class Course(models.Model):
     opt = models.BooleanField(default=False)
-    code = models.CharField(max_length=10, unique=True, help_text="Enter the unique course code (e.g., CS101).")  # e.g., CS101
-    name = models.CharField(max_length=200, help_text="Enter the full name of the course (e.g., Introduction to Programming).")  # e.g., Introduction to Programming
-    credits = models.PositiveIntegerField(help_text="Enter the number of credit hours for this course.")  # e.g., 3
-    lab_work = models.IntegerField(default=0, help_text="Enter the number of lab hours per week for this course (if applicable).")  # e.g., 2
+    code = models.CharField(max_length=10, unique=True, help_text="Enter the unique course code (e.g., CS101).")
+    name = models.CharField(max_length=200, help_text="Enter the full name of the course (e.g., Introduction to Programming).")
+    credits = models.PositiveIntegerField(help_text="Enter the number of credit hours for this course.")
+    lab_work = models.IntegerField(default=0, help_text="Enter the number of lab hours per week for this course (if applicable).")
     is_active = models.BooleanField(default=True, help_text="Check this if the course is currently active and can be offered.")
     description = models.TextField(blank=True, help_text="Provide a brief description or syllabus summary for the course.")
     prerequisites = models.ManyToManyField('self', blank=True, symmetrical=False, related_name='required_for', help_text="Select any courses that are required to be completed before taking this course (optional).")
+
+    def clean(self):
+        # Validate that code is alphanumeric
+        if not re.match(r'^[A-Za-z0-9]+$', self.code):
+            raise ValidationError({'code': 'Course code must contain only letters and numbers.'})
+        # Convert code to uppercase
+        self.code = self.code.upper()
+
+    def save(self, *args, **kwargs):
+        # Convert code to uppercase before saving
+        self.code = self.code.upper()
+        # Run full validation
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.code}: {self.name}"

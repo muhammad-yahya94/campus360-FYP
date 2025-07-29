@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="drawer-content flex flex-col min-h-screen">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <div class="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         <!-- Header -->
         <div class="hero bg-primary text-primary-content rounded-lg shadow-lg mb-6">
             <div class="hero-content text-center py-6">
@@ -29,18 +29,18 @@
                             <label class="label">
                                 <span class="label-text text-sm text-base-content">Course Code</span>
                             </label>
-                            <input type="text" name="code" id="code" class="input input-bordered text-sm text-base-content" value="{{ form.code.value|default:'' }}" required>
-                            {% if form.errors.code %}
-                            <span class="text-error text-xs">{{ form.errors.code.0 }}</span>
+                            <input type="text" name="code" id="code" class="input input-bordered text-sm text-base-content" value="{{ form.code.value|default:'' }}" required maxlength="10" pattern="[A-Za-z0-9]+" title="Course code must be alphanumeric (letters and numbers only).">
+                            {% if form.code.errors %}
+                            <span class="text-error text-xs">{{ form.code.errors.0 }}</span>
                             {% endif %}
                         </div>
                         <div class="form-control">
                             <label class="label">
                                 <span class="label-text text-sm text-base-content">Course Name</span>
                             </label>
-                            <input type="text" name="name" id="name" class="input input-bordered text-sm text-base-content" value="{{ form.name.value|default:'' }}" required>
-                            {% if form.errors.name %}
-                            <span class="text-error text-xs">{{ form.errors.name.0 }}</span>
+                            <input type="text" name="name" id="name" class="input input-bordered text-sm text-base-content" value="{{ form.name.value|default:'' }}" required maxlength="200">
+                            {% if form.name.errors %}
+                            <span class="text-error text-xs">{{ form.name.errors.0 }}</span>
                             {% endif %}
                         </div>
                         <div class="form-control">
@@ -48,17 +48,17 @@
                                 <span class="label-text text-sm text-base-content">Credits</span>
                             </label>
                             <input type="number" name="credits" id="credits" class="input input-bordered text-sm text-base-content" value="{{ form.credits.value|default:3 }}" min="1" required>
-                            {% if form.errors.credits %}
-                            <span class="text-error text-xs">{{ form.errors.credits.0 }}</span>
+                            {% if form.credits.errors %}
+                            <span class="text-error text-xs">{{ form.credits.errors.0 }}</span>
                             {% endif %}
                         </div>
                         <div class="form-control">
                             <label class="label">
                                 <span class="label-text text-sm text-base-content">Lab Work</span>
                             </label>
-                            <input type="number" name="lab_work" id="lab_work" class="input input-bordered text-sm text-base-content" value="{{ form.lab_work.value|default:0 }}" min="0" required>
-                            {% if form.errors.lab_work %}
-                            <span class="text-error text-xs">{{ form.errors.lab_work.0 }}</span>
+                            <input type="number" name="lab_work" id="lab_work" class="input input-bordered text-sm text-base-content" value="{{ form.lab_work.value|default:0 }}" min="0">
+                            {% if form.lab_work.errors %}
+                            <span class="text-error text-xs">{{ form.lab_work.errors.0 }}</span>
                             {% endif %}
                         </div>
                         <div class="form-control">
@@ -66,19 +66,24 @@
                                 <span class="label-text text-sm text-base-content">Optional</span>
                             </label>
                             <select name="opt" id="opt" class="select select-bordered text-sm text-base-content">
-                
-                                <option value="False" {% if not form.opt.value|default:'False' %} selected {% endif %}>No</option>
-                                <option value="True" {% if form.opt.value|default:'True' %} {% endif %}>Yes</option>
+                                <option value="True" {% if form.opt.value|default:True %}selected{% endif %}>Yes</option>
+                                <option value="False" {% if not form.opt.value|default:True %}selected{% endif %}>No</option>
                             </select>
+                            {% if form.opt.errors %}
+                            <span class="text-error text-xs">{{ form.opt.errors.0 }}</span>
+                            {% endif %}
                         </div>
                         <div class="form-control">
                             <label class="label">
                                 <span class="label-text text-sm text-base-content">Active</span>
                             </label>
                             <select name="is_active" id="is_active" class="select select-bordered text-sm text-base-content">
-                                <option value="True" {% if form.is_active.value|default:'True' %}selected{% endif %}>Yes</option>
-                                <option value="False" {% if not form.is_active.value|default:'True' %}selected{% endif %}>No</option>
+                                <option value="True" {% if form.is_active.value|default:True %}selected{% endif %}>Yes</option>
+                                <option value="False" {% if not form.is_active.value|default:True %}selected{% endif %}>No</option>
                             </select>
+                            {% if form.is_active.errors %}
+                            <span class="text-error text-xs">{{ form.is_active.errors.0 }}</span>
+                            {% endif %}
                         </div>
                     </div>
                     <div class="form-control">
@@ -87,16 +92,22 @@
                         </label>
                         <select name="prerequisites" id="prerequisites" class="select select-bordered text-sm text-base-content" style="height: 300px;" multiple>
                             {% for course in form.fields.prerequisites.queryset %}
-                            <option value="{{ course.id }}">{{ course.code }} - {{ course.name }}</option>
+                            <option value="{{ course.id }}" {% if course.id in form.prerequisites.value %}selected{% endif %}>{{ course.code }} - {{ course.name }}</option>
                             {% endfor %}
                         </select>
                         <small class="text-base-content/70">Select any courses that must be completed before taking this course</small>
+                        {% if form.prerequisites.errors %}
+                        <span class="text-error text-xs">{{ form.prerequisites.errors.0 }}</span>
+                        {% endif %}
                     </div>
                     <div class="form-control">
                         <label class="label">
                             <span class="label-text text-sm text-base-content">Description</span>
                         </label>
                         <textarea name="description" id="description" class="textarea textarea-bordered text-sm text-base-content" rows="4">{{ form.description.value|default:'' }}</textarea>
+                        {% if form.description.errors %}
+                        <span class="text-error text-xs">{{ form.description.errors.0 }}</span>
+                        {% endif %}
                     </div>
                     <button type="submit" class="btn btn-sm btn-primary w-full sm:w-auto">
                         <i class="fas fa-plus mr-2"></i>
@@ -107,4 +118,48 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+.select2-container .select2-selection--multiple {
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    min-height: 300px;
+}
+.select2-container--default .select2-selection--multiple .select2-selection__rendered {
+    padding: 0.5rem;
+}
+.select2-container {
+    width: 100% !important;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+$(document).ready(function() {
+    // Initialize Select2 for prerequisites dropdown
+    $('#prerequisites').select2({
+        placeholder: "Select prerequisites...",
+        allowClear: true,
+        width: '100%'
+    });
+
+    // Client-side validation for course code (alphanumeric)
+    $('#code').on('input', function() {
+        const value = $(this).val();
+        if (!/^[A-Za-z0-9]*$/.test(value)) {
+            $(this).addClass('input-error');
+            $(this).next('.text-error').text('Course code must be alphanumeric.');
+        } else {
+            $(this).removeClass('input-error');
+            $(this).next('.text-error').text('');
+        }
+    });
+});
+</script>
 {% endblock %}

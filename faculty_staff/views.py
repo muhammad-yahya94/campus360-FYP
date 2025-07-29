@@ -2627,9 +2627,12 @@ def weekly_timetable(request):
     if not current_session:
         return render(request, 'faculty_staff/error.html', {
             'message': 'No active academic session found.'
-        }, status=404)
+        }, status=404) 
 
     programs = Program.objects.filter(department=department).distinct()
+    print(f'programs are -- {programs}')
+    all_programs = Program.objects.all()
+    print(f'all programs are -- {all_programs}')
     shift_filter = request.GET.get('shift', 'all').lower()
     valid_shifts = ['morning', 'evening', 'both', 'all']
     if shift_filter not in valid_shifts:
@@ -5787,19 +5790,8 @@ def get_semesters_fund(request):
 
 
 
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.http import JsonResponse
-from django.core.exceptions import PermissionDenied
-from django.db.models import Q
-import logging
 
-logger = logging.getLogger(__name__)
 
-# Assuming @hod_required is a custom decorator defined elsewhere
-from .decorators import hod_required
-
-@hod_required
 @hod_required
 def exam_datesheet(request):
     academic_sessions = AcademicSession.objects.filter(is_active=True)

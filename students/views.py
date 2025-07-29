@@ -1012,10 +1012,10 @@ def student_timetable(request):
     # Get timetable slots for enrolled courses
     try:
         course_offerings = enrollments.values_list('course_offering', flat=True)
-        timetable_slots = TimetableSlot.objects.filter(
+        
+        # Get all relevant timetable slots including those with shift='both'
+        all_slots = TimetableSlot.objects.filter(
             course_offering__in=course_offerings
-        ).filter(
-            Q(course_offering__shift=student.applicant.shift) | Q(course_offering__shift='both')
         ).select_related(
             'course_offering__course',
             'course_offering__teacher',
@@ -1023,11 +1023,52 @@ def student_timetable(request):
             'venue',
             'course_offering__program',
             'course_offering__semester'
-        )
-        logger.debug("Step 5: Retrieved %d timetable slots for student", timetable_slots.count())
+        ).order_by('day', 'start_time')
+        
+        # Filter slots based on student's shift and teacher's availability
+        filtered_slots = []
+        course_day_slots = {}
+        
+        # Get student's shift (morning/evening)
+        student_shift = student.applicant.shift.lower()
+        logger.debug(f"Processing timetable for student with shift: {student_shift}")
+        
+        # First pass: Group slots by course and day
+        for slot in all_slots:
+            course_day_key = (slot.course_offering_id, slot.day)
+            if course_day_key not in course_day_slots:
+                course_day_slots[course_day_key] = []
+            course_day_slots[course_day_key].append(slot)
+        
+        # Second pass: Process each course+day combination
+        for course_day_key, slots in course_day_slots.items():
+            course_offering_id, day = course_day_key
+            slots_for_course_day = sorted(slots, key=lambda x: x.start_time)
+            
+            # If there's only one slot, add it if the shift matches
+            if len(slots_for_course_day) == 1:
+                slot = slots_for_course_day[0]
+                slot_shift = slot.course_offering.shift.lower()
+                if slot_shift == 'both' or slot_shift == student_shift:
+                    filtered_slots.append(slot)
+                    logger.debug(f"Added single slot for {day}: {slot.course_offering.course.code} at {slot.start_time}")
+            else:
+                # For multiple slots, apply shift logic
+                if student_shift == 'morning':
+                    earliest_slot = min(slots_for_course_day, key=lambda x: x.start_time)
+                    filtered_slots.append(earliest_slot)
+                    logger.debug(f"Morning shift: Added earliest slot for {day}: {earliest_slot.course_offering.course.code} at {earliest_slot.start_time}")
+                else:  # evening shift
+                    latest_slot = max(slots_for_course_day, key=lambda x: x.start_time)
+                    filtered_slots.append(latest_slot)
+                    logger.debug(f"Evening shift: Added latest slot for {day}: {latest_slot.course_offering.course.code} at {latest_slot.start_time}")
+        
+        timetable_slots = filtered_slots
+        logger.debug("Step 5: Filtered to %d timetable slots for student", len(timetable_slots))
+        
     except Exception as e:
-        logger.error("Error querying timetable slots: %s", str(e))
-        timetable_slots = TimetableSlot.objects.none()
+        logger.error("Error querying timetable slots: %s", str(e), exc_info=True)
+        timetable_slots = []
 
     # Organize slots by day
     days = [
@@ -1041,7 +1082,8 @@ def student_timetable(request):
     timetable_data = []
     current_date = timezone.now().date()
     for day in days:
-        day_slots = timetable_slots.filter(day=day['day_value'])
+        # Filter slots for the current day using list comprehension
+        day_slots = [slot for slot in timetable_slots if slot.day == day['day_value']]
         slots = []
         for slot in day_slots:
             # Check for replacement teacher
@@ -1115,6 +1157,8 @@ def student_timetable(request):
         'active_session': active_session,
     }
     return render(request, 'timetable.html', context)
+
+
 
 
 @login_required
@@ -1866,6 +1910,10 @@ def fund_payments(request):
 
 
 
+
+
+
+
 def exam_slip(request):
     user = request.user
     try:
@@ -1875,49 +1923,64 @@ def exam_slip(request):
         messages.error(request, "You are not registered as a student.")
         return redirect('students:login')
 
-    # Get the student's program and session
-    program = student.program
-    current_session = student.applicant.session
-    if not program or not current_session:
-        messages.error(request, "No program or session associated with your profile.")
-        return redirect('students:login')
-
-    # Get all semesters for the student's program and session (without is_active filter)
-    semester_numbers = Semester.objects.filter(
-        program=program,
-        session=current_session
-    ).order_by('number').values_list('number', flat=True).distinct()
-
-    # Get the selected semester number from the query parameter
-    selected_semester_number = request.GET.get('semester')
-    if selected_semester_number:
-        try:
-            selected_semester_number = int(selected_semester_number)
-        except ValueError:
-            selected_semester_number = None
-    else:
-        selected_semester_number = semester_numbers.first() if semester_numbers else None
-
-    # Get exam slips for the selected semester, filtered by the student's enrollments (without is_active filter)
-    if selected_semester_number:
-        exam_slips = ExamDateSheet.objects.filter(
-            semester__number=selected_semester_number,
-            program=program,
-            academic_session=current_session
-        ).select_related(
-            'course_offering__course',
-            'program',
-            'academic_session',
-            'semester'
-        ).order_by('exam_date', 'start_time')
-    else:
-        exam_slips = ExamDateSheet.objects.none()
-
+    # Get all active course enrollments for this student across all semesters
+    enrollments = CourseEnrollment.objects.filter(
+        student_semester_enrollment__student=student,
+        status='enrolled'  # Only include currently enrolled courses
+    ).select_related(
+        'course_offering__course',
+        'course_offering__semester',
+        'course_offering__academic_session',
+        'student_semester_enrollment__semester'
+    ).order_by('course_offering__academic_session__start_year', 'course_offering__semester__number')
+    
+    # Get all unique academic sessions and semesters for the filter dropdowns
+    academic_sessions = AcademicSession.objects.filter(
+        id__in=enrollments.values_list('course_offering__academic_session', flat=True).distinct()
+    ).order_by('-start_year')
+    
+    # Get all unique semesters for the filter dropdowns
+    semesters = Semester.objects.filter(
+        id__in=enrollments.values_list('course_offering__semester', flat=True).distinct()
+    ).order_by('number')
+    current_semester = semesters.last()
+    # Get filter parameters
+    selected_session_id = request.GET.get('session')
+    selected_semester_id = request.GET.get('semester')
+    
+    # Apply filters if provided
+    if selected_session_id:
+        enrollments = enrollments.filter(course_offering__academic_session_id=selected_session_id)
+    if selected_semester_id:
+        enrollments = enrollments.filter(course_offering__semester_id=selected_semester_id)
+    
+    # Get course offerings from filtered enrollments
+    course_offerings = [enrollment.course_offering for enrollment in enrollments]
+    
+    # Get all exam slips for the filtered course offerings
+    exam_slips = ExamDateSheet.objects.filter(
+        course_offering__in=course_offerings
+    ).select_related(
+        'course_offering__course',
+        'course_offering__semester',
+        'course_offering__academic_session',
+        'program',
+        'academic_session',
+        'semester'
+    ).order_by('exam_date', 'start_time')
+    
+    # Add enrollment information to each exam slip
+    enrollment_map = {e.course_offering_id: e for e in enrollments}
+    for slip in exam_slips:
+        slip.enrollment = enrollment_map.get(slip.course_offering_id)
+    
     context = {
         'student': student,
-        'semester_numbers': semester_numbers,
-        'selected_semester_number': selected_semester_number,
         'exam_slips': exam_slips,
-        'current_session': current_session.name,
+        'academic_sessions': academic_sessions,
+        'semesters': semesters,
+        'current_semester':current_semester,
+        'selected_session_id': int(selected_session_id) if selected_session_id else None,
+        'selected_semester_id': int(selected_semester_id) if selected_semester_id else None,
     }
     return render(request, 'exam_slip.html', context)

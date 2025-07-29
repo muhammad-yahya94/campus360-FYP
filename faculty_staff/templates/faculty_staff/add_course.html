@@ -6,7 +6,7 @@
 <div class="drawer-content flex flex-col min-h-screen">
     <div class="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         <!-- Header -->
-        <div class="hero bg-primary text-primary-content rounded-lg shadow-lg mb-6">
+        <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-lg shadow-lg mb-6">
             <div class="hero-content text-center py-6">
                 <div class="max-w-md">
                     <h1 class="text-3xl sm:text-4xl font-bold mb-2">Add Course</h1>
@@ -66,8 +66,8 @@
                                 <span class="label-text text-sm text-base-content">Optional</span>
                             </label>
                             <select name="opt" id="opt" class="select select-bordered text-sm text-base-content">
+                                <option value="False" {% if not form.opt.value|default:False %}selected{% endif %}>No</option>
                                 <option value="True" {% if form.opt.value|default:True %}selected{% endif %}>Yes</option>
-                                <option value="False" {% if not form.opt.value|default:True %}selected{% endif %}>No</option>
                             </select>
                             {% if form.opt.errors %}
                             <span class="text-error text-xs">{{ form.opt.errors.0 }}</span>
@@ -124,12 +124,25 @@
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <style>
 .select2-container .select2-selection--multiple {
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--fallback-b2,oklch(var(--b2)/1));
     border-radius: 0.5rem;
     min-height: 300px;
 }
 .select2-container--default .select2-selection--multiple .select2-selection__rendered {
     padding: 0.5rem;
+    color: var(--fallback-bc,oklch(var(--bc)/1));
+}
+.select2-container--default .select2-selection--multiple .select2-selection__choice {
+    background-color: var(--fallback-p,oklch(var(--p)/0.1));
+    border: 1px solid var(--fallback-p,oklch(var(--p)/0.5));
+    color: var(--fallback-pc,oklch(var(--pc)/1));
+}
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+    color: var(--fallback-pc,oklch(var(--pc)/1));
+}
+.select2-container--default .select2-results__option--highlighted {
+    background-color: var(--fallback-p,oklch(var(--p)/1));
+    color: var(--fallback-pc,oklch(var(--pc)/1));
 }
 .select2-container {
     width: 100% !important;

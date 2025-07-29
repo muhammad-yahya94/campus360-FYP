@@ -432,8 +432,44 @@
       }
     }
 
+    // Function to update URL with all filter parameters
+    function updateFilters() {
+      const sessionId = document.getElementById('session-filter').value;
+      const programId = document.getElementById('program-filter').value;
+      const shift = document.getElementById('shift-filter').value;
+      
+      let url = '?';
+      const params = [];
+      
+      if (sessionId) params.push(`session_id=${sessionId}`);
+      if (programId) params.push(`program_id=${programId}`);
+      if (shift && shift !== 'all') params.push(`shift=${shift}`);
+      
+      window.location.href = url + params.join('&');
+    }
+    
+    // Function to initialize Select2 for program filter
+    function initSelect2() {
+      $('#program-filter').select2({
+        placeholder: 'Select a program',
+        allowClear: true,
+        width: '100%',
+        dropdownAutoWidth: true,
+        templateResult: function(data) {
+          if (!data.id) return data.text;
+          return $(`<span>${data.text}</span>`);
+        },
+        templateSelection: function(data) {
+          if (!data.id) return data.text;
+          return data.text.split('(')[0].trim();
+        }
+      });
+    }
+    
     document.addEventListener('DOMContentLoaded', function() {
       console.log('DOMContentLoaded fired');
+      initSelect2();
+      
       const currentDay = new Date().getDay();
       const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
       const currentDayName = dayNames[currentDay].toLowerCase();

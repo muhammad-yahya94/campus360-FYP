@@ -5,6 +5,38 @@
 
 {% block extra_css %}
 <style>
+    @media print {
+        /* Hide elements not needed for printing */
+        .no-print, nav, .tabs, .hero, .btn {
+            display: none !important;
+        }
+        /* Ensure content takes full width when printing */
+        .print-content {
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        /* Add page breaks where needed */
+        .page-break {
+            page-break-before: always;
+        }
+        /* Ensure tables don't break across pages */
+        table { page-break-inside: auto; }
+        tr    { page-break-inside:avoid; page-break-after:auto }
+        thead { display:table-header-group; }
+        tfoot { display:table-footer-group; }
+        /* Adjust spacing for print */
+        body {
+            padding: 20px !important;
+            font-size: 12pt !important;
+            line-height: 1.4 !important;
+        }
+        /* Ensure images have proper dimensions when printed */
+        .student-photo {
+            max-width: 80px !important;
+            height: auto !important;
+        }
+    }
     .student-info {
         padding: 1rem;
         border-radius: 0.5rem;
@@ -51,13 +83,58 @@
         flex: 1 1 45%;
         line-height: 1.5;
     }
+    .print-button {
+        position: fixed;
+        top: 120px;
+        right: 2rem;
+        z-index: 1000;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #4f46e5;
+        color: white;
+        font-weight: 500;
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        transition: all 0.15s ease-in-out;
+        border: none;
+        cursor: pointer;
+        gap: 0.5rem;
+    }
+    .print-button:hover {
+        background-color: #4338ca;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    .print-button:focus {
+        outline: 2px solid transparent;
+        outline-offset: 2px;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.5);
+    }
+    .print-button i {
+        font-size: 1.125rem;
+    }
+    @media print {
+        .print-button {
+            display: none !important;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+<!-- Print Button -->
+<button onclick="window.print()" class="print-button no-print" title="Print Exam Slip">
+    <i class="fas fa-print"></i>
+    <span>Print Slip</span>
+</button>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 print-content">
     <!-- Hero Section -->
-    <div class="hero bg-base-200 rounded-lg shadow-lg mb-6">
+    <div class="hero bg-base-200 rounded-lg shadow-lg mb-6 no-print">
         <div class="hero-content text-center">
             <div class="max-w-md">
                 <h1 class="text-3xl sm:text-4xl font-bold text-base-content mb-2">Exam Roll Number Slips</h1>
@@ -65,20 +142,10 @@
             </div>
         </div>
     </div>
-        <!-- Semester Tabs -->
-        <div class="mb-6">
-            <div class="tabs tabs-bordered flex flex-wrap gap-2">
-                {% for semester_num in semester_numbers %}
-                    <a href="?semester={{ semester_num }}"
-                       class="tab tab-lg {% if selected_semester_number|add:'0' == semester_num %}tab-active bg-primary text-primary-content{% else %}text-base-content/70 hover:text-base-content{% endif %}">
-                        Semester {{ semester_num }}
-                    </a>
-                {% endfor %}
-            </div>
-        </div>
 
     <!-- Student Information -->
-    <div class="student-info bg-base-100 shadow-md mb-6">
+    <div class="page-break-after"></div>
+    <div class="student-info bg-base-100 shadow-md mb-6 print-section">
         <div class="flex flex-col sm:flex-row items-center gap-4">
             {% if student.applicant.applicant_photo %}
                 <img src="{{ student.applicant.applicant_photo.url }}" alt="Student Photo" class="student-photo">
@@ -89,18 +156,19 @@
             {% endif %}
             <div>
                 <p class="text-lg"><strong>Student Name:</strong> {{ student.applicant.full_name }}</p>
-                <p class="text-lg"><strong>Roll Number:</strong> {{ student.university_roll_no }}</p>
+                <p class="text-lg"><strong>University Roll Number:</strong> {{ student.university_roll_no }}</p>
                 <p class="text-lg"><strong>Program:</strong> {{ student.program.name }}</p>
-                <p class="text-lg"><strong>Session:</strong> {{ current_session }}</p>
+                <p class="text-lg"><strong>Session:</strong> {{ student.applicant.session }}</p>
             </div>
         </div>
     </div>
 
     <!-- Exam Slips Table -->
+    <div class="page-break-before"></div>
     {% if exam_slips %}
         <div class="card bg-base-100 shadow-lg rounded-lg overflow-hidden mb-6">
             <div class="card-body">
-                <h2 class="card-title text-2xl text-base-content mb-4">Exam Schedule for Semester {{ selected_semester_number }}</h2>
+                <h2 class="card-title text-2xl text-base-content mb-4">Exam Schedule for  {{ current_semester }}</h2>
                 <div class="overflow-x-auto">
                     <table class="exam-table">
                         <thead>
@@ -131,7 +199,8 @@
         </div>
 
         <!-- Instructions for Candidates -->
-        <div class="instructions-card bg-base-100 shadow-md">
+        <div class="page-break-before"></div>
+        <div class="instructions-card bg-base-100 shadow-md print-section">
             <h3 class="text-xl font-semibold text-base-content mb-4">Instructions for Candidates</h3>
             <ol class="text-base-content/80">
                 <li>No student will be allowed to enter the Examination Hall after 30 minutes of the start of the paper.</li>
@@ -153,7 +222,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
-            <span>No exam slips found for Semester {{ selected_semester_number|default:"current semester" }}.</span>
+            <span>No exam slips found.</span>
         </div>
     {% endif %}
 </div>

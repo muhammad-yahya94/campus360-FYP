@@ -145,10 +145,9 @@ def student_dashboard(request):
         )
     
     for sem_enrollment in semester_enrollments:
-        # Get all course enrollments for this semester
+        # Get all course enrollments for this semester (all statuses)
         sem_courses = CourseEnrollment.objects.filter(
-            student_semester_enrollment=sem_enrollment,
-            status__in=['enrolled', 'reattempt']  # Include both regular and reattempt enrollments
+            student_semester_enrollment=sem_enrollment
         ).select_related(
             'course_offering__course',
             'course_offering__semester',

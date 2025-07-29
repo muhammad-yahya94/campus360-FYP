@@ -204,21 +204,19 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 
-# settings.py
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
+# Email Configuration
+# For development, use console backend to see emails in the console
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# For production, use SMTP backend
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'princeyahya052@gmail.com'
-EMAIL_HOST_PASSWORD = 'pmyf uvlj sxfn gald'
-
-
-
-
-
-
+EMAIL_HOST_USER = 'princeyahya052@gmail.com'  # Your Gmail address
+EMAIL_HOST_PASSWORD = 'pmyf uvlj sxfn gald'  # Your App Password
+DEFAULT_FROM_EMAIL = 'princeyahya052@gmail.com'  # Default 'from' address for emails
 
 
 
@@ -351,14 +349,42 @@ CKEDITOR_5_CONFIGS = {
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
     'handlers': {
         'console': {
+            'level': 'DEBUG',
             'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'debug.log'),
+            'formatter': 'verbose',
         },
     },
     'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'faculty_staff': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
         '': {
-            'handlers': ['console'],
+            'handlers': ['console', 'file'],
             'level': 'DEBUG',
         },
     },

@@ -12,8 +12,6 @@
     </div>
   </div>
 
-  <!-- Alerts Container -->
-  <div id="timetable-alerts" class="mb-4"></div>
 
   <!-- Back Button and Add Venue Button -->
   <div class="flex justify-between items-center">
@@ -21,44 +19,38 @@
       <i class="fas fa-arrow-left mr-2"></i>
       Back to Course Offerings
     </a>
-    <button id="openVenueModal" class="inline-flex items-center px-4 py-2 border border-teal-500 text-teal-500 bg-white hover:bg-teal-50 rounded-lg shadow-sm">
+    <button id="add-venue-btn" class="inline-flex items-center px-4 py-2 border border-teal-500 text-teal-500 bg-white hover:bg-teal-50 rounded-lg shadow-sm">
       <i class="fas fa-plus mr-2"></i>
       Add New Room
     </button>
   </div>
 
   <!-- Add Venue Modal -->
-  <div id="addVenueModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden transition-opacity duration-300 z-50">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-      <div class="flex justify-between items-center mb-4">
-        <h5 class="text-xl font-semibold text-gray-900">Add New Room</h5>
-        <button id="closeVenueModal" class="text-gray-500 hover:text-gray-700">
-          <i class="fas fa-times"></i>
-        </button>
+  <div id="add-venue-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
+      <div class="p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-semibold">Add New Room</h2>
+          <button id="close-venue-modal" class="text-gray-500 hover:text-gray-700">&times;</button>
+        </div>
+        <form id="add-venue-form" method="post">
+          {% csrf_token %}
+          <div class="mb-4">
+            <label for="venue_name" class="block text-sm font-medium text-gray-700 mb-1">Room Name</label>
+            <input type="text" id="venue_name" name="name" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+            <span id="venue-name-error" class="text-red-500 text-sm"></span>
+          </div>
+          <div class="mb-4">
+            <label for="venue_capacity" class="block text-sm font-medium text-gray-700 mb-1">Capacity</label>
+            <input type="number" id="venue_capacity" name="capacity" min="1" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+            <span id="venue-capacity-error" class="text-red-500 text-sm"></span>
+          </div>
+          <div class="flex justify-end gap-2">
+            <button type="button" id="cancel-venue-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Cancel</button>
+            <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save Room</button>
+          </div>
+        </form>
       </div>
-      <div id="venue-alerts"></div>
-      <form id="venue-form" method="post" action="{% url 'faculty_staff:save_venue' %}">
-        {% csrf_token %}
-        <input type="hidden" name="department_id" value="{{ department.id }}">
-        <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700">Class Room</label>
-          <input type="text" name="name" id="venue_name" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
-          <span id="name-error" class="text-red-500 text-sm"></span>
-        </div>
-        <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700">Room No.</label>
-          <input type="number" name="capacity" id="capacity" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" min="1" required>
-          <span id="capacity-error" class="text-red-500 text-sm"></span>
-        </div>
-        <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700">Department</label>
-          <input type="text" value="{{ department.name }}" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 bg-gray-100" readonly>
-        </div>
-        <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition duration-200">
-          <i class="fas fa-save mr-2"></i>
-          Save Room
-        </button>
-      </form>
     </div>
   </div>
 
@@ -69,7 +61,7 @@
         <i class="fas fa-calendar-alt mr-2"></i>
         Schedule Timetable
       </h2>
-      <form id="timetable-form" method="post" action="{% url 'faculty_staff:save_timetable_slot' %}" class="space-y-4">
+      <form id="timetable-form" method="post" action="{% url 'faculty_staff:save_timetable_slot' course_offering.id %}">
         {% csrf_token %}
         <input type="hidden" name="course_offering_id" value="{{ course_offering.id }}">
         <input type="hidden" id="course_shift" value="{{ course_offering.shift }}">
@@ -80,7 +72,7 @@
               <div class="flex flex-wrap gap-4">
                 {% for value, label in days_of_week %}
                 <label class="inline-flex items-center">
-                  <input type="checkbox" name="day[]" value="{{ value }}" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                  <input type="checkbox" name="day" value="{{ value }}" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
                   <span class="ml-2 text-sm text-gray-600">{{ label }}</span>
                 </label>
                 {% endfor %}
@@ -99,8 +91,13 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Room</label>
-              <select name="venue_id" id="venue_id" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500 select2" required>
-                <option value="">Search for a Room...</option>
+              <select name="venue_id" id="venue_id" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500 select2-venue" required>
+                <option value="">Select a room...</option>
+                {% for venue in venues %}
+                  <option value="{{ venue.id }}">{{ venue.name }} (Capacity: {{ venue.capacity }}, Dept: {{ venue.department.code }})</option>
+                {% empty %}
+                  <option value="" disabled>No rooms available</option>
+                {% endfor %}
               </select>
               <span id="venue-error" class="text-red-500 text-sm"></span>
             </div>
@@ -115,7 +112,7 @@
                 <div class="flex flex-wrap gap-4">
                   {% for value, label in days_of_week %}
                   <label class="inline-flex items-center">
-                    <input type="checkbox" name="morning_day[]" value="{{ value }}" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                    <input type="checkbox" name="morning_day" value="{{ value }}" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
                     <span class="ml-2 text-sm text-gray-600">{{ label }}</span>
                   </label>
                   {% endfor %}
@@ -134,8 +131,13 @@
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Room</label>
-                <select name="morning_venue_id" id="morning_venue_id" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500 select2" required>
-                  <option value="">Search for a room...</option>
+                <select name="morning_venue_id" id="morning_venue_id" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500 select2-venue" required>
+                  <option value="">Select a room...</option>
+                  {% for venue in venues %}
+                    <option value="{{ venue.id }}">{{ venue.name }} (Capacity: {{ venue.capacity }}, Dept: {{ venue.department.code }})</option>
+                  {% empty %}
+                    <option value="" disabled>No rooms available</option>
+                  {% endfor %}
                 </select>
                 <span id="morning-venue-error" class="text-red-500 text-sm"></span>
               </div>
@@ -149,7 +151,7 @@
                 <div class="flex flex-wrap gap-4">
                   {% for value, label in days_of_week %}
                   <label class="inline-flex items-center">
-                    <input type="checkbox" name="evening_day[]" value="{{ value }}" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                    <input type="checkbox" name="evening_day" value="{{ value }}" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
                     <span class="ml-2 text-sm text-gray-600">{{ label }}</span>
                   </label>
                   {% endfor %}
@@ -168,15 +170,20 @@
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Room</label>
-                <select name="evening_venue_id" id="evening_venue_id" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500 select2" required>
-                  <option value="">Search for a room...</option>
+                <select name="evening_venue_id" id="evening_venue_id" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500 select2-venue" required>
+                  <option value="">Select a room...</option>
+                  {% for venue in venues %}
+                    <option value="{{ venue.id }}">{{ venue.name }} (Capacity: {{ venue.capacity }}, Dept: {{ venue.department.code }})</option>
+                  {% empty %}
+                    <option value="" disabled>No rooms available</option>
+                  {% endfor %}
                 </select>
                 <span id="evening-venue-error" class="text-red-500 text-sm"></span>
               </div>
             </div>
           </div>
         </div>
-        <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition duration-200">
+        <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition duration-200 mt-4">
           <i class="fas fa-clock mr-2"></i>
           Schedule Timetable
         </button>
@@ -204,13 +211,13 @@
           </thead>
           <tbody>
             {% for slot in timetable_slots %}
-            <tr class="border-t">
+            <tr class="border-t" id="slot-{{ slot.id }}">
               <td class="p-3">{{ slot.get_day_display }}</td>
               <td class="p-3">{{ slot.start_time|time:"H:i" }}–{{ slot.end_time|time:"H:i" }}</td>
-              <td class="p-3">{{ slot.venue.name }}</td>
+              <td class="p-3">{{ slot.venue.name }} (Dept: {{ slot.venue.department.code }})</td>
               <td class="p-3">{{ slot.venue.capacity }}</td>
               <td class="p-3">
-                <button class="delete-timetable-slot inline-flex items-center px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200" data-slot-id="{{ slot.id }}">
+                <button type="button" class="delete-timetable-slot inline-flex items-center px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200" data-slot-id="{{ slot.id }}">
                   <i class="fas fa-trash mr-2"></i>
                   Delete
                 </button>
@@ -218,7 +225,7 @@
             </tr>
             {% empty %}
             <tr>
-              <td colspan="4" class="p-8 text-center">
+              <td colspan="5" class="p-8 text-center">
                 <div>
                   <i class="fas fa-calendar-alt text-6xl text-gray-300 mb-4"></i>
                   <h3 class="text-xl font-semibold text-gray-600 mb-2">No Timetable Slots Scheduled</h3>
@@ -235,16 +242,42 @@
 </div>
 {% endblock %}
 
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+.select2-container .select2-selection--single {
+  height: 38px;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+}
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+  line-height: 38px;
+}
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+  height: 38px;
+}
+.select2-container {
+  width: 100% !important;
+}
+#add-venue-modal {
+  z-index: 50;
+}
+</style>
+{% endblock %}
+
 {% block extra_js %}
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-
 <script>
 $(document).ready(function() {
-  let isSubmitting = false;
+  // Initialize Select2 for venue dropdowns
+  $('.select2-venue').select2({
+    placeholder: "Select a room...",
+    allowClear: true,
+    width: '100%'
+  });
 
-  // Function to toggle required attributes based on shift
+  // Toggle required attributes based on shift
   const toggleRequiredFields = () => {
     const shift = $('#course_shift').val();
     if (shift === 'both') {
@@ -255,652 +288,133 @@ $(document).ready(function() {
       $('#both-shifts [required]').prop('required', false);
     }
   };
-
-  // Initialize required fields
   toggleRequiredFields();
 
-  // Modal toggle functionality
-  $('#openVenueModal').on('click', function() {
-    $('#addVenueModal').removeClass('hidden').addClass('opacity-100');
-  });
-  $('#closeVenueModal').on('click', function() {
-    $('#addVenueModal').addClass('hidden').removeClass('opacity-100');
-  });
-  $('#addVenueModal').on('click', function(e) {
-    if (e.target === this) {
-      $(this).addClass('hidden').removeClass('opacity-100');
-    }
+  // Show venue modal
+  $('#add-venue-btn').click(function() {
+    $('#add-venue-modal').removeClass('hidden');
+    $('#venue_name').val('');
+    $('#venue_capacity').val('');
+    $('#venue-name-error').text('');
+    $('#venue-capacity-error').text('');
   });
 
-  // Initialize Select2 for venue dropdowns
-  const initializeSelect2 = (selector) => {
-    $(selector).select2({
-      placeholder: "Search for a room...",
-      minimumInputLength: 1,
-      allowClear: true,
-      ajax: {
-        url: "{% url 'faculty_staff:search_venues' %}",
-        dataType: 'json',
-        delay: 250,
-        data: function(params) {
-          return { q: params.term, page: params.page || 1 };
-        },
-        processResults: function(data, params) {
-          params.page = params.page || 1;
-          return {
-            results: data.results,
-            pagination: { more: data.pagination.more }
-          };
-        },
-        cache: true
-      }
-    }).on('select2:select select2:clear', function() {
-      $(this).trigger('change');
-    });
-  };
+  // Close venue modal
+  $('#close-venue-modal, #cancel-venue-btn').click(function() {
+    $('#add-venue-modal').addClass('hidden');
+  });
 
-  initializeSelect2('#venue_id');
-  initializeSelect2('#morning_venue_id');
-  initializeSelect2('#evening_venue_id');
-
-  // Time validation function
-  const validateTime = (startTime, endTime, shift, prefix = '') => {
-    const errors = [];
-    if (!startTime) {
-      errors.push(`${prefix}Start time is required.`);
-    }
-    if (!endTime) {
-      errors.push(`${prefix}End time is required.`);
-    }
-    if (startTime && endTime && startTime >= endTime) {
-      errors.push(`${prefix}End time must be after start time.`);
-    }
-    return errors;
-  };
-
-  // Reset error styles
-  const resetErrorStyles = () => {
-    $('.text-red-500').text('');
-    $('input, select').removeClass('border-red-500');
-  };
-
-  // Highlight field with error
-  const highlightErrorField = (field) => {
-    if (field === 'morning_day') {
-      $('input[name="morning_day[]"]').addClass('border-red-500');
-    } else if (field === 'evening_day') {
-      $('input[name="evening_day[]"]').addClass('border-red-500');
-    } else if (field === 'day') {
-      $('input[name="day[]"]').addClass('border-red-500');
-    } else if (field) {
-      $(`#${field}`).addClass('border-red-500');
-    }
-  };
-
-  // Handle venue form submission (unchanged)
-  $('#venue-form').on('submit', function(e) {
+  // Handle venue form submission via AJAX
+  $('#add-venue-form').submit(function(e) {
     e.preventDefault();
-    if (isSubmitting) return;
-    isSubmitting = true;
-
-    const submitBtn = $(this).find('button[type="submit"]');
-    submitBtn.prop('disabled', true);
-    submitBtn.html('<svg class="animate-spin h-5 w-5 mr-2 inline" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V8h8a8 8 0 01-8 8 8 8 0 01-8-8z"></path></svg> Saving...');
-
-    resetErrorStyles();
-
-    let isValid = true;
-    if (!$('#venue_name').val().trim()) {
-      $('#name-error').text('Class Room is required.');
-      $('#venue_name').addClass('border-red-500');
-      isValid = false;
-    }
-    if (!$('#capacity').val() || $('#capacity').val() <= 0) {
-      $('#capacity-error').text('Room No. must be a positive number.');
-      $('#capacity').addClass('border-red-500');
-      isValid = false;
-    }
-
-    if (!isValid) {
-      submitBtn.prop('disabled', false);
-      submitBtn.html('<i class="fas fa-save mr-2"></i> Save Room');
-      isSubmitting = false;
-      return;
-    }
-
+    const formData = $(this).serialize();
     $.ajax({
-      url: $(this).attr('action'),
+      url: '{% url 'faculty_staff:add_venue_ajax' %}',
       type: 'POST',
-      data: $(this).serialize(),
+      data: formData,
+      dataType: 'json',
+      headers: {
+        'X-CSRFToken': $('input[name=csrfmiddlewaretoken]').val()
+      },
       success: function(response) {
         if (response.success) {
-          $('#venue-alerts').html(`
+          // Add new venue to all Select2 dropdowns
+          const newOption = new Option(
+            `${response.venue.name} (Capacity: ${response.venue.capacity}, Dept: ${response.venue.department_code})`,
+            response.venue.id,
+            false,
+            false
+          );
+          $('.select2-venue').append(newOption).trigger('change');
+          
+          // Close modal
+          $('#add-venue-modal').addClass('hidden');
+          
+          // Show success message
+          const successAlert = $(`
             <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded mb-4">
               ${response.message}
               <button class="float-right text-green-700 hover:text-green-900" onclick="$(this).parent().remove()">✕</button>
             </div>
           `);
-          $('#venue-form')[0].reset();
-          ['#venue_id', '#morning_venue_id', '#evening_venue_id'].forEach(id => {
-            $(id).val(null).trigger('change');
-            $(id).select2('destroy');
-            initializeSelect2(id);
-          });
-          setTimeout(() => {
-            $('#addVenueModal').addClass('hidden').removeClass('opacity-100');
-          }, 1500);
+          $('#timetable-alerts').prepend(successAlert);
         } else {
-          $('#venue-alerts').html(`
-            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
-              ${response.message}
-              <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
-            </div>
-          `);
-          if (response.error_field) {
-            $(`#${response.error_field}-error`).text(response.message);
-            highlightErrorField(response.error_field);
-          }
+          // Show errors
+          $('#venue-name-error').text(response.errors.name || '');
+          $('#venue-capacity-error').text(response.errors.capacity || '');
         }
       },
-      error: function(xhr, status, error) {
-        $('#venue-alerts').html(`
+      error: function(xhr) {
+        // Show generic error
+        const errorAlert = $(`
           <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
-            An error occurred while saving the venue. Please try again.
+            An error occurred while saving the room.
             <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
           </div>
         `);
-      },
-      complete: function() {
-        submitBtn.prop('disabled', false);
-        submitBtn.html('<i class="fas fa-save mr-2"></i> Save Room');
-        isSubmitting = false;
+        $('#timetable-alerts').prepend(errorAlert);
       }
     });
   });
 
-  // Handle timetable form submission
-  $('#timetable-form').on('submit', function(e) {
-    e.preventDefault();
-    if (isSubmitting) return;
-    isSubmitting = true;
-
-    const submitBtn = $(this).find('button[type="submit"]');
-    submitBtn.prop('disabled', true);
-    submitBtn.html('<svg class="animate-spin h-5 w-5 mr-2 inline" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V8h8a8 8 0 01-8 8 8 8 0 01-8-8z"></path></svg> Processing...');
-
-    resetErrorStyles();
-    $('#timetable-alerts').empty();
-
-    const shift = $('#course_shift').val();
-    if (!shift) {
-      $('#timetable-alerts').html(`
-        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
-          Course shift is not defined. Please contact support.
-          <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
-        </div>
-      `);
-      $('html, body').animate({ scrollTop: $('#timetable-alerts').offset().top }, 500);
-      submitBtn.prop('disabled', false);
-      submitBtn.html('<i class="fas fa-clock mr-2"></i> Schedule Timetable');
-      isSubmitting = false;
-      return;
-    }
-
-    let isValid = true;
-
-    toggleRequiredFields();
-
-    const dayDisplayMap = {
-      'monday': 'Monday',
-      'tuesday': 'Tuesday',
-      'wednesday': 'Wednesday',
-      'thursday': 'Thursday',
-      'friday': 'Friday',
-      'saturday': 'Saturday',
-      'sunday': 'Sunday'
-    };
-
-    if (shift === 'both') {
-      const morningDays = $('input[name="morning_day[]"]:checked').map(function() { return $(this).val(); }).get();
-      const morningStart = $('#morning_start_time').val();
-      const morningEnd = $('#morning_end_time').val();
-      const morningVenue = $('#morning_venue_id').val();
-      const eveningDays = $('input[name="evening_day[]"]:checked').map(function() { return $(this).val(); }).get();
-      const eveningStart = $('#evening_start_time').val();
-      const eveningEnd = $('#evening_end_time').val();
-      const eveningVenue = $('#evening_venue_id').val();
-
-      // Validate inputs
-      if (!morningDays.length) {
-        $('#morning-day-error').text('At least one day is required for morning shift.');
-        $('input[name="morning_day[]"]').addClass('border-red-500');
-        isValid = false;
-      }
-      if (!morningVenue) {
-        $('#morning-venue-error').text('Venue is required for morning shift.');
-        $('#morning_venue_id').addClass('border-red-500');
-        isValid = false;
-      }
-      if (!eveningDays.length) {
-        $('#evening-day-error').text('At least one day is required for evening shift.');
-        $('input[name="evening_day[]"]').addClass('border-red-500');
-        isValid = false;
-      }
-      if (!eveningVenue) {
-        $('#evening-venue-error').text('Venue is required for evening shift.');
-        $('#evening_venue_id').addClass('border-red-500');
-        isValid = false;
-      }
-
-      const morningErrors = validateTime(morningStart, morningEnd, 'morning', 'Morning: ');
-      const eveningErrors = validateTime(eveningStart, eveningEnd, 'evening', 'Evening: ');
-      if (morningErrors.length) {
-        $('#morning-start-time-error').text(morningErrors.join(' '));
-        $('#morning_start_time, #morning_end_time').addClass('border-red-500');
-        isValid = false;
-      }
-      if (eveningErrors.length) {
-        $('#evening-start-time-error').text(eveningErrors.join(' '));
-        $('#evening_start_time, #evening_end_time').addClass('border-red-500');
-        isValid = false;
-      }
-
-      if (!isValid) {
-        $('#timetable-alerts').html(`
-          <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
-            Please correct the errors in the form.
-            <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
-          </div>
-        `);
-        $('html, body').animate({ scrollTop: $('#timetable-alerts').offset().top }, 500);
-        submitBtn.prop('disabled', false);
-        submitBtn.html('<i class="fas fa-clock mr-2"></i> Schedule Timetable');
-        isSubmitting = false;
-        return;
-      }
-
-      const morningCheck = new Promise((resolve) => {
-        if (!morningDays.length || !morningStart || !morningEnd || !morningVenue) {
-          resolve(true); // Skip check if inputs are incomplete (already caught above)
-          return;
-        }
-        $.ajax({
-          url: '{% url "faculty_staff:search_timetable_slots" %}',
-          type: 'GET',
-          data: {
-            course_offering_id: $('input[name="course_offering_id"]').val(),
-            'day[]': morningDays,
-            start_time: morningStart,
-            end_time: morningEnd,
-            venue_id: morningVenue
-          },
-          success: function(response) {
-            console.log('Morning slots check:', JSON.stringify(response, null, 2));
-            if (response.slots && response.slots.length > 0) {
-              const conflictingDays = response.slots.map(slot => 
-                `${dayDisplayMap[slot.day.toLowerCase()] || slot.day} (${slot.start_time}–${slot.end_time})`
-              ).join(', ');
-              const message = `Timetable slot(s) already exist for ${conflictingDays} in the morning shift, overlapping with ${morningStart}–${morningEnd}.`;
-              $('#morning-day-error').text(message);
-              $('#timetable-alerts').html(`
-                <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
-                  ${message}
-                  <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
-                </div>
-              `);
-              $('input[name="morning_day[]"]').addClass('border-red-500');
-              $('html, body').animate({ scrollTop: $('#timetable-alerts').offset().top }, 500);
-              resolve(false);
-            } else if (!response.success) {
-              $('#morning-day-error').text(response.message);
-              $('#timetable-alerts').html(`
-                <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
-                  ${response.message}
-                  <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
-                </div>
-              `);
-              $('input[name="morning_day[]"]').addClass('border-red-500');
-              $('html, body').animate({ scrollTop: $('#timetable-alerts').offset().top }, 500);
-              resolve(false);
-            } else {
-              resolve(true);
-            }
-          },
-          error: function(xhr, status, error) {
-            console.error('Morning slots check error:', status, error, JSON.stringify(xhr.responseJSON || {}, null, 2));
-            const message = xhr.responseJSON?.message || 'Error checking morning timetable slots. Please try again.';
-            $('#morning-day-error').text(message);
-            $('#timetable-alerts').html(`
-              <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
-                ${message}
-                <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
-              </div>
-            `);
-            $('html, body').animate({ scrollTop: $('#timetable-alerts').offset().top }, 500);
-            resolve(false);
-          }
-        });
-      });
-
-      const eveningCheck = new Promise((resolve) => {
-        if (!eveningDays.length || !eveningStart || !eveningEnd || !eveningVenue) {
-          resolve(true); // Skip check if inputs are incomplete
-          return;
-        }
-        $.ajax({
-          url: '{% url "faculty_staff:search_timetable_slots" %}',
-          type: 'GET',
-          data: {
-            course_offering_id: $('input[name="course_offering_id"]').val(),
-            'day[]': eveningDays,
-            start_time: eveningStart,
-            end_time: eveningEnd,
-            venue_id: eveningVenue
-          },
-          success: function(response) {
-            console.log('Evening slots check:', JSON.stringify(response, null, 2));
-            if (response.slots && response.slots.length > 0) {
-              const conflictingDays = response.slots.map(slot => 
-                `${dayDisplayMap[slot.day.toLowerCase()] || slot.day} (${slot.start_time}–${slot.end_time})`
-              ).join(', ');
-              const message = `Timetable slot(s) already exist for ${conflictingDays} in the evening shift, overlapping with ${eveningStart}–${eveningEnd}.`;
-              $('#evening-day-error').text(message);
-              $('#timetable-alerts').html(`
-                <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
-                  ${message}
-                  <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
-                </div>
-              `);
-              $('input[name="evening_day[]"]').addClass('border-red-500');
-              $('html, body').animate({ scrollTop: $('#timetable-alerts').offset().top }, 500);
-              resolve(false);
-            } else if (!response.success) {
-              $('#evening-day-error').text(response.message);
-              $('#timetable-alerts').html(`
-                <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
-                  ${response.message}
-                  <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
-                </div>
-              `);
-              $('input[name="evening_day[]"]').addClass('border-red-500');
-              $('html, body').animate({ scrollTop: $('#timetable-alerts').offset().top }, 500);
-              resolve(false);
-            } else {
-              resolve(true);
-            }
-          },
-          error: function(xhr, status, error) {
-            console.error('Evening slots check error:', status, error, JSON.stringify(xhr.responseJSON || {}, null, 2));
-            const message = xhr.responseJSON?.message || 'Error checking evening timetable slots. Please try again.';
-            $('#evening-day-error').text(message);
-            $('#timetable-alerts').html(`
-              <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
-                ${message}
-                <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
-              </div>
-            `);
-            $('html, body').animate({ scrollTop: $('#timetable-alerts').offset().top }, 500);
-            resolve(false);
-          }
-        });
-      });
-
-      Promise.all([morningCheck, eveningCheck]).then(([morningValid, eveningValid]) => {
-        if (!morningValid || !eveningValid) {
-          isValid = false;
-          submitBtn.prop('disabled', false);
-          submitBtn.html('<i class="fas fa-clock mr-2"></i> Schedule Timetable');
-          isSubmitting = false;
-          return;
-        }
-        $.ajax({
-          url: $(this).attr('action'),
-          type: 'POST',
-          data: $(this).serialize(),
-          success: function(response) {
-            console.log('Timetable AJAX success:', JSON.stringify(response, null, 2));
-            resetErrorStyles();
-            if (response.success) {
-              $('#timetable-alerts').html(`
-                <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded mb-4">
-                  ${response.message}
-                  <button class="float-right text-green-700 hover:text-green-900" onclick="$(this).parent().remove()">✕</button>
-                </div>
-              `);
-              $('#timetable-form')[0].reset();
-              $('.select2').val(null).trigger('change');
-              $('input[type="checkbox"]').prop('checked', false);
-              toggleRequiredFields();
-              setTimeout(() => { location.reload(); }, 1500);
-            } else {
-              $('#timetable-alerts').html(`
-                <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
-                  ${response.message}
-                  <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
-                </div>
-              `);
-              if (response.error_field && response.error_field !== 'general') {
-                $(`#${response.error_field}-error`).text(response.message);
-                highlightErrorField(response.error_field);
-              }
-              $('html, body').animate({ scrollTop: $('#timetable-alerts').offset().top }, 500);
-            }
-          },
-          error: function(xhr, status, error) {
-            console.error('Timetable AJAX error:', status, error, JSON.stringify(xhr.responseJSON || {}, null, 2));
-            resetErrorStyles();
-            $('#timetable-alerts').html(`
-              <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
-                An unexpected error occurred while scheduling the timetable. Please try again.
-                <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
-              </div>
-            `);
-            $('html, body').animate({ scrollTop: $('#timetable-alerts').offset().top }, 500);
-          },
-          complete: function() {
-            submitBtn.prop('disabled', false);
-            submitBtn.html('<i class="fas fa-clock mr-2"></i> Schedule Timetable');
-            isSubmitting = false;
-          }
-        });
-      });
-    } else {
-      const days = $('input[name="day[]"]:checked').map(function() { return $(this).val(); }).get();
-      const startTime = $('#start_time').val();
-      const endTime = $('#end_time').val();
-      const venue = $('#venue_id').val();
-
-      // Validate inputs
-      if (!days.length) {
-        $('#day-error').text('At least one day is required.');
-        $('input[name="day[]"]').addClass('border-red-500');
-        isValid = false;
-      }
-      if (!venue) {
-        $('#venue-error').text('Venue is required.');
-        $('#venue_id').addClass('border-red-500');
-        isValid = false;
-      }
-      const errors = validateTime(startTime, endTime, shift);
-      if (errors.length) {
-        $('#start-time-error').text(errors.join(' '));
-        $('#start_time, #end_time').addClass('border-red-500');
-        isValid = false;
-      }
-
-      if (!isValid) {
-        $('#timetable-alerts').html(`
-          <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
-            Please correct the errors in the form.
-            <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
-          </div>
-        `);
-        $('html, body').animate({ scrollTop: $('#timetable-alerts').offset().top }, 500);
-        submitBtn.prop('disabled', false);
-        submitBtn.html('<i class="fas fa-clock mr-2"></i> Schedule Timetable');
-        isSubmitting = false;
-        return;
-      }
-
-      $.ajax({
-        url: '{% url "faculty_staff:search_timetable_slots" %}',
-        type: 'GET',
-        data: {
-          course_offering_id: $('input[name="course_offering_id"]').val(),
-          'day[]': days,
-          start_time: startTime,
-          end_time: endTime,
-          venue_id: venue
-        },
-        success: function(response) {
-          console.log('Single shift slots check:', JSON.stringify(response, null, 2));
-          if (response.slots && response.slots.length > 0) {
-            const conflictingDays = response.slots.map(slot => 
-              `${dayDisplayMap[slot.day.toLowerCase()] || slot.day} (${slot.start_time}–${slot.end_time})`
-            ).join(', ');
-            const message = `Timetable slot(s) already exist for ${conflictingDays}, overlapping with ${startTime}–${endTime}.`;
-            $('#day-error').text(message);
-            $('#timetable-alerts').html(`
-              <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
-                ${message}
-                <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
-              </div>
-            `);
-            $('input[name="day[]"]').addClass('border-red-500');
-            $('html, body').animate({ scrollTop: $('#timetable-alerts').offset().top }, 500);
-            submitBtn.prop('disabled', false);
-            submitBtn.html('<i class="fas fa-clock mr-2"></i> Schedule Timetable');
-            isSubmitting = false;
-          } else if (!response.success) {
-            $('#day-error').text(response.message);
-            $('#timetable-alerts').html(`
-              <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
-                ${response.message}
-                <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
-              </div>
-            `);
-            $('input[name="day[]"]').addClass('border-red-500');
-            $('html, body').animate({ scrollTop: $('#timetable-alerts').offset().top }, 500);
-            submitBtn.prop('disabled', false);
-            submitBtn.html('<i class="fas fa-clock mr-2"></i> Schedule Timetable');
-            isSubmitting = false;
-          } else {
-            $.ajax({
-              url: $(this).attr('action'),
-              type: 'POST',
-              data: $(this).serialize(),
-              success: function(response) {
-                console.log('Timetable AJAX success:', JSON.stringify(response, null, 2));
-                resetErrorStyles();
-                if (response.success) {
-                  $('#timetable-alerts').html(`
-                    <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded mb-4">
-                      ${response.message}
-                      <button class="float-right text-green-700 hover:text-green-900" onclick="$(this).parent().remove()">✕</button>
-                    </div>
-                  `);
-                  $('#timetable-form')[0].reset();
-                  $('.select2').val(null).trigger('change');
-                  $('input[type="checkbox"]').prop('checked', false);
-                  toggleRequiredFields();
-                  setTimeout(() => { location.reload(); }, 1500);
-                } else {
-                  $('#timetable-alerts').html(`
-                    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
-                      ${response.message}
-                      <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
-                    </div>
-                  `);
-                  if (response.error_field && response.error_field !== 'general') {
-                    $(`#${response.error_field}-error`).text(response.message);
-                    highlightErrorField(response.error_field);
-                  }
-                  $('html, body').animate({ scrollTop: $('#timetable-alerts').offset().top }, 500);
-                }
-              },
-              error: function(xhr, status, error) {
-                console.error('Timetable AJAX error:', status, error, JSON.stringify(xhr.responseJSON || {}, null, 2));
-                resetErrorStyles();
-                $('#timetable-alerts').html(`
-                  <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
-                    An unexpected error occurred while scheduling the timetable. Please try again.
-                    <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
-                  </div>
-                `);
-                $('html, body').animate({ scrollTop: $('#timetable-alerts').offset().top }, 500);
-              },
-              complete: function() {
-                submitBtn.prop('disabled', false);
-                submitBtn.html('<i class="fas fa-clock mr-2"></i> Schedule Timetable');
-                isSubmitting = false;
-              }
-            });
-          }
-        },
-        error: function(xhr, status, error) {
-          console.error('Single shift slots check error:', status, error, JSON.stringify(xhr.responseJSON || {}, null, 2));
-          const message = xhr.responseJSON?.message || 'Error checking timetable slots. Please try again.';
-          $('#day-error').text(message);
-          $('#timetable-alerts').html(`
-            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
-              ${message}
-              <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
-            </div>
-          `);
-          $('input[name="day[]"]').addClass('border-red-500');
-          $('html, body').animate({ scrollTop: $('#timetable-alerts').offset().top }, 500);
-          submitBtn.prop('disabled', false);
-          submitBtn.html('<i class="fas fa-clock mr-2"></i> Schedule Timetable');
-          isSubmitting = false;
-        }
-      });
-    }
-  });
-
-  // Handle delete timetable slot (unchanged)
-  $('.delete-timetable-slot').on('click', function() {
-    let slotId = $(this).data('slot-id');
+  // Handle timetable slot deletion via AJAX
+  $(document).on('click', '.delete-timetable-slot', function() {
+    const slotId = $(this).data('slot-id');
     if (confirm('Are you sure you want to delete this timetable slot?')) {
       $.ajax({
-        url: "{% url 'faculty_staff:delete_timetable_slot' %}",
+        url: '{% url 'faculty_staff:delete_timetable_slot' %}',
         type: 'POST',
         data: {
           slot_id: slotId,
           csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
         },
+        dataType: 'json',
         success: function(response) {
-          console.log('Delete AJAX success:', JSON.stringify(response, null, 2));
           if (response.success) {
-            $('#timetable-alerts').html(`
+            // Remove the slot row from the table
+            $(`#slot-${slotId}`).remove();
+            // Show success message
+            const successAlert = $(`
               <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded mb-4">
                 ${response.message}
                 <button class="float-right text-green-700 hover:text-green-900" onclick="$(this).parent().remove()">✕</button>
               </div>
             `);
-            setTimeout(() => { location.reload(); }, 1500);
+            $('#timetable-alerts').prepend(successAlert);
+            // Check if table is empty and show empty message if needed
+            if ($('tbody tr').length === 0) {
+              $('tbody').html(`
+                <tr>
+                  <td colspan="5" class="p-8 text-center">
+                    <div>
+                      <i class="fas fa-calendar-alt text-6xl text-gray-300 mb-4"></i>
+                      <h3 class="text-xl font-semibold text-gray-600 mb-2">No Timetable Slots Scheduled</h3>
+                      <p class="text-gray-500">Use the form above to schedule timetable slots.</p>
+                    </div>
+                  </td>
+                </tr>
+              `);
+            }
           } else {
-            $('#timetable-alerts').html(`
+            // Show error message
+            const errorAlert = $(`
               <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
                 ${response.message}
                 <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
               </div>
             `);
-            if (response.error_field && response.error_field !== 'general') {
-              $(`#${response.error_field}-error`).text(response.message);
-              highlightErrorField(response.error_field);
-            }
-            $('html, body').animate({ scrollTop: $('#timetable-alerts').offset().top }, 500);
+            $('#timetable-alerts').prepend(errorAlert);
           }
         },
-        error: function(xhr, status, error) {
-          console.error('Delete AJAX error:', status, error, JSON.stringify(xhr.responseJSON || {}, null, 2));
-          $('#timetable-alerts').html(`
+        error: function(xhr) {
+          // Show generic error
+          const errorAlert = $(`
             <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-4">
-              An error occurred while deleting the timetable slot. Please try again.
+              An error occurred while deleting the timetable slot.
               <button class="float-right text-red-700 hover:text-red-900" onclick="$(this).parent().remove()">✕</button>
             </div>
           `);
-          $('html, body').animate({ scrollTop: $('#timetable-alerts').offset().top }, 500);
+          $('#timetable-alerts').prepend(errorAlert);
         }
       });
     }

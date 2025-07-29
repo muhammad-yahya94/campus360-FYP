@@ -47,9 +47,9 @@ urlpatterns = [
     # ========== 6. Timetable ==========
     path('timetable/get/', views.get_timetable_slot, name='get_timetable_slot'),
     path('timetable/edit/', views.edit_timetable_slot, name='edit_timetable_slot'),
-    path('save-timetable-slot/', views.save_timetable_slot, name='save_timetable_slot'),
-    path('delete-timetable-slot/', views.delete_timetable_slot, name='delete_timetable_slot'),
+    path('save-timetable-slot/<int:course_offering_id>/', views.save_timetable_slot, name='save_timetable_slot'),
     path('timetable-schedule/<int:offering_id>/', views.timetable_schedule, name='timetable_schedule'),
+    path('timetable/delete/', views.delete_timetable_slot, name='delete_timetable_slot'),
     path('weekly-timetable/', views.weekly_timetable, name='weekly_timetable'),
     path('search-timetable-slots/', views.search_timetable_slots, name='search_timetable_slots'),
     path('my-timetable/', views.my_timetable, name='my_timetable'),
@@ -68,7 +68,7 @@ urlpatterns = [
     path('get-academic-sessions/', views.get_academic_sessions, name='get_academic_sessions'),
 
     # ========== 8. Venue Management ==========
-    path('save-venue/', views.save_venue, name='save_venue'),
+    path('add-venue-ajax/', views.add_venue_ajax, name='add_venue_ajax'),
 
     # ========== 9. Study Materials ==========
     path('study-materials/<int:offering_id>/', views.study_materials, name='study_materials'),

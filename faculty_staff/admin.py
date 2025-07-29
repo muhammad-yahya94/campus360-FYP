@@ -80,25 +80,41 @@ class OfficeStaffAdmin(admin.ModelAdmin):
         return form
     
     def save_model(self, request, obj, form, change):
-        # Save the teacher instance first
+        # Save the office staff instance first
         super().save_model(request, obj, form, change)
 
-        # Check if this is a new teacher (not an update)
+        # Check if this is a new office staff (not an update)
         if not change:
+            # Validate that the user has a valid email
+            if not obj.user or not obj.user.email:
+                print(f"No valid email for user associated with OfficeStaff {obj}")
+                logger.error(f"No valid email for user associated with OfficeStaff {obj}")
+                messages.error(request, "Cannot send email: No valid email address for the user.")
+                return
+
             # Generate a random password for the user if needed
             password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
             obj.user.set_password(password)
             obj.user.save()
 
             # Prepare the email content
-            subject = "Welcome to Campus360 - Your Faculty Account"
+            subject = "Welcome to Campus360 - Your Officer Account"
             context = {
                 'first_name': obj.user.first_name,
                 'email': obj.user.email,
                 'password': password,
                 # 'login_url': 'https://your-site.com/login',  # Update with your actual login URL
             }
-            message = render_to_string('faculty_staff/account_created_email.html', context)
+            try:
+                template_path = 'faculty_staff/account_created_email.html'
+                print(f"Looking for template at: {template_path}")
+                message = render_to_string(template_path, context)
+                print("Template rendered successfully")
+            except Exception as e:
+                print(f"Failed to render email template for {obj.user.email}: {str(e)}")
+                logger.error(f"Failed to render email template for {obj.user.email}: {str(e)}")
+                messages.error(request, f"Failed to render email template: {str(e)}")
+                return
 
             # Send the email
             try:
@@ -109,8 +125,12 @@ class OfficeStaffAdmin(admin.ModelAdmin):
                     html_message=message
                 )
                 print(f"Email sent to {obj.user.email}")
+                logger.info(f"Email sent to {obj.user.email}")
+                messages.success(request, f"Email sent to {obj.user.email}")
             except Exception as e:
                 print(f"Failed to send email to {obj.user.email}: {str(e)}")
+                logger.error(f"Failed to send email to {obj.user.email}: {str(e)}")
+                messages.error(request, f"Failed to send email to {obj.user.email}: {str(e)}")
 
 
 

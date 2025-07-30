@@ -5,84 +5,89 @@
 {% block extra_head %}
 <style media="screen">
     .table-container {
-        overflow-x: auto;
-        max-width: 100%;
+        @apply overflow-x-auto w-full;
     }
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        table-layout: auto;
+    .table {
+        @apply w-full border-collapse;
     }
     th, td {
-        border: 1px solid #000;
-        padding: 8px;
-        text-align: left;
-        vertical-align: middle;
-        min-width: 100px;
+        @apply border border-gray-300 p-2 text-left align-middle;
+        min-width: 80px;
     }
     th {
-        background-color: #f1f1f1;
-        font-weight: bold;
-        white-space: nowrap;
+        @apply bg-gray-100 font-bold whitespace-nowrap;
     }
     .input-sm {
-        width: 100%;
-        max-width: 100px;
-        padding: 4px;
+        @apply w-full max-w-[80px] p-1;
     }
     .remarks-input {
-        min-width: 200px !important;
-        width: 100%;
-        max-width: 300px;
+        @apply min-w-[150px] max-w-[250px];
     }
+    .input-error {
+        @apply border-red-500;
+    }
+    .publish-checkbox {
+        @apply w-4 h-4 cursor-pointer accent-green-500;
+    }
+    .publish-checkbox:disabled {
+        @apply opacity-70 cursor-not-allowed;
+    }
+    .publish-label {
+        @apply flex items-center gap-2 cursor-pointer p-1 rounded transition-colors;
+    }
+    .publish-label:hover:not(.disabled) {
+        @apply bg-green-50;
+    }
+    .publish-label.disabled {
+        @apply cursor-not-allowed;
+    }
+    .publish-status {
+        @apply text-xs px-2 py-1 rounded-full font-medium transition-all duration-300;
+    }
+    .published {
+        @apply bg-green-100 text-green-800;
+    }
+    .not-published {
+        @apply bg-red-100 text-red-800;
+    }
+    .select-all-container {
+        @apply mb-4;
+    }
+    /* Responsive adjustments */
     @media screen and (max-width: 768px) {
         th, td {
-            padding: 6px;
-            font-size: 14px;
-            min-width: 80px;
+            @apply p-1.5 text-sm;
+            min-width: 60px;
         }
         .input-sm {
-            max-width: 80px;
+            @apply max-w-[60px];
         }
         .remarks-input {
-            min-width: 150px !important;
-            max-width: 200px;
+            @apply min-w-[120px] max-w-[200px];
         }
-        .hero-content {
-            padding: 16px;
-        }
-        .hero h1 {
-            font-size: 1.5rem;
-        }
-        .hero p {
-            font-size: 0.9rem;
-        }
-        .card-title {
-            font-size: 1.25rem;
-        }
-        .btn-sm {
-            padding: 6px 12px;
-            font-size: 0.8rem;
+        .publish-status {
+            @apply text-[0.65rem] px-1.5 py-0.5;
         }
     }
     @media screen and (max-width: 480px) {
         th, td {
-            padding: 4px;
-            font-size: 12px;
-            min-width: 60px;
+            @apply p-1 text-xs;
+            min-width: 50px;
         }
         .input-sm {
-            max-width: 60px;
+            @apply max-w-[50px];
         }
         .remarks-input {
-            min-width: 120px !important;
-            max-width: 150px;
+            @apply min-w-[100px] max-w-[150px];
         }
-        .hero h1 {
-            font-size: 1.25rem;
+        .publish-status {
+            @apply text-[0.6rem] px-1 py-0.5;
         }
-        .hero p {
-            font-size: 0.8rem;
+        /* Hide less critical columns on small screens */
+        th:nth-child(4), td:nth-child(4), /* Midterm */
+        th:nth-child(7), td:nth-child(7), /* Practical (if present) */
+        th:nth-child(10), td:nth-child(10) /* Remarks */ {
+            @apply hidden;
         }
     }
 </style>
@@ -92,7 +97,7 @@
         margin: 0.5cm;
     }
     body * {
-        visibility: hidden;  
+        visibility: hidden;
     }
     .print-section, .print-section * {
         visibility: visible;
@@ -106,19 +111,14 @@
     .no-print {
         display: none !important;
     }
-    table {
-        width: 100%;
-        border-collapse: collapse;
+    .table {
+        @apply w-full border-collapse;
     }
     th, td {
-        border: 1px solid #000;
-        padding: 6px;
-        text-align: left;
-        font-size: 11px;
+        @apply border border-gray-300 p-1.5 text-left text-[11px];
     }
     th {
-        background-color: #f1f1f1;
-        font-weight: bold;
+        @apply bg-gray-100 font-bold;
     }
 </style>
 {% endblock %}
@@ -129,87 +129,130 @@
     <div class="hero bg-gradient-to-r from-primary to-secondary rounded-box mb-6">
         <div class="hero-content text-center py-8">
             <div>
-                <h1 class="text-3xl font-bold text-primary-content">Exam Results</h1>
-                <p class="text-base-content/70">
+                <h1 class="text-2xl md:text-3xl font-bold text-white">Exam Results</h1>
+                <p class="text-white mt-2">
                     {{ course_offering.course.code }} - {{ course_offering.course.name }}
                     <br>
-                    <span class="text-sm">Academic Session: {{ course_offering.academic_session.name }} | {{ course_offering.semester.name }} |  {{ course_offering.shift|title }}</span>
+                    <span class="text-sm">{{ course_offering.academic_session.name }} | {{ course_offering.semester.name }} | {{ course_offering.shift|title }}</span>
                 </p>
+                <p class="text-white">Teacher: {{ course_offering.teacher.user.get_full_name }}</p>
+                <div class="mt-2">
+                    {% if publish %}
+                        <span class="badge badge-success text-white">
+                            <i class="fas fa-check-circle mr-1"></i> Published on {{ exam_results.0.published_at|date:"M d, Y H:i" }}
+                        </span>
+                    {% else %}
+                        <span class="badge badge-warning text-white">
+                            <i class="fas fa-exclamation-triangle mr-1"></i> Not Published
+                        </span>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
-    
+
     <!-- Record/Update Exam Results Form -->
     <div class="card bg-base-100 shadow-xl mb-6 print-section">
         <div class="card-body">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="card-title">Record/Update Exam Results</h2>
-                <button id="printButton" class="btn btn-primary btn-sm print:hidden no-print">
-                    <i class="fas fa-print mr-2"></i>Print Results
-                </button>
+                <div class="flex gap-2">
+                    <button id="printButton" class="btn btn-primary btn-sm print:hidden no-print">
+                        <i class="fas fa-print mr-2"></i>Print Results
+                    </button>
+                    <button id="publishSelectedButton" class="btn btn-success btn-sm no-print" disabled>
+                        Publish Selected
+                    </button>
+                </div>
             </div>
-            <form method="post" action="{% url 'faculty_staff:record_exam_results' %}">
+            <div class="select-all-container no-print">
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" id="selectAllCheckbox" class="checkbox checkbox-primary">
+                    <span>Select All Students</span>
+                </label>
+                <div class="mt-2">
+                    <label for="publishFilter" class="mr-2">Filter by Publish Status:</label>
+                    <select id="publishFilter" class="select select-bordered select-sm">
+                        <option value="all">All</option>
+                        <option value="published">Published</option>
+                        <option value="unpublished">Unpublished</option>
+                    </select>
+                </div>
+            </div>
+            <form method="post" action="{% url 'faculty_staff:record_exam_results' %}" id="resultsForm">
                 {% csrf_token %}
                 <input type="hidden" name="course_offering_id" value="{{ course_offering_id }}">
                 <div class="table-container">
-                    <table class="table w-full" id="studentsTable">
+                    <table class="table" id="studentsTable">
                         <thead>
                             <tr>
-                                <th>University Roll No</th>
-                                <th>Student</th>
-                                <th>Midterm (Max: <span id="midtermMax">{{ midterm_max|default:0 }}</span>)</th>
-                                <th>Sessional (Max: <span id="sessionalMax">{{ sessional_max|default:0 }}</span>)</th>
-                                <th>Final (Max: <span id="finalMax">{{ final_max|default:0 }}</span>)</th>
+                                <th class="no-print w-12"><input type="checkbox" id="masterCheckbox" class="checkbox checkbox-primary"></th>
+                                <th class="w-24">University Roll No</th>
+                                <th class="w-32">Student</th>
+                                <th class="w-20">Midterm ({{ midterm_max }})</th>
+                                <th class="w-20">Sessional ({{ sessional_max }})</th>
+                                <th class="w-20">Final ({{ final_max }})</th>
                                 {% if course_offering.course.lab_work > 0 %}
-                                <th>Practical (Max: <span id="practicalMax">{{ practical_max|default:0 }}</span>)</th>
+                                <th class="w-20">Practical ({{ practical_max }})</th>
                                 {% endif %}
-                                <th>Total Obtained Marks</th>
-                                <th>Total Marks</th>
-                                <th>Percentage</th>
-                                <th>Remarks</th>
+                                <th class="w-20">Total Obtained</th>
+                                <th class="w-20">Total Marks</th>
+                                <th class="w-20">Percentage</th>
+                                <th class="w-32">Remarks</th>
+                                <th class="w-24">Status</th>
                             </tr>
                         </thead>
                         <tbody id="studentsTableBody">
                             {% for student in students %}
-                            <tr data-student-id="{{ student.id }}">
-                                <td>{{ student.university_roll_no }}</td>
-                                <td>
-                                    {{ student.name }}
-                                    <input type="hidden" name="student_ids[]" value="{{ student.id }}">
+                            <tr data-student-id="{{ student.id }}" data-published="{{ student.is_published|yesno:'true,false' }}">
+                                <td class="no-print">
+                                    <input type="checkbox" name="selected_students[]" value="{{ student.id }}"
+                                           class="checkbox checkbox-primary student-checkbox {% if student.is_published %}opacity-70{% endif %}">
                                 </td>
+                                <td>{{ student.university_roll_no }}</td>
+                                <td>{{ student.name }}</td>
                                 <td>
-                                    <input type="number" name="midterm_{{ student.id }}" class="input input-bordered input-sm w-24 marks-input" 
+                                    <input type="number" name="midterm_{{ student.id }}" class="input input-bordered input-sm marks-input"
                                            min="0" max="{{ midterm_max }}" value="{{ student.midterm|default_if_none:'0' }}" data-student-id="{{ student.id }}">
                                 </td>
                                 <td>
-                                    <input type="number" name="sessional_{{ student.id }}" class="input input-bordered input-sm w-24 marks-input" 
+                                    <input type="number" name="sessional_{{ student.id }}" class="input input-bordered input-sm marks-input"
                                            min="0" max="{{ sessional_max }}" value="{{ student.sessional|default_if_none:'0' }}" data-student-id="{{ student.id }}">
                                 </td>
                                 <td>
-                                    <input type="number" name="final_{{ student.id }}" class="input input-bordered input-sm w-24 marks-input" 
+                                    <input type="number" name="final_{{ student.id }}" class="input input-bordered input-sm marks-input"
                                            min="0" max="{{ final_max }}" value="{{ student.final|default_if_none:'0' }}" data-student-id="{{ student.id }}">
                                 </td>
                                 {% if course_offering.course.lab_work > 0 %}
                                 <td>
-                                    <input type="number" name="practical_{{ student.id }}" class="input input-bordered input-sm w-24 marks-input" 
+                                    <input type="number" name="practical_{{ student.id }}" class="input input-bordered input-sm marks-input"
                                            min="0" max="{{ practical_max }}" value="{{ student.practical|default_if_none:'0' }}" data-student-id="{{ student.id }}">
                                 </td>
                                 {% endif %}
                                 <td>
-                                    <input type="number" name="total_obtained_{{ student.id }}" class="input input-bordered input-sm w-24 total-obtained" 
+                                    <input type="number" name="total_obtained_{{ student.id }}" class="input input-bordered input-sm total-obtained"
                                            value="0" readonly>
                                 </td>
                                 <td>
-                                    <input type="number" name="total_max_{{ student.id }}" class="input input-bordered input-sm w-24 total-marks" 
+                                    <input type="number" name="total_max_{{ student.id }}" class="input input-bordered input-sm total-marks"
                                            value="{{ totalMax }}" readonly>
                                 </td>
                                 <td>
-                                    <input type="text" name="percentage_{{ student.id }}" class="input input-bordered input-sm w-24 percentage" 
+                                    <input type="text" name="percentage_{{ student.id }}" class="input input-bordered input-sm percentage"
                                            value="0%" readonly>
                                 </td>
                                 <td>
-                                    <input type="text" name="remarks_{{ student.id }}" class="input input-bordered input-sm remarks-input" 
+                                    <input type="text" name="remarks_{{ student.id }}" class="input input-bordered input-sm remarks-input"
                                            value="{{ student.remarks|default_if_none:'' }}">
+                                </td>
+                                <td>
+                                    <label class="publish-label {% if student.is_published %}disabled{% endif %}" title="{% if student.is_published %}Result already published{% else %}Toggle publish status{% endif %}">
+                                        <input type="checkbox" name="publish_{{ student.id }}" class="publish-checkbox student-publish"
+                                               {% if student.is_published %}checked disabled{% endif %}>
+                                        <span class="publish-status {% if student.is_published %}published{% else %}not-published{% endif %}">
+                                            {{ student.is_published|yesno:"Published,Unpublished" }}
+                                        </span>
+                                    </label>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -221,7 +264,7 @@
                 </div>
             </form>
         </div>
-    </div>  
+    </div>
 </div>
 {% endblock %}
 
@@ -285,9 +328,127 @@ document.addEventListener('DOMContentLoaded', () => {
                 input.addEventListener(eventType, () => debouncedCalculateTotals(studentId));
             });
         });
-        // Calculate initial totals for each row
         calculateTotals(studentId);
     });
+
+    // Update publish status UI
+    const updatePublishStatus = (checkbox) => {
+        const row = checkbox.closest('tr');
+        const statusElement = row.querySelector('.publish-status');
+        const labelElement = row.querySelector('.publish-label');
+        if (checkbox.checked) {
+            statusElement.textContent = 'Published';
+            statusElement.className = 'publish-status published';
+            labelElement.title = 'Result published';
+            row.dataset.published = 'true';
+        } else {
+            statusElement.textContent = 'Unpublished';
+            statusElement.className = 'publish-status not-published';
+            labelElement.title = 'Toggle publish status';
+            row.dataset.published = 'false';
+        }
+    };
+
+    // Initialize publish status for all checkboxes
+    document.querySelectorAll('.student-publish').forEach(checkbox => {
+        updatePublishStatus(checkbox);
+        if (!checkbox.disabled) {
+            checkbox.addEventListener('change', () => updatePublishStatus(checkbox));
+        }
+    });
+
+    // Select all checkbox functionality
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const masterCheckbox = document.getElementById('masterCheckbox');
+    const studentCheckboxes = document.querySelectorAll('.student-checkbox');
+    const publishSelectedButton = document.getElementById('publishSelectedButton');
+
+    function updatePublishButtonState() {
+        const anyChecked = Array.from(studentCheckboxes).some(cb => cb.checked && !cb.disabled);
+        publishSelectedButton.disabled = !anyChecked;
+    }
+
+    if (selectAllCheckbox && masterCheckbox) {
+        selectAllCheckbox.addEventListener('change', () => {
+            masterCheckbox.checked = selectAllCheckbox.checked;
+            studentCheckboxes.forEach(cb => {
+                if (!cb.disabled && !cb.closest('tr').classList.contains('hidden')) {
+                    cb.checked = selectAllCheckbox.checked;
+                }
+            });
+            updatePublishButtonState();
+        });
+
+        masterCheckbox.addEventListener('change', () => {
+            selectAllCheckbox.checked = masterCheckbox.checked;
+            studentCheckboxes.forEach(cb => {
+                if (!cb.disabled && !cb.closest('tr').classList.contains('hidden')) {
+                    cb.checked = masterCheckbox.checked;
+                }
+            });
+            updatePublishButtonState();
+        });
+
+        studentCheckboxes.forEach(cb => {
+            cb.addEventListener('change', () => {
+                const allChecked = Array.from(studentCheckboxes).every(cb => 
+                    cb.disabled || cb.closest('tr').classList.contains('hidden') || cb.checked
+                );
+                selectAllCheckbox.checked = allChecked;
+                masterCheckbox.checked = allChecked;
+                updatePublishButtonState();
+            });
+        });
+    }
+
+    // Publish filter functionality
+    const publishFilter = document.getElementById('publishFilter');
+    if (publishFilter) {
+        publishFilter.addEventListener('change', () => {
+            const filterValue = publishFilter.value;
+            document.querySelectorAll('#studentsTableBody tr').forEach(row => {
+                const isPublished = row.dataset.published === 'true';
+                if (filterValue === 'all') {
+                    row.classList.remove('hidden');
+                } else if (filterValue === 'published' && !isPublished) {
+                    row.classList.add('hidden');
+                } else if (filterValue === 'unpublished' && isPublished) {
+                    row.classList.add('hidden');
+                } else {
+                    row.classList.remove('hidden');
+                }
+            });
+            updatePublishButtonState();
+        });
+    }
+
+    // Publish selected students
+    if (publishSelectedButton) {
+        publishSelectedButton.addEventListener('click', () => {
+            const selectedStudents = Array.from(studentCheckboxes)
+                .filter(cb => cb.checked && !cb.disabled)
+                .map(cb => cb.value);
+            
+            if (selectedStudents.length === 0) {
+                alert('Please select at least one unpublished student.');
+                return;
+            }
+
+            // Update publish checkboxes for selected students
+            selectedStudents.forEach(studentId => {
+                const publishCheckbox = document.querySelector(`input[name="publish_${studentId}"]`);
+                if (publishCheckbox && !publishCheckbox.disabled) {
+                    publishCheckbox.checked = true;
+                    updatePublishStatus(publishCheckbox);
+                }
+            });
+
+            // Show confirmation before submitting
+            if (confirm(`Are you sure you want to publish results for ${selectedStudents.length} selected student(s)?`)) {
+                document.getElementById('resultsForm').submit();
+            }
+        });
+    }
 
     // Print functionality
     const printButton = document.getElementById('printButton');
@@ -298,8 +459,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 .filter(row => row.querySelectorAll('td').length > 1)
                 .map((row, index) => {
                     const studentId = row.dataset.studentId;
-                    const universityRollNo = row.querySelector('td:nth-child(1)').textContent;
-                    const studentName = row.querySelector('td:nth-child(2)').textContent;
+                    const universityRollNo = row.querySelector('td:nth-child(2)').textContent;
+                    const studentName = row.querySelector('td:nth-child(3)').textContent;
                     const midterm = row.querySelector(`input[name="midterm_${studentId}"]`).value || '0';
                     const sessional = row.querySelector(`input[name="sessional_${studentId}"]`).value || '0';
                     const final = row.querySelector(`input[name="final_${studentId}"]`).value || '0';
@@ -308,7 +469,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const totalMarks = row.querySelector(`input[name="total_max_${studentId}"]`).value || '0';
                     const percentage = row.querySelector(`input[name="percentage_${studentId}"]`).value || '0%';
                     const remarks = row.querySelector(`input[name="remarks_${studentId}"]`).value || 'No Remarks';
-                    
+                    const isPublished = row.querySelector(`input[name="publish_${studentId}"]`).checked ? 'Published' : 'Not Published';
+
                     return `
                         <tr>
                             <td>${index + 1}</td>
@@ -322,6 +484,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <td>${totalMarks}</td>
                             <td>${percentage}</td>
                             <td>${remarks}</td>
+                            <td>${isPublished}</td>
                         </tr>
                     `;
                 }).join('');
@@ -340,8 +503,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         .print-header { text-align: center; margin-bottom: 15px; }
                         .print-header h1 { margin: 0 0 5px 0; }
                         .print-header p { margin: 3px 0; font-size: 11px; }
-                        @page { 
-                            size: A4 landscape; 
+                        @page {
+                            size: A4 landscape;
                             margin: 0.5cm;
                             @bottom-center {
                                 content: "Page " counter(page) " of " counter(pages);
@@ -376,6 +539,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <th>Total Marks</th>
                                 <th>Percentage</th>
                                 <th>Remarks</th>
+                                <th>Publish Status</th>
                             </tr>
                         </thead>
                         <tbody>

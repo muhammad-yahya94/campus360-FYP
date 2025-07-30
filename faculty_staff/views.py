@@ -3810,6 +3810,9 @@ def search_students(request):
 
 @hod_or_professor_required
 def exam_results(request, course_offering_id):
+    """
+    Display the exam results page for a specific course offering, including is_published status.
+    """
     course_offerings = CourseOffering.objects.filter(
         teacher=request.user.teacher_profile
     ).select_related('course', 'semester', 'academic_session').order_by('-academic_session__start_year', 'semester__number')
@@ -3833,6 +3836,7 @@ def exam_results(request, course_offering_id):
             print(f'[DEBUG] Offering shift: {course_offering.shift}')
             print(f'[DEBUG] Course: {course_offering.course.code} - {course_offering.course.name}')
             print(f'[DEBUG] Semester: {course_offering.semester.name}')
+            
             midterm_max = course_offering.course.credits * 4
             sessional_max = course_offering.course.credits * 2
             final_max = course_offering.course.credits * 14
@@ -3843,6 +3847,9 @@ def exam_results(request, course_offering_id):
                 course_offering_id=course_offering_id
             ).select_related('student__applicant')
             
+            # Determine if any results are published
+            publish = exam_results.filter(is_published=True).exists()
+            
             existing_results = {
                 result.student_id: {
                     'midterm': result.midterm_obtained,
@@ -3852,12 +3859,13 @@ def exam_results(request, course_offering_id):
                     'total_marks': result.total_marks,
                     'percentage': result.percentage,
                     'remarks': result.remarks,
-                    'id': result.id
+                    'id': result.id,
+                    'is_published': result.is_published,
+                    'published_at': result.published_at
                 }
                 for result in exam_results
             }
             
-            # Include both enrolled and completed enrollments for viewing/editing
             enrollments = CourseEnrollment.objects.filter(
                 course_offering=course_offering,
                 status__in=['enrolled', 'completed']
@@ -3876,10 +3884,8 @@ def exam_results(request, course_offering_id):
                 applicant = student.applicant
                 student_shift = getattr(applicant, 'shift', 'N/A')
                 
-                # Debug print for each enrollment
                 print(f'[DEBUG] Processing enrollment - Student: {student}, Shift: {student_shift}, Semester: {enrollment.student_semester_enrollment.semester}')
                 
-                # Filter by matching shift
                 semester_match = enrollment.student_semester_enrollment.semester == course_offering.semester
                 shift_match = course_offering.shift == 'both' or str(student_shift).lower() == str(course_offering.shift).lower()
                 
@@ -3899,7 +3905,9 @@ def exam_results(request, course_offering_id):
                         'total_marks': None,
                         'percentage': None,
                         'remarks': '',
-                        'result_id': None
+                        'result_id': None,
+                        'is_published': False,
+                        'published_at': None
                     }
                     
                     if student_id in existing_results:
@@ -3912,7 +3920,9 @@ def exam_results(request, course_offering_id):
                             'total_marks': result['total_marks'],
                             'percentage': result['percentage'],
                             'remarks': result['remarks'] or '',
-                            'result_id': result['id']
+                            'result_id': result['id'],
+                            'is_published': result['is_published'],
+                            'published_at': result['published_at']
                         })
                     
                     students.append(student_data)
@@ -3951,7 +3961,9 @@ def exam_results(request, course_offering_id):
                     'practical_total': practical_max,
                     'academic_session': f"{course_offering.academic_session.name}",
                     'remarks': s['remarks'] or 'No Remarks',
-                    'id': s['result_id']
+                    'id': s['result_id'],
+                    'is_published': s['is_published'],
+                    'published_at': s['published_at']
                 }
                 for s in students
                 if s['result_id']  # Only include students with existing results
@@ -3970,13 +3982,13 @@ def exam_results(request, course_offering_id):
                 'practical_max': practical_max,
                 'totalMax': total_max,
                 'show_form': show_form,
+                'publish': publish
             })
             
         except CourseOffering.DoesNotExist:
             messages.error(request, 'Course offering not found or you do not have permission to access it.')
     
     return render(request, 'faculty_staff/exam_results.html', context)
-
 
 
 
@@ -3997,248 +4009,483 @@ def is_course_repeated(student, course_offering):
     
     return previous_results.exists(), previous_results
 
-@login_required    
-def record_exam_results(request):  
-    if request.method == "POST":
-        course_offering_id = request.POST.get('course_offering_id')
-        student_ids = request.POST.getlist('student_ids[]')  # Get list of student IDs
+# @login_required    
+# def record_exam_results(request):  
+#     published = None
+#     if request.method == "POST":
+#         course_offering_id = request.POST.get('course_offering_id')
+#         student_ids = request.POST.getlist('student_ids[]')  # Get list of student IDs
         
-        if not course_offering_id:
-            messages.error(request, 'Course offering ID is required.')
-            return redirect('faculty_staff:exam_results', course_offering_id=course_offering_id)
-
-        try:
-            course_offering = get_object_or_404(
-                CourseOffering, 
-                id=course_offering_id, 
-                teacher=request.user.teacher_profile
-            )
+#         if not course_offering_id:
+#             messages.error(request, 'Course offering ID is required.')
+#             return redirect('faculty_staff:exam_results', course_offering_id=course_offering_id)
+        
+#         try:
+#             course_offering = get_object_or_404(
+#                 CourseOffering, 
+#                 id=course_offering_id, 
+#                 teacher=request.user.teacher_profile
+#             )
             
-            if 'result_id' in request.POST:
-                # Update existing record
-                try:
-                    result_id = request.POST.get('result_id')
-                    result = get_object_or_404(ExamResult, pk=result_id, course_offering=course_offering)
+#             if 'result_id' in request.POST:
+#                 # Update existing record
+#                 try:
+#                     result_id = request.POST.get('result_id')
+#                     result = get_object_or_404(ExamResult, pk=result_id, course_offering=course_offering)
 
-                    midterm = request.POST.get('midterm')
-                    sessional = request.POST.get('sessional')
-                    final = request.POST.get('final')
-                    practical = request.POST.get('practical') if course_offering.course.lab_work > 0 else 0
-                    remarks = request.POST.get('remarks')
-                    total_obtained = request.POST.get('total_obtained')
-                    percentage = request.POST.get('percentage')
-                    
-                    # Check if student is repeating this course
-                    is_repeat, previous_results = is_course_repeated(result.student, course_offering)
-                    if is_repeat:
-                        remarks = 'Repeat' + (f' - {remarks}' if remarks else '')
+#                     midterm = request.POST.get('midterm')
+#                     sessional = request.POST.get('sessional')
+#                     final = request.POST.get('final')
+#                     practical = request.POST.get('practical') if course_offering.course.lab_work > 0 else 0
+#                     remarks = request.POST.get('remarks')
+#                     total_obtained = request.POST.get('total_obtained')
+#                     percentage = request.POST.get('percentage')
+#                     is_published = request.POST.get('is_published')
+#                     # Check if student is repeating this course
+#                     is_repeat, previous_results = is_course_repeated(result.student, course_offering)
+#                     if is_repeat:
+#                         remarks = 'Repeat' + (f' - {remarks}' if remarks else '')
                         
-                        # Update the current enrollment to mark as repeat
-                        try:
-                            enrollment = CourseEnrollment.objects.get(
-                                student_semester_enrollment__student=result.student,
-                                course_offering=course_offering
-                            )
-                            enrollment.is_repeat = True
-                            enrollment.save()
-                        except CourseEnrollment.DoesNotExist:
-                            pass
+#                         # Update the current enrollment to mark as repeat
+#                         try:
+#                             enrollment = CourseEnrollment.objects.get(
+#                                 student_semester_enrollment__student=result.student,
+#                                 course_offering=course_offering
+#                             )
+#                             enrollment.is_repeat = True
+#                             enrollment.save()
+#                         except CourseEnrollment.DoesNotExist:
+#                             pass
                             
-                        # Update previous failed attempts to mark them as replaced
-                        for prev_result in previous_results:
-                            if 'Repeated in' not in (prev_result.remarks or ''):
-                                prev_result.remarks = f"Repeated in {course_offering.semester.name} {course_offering.academic_session.name}"
-                                prev_result.save()
+#                         # Update previous failed attempts to mark them as replaced
+#                         for prev_result in previous_results:
+#                             if 'Repeated in' not in (prev_result.remarks or ''):
+#                                 prev_result.remarks = f"Repeated in {course_offering.semester.name} {course_offering.academic_session.name}"
+#                                 prev_result.save()
 
-                    print(f"Updating result for student {result.student.applicant.full_name} with marks: {midterm}, {sessional}, {final}, {practical}, {remarks}, {total_obtained}, {percentage}")
+#                     print(f"Updating result for student {result.student.applicant.full_name} with marks: {midterm}, {sessional}, {final}, {practical}, {remarks}, {total_obtained}, {percentage}")
 
-                    result.total_marks = total_obtained
-                    if percentage and isinstance(percentage, str) and '%' in percentage:
-                        percentage = percentage.replace('%', '').strip()
-                        result.percentage = float(percentage) if percentage else 0.0
-                    result.remarks = remarks or None
-                    result.graded_by = request.user.teacher_profile
-                    result.graded_at = timezone.now()
-                    result.save()
+#                     result.total_marks = total_obtained
+#                     if percentage and isinstance(percentage, str) and '%' in percentage:
+#                         percentage = percentage.replace('%', '').strip()
+#                         result.percentage = float(percentage) if percentage else 0.0
+#                     result.remarks = remarks or None
+#                     result.graded_by = request.user.teacher_profile
+#                     result.graded_at = timezone.now()
+#                     result.save()
                     
-                    # Mark the course enrollment as completed
+#                     # Mark the course enrollment as completed
+#                     try:
+#                         enrollment = CourseEnrollment.objects.get(
+#                             student_semester_enrollment__student=result.student,
+#                             course_offering=course_offering,
+#                             status='enrolled'
+#                         )
+#                         enrollment.status = 'completed'
+#                         enrollment.completed_at = timezone.now()
+#                         enrollment.save()
+#                     except CourseEnrollment.DoesNotExist:
+#                         pass  # Handle case where enrollment doesn't exist
+
+#                     # Check if we need to publish results
+#                     if request.POST.get('publish_results') == 'on':
+#                         # Update all results for this course offering
+#                         updated = ExamResult.objects.filter(
+#                             course_offering=course_offering
+#                         ).update(
+#                             is_published=True,
+#                             published_at=timezone.now()
+#                         )
+#                         if updated > 0:
+#                             publised=True
+#                             messages.success(request, f'Result updated and published for {updated} student(s).')
+#                         else:
+#                             messages.warning(request, 'Result updated but no results to publish.')
+#                     else:
+#                         messages.success(request, 'Result updated successfully and course enrollment marked as completed.')
+                    
+#                     return redirect('faculty_staff:exam_results', course_offering_id)
+                
+#                 except ExamResult.DoesNotExist:
+#                     messages.error(request, 'Exam result not found for update.')
+#                     return redirect('faculty_staff:exam_results', course_offering_id)
+
+            
+#             if not student_ids:
+#                 messages.error(request, 'No students selected for this course offering.')
+#                 return redirect('faculty_staff:exam_results', course_offering_id)
+                
+#             midterm_max = course_offering.course.credits * 4
+#             sessional_max = course_offering.course.credits * 2
+#             final_max = course_offering.course.credits * 14
+#             practical_max = course_offering.course.lab_work * 20
+#             total_max = midterm_max + sessional_max + final_max + (practical_max if course_offering.course.lab_work > 0 else 0)
+            
+#             success_count = 0
+#             error_messages = []
+            
+#             for student_id in student_ids:
+#                 try:
+#                     student = Student.objects.get(applicant_id=student_id)
+                    
+#                     midterm = request.POST.get(f'midterm_{student_id}')
+#                     sessional = request.POST.get(f'sessional_{student_id}')
+#                     final = request.POST.get(f'final_{student_id}')
+#                     practical = request.POST.get(f'practical_{student_id}') if course_offering.course.lab_work > 0 else None
+#                     remarks = request.POST.get(f'remarks_{student_id}')
+                    
+#                     # Validate marks
+#                     defaults = {
+#                         'graded_by': request.user.teacher_profile,
+#                         'graded_at': timezone.now(),
+#                         'remarks': remarks or None,
+#                         'midterm_total': midterm_max,
+#                         'sessional_total': sessional_max,
+#                         'final_total': final_max,
+#                         'practical_total': practical_max if course_offering.course.lab_work > 0 else 0
+#                     }
+                    
+#                     total_obtained = 0
+#                     if midterm and midterm.strip():
+#                         midterm_value = float(midterm)
+#                         if not (0 <= midterm_value <= midterm_max):
+#                             error_messages.append(f"{student.applicant.full_name}: Midterm marks must be between 0 and {midterm_max}.")
+#                             continue
+#                         defaults['midterm_obtained'] = midterm_value
+#                         total_obtained += midterm_value
+                    
+#                     if sessional and sessional.strip():
+#                         sessional_value = float(sessional)
+#                         if not (0 <= sessional_value <= sessional_max):
+#                             error_messages.append(f"{student.applicant.full_name}: Sessional marks must be between 0 and {sessional_max}.")
+#                             continue
+#                         defaults['sessional_obtained'] = sessional_value
+#                         total_obtained += sessional_value
+                    
+#                     if final and final.strip():
+#                         final_value = float(final)
+#                         if not (0 <= final_value <= final_max):
+#                             error_messages.append(f"{student.applicant.full_name}: Final marks must be between 0 and {final_max}.")
+#                             continue
+#                         defaults['final_obtained'] = final_value
+#                         total_obtained += final_value
+                    
+#                     if practical and practical.strip() and course_offering.course.lab_work > 0:
+#                         practical_value = float(practical)
+#                         if not (0 <= practical_value <= practical_max):
+#                             error_messages.append(f"{student.applicant.full_name}: Practical marks must be between 0 and {practical_max}.")
+#                             continue
+#                         defaults['practical_obtained'] = practical_value
+#                         total_obtained += practical_value
+                    
+#                     # Calculate total and percentage
+#                     defaults['total_marks'] = total_obtained
+#                     defaults['percentage'] = (total_obtained / total_max * 100) if total_max > 0 else 0.0
+                    
+#                     # Check if student is repeating this course
+#                     is_repeat, previous_results = is_course_repeated(student, course_offering)
+                    
+#                     if is_repeat and previous_results.exists():
+#                         # Get the most recent failed attempt
+#                         prev_result = previous_results.latest('graded_at')
+                        
+#                         # Update the previous failed attempt with new marks
+#                         prev_result.midterm_obtained = defaults.get('midterm_obtained')
+#                         prev_result.sessional_obtained = defaults.get('sessional_obtained')
+#                         prev_result.final_obtained = defaults.get('final_obtained')
+#                         prev_result.practical_obtained = defaults.get('practical_obtained')
+#                         prev_result.total_marks = defaults.get('total_marks')
+#                         prev_result.percentage = defaults.get('percentage')
+#                         prev_result.graded_by = request.user.teacher_profile
+#                         prev_result.graded_at = timezone.now()
+#                         prev_result.remarks = f"Retake passed in {course_offering.semester.name} {course_offering.academic_session.name}"
+#                         prev_result.save()
+                        
+#                         # Update the current enrollment to mark as retake
+#                         try:
+#                             enrollment = CourseEnrollment.objects.get(
+#                                 student_semester_enrollment__student=student,
+#                                 course_offering=course_offering
+#                             )
+#                             enrollment.is_repeat = True
+#                             enrollment.status = 'retake'
+#                             enrollment.save()
+#                         except CourseEnrollment.DoesNotExist:
+#                             pass
+                            
+#                         # Skip creating a new result record
+#                         success_count += 1
+#                         continue
+                    
+#                     # Only save if at least one mark is provided and it's not a retake case (handled above)
+#                     if any(key in defaults for key in ['midterm_obtained', 'sessional_obtained', 'final_obtained', 'practical_obtained']):
+#                         # For new attempts (not retakes)
+#                         exam_result, created = ExamResult.objects.update_or_create(
+#                             course_offering=course_offering,
+#                             student=student,
+#                             defaults=defaults
+#                         )
+#                         exam_result.save()
+                        
+#                         # Mark the course enrollment as completed
+#                         try:
+#                             enrollment = CourseEnrollment.objects.get(
+#                                 student_semester_enrollment__student=student,
+#                                 course_offering=course_offering,
+#                                 status='enrolled'
+#                             )
+#                             enrollment.status = 'completed'
+#                             enrollment.completed_at = timezone.now()
+#                             enrollment.save()
+#                         except CourseEnrollment.DoesNotExist:
+#                             pass  # Handle case where enrollment doesn't exist
+                            
+#                         success_count += 1
+                
+#                 except Student.DoesNotExist:
+#                     error_messages.append(f"Student with ID {student_id} not found.")
+#                 except ValueError as e:
+#                     error_messages.append(f"Invalid marks format for student ID {student_id}: {str(e)}")
+#                 except Exception as e:
+#                     error_messages.append(f"Error processing marks for student ID {student_id}: {str(e)}")
+            
+#             if success_count > 0:
+#                 messages.success(request, f'Successfully saved results for {success_count} student(s).')
+#             if error_messages:
+#                 for error in error_messages:
+#                     messages.error(request, error)  
+            
+#             return redirect ('faculty_staff:exam_results', course_offering_id)
+            
+#         except CourseOffering.DoesNotExist:
+#             messages.error(request, 'Course offering not found or you do not have permission to access it.')
+#             return redirect('faculty_staff:exam_results', course_offering_id)
+#         except Exception as e:
+#             messages.error(request, f'An error occurred: {str(e)}')
+#             return redirect('faculty_staff:exam_results', course_offering_id)
+    
+#     return redirect('faculty_staff:exam_results', course_offering_id, {'publish':published})
+
+
+def record_exam_results(request):
+    """  
+    Handle form submission to record or update exam results for a course offering.
+    Supports per-student publishing via publish_{student_id} checkboxes.
+    """
+    print("Step 1: Entering record_exam_results view")
+    if request.method != "POST":
+        print("Step 2: Invalid request method, redirecting to dashboard")
+        return redirect('faculty_staff:dashboard')
+    
+    course_offering_id = request.POST.get('course_offering_id')
+    student_ids = request.POST.getlist('student_ids[]')
+    print(f"Step 3: Course Offering ID: {course_offering_id}, Student IDs: {student_ids}")
+    
+    if not course_offering_id:
+        print("Step 4: Course offering ID missing")
+        messages.error(request, 'Course offering ID is required.')
+        return redirect('faculty_staff:exam_results', course_offering_id=course_offering_id)
+    
+    try:
+        print("Step 5: Fetching course offering")
+        course_offering = get_object_or_404(
+            CourseOffering,
+            id=course_offering_id,
+            teacher=request.user.teacher_profile
+        )
+        print(f"Step 6: Course Offering found: {course_offering}")
+        
+        midterm_max = course_offering.course.credits * 4
+        sessional_max = course_offering.course.credits * 2
+        final_max = course_offering.course.credits * 14
+        practical_max = course_offering.course.lab_work * 20
+        total_max = midterm_max + sessional_max + final_max + (practical_max if course_offering.course.lab_work > 0 else 0)
+        print(f"Step 7: Max marks - Midterm: {midterm_max}, Sessional: {sessional_max}, Final: {final_max}, Practical: {practical_max}, Total: {total_max}")
+        
+        success_count = 0
+        error_messages = []
+        
+        if not student_ids:
+            print("Step 8: No student IDs provided")
+            messages.error(request, 'No students selected for this course offering.')
+            return redirect('faculty_staff:exam_results', course_offering_id=course_offering_id)
+        
+        for student_id in student_ids:
+            print(f"Step 9: Processing student ID: {student_id}")
+            try:
+                student = Student.objects.get(applicant_id=student_id)
+                print(f"Step 10: Student found: {student.applicant.full_name}")
+                
+                midterm = request.POST.get(f'midterm_{student_id}')
+                sessional = request.POST.get(f'sessional_{student_id}')
+                final = request.POST.get(f'final_{student_id}')
+                practical = request.POST.get(f'practical_{student_id}') if course_offering.course.lab_work > 0 else None
+                remarks = request.POST.get(f'remarks_{student_id}')
+                publish_student = request.POST.get(f'publish_{student_id}') == 'on'
+                print(f"Step 11: Form data for student {student_id} - Publish input: {request.POST.get(f'publish_{student_id}')}, Publish value: {publish_student}")
+                print(f"Step 12: Other inputs - Midterm: {midterm}, Sessional: {sessional}, Final: {final}, Practical: {practical}, Remarks: {remarks}")
+                
+                # Check existing result status
+                existing_result = ExamResult.objects.filter(course_offering=course_offering, student=student).first()
+                if existing_result:
+                    print(f"Step 13: Existing result found for student {student_id}, is_published: {existing_result.is_published}")
+                else:
+                    print(f"Step 13: No existing result found for student {student_id}")
+                
+                # Validate marks
+                defaults = {
+                    'graded_by': request.user.teacher_profile,
+                    'graded_at': timezone.now(),
+                    'remarks': remarks or None,
+                    'midterm_total': midterm_max,
+                    'sessional_total': sessional_max,
+                    'final_total': final_max,
+                    'practical_total': practical_max if course_offering.course.lab_work > 0 else 0,
+                    'is_published': publish_student,
+                    'published_at': timezone.now() if publish_student else None
+                }
+                print(f"Step 14: Setting defaults - is_published: {defaults['is_published']}, published_at: {defaults['published_at']}")
+                
+                total_obtained = 0
+                if midterm and midterm.strip():
+                    midterm_value = float(midterm)
+                    if not (0 <= midterm_value <= midterm_max):
+                        error_messages.append(f"{student.applicant.full_name}: Midterm marks must be between 0 and {midterm_max}.")
+                        print(f"Step 15: Invalid midterm marks for student {student_id}: {midterm_value}")
+                        continue
+                    defaults['midterm_obtained'] = midterm_value
+                    total_obtained += midterm_value
+                    print(f"Step 16: Midterm marks valid: {midterm_value}")
+                
+                if sessional and sessional.strip():
+                    sessional_value = float(sessional)
+                    if not (0 <= sessional_value <= sessional_max):
+                        error_messages.append(f"{student.applicant.full_name}: Sessional marks must be between 0 and {sessional_max}.")
+                        print(f"Step 17: Invalid sessional marks for student {student_id}: {sessional_value}")
+                        continue
+                    defaults['sessional_obtained'] = sessional_value
+                    total_obtained += sessional_value
+                    print(f"Step 18: Sessional marks valid: {sessional_value}")
+                
+                if final and final.strip():
+                    final_value = float(final)
+                    if not (0 <= final_value <= final_max):
+                        error_messages.append(f"{student.applicant.full_name}: Final marks must be between 0 and {final_max}.")
+                        print(f"Step 19: Invalid final marks for student {student_id}: {final_value}")
+                        continue
+                    defaults['final_obtained'] = final_value
+                    total_obtained += final_value
+                    print(f"Step 20: Final marks valid: {final_value}")
+                
+                if practical and practical.strip() and course_offering.course.lab_work > 0:
+                    practical_value = float(practical)
+                    if not (0 <= practical_value <= practical_max):
+                        error_messages.append(f"{student.applicant.full_name}: Practical marks must be between 0 and {practical_max}.")
+                        print(f"Step 21: Invalid practical marks for student {student_id}: {practical_value}")
+                        continue
+                    defaults['practical_obtained'] = practical_value
+                    total_obtained += practical_value
+                    print(f"Step 22: Practical marks valid: {practical_value}")
+                
+                defaults['total_marks'] = total_obtained
+                defaults['percentage'] = (total_obtained / total_max * 100) if total_max > 0 else 0.0
+                defaults['is_fail'] = defaults['percentage'] < 50
+                print(f"Step 23: Calculated - Total: {total_obtained}, Percentage: {defaults['percentage']}, Is Fail: {defaults['is_fail']}")
+                
+                # Handle course repeat
+                is_repeat, previous_results = is_course_repeated(student, course_offering)
+                print(f"Step 24: Course repeat check - Is repeat: {is_repeat}, Previous results exist: {previous_results.exists()}")
+                if is_repeat and previous_results.exists():
+                    prev_result = previous_results.latest('graded_at')
+                    print(f"Step 25: Updating previous result for repeat course, current is_published: {prev_result.is_published}")
+                    prev_result.midterm_obtained = defaults.get('midterm_obtained', 0)
+                    prev_result.sessional_obtained = defaults.get('sessional_obtained', 0)
+                    prev_result.final_obtained = defaults.get('final_obtained', 0)
+                    prev_result.practical_obtained = defaults.get('practical_obtained', 0)
+                    prev_result.total_marks = defaults.get('total_marks', 0)
+                    prev_result.percentage = defaults.get('percentage', 0.0)
+                    prev_result.is_fail = defaults.get('is_fail', False)
+                    prev_result.graded_by = request.user.teacher_profile
+                    prev_result.graded_at = timezone.now()
+                    prev_result.remarks = f"Retake passed in {course_offering.semester.name} {course_offering.academic_session.name}"
+                    prev_result.is_published = publish_student
+                    prev_result.published_at = timezone.now() if publish_student else None
+                    print(f"Step 26: Setting previous result is_published: {prev_result.is_published}, published_at: {prev_result.published_at}")
+                    prev_result.save()
+                    print(f"Step 27: Previous result saved, is_published: {prev_result.is_published}")
+                    
                     try:
                         enrollment = CourseEnrollment.objects.get(
-                            student_semester_enrollment__student=result.student,
+                            student_semester_enrollment__student=student,
+                            course_offering=course_offering
+                        )
+                        enrollment.is_repeat = True
+                        enrollment.status = 'retake'
+                        enrollment.save()
+                        print(f"Step 28: Updated enrollment status to retake for student {student_id}")
+                    except CourseEnrollment.DoesNotExist:
+                        print(f"Step 28: No enrollment found for student {student_id}")
+                    
+                    success_count += 1
+                    continue
+                
+                # Save or update exam result
+                if any(key in defaults for key in ['midterm_obtained', 'sessional_obtained', 'final_obtained', 'practical_obtained']):
+                    print(f"Step 29: Preparing to save/update exam result for student {student_id}")
+                    exam_result, created = ExamResult.objects.update_or_create(
+                        course_offering=course_offering,
+                        student=student,
+                        defaults=defaults
+                    )
+                    exam_result.save()
+                    print(f"Step 30: Exam result {'created' if created else 'updated'}, is_published: {exam_result.is_published}, published_at: {exam_result.published_at}")
+                    
+                    # Update enrollment status
+                    try:
+                        enrollment = CourseEnrollment.objects.get(
+                            student_semester_enrollment__student=student,
                             course_offering=course_offering,
                             status='enrolled'
                         )
                         enrollment.status = 'completed'
                         enrollment.completed_at = timezone.now()
                         enrollment.save()
+                        print(f"Step 31: Updated enrollment status to completed for student {student_id}")
                     except CourseEnrollment.DoesNotExist:
-                        pass  # Handle case where enrollment doesn't exist
-
-                    messages.success(request, 'Result updated successfully and course enrollment marked as completed.')
-                    return redirect('faculty_staff:exam_results', course_offering_id)
+                        print(f"Step 31: No enrollment found for student {student_id}")
+                    
+                    success_count += 1
                 
-                except ExamResult.DoesNotExist:
-                    messages.error(request, 'Exam result not found for update.')
-                    return redirect('faculty_staff:exam_results', course_offering_id)
-
-            
-            if not student_ids:
-                messages.error(request, 'No students selected for this course offering.')
-                return redirect('faculty_staff:exam_results', course_offering_id)
-                
-            midterm_max = course_offering.course.credits * 4
-            sessional_max = course_offering.course.credits * 2
-            final_max = course_offering.course.credits * 14
-            practical_max = course_offering.course.lab_work * 20
-            total_max = midterm_max + sessional_max + final_max + (practical_max if course_offering.course.lab_work > 0 else 0)
-            
-            success_count = 0
-            error_messages = []
-            
-            for student_id in student_ids:
-                try:
-                    student = Student.objects.get(applicant_id=student_id)
-                    
-                    midterm = request.POST.get(f'midterm_{student_id}')
-                    sessional = request.POST.get(f'sessional_{student_id}')
-                    final = request.POST.get(f'final_{student_id}')
-                    practical = request.POST.get(f'practical_{student_id}') if course_offering.course.lab_work > 0 else None
-                    remarks = request.POST.get(f'remarks_{student_id}')
-                    
-                    # Validate marks
-                    defaults = {
-                        'graded_by': request.user.teacher_profile,
-                        'graded_at': timezone.now(),
-                        'remarks': remarks or None,
-                        'midterm_total': midterm_max,
-                        'sessional_total': sessional_max,
-                        'final_total': final_max,
-                        'practical_total': practical_max if course_offering.course.lab_work > 0 else 0
-                    }
-                    
-                    total_obtained = 0
-                    if midterm and midterm.strip():
-                        midterm_value = float(midterm)
-                        if not (0 <= midterm_value <= midterm_max):
-                            error_messages.append(f"{student.applicant.full_name}: Midterm marks must be between 0 and {midterm_max}.")
-                            continue
-                        defaults['midterm_obtained'] = midterm_value
-                        total_obtained += midterm_value
-                    
-                    if sessional and sessional.strip():
-                        sessional_value = float(sessional)
-                        if not (0 <= sessional_value <= sessional_max):
-                            error_messages.append(f"{student.applicant.full_name}: Sessional marks must be between 0 and {sessional_max}.")
-                            continue
-                        defaults['sessional_obtained'] = sessional_value
-                        total_obtained += sessional_value
-                    
-                    if final and final.strip():
-                        final_value = float(final)
-                        if not (0 <= final_value <= final_max):
-                            error_messages.append(f"{student.applicant.full_name}: Final marks must be between 0 and {final_max}.")
-                            continue
-                        defaults['final_obtained'] = final_value
-                        total_obtained += final_value
-                    
-                    if practical and practical.strip() and course_offering.course.lab_work > 0:
-                        practical_value = float(practical)
-                        if not (0 <= practical_value <= practical_max):
-                            error_messages.append(f"{student.applicant.full_name}: Practical marks must be between 0 and {practical_max}.")
-                            continue
-                        defaults['practical_obtained'] = practical_value
-                        total_obtained += practical_value
-                    
-                    # Calculate total and percentage
-                    defaults['total_marks'] = total_obtained
-                    defaults['percentage'] = (total_obtained / total_max * 100) if total_max > 0 else 0.0
-                    
-                    # Check if student is repeating this course
-                    is_repeat, previous_results = is_course_repeated(student, course_offering)
-                    
-                    if is_repeat and previous_results.exists():
-                        # Get the most recent failed attempt
-                        prev_result = previous_results.latest('graded_at')
-                        
-                        # Update the previous failed attempt with new marks
-                        prev_result.midterm_obtained = defaults.get('midterm_obtained')
-                        prev_result.sessional_obtained = defaults.get('sessional_obtained')
-                        prev_result.final_obtained = defaults.get('final_obtained')
-                        prev_result.practical_obtained = defaults.get('practical_obtained')
-                        prev_result.total_marks = defaults.get('total_marks')
-                        prev_result.percentage = defaults.get('percentage')
-                        prev_result.graded_by = request.user.teacher_profile
-                        prev_result.graded_at = timezone.now()
-                        prev_result.remarks = f"Retake passed in {course_offering.semester.name} {course_offering.academic_session.name}"
-                        prev_result.save()
-                        
-                        # Update the current enrollment to mark as retake
-                        try:
-                            enrollment = CourseEnrollment.objects.get(
-                                student_semester_enrollment__student=student,
-                                course_offering=course_offering
-                            )
-                            enrollment.is_repeat = True
-                            enrollment.status = 'retake'
-                            enrollment.save()
-                        except CourseEnrollment.DoesNotExist:
-                            pass
-                            
-                        # Skip creating a new result record
-                        success_count += 1
-                        continue
-                    
-                    # Only save if at least one mark is provided and it's not a retake case (handled above)
-                    if any(key in defaults for key in ['midterm_obtained', 'sessional_obtained', 'final_obtained', 'practical_obtained']):
-                        # For new attempts (not retakes)
-                        exam_result, created = ExamResult.objects.update_or_create(
-                            course_offering=course_offering,
-                            student=student,
-                            defaults=defaults
-                        )
-                        exam_result.save()
-                        
-                        # Mark the course enrollment as completed
-                        try:
-                            enrollment = CourseEnrollment.objects.get(
-                                student_semester_enrollment__student=student,
-                                course_offering=course_offering,
-                                status='enrolled'
-                            )
-                            enrollment.status = 'completed'
-                            enrollment.completed_at = timezone.now()
-                            enrollment.save()
-                        except CourseEnrollment.DoesNotExist:
-                            pass  # Handle case where enrollment doesn't exist
-                            
-                        success_count += 1
-                
-                except Student.DoesNotExist:
-                    error_messages.append(f"Student with ID {student_id} not found.")
-                except ValueError as e:
-                    error_messages.append(f"Invalid marks format for student ID {student_id}: {str(e)}")
-                except Exception as e:
-                    error_messages.append(f"Error processing marks for student ID {student_id}: {str(e)}")
-            
-            if success_count > 0:
-                messages.success(request, f'Successfully saved results for {success_count} student(s).')
-            if error_messages:
-                for error in error_messages:
-                    messages.error(request, error)  
-            
-            return redirect ('faculty_staff:exam_results', course_offering_id)
-            
-        except CourseOffering.DoesNotExist:
-            messages.error(request, 'Course offering not found or you do not have permission to access it.')
-            return redirect('faculty_staff:exam_results', course_offering_id)
-        except Exception as e:
-            messages.error(request, f'An error occurred: {str(e)}')
-            return redirect('faculty_staff:exam_results', course_offering_id)
+            except Student.DoesNotExist:
+                error_messages.append(f"Student with ID {student_id} not found.")
+                print(f"Step 32: Student with ID {student_id} not found")
+            except ValueError as e:
+                error_messages.append(f"Invalid marks format for student ID {student_id}: {str(e)}")
+                print(f"Step 33: ValueError for student {student_id}: {str(e)}")
+            except Exception as e:
+                error_messages.append(f"Error processing marks for student ID {student_id}: {str(e)}")
+                print(f"Step 34: Exception for student {student_id}: {str(e)}")
+        
+        print(f"Step 35: Processing complete - Success count: {success_count}, Errors: {len(error_messages)}")
+        if success_count > 0:
+            messages.success(request, f'Successfully saved results for {success_count} student(s).')
+        if error_messages:
+            for error in error_messages:
+                messages.error(request, error)
+        
+        print("Step 36: Redirecting to exam_results")
+        return redirect('faculty_staff:exam_results', course_offering_id=course_offering_id)
     
-    return redirect('faculty_staff:exam_results', course_offering_id)
-
-
-
+    except CourseOffering.DoesNotExist:
+        print("Step 37: Course offering not found")
+        messages.error(request, 'Course offering not found or you do not have permission to access it.')
+        return redirect('faculty_staff:dashboard')
+    except Exception as e:
+        print(f"Step 38: General exception: {str(e)}")
+        messages.error(request, f'An error occurred: {str(e)}')
+        return redirect('faculty_staff:dashboard')
+    
+    
 
 def teacher_course_list(request):
     logger.info(f"Current user: {request.user} (ID: {request.user.id})")

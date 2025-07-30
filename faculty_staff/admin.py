@@ -105,7 +105,7 @@ class OfficeStaffAdmin(admin.ModelAdmin):
                 'password': password,
                 # 'login_url': 'https://your-site.com/login',  # Update with your actual login URL
             }
-            try:
+            try:  
                 template_path = 'faculty_staff/account_created_email.html'
                 print(f"Looking for template at: {template_path}")
                 message = render_to_string(template_path, context)

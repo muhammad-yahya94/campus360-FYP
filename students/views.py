@@ -610,9 +610,10 @@ def exam_results(request):
     session = student.applicant.session
     print(f"Student: {student}, Roll No: {roll_no}, Session: {session}, Time: 07:59 PM PKT, July 12, 2025")
 
-    # Fetch exam results with shift filter
+    # Fetch only published exam results for the student
     results = ExamResult.objects.filter(
         student=student,
+        is_published=True  # Only show published results to students
     ).select_related('course_offering__course', 'course_offering__semester', 'course_offering__academic_session').order_by(
         'course_offering__semester__name', 'course_offering__course__code'
     )

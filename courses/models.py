@@ -9,7 +9,7 @@ import os
 from django.utils import timezone
 
 
-import re
+import re  
 from django.core.exceptions import ValidationError
 from django.db import models
 
@@ -446,6 +446,8 @@ class ExamResult(models.Model):
     
     # Common fields
     is_fail = models.BooleanField(default=False, help_text="Indicates if the student failed this course.")
+    is_published = models.BooleanField(default=False, help_text="Whether the result is published to students")
+    published_at = models.DateTimeField(null=True, blank=True, help_text="When the result was published to students")
     graded_by = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True, related_name='graded_results', help_text="The teacher who graded this exam.")
     graded_at = models.DateTimeField(auto_now_add=True, help_text="The date and time when the result was recorded.")
     remarks = models.TextField(blank=True, null=True, help_text="Additional remarks or comments on the student's performance.")

@@ -265,6 +265,22 @@ from django.contrib import messages
 from collections import defaultdict
 import math
 
+def calculate_grade(percentage):
+    """Calculate grade based on percentage."""
+    if percentage is None:
+        return 'F'
+    percentage = float(percentage)
+    if percentage >= 85:
+        return 'A'
+    elif percentage >= 70:
+        return 'B'
+    elif percentage >= 60:
+        return 'C'
+    elif percentage >= 50:
+        return 'D'
+    else:
+        return 'F'
+
 @login_required
 def results(request):
     # Initialize context with default values
@@ -282,9 +298,10 @@ def results(request):
         'avg_percentage': 0,
         'total_quality_points': 0,
         'cgpa': 0,
+        'search_query': request.GET.get('search', '').strip(),
     }
     
-    search_query = request.GET.get('search', '').strip()
+    search_query = context['search_query']
     
     if not search_query:
         return render(request, 'fee_management/results.html', context)
@@ -305,10 +322,10 @@ def results(request):
     roll_no = student.university_roll_no or 'N/A'
     session = student.applicant.session
 
-
-    # Fetch exam results with shift filter
+    # Fetch published exam results only
     results = ExamResult.objects.filter(
         student=student,
+        is_published=True
     ).select_related('course_offering__course', 'course_offering__semester', 'course_offering__academic_session').order_by(
         'course_offering__semester__name', 'course_offering__course__code'
     )
@@ -370,10 +387,10 @@ def results(request):
         )
         print(f"Result: {result.student.university_roll_no}, Quality Points: {result.quality_points}, "
               f"Effective Credit Hours: {result.effective_credit_hour}, Course Marks: {result.course_marks}")
+
     # Add grades and repeat status to optional results
     for opt_result in opt_results:
         opt_result.grade = calculate_grade(opt_result.percentage)
-        # Get enrollment info to check if this is a repeat course
         try:
             enrollment = CourseEnrollment.objects.get(
                 student_semester_enrollment__student=opt_result.student,

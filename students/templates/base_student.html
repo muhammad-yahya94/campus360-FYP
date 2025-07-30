@@ -183,7 +183,11 @@
         <input id="my-drawer-2" type="checkbox" class="drawer-toggle" />
         
         <!-- Page content -->
-        <div class="drawer-content flex flex-col min-h-screen">
+        <div class="drawer-content flex flex-col min-h-screen relative">
+            <!-- Toggle button for sidebar (visible on desktop) -->
+            <button id="sidebar-toggle" class="hidden lg:flex absolute left-0 top-4 z-10 bg-base-200 p-2 rounded-r-lg shadow-md hover:bg-base-300 transition-all duration-200" onclick="toggleSidebar()">
+                <i class="fas fa-chevron-left text-lg" id="toggle-icon"></i>
+            </button>
             <!-- Messages -->
             {% if messages %}
             <div class="p-4">
@@ -214,7 +218,7 @@
         </div>
         
         <!-- Sidebar -->
-        <div class="drawer-side">
+        <div class="drawer-side transition-all duration-300 ease-in-out" id="sidebar">
             <label for="my-drawer-2" aria-label="close sidebar" class="drawer-overlay"></label>
             <aside class="min-h-full w-64 lg:w-80 bg-base-200 text-base-content">
                 <div class="p-4">
@@ -325,6 +329,26 @@
         </div>
     </div>    
 
+    <style>
+        /* Smooth transitions for sidebar */
+        .drawer-side {
+            transition: all 0.3s ease-in-out;
+            overflow-x: hidden;
+        }
+        
+        /* Ensure content takes full width when sidebar is collapsed */
+        .drawer-content {
+            transition: margin-left 0.3s ease-in-out;
+        }
+        
+        /* Hide sidebar toggle on mobile */
+        @media (max-width: 1023px) {
+            #sidebar-toggle {
+                display: none !important;
+            }
+        }
+    </style>
+    
     {% block extra_js %}
     <script>
         // Theme management   
@@ -332,6 +356,48 @@
             document.documentElement.setAttribute('data-theme', theme);
             localStorage.setItem('selectedTheme', theme);
             document.getElementById('theme-modal').checked = false;
+        }
+        
+        // Check for sidebar state in localStorage
+        document.addEventListener('DOMContentLoaded', function() {
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            const sidebar = document.getElementById('sidebar');
+            const toggleIcon = document.getElementById('toggle-icon');
+            
+            if (isCollapsed) {
+                sidebar.style.width = '0';
+                sidebar.style.minWidth = '0';
+                if (toggleIcon) {
+                    toggleIcon.classList.remove('fa-chevron-left');
+                    toggleIcon.classList.add('fa-chevron-right');
+                }
+                document.documentElement.style.setProperty('--sidebar-width', '0');
+            } else {
+                document.documentElement.style.setProperty('--sidebar-width', '16rem');
+            }
+        });
+
+        // Toggle sidebar function
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const toggleIcon = document.getElementById('toggle-icon');
+            const isCollapsed = sidebar.style.width === '0px' || !sidebar.style.width;
+            
+            if (isCollapsed) {
+                // Expand
+                sidebar.style.width = '16rem';
+                sidebar.style.minWidth = '16rem';
+                toggleIcon.classList.remove('fa-chevron-right');
+                toggleIcon.classList.add('fa-chevron-left');
+                localStorage.setItem('sidebarCollapsed', 'false');
+            } else {
+                // Collapse
+                sidebar.style.width = '0';
+                sidebar.style.minWidth = '0';
+                toggleIcon.classList.remove('fa-chevron-left');
+                toggleIcon.classList.add('fa-chevron-right');
+                localStorage.setItem('sidebarCollapsed', 'true');
+            }
         }
         
         // Load saved theme on page load

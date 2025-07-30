@@ -7,7 +7,7 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from .models import Teacher, Office, OfficeStaff, TeacherDetails, ExamDateSheet
+from .models import Teacher, Office, OfficeStaff, TeacherDetails, ExamDateSheet, DepartmentFund
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -133,6 +133,36 @@ class OfficeStaffAdmin(admin.ModelAdmin):
                 messages.error(request, f"Failed to send email to {obj.user.email}: {str(e)}")
 
 
+@admin.register(DepartmentFund)
+class DepartmentFundAdmin(admin.ModelAdmin):
+    list_display = ('__str__', 'department', 'fundtype', 'amount', 'due_date', 'is_active')
+    list_filter = ('is_active', 'department', 'fundtype', 'created_at')
+    search_fields = ('description', 'fundtype', 'department__name')
+    filter_horizontal = ('academic_sessions', 'programs', 'semesters')
+    date_hierarchy = 'created_at'
+    list_editable = ('is_active', 'amount', 'due_date')
+    readonly_fields = ('created_at',)
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('hod', 'department', 'fundtype', 'amount', 'description')
+        }),
+        ('Date Information', {
+            'fields': ('due_date', 'created_at')
+        }),
+        ('Associations', {
+            'fields': ('academic_sessions', 'programs', 'semesters')
+        }),
+        ('Status', {
+            'fields': ('is_active',)
+        }),
+    )
+    
+    # Custom method to handle the many-to-many relationship with students
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        if db_field.name == 'students':
+            kwargs['queryset'] = db_field.remote_field.model._default_manager.all()
+            return db_field.formfield(**kwargs)
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
 
 
 @admin.register(ExamDateSheet)

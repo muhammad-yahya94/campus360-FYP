@@ -5819,7 +5819,7 @@ def department_funds_management(request):
     inactive_funds = DepartmentFund.objects.filter(hod=hod, is_active=False)
     
     # Get all academic sessions, programs, semesters, and fund types for the HOD's department
-    academic_sessions = AcademicSession.objects.all()
+    academic_sessions = AcademicSession.objects.filter(is_active=True)
     programs = Program.objects.filter(department=hod.department)
     semesters = Semester.objects.filter(program__in=programs)
     fund_types = DepartmentFund.objects.filter(hod=hod).values_list('fundtype', flat=True).distinct()
@@ -5839,9 +5839,13 @@ def department_funds_management(request):
             student__program__department=hod.department,
         )
         
-        # Apply filters if they exist  
-        if request.GET.get('academic_session'):
-            enrollments = enrollments.filter(semester__session_id=request.GET.get('academic_session'))
+        # Apply filters if they exist
+        academic_session_id = request.GET.get('academic_session')
+        if academic_session_id:
+            enrollments = enrollments.filter(
+                semester__session_id=academic_session_id,
+                student__applicant__session_id=academic_session_id  # Also filter by student's academic session
+            )
         if request.GET.get('program'):
             enrollments = enrollments.filter(student__program_id=request.GET.get('program'))
         if request.GET.get('semester'):
@@ -5935,17 +5939,18 @@ def handle_fund_form(request, hod):
                 is_active=is_active
             )
             messages.success(request, 'Department fund created successfully')
-            
-            # Get all students in the selected programs and semesters
+
+            # Get all students in the selected programs, semesters, and academic sessions
             from students.models import Student, StudentSemesterEnrollment, StudentFundPayment
-            
-            # Get active enrollments that match the fund's programs and semesters
+
+            # Get active enrollments that match the fund's criteria
             enrollments = StudentSemesterEnrollment.objects.filter(
                 student__program__in=programs,
                 semester__in=semesters,
+                student__applicant__session__in=academic_sessions,
                 status='enrolled'
-            ).select_related('student')
-            
+            ).select_related('student', 'student__applicant')
+
             # Create pending payment records for each student
             created_count = 0
             for enrollment in enrollments.distinct('student'):
@@ -6009,7 +6014,7 @@ def view_department_fund(request, fund_id):
 def get_programs_fund(request):
     if request.method == 'POST':
         hod = request.user.teacher_profile
-        programs = Program.objects.filter(department=hod.department).values('id', 'name')
+        programs = Program.objects.filter(department=hod.department, is_active=True).values('id', 'name')
         preselected_programs = []
         if 'edit' in request.GET:
             fund_id = request.GET.get('edit')
@@ -6030,7 +6035,8 @@ def get_semesters_fund(request):
             session_ids = data.get('academic_sessions', [])
             semesters = Semester.objects.filter(
                 program__id__in=program_ids,
-                session__id__in=session_ids
+                session__id__in=session_ids,
+                is_active=True
             ).values('id', 'name', 'program__name')
             semesters = [{'id': s['id'], 'name': s['name'], 'program_name': s['program__name']} for s in semesters]
             preselected_semesters = []

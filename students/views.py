@@ -1689,11 +1689,14 @@ def fund_payments(request):
         programs=student.program,
         is_active=True
     ).distinct()
-    print(f'funds are -- {funds}')
+    print(f'funds are -- {funds} (count: {funds.count()})')
 
-    # Get payment records for the student
-    payments = StudentFundPayment.objects.filter(student=student)
-    print(f'payments are -- {payments}')
+    # Get payment records for the student, ensuring one record per fund
+    payments = StudentFundPayment.objects.filter(
+        student=student
+    ).select_related('fund').order_by('-id')
+    
+    print(f'Found {payments.count()} payments for student {student.applicant.id}')
 
     # Determine if the student can verify payments
     is_cr = student.role == 'CR'
@@ -1703,19 +1706,16 @@ def fund_payments(request):
     all_pending_payments = []
     
     try:
-        # Check if filter form was submitted
         filter_submitted = 'apply_filters' in request.GET
         fund_filter = request.GET.get('fund', '')
         
-        # Base query for all pending payments in the same session, program, and shift
         all_pending_payments = StudentFundPayment.objects.filter(
-            student__applicant__session=student.applicant.session,  # Same session
-            student__program=student.program,                      # Same program
-            student__applicant__shift=student.applicant.shift,     # Same shift
+            student__applicant__session=student.applicant.session,
+            student__program=student.program,
+            student__applicant__shift=student.applicant.shift,
             status='pending'
-        )
+        ).distinct()
         
-        # Apply gender filter for CR/GR
         if is_cr:
             all_pending_payments = all_pending_payments.filter(
                 student__applicant__gender='male'
@@ -1727,22 +1727,18 @@ def fund_payments(request):
             
         all_pending_payments = all_pending_payments.select_related('student__applicant', 'fund')
         
-        # Apply fund filter if selected
         if fund_filter and fund_filter != 'all':
             all_pending_payments = all_pending_payments.filter(fund_id=fund_filter)
         
-        # For CR/GR, show verifiable payments when filters are applied
         if is_cr or is_gr:
             show_verification = filter_submitted
             if show_verification:
-                # Get or create payment records for all students in the same session, program, and shift
                 if fund_filter and fund_filter != 'all':
                     fund = get_object_or_404(DepartmentFund, id=fund_filter)
-                    # Get students in the same session, program, and shift
                     students_in_program = Student.objects.filter(
-                        applicant__session=student.applicant.session,  # Same session
-                        program=student.program,                      # Same program
-                        applicant__shift=student.applicant.shift       # Same shift
+                        applicant__session=student.applicant.session,
+                        program=student.program,
+                        applicant__shift=student.applicant.shift
                     )
                     if is_cr:
                         students_in_program = students_in_program.filter(
@@ -1753,7 +1749,6 @@ def fund_payments(request):
                             applicant__gender='female'
                         )
                     
-                    # Create payment records for students who don't have one for this fund
                     for std in students_in_program:
                         StudentFundPayment.objects.get_or_create(
                             student=std,
@@ -1765,14 +1760,12 @@ def fund_payments(request):
                             }
                         )
                     
-                    # Get all payments for this fund, filtered by session, program, shift, and gender
                     verifiable_payments = StudentFundPayment.objects.filter(
                         fund=fund,
-                        student__applicant__session=student.applicant.session,  # Same session
-                        student__program=student.program,                      # Same program
-                        student__applicant__shift=student.applicant.shift      # Same shift
+                        student__applicant__session=student.applicant.session,
+                        student__program=student.program,
+                        student__applicant__shift=student.applicant.shift
                     )
-                    
                     if is_cr:
                         verifiable_payments = verifiable_payments.filter(
                             student__applicant__gender='male'
@@ -1782,13 +1775,11 @@ def fund_payments(request):
                             student__applicant__gender='female'
                         )
                 else:
-                    # If no specific fund is selected, show all payments for the session, program, and shift
                     verifiable_payments = StudentFundPayment.objects.filter(
-                        student__applicant__session=student.applicant.session,  # Same session
-                        student__program=student.program,                      # Same program
-                        student__applicant__shift=student.applicant.shift      # Same shift
+                        student__applicant__session=student.applicant.session,
+                        student__program=student.program,
+                        student__applicant__shift=student.applicant.shift
                     )
-                    
                     if is_cr:
                         verifiable_payments = verifiable_payments.filter(
                             student__applicant__gender='male'
@@ -1802,7 +1793,6 @@ def fund_payments(request):
                 print(f'Verifiable payments: {verifiable_payments.query}')
                 print(f'Verifiable payments count: {verifiable_payments.count()}')
             
-            # Always show all pending payments for CR/GR
             all_pending_payments = all_pending_payments.distinct()
         
     except Exception as e:
@@ -1848,25 +1838,34 @@ def fund_payments(request):
             return redirect('students:fund_payments')
 
         elif action == 'verify_payment':
+            if not (is_cr or is_gr):
+                messages.error(request, 'Only Class Representatives (CR) or Group Representatives (GR) can update payment statuses.')
+                return redirect('students:fund_payments')
+                
             payment_id = request.POST.get('payment_id')
             payment = get_object_or_404(StudentFundPayment, id=payment_id)
             
-            # Allow students to update their own payment status
-            if payment.student == student:
-                new_status = request.POST.get('new_status')
-                if new_status in ['paid', 'pending', 'partial', 'unpaid']:
-                    payment.status = new_status
-                    if new_status == 'pending':
-                        payment.verified_by = None
-                    payment.save()
-                    messages.success(request, f'Your payment status has been updated to {new_status}.')
-                else:
-                    messages.error(request, 'Invalid payment status.')
+            if payment.student.applicant.session != student.applicant.session:
+                messages.error(request, "You can only verify payments for students in your academic session.")
+                return redirect('students:fund_payments')
+                
+            if payment.student.program != student.program:
+                messages.error(request, "You can only verify payments for students in your program.")
+                return redirect('students:fund_payments')
+                
+            if payment.student.applicant.shift != student.applicant.shift:
+                messages.error(request, "You can only verify payments for students in your shift.")
+                return redirect('students:fund_payments')
+                
+            if is_cr and payment.student.applicant.gender != 'male':
+                messages.error(request, "As CR, you can only verify payments for male students.")
+                return redirect('students:fund_payments')
+                
+            if is_gr and payment.student.applicant.gender != 'female':
+                messages.error(request, "As GR, you can only verify payments for female students.")
                 return redirect('students:fund_payments')
             
-            # CR/GR verification for other students
             elif is_cr or is_gr:
-                # Check session, program, shift, and gender restrictions
                 if payment.student.applicant.session != student.applicant.session:
                     raise PermissionDenied("You can only verify payments for students in your academic session.")
                 if payment.student.program != student.program:
@@ -1891,7 +1890,6 @@ def fund_payments(request):
             else:
                 raise PermissionDenied("You are not authorized to verify this payment.")
 
-    # Get current date in Asia/Karachi timezone
     karachi_tz = pytz.timezone('Asia/Karachi')
     current_date = timezone.now().astimezone(karachi_tz).date()
     
@@ -1907,8 +1905,6 @@ def fund_payments(request):
         'now': current_date,
     }
     return render(request, 'fund_payments.html', context)
-
-
 
 
 

@@ -11,7 +11,7 @@
         <p class="text-base-content">Session: {{ student.applicant.session }} | Program: {{ student.program }} | Shift: {{ student.applicant.shift|title }}</p>
       </div>
     </div>
-  </div>
+  </div>   
 
   <!-- Funds Table -->
   <div class="mb-8">
@@ -118,7 +118,7 @@
           All Pending Payments ({{ student.applicant.session }} - {{ student.program }} - {{ student.applicant.shift|title }} Shift)
           <div class="badge badge-primary">{{ student.role }} View</div>
         {% else %}
-          My Payments
+          Pending Payments
         {% endif %}
       </h2>
 
@@ -202,7 +202,7 @@
                 </td>
                 <td>{{ payment.notes|default:'-'|truncatechars:30 }}</td>
                 <td>
-                  {% if payment.student == student or is_cr or is_gr %}
+                  {% if payment.student ==  is_cr or is_gr %}
                     <button onclick="openVerifyModal('{{ payment.id }}', '{{ payment.student.applicant.full_name|escapejs }}', '{{ payment.fund.fundtype|escapejs }}', '{{ payment.status }}', '{% if payment.proof and payment.proof.name %}{{ payment.proof.url }}{% endif %}')"
                             class="btn btn-sm {% if payment.student == student %}btn-primary{% else %}btn-secondary{% endif %} rounded-lg">
                       {% if payment.student == student %}Update{% else %}Verify{% endif %}
@@ -357,7 +357,7 @@
         {% endif %}
       </div>
     </div>
-  {% endif %}
+  {% endif %}  
 </div>
 
 <!-- Verification Modal -->
@@ -393,7 +393,7 @@
           <option value="unpaid">Unpaid</option>
         </select>
       </div>
-      <div class="flex gap-4">
+      <div class="gap-4">
         <button type="submit" class="btn btn-primary w-full rounded-lg">Verify</button>
         <button type="button" class="btn btn-ghost w-full rounded-lg" onclick="document.getElementById('verifyModal').close()">Cancel</button>
       </div>

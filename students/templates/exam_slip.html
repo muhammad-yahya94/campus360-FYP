@@ -5,36 +5,89 @@
 
 {% block extra_css %}
 <style>
+    @page {
+        size: A4;
+        margin: 10mm 10mm 10mm 10mm;
+    }
+    
     @media print {
         /* Hide elements not needed for printing */
         .no-print, nav, .tabs, .hero, .btn {
             display: none !important;
         }
+        
+        /* Set up the page for printing */
+        body, html {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto !important;
+            padding: 0 !important;
+            background: white;
+            font-size: 10pt !important;
+            line-height: 1.2 !important;
+        }
+        
         /* Ensure content takes full width when printing */
         .print-content {
             width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
         }
-        /* Add page breaks where needed */
-        .page-break {
-            page-break-before: always;
+        
+        /* Optimize table for printing */
+        table {
+            width: 100% !important;
+            border-collapse: collapse;
+            font-size: 9pt !important;
+            page-break-inside: auto;
         }
-        /* Ensure tables don't break across pages */
-        table { page-break-inside: auto; }
-        tr    { page-break-inside:avoid; page-break-after:auto }
-        thead { display:table-header-group; }
-        tfoot { display:table-footer-group; }
-        /* Adjust spacing for print */
-        body {
-            padding: 20px !important;
-            font-size: 12pt !important;
-            line-height: 1.4 !important;
+        
+        th, td {
+            padding: 4px 6px !important;
         }
+        
+        /* Prevent page breaks inside table rows */
+        tr { 
+            page-break-inside: avoid;
+            page-break-after: auto;
+        }
+        
+        /* Keep header and footer on each page */
+        thead { 
+            display: table-header-group;
+        }
+        
+        tfoot { 
+            display: table-footer-group;
+        }
+        
+        /* Adjust card styling for print */
+        .card {
+            box-shadow: none !important;
+            border: 1px solid #ddd !important;
+            page-break-inside: avoid;
+        }
+        
         /* Ensure images have proper dimensions when printed */
         .student-photo {
-            max-width: 80px !important;
+            max-width: 70px !important;
             height: auto !important;
+        }
+        
+        /* Optimize spacing */
+        .card-body {
+            padding: 8px !important;
+        }
+        
+        .card-title {
+            font-size: 12pt !important;
+            margin-bottom: 8px !important;
+        }
+        
+        /* Adjust badge size for print */
+        .badge {
+            font-size: 8pt !important;
+            padding: 2px 6px !important;
         }
     }
     .student-info {
@@ -138,7 +191,7 @@
         <div class="hero-content text-center">
             <div class="max-w-md">
                 <h1 class="text-3xl sm:text-4xl font-bold text-base-content mb-2">Exam Roll Number Slips</h1>
-                <p class="text-base sm:text-lg text-base-content/90">Welcome, {{ student.applicant.full_name }}! View your exam schedule for {{ selected_semester_number|default:"current semester" }}.</p>
+                <p class="text-base sm:text-lg text-base-content/90">Welcome, {{ student.applicant.full_name }}! View your exam schedule for {{ current_semester }}.</p>
             </div>
         </div>
     </div>
@@ -184,7 +237,12 @@
                         <tbody>
                             {% for slip in exam_slips %}
                                 <tr>
-                                    <td>{{ slip.course_offering.course.name }}</td>
+                                    <td class="flex items-center gap-2">
+                                        {{ slip.course_offering.course.name }}
+                                        {% if slip.enrollment and slip.enrollment.is_repeat %}
+                                            <span class="badge badge-warning">Repeat</span>
+                                        {% endif %}
+                                    </td>
                                     <td>{{ slip.course_offering.course.code }}</td>
                                     <td>{{ slip.get_exam_type_display }}</td>
                                     <td>{{ slip.exam_date|date:"F d, Y" }}</td>

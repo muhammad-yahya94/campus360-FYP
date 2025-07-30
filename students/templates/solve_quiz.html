@@ -3,7 +3,7 @@
 {% block title %}Solve Quiz - {{ course_offering.course.name }}{% endblock %}
 
 {% block content %}
-<style>
+<style>  
     .select2-container {
         @apply w-full;
     }
@@ -102,7 +102,7 @@
             <div class="modal-action mt-4">
                 <button type="button" class="btn btn-sm btn-ghost" id="modal-close">Close</button>
                 <div class="space-x-2">
-                    <button type="button" class="btn btn-sm btn-secondary" id="prev-question">Previous</button>
+                    {% comment %} <button type="button" class="btn btn-sm btn-secondary" id="prev-question">Previous</button> {% endcomment %}
                     <button type="button" class="btn btn-sm btn-secondary" id="next-question">Next</button>
                     <button type="submit" class="btn btn-sm btn-primary">Submit Quiz</button>
                 </div>

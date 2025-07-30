@@ -13,7 +13,7 @@
                     Manage your account and preferences
                 </p>
             </div>
-        </div>
+        </div>  
     </div>
 
     <!-- Accordion Sections -->
@@ -52,7 +52,7 @@
                         <label class="label">
                             <span class="label-text text-sm sm:text-base">Full Name</span>
                         </label>
-                        <input type="text" name="full_name" class="input input-bordered text-sm sm:text-base" value="{{ user_form.instance.full_name }}" required>
+                        <input type="text" name="full_name" readonly class="input input-bordered text-sm sm:text-base" value="{{ user_form.instance.full_name }}" required>
                         {% if form_errors.full_name %}
                         <span class="text-error text-xs sm:text-sm">{{ form_errors.full_name }}</span>
                         {% endif %}

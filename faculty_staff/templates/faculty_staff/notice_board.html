@@ -53,10 +53,11 @@
             <table class="notice-table table table-pin-rows table-sm w-full">
                 <thead>
                     <tr>
-                        <th class="w-1/5">Title</th>
-                        <th class="w-1/6">Type</th>
-                        <th class="w-1/6">Priority</th>
-                        <th class="w-1/5">Target Audience</th>
+                        <th class="w-1/6">Title</th>
+                        <th class="w-1/8">Type</th>
+                        <th class="w-1/8">Priority</th>
+                        <th class="w-1/6">Sessions</th>
+                        <th class="w-1/6">Programs</th>
                         <th class="w-1/6 hidden md:table-cell">Created At</th>
                         <th class="w-1/6 hidden md:table-cell">Valid Until</th>
                         <th class="w-1/6">Actions</th>
@@ -69,9 +70,26 @@
                                 <td>{{ notice.title }}</td>
                                 <td>{{ notice.get_notice_type_display }}</td>
                                 <td>{{ notice.get_priority_display }}</td>
+                                <td>
+                                    {% if notice.sessions.all %}
+                                        {% for session in notice.sessions.all %}
+                                            <span class="badge badge-outline">{{ session.name }}</span>
+                                        {% empty %}
+                                            <span class="text-gray-400">All Sessions</span>
+                                        {% endfor %}
+                                    {% else %}
+                                        <span class="text-gray-400">All Sessions</span>
+                                    {% endif %}
+                                </td>
                                 <td>{{ notice.get_target_audience }}</td>
                                 <td class="hidden md:table-cell">{{ notice.created_at|date:"M d, Y" }}</td>
-                                <td class="hidden md:table-cell">{{ notice.valid_until|default:"N/A" }}</td>
+                                <td class="hidden md:table-cell">
+                                    {% if notice.valid_until %}
+                                        {{ notice.valid_until|date:"M d, Y" }}
+                                    {% else %}
+                                        <span class="text-gray-400">No expiry</span>
+                                    {% endif %}
+                                </td>
                                 <td class="flex items-center gap-x-2">
                                     {% if request.user.teacher_profile %}
                                         <label for="edit-modal-{{ notice.id }}" class="btn btn-sm btn-ghost">Edit</label>

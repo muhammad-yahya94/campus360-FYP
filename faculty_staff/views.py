@@ -3682,26 +3682,40 @@ def notice_board(request):
                 messages.error(request, "Only teachers can create notices.")
                 return redirect('notice_board')
 
-            title = request.POST.get('title')
-            content = request.POST.get('content')
+            title = request.POST.get('title', '').strip()
+            content = request.POST.get('content', '').strip()
             notice_type = request.POST.get('notice_type', 'general')
+            priority = request.POST.get('priority', 'medium')  
             program_ids = request.POST.getlist('programs')
             session_ids = request.POST.getlist('sessions')
             valid_from = request.POST.get('valid_from') or timezone.now()
             valid_until = request.POST.get('valid_until')
             attachment = request.FILES.get('attachment')
+            is_pinned = request.POST.get('is_pinned') == 'on'
 
-            # First create the notice without the many-to-many relationships
-            notice = Notice.objects.create(
-                title=title,
-                content=content,
-                notice_type=notice_type,
-                priority=priority,
-                valid_from=valid_from,
-                valid_until=valid_until if valid_until else None,
-                attachment=attachment,
-                created_by=request.user.teacher_profile
-            )
+            # Validate required fields
+            if not title or not content:
+                messages.error(request, "Title and content are required fields.")
+                return redirect('notice_board')
+
+            try:
+                # First create the notice without the many-to-many relationships
+                notice = Notice.objects.create(
+                    title=title,
+                    content=content,
+                    notice_type=notice_type,
+                    priority=priority,
+                    valid_from=valid_from,
+                    valid_until=valid_until if valid_until else None,
+                    attachment=attachment,
+                    created_by=request.user.teacher_profile,
+                    is_pinned=is_pinned,
+                    is_active=True  
+                )
+            except Exception as e:
+                logger.error(f"Error creating notice: {str(e)}")
+                messages.error(request, f"Error creating notice: {str(e)}")
+                return redirect('notice_board')
             # Now that the notice has an ID, we can set the many-to-many relationships
             if program_ids:
                 notice.programs.set(program_ids)

@@ -50,7 +50,7 @@
                         <label class="label">
                             <span class="label-text text-sm sm:text-base">First Name</span>
                         </label>
-                        <input type="text" name="first_name" class="input input-bordered text-sm sm:text-base" value="{{ user_form.instance.first_name }}" required>
+                        <input type="text" name="first_name" readonly class="input input-bordered text-sm sm:text-base bg-gray-100" value="{{ user_form.instance.first_name }}" required>
                         {% if form_errors.first_name %}
                         <span class="text-error text-xs sm:text-sm">{{ form_errors.first_name }}</span>
                         {% endif %}
@@ -59,7 +59,7 @@
                         <label class="label">
                             <span class="label-text text-sm sm:text-base">Last Name</span>
                         </label>
-                        <input type="text" name="last_name" class="input input-bordered text-sm sm:text-base" value="{{ user_form.instance.last_name }}" required>
+                        <input type="text" name="last_name" readonly class="input input-bordered text-sm sm:text-base bg-gray-100" value="{{ user_form.instance.last_name }}" required>
                         {% if form_errors.last_name %}
                         <span class="text-error text-xs sm:text-sm">{{ form_errors.last_name }}</span>
                         {% endif %}
@@ -68,7 +68,7 @@
                         <label class="label">
                             <span class="label-text text-sm sm:text-base">Email</span>
                         </label>
-                        <input type="email" name="email" class="input input-bordered text-sm sm:text-base" value="{{ user_form.instance.email }}" required>
+                        <input type="email" name="email" readonly class="input input-bordered text-sm sm:text-base bg-gray-100" value="{{ user_form.instance.email }}" required>
                         {% if form_errors.email %}
                         <span class="text-error text-xs sm:text-sm">{{ form_errors.email }}</span>
                         {% endif %}

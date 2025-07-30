@@ -3,13 +3,96 @@
 {% block title %}Exam Results{% endblock %}
 
 {% block extra_head %}
+<style media="screen">
+    .table-container {
+        overflow-x: auto;
+        max-width: 100%;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: auto;
+    }
+    th, td {
+        border: 1px solid #000;
+        padding: 8px;
+        text-align: left;
+        vertical-align: middle;
+        min-width: 100px;
+    }
+    th {
+        background-color: #f1f1f1;
+        font-weight: bold;
+        white-space: nowrap;
+    }
+    .input-sm {
+        width: 100%;
+        max-width: 100px;
+        padding: 4px;
+    }
+    .remarks-input {
+        min-width: 200px !important;
+        width: 100%;
+        max-width: 300px;
+    }
+    @media screen and (max-width: 768px) {
+        th, td {
+            padding: 6px;
+            font-size: 14px;
+            min-width: 80px;
+        }
+        .input-sm {
+            max-width: 80px;
+        }
+        .remarks-input {
+            min-width: 150px !important;
+            max-width: 200px;
+        }
+        .hero-content {
+            padding: 16px;
+        }
+        .hero h1 {
+            font-size: 1.5rem;
+        }
+        .hero p {
+            font-size: 0.9rem;
+        }
+        .card-title {
+            font-size: 1.25rem;
+        }
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+    }
+    @media screen and (max-width: 480px) {
+        th, td {
+            padding: 4px;
+            font-size: 12px;
+            min-width: 60px;
+        }
+        .input-sm {
+            max-width: 60px;
+        }
+        .remarks-input {
+            min-width: 120px !important;
+            max-width: 150px;
+        }
+        .hero h1 {
+            font-size: 1.25rem;
+        }
+        .hero p {
+            font-size: 0.8rem;
+        }
+    }
+</style>
 <style media="print">
     @page {
         size: landscape;
         margin: 0.5cm;
     }
     body * {
-        visibility: hidden;
+        visibility: hidden;  
     }
     .print-section, .print-section * {
         visibility: visible;
@@ -29,11 +112,13 @@
     }
     th, td {
         border: 1px solid #000;
-        padding: 5px;
+        padding: 6px;
         text-align: left;
+        font-size: 11px;
     }
     th {
         background-color: #f1f1f1;
+        font-weight: bold;
     }
 </style>
 {% endblock %}
@@ -54,25 +139,19 @@
         </div>
     </div>
     
-
-    <!-- Record/Edit Exam Results Form -->
-    {% if show_form %}
-    <div class="card bg-base-100 shadow-xl mb-6">
+    <!-- Record/Update Exam Results Form -->
+    <div class="card bg-base-100 shadow-xl mb-6 print-section">
         <div class="card-body">
             <div class="flex justify-between items-center mb-4">
-                <h2 class="card-title">
-                    {% if exam_results %}Edit Exam Results{% else %}Record Exam Results{% endif %}
-                </h2>
-                {% if exam_results %}
-                <a href="?" class="btn btn-outline btn-sm">
-                    <i class="fas fa-eye mr-2"></i>View Results
-                </a>
-                {% endif %}
+                <h2 class="card-title">Record/Update Exam Results</h2>
+                <button id="printButton" class="btn btn-primary btn-sm print:hidden no-print">
+                    <i class="fas fa-print mr-2"></i>Print Results
+                </button>
             </div>
             <form method="post" action="{% url 'faculty_staff:record_exam_results' %}">
                 {% csrf_token %}
                 <input type="hidden" name="course_offering_id" value="{{ course_offering_id }}">
-                <div class="overflow-x-auto mt-6">
+                <div class="table-container">
                     <table class="table w-full" id="studentsTable">
                         <thead>
                             <tr>
@@ -129,183 +208,21 @@
                                            value="0%" readonly>
                                 </td>
                                 <td>
-                                    <input type="text" name="remarks_{{ student.id }}" class="input input-bordered input-sm w-full" 
+                                    <input type="text" name="remarks_{{ student.id }}" class="input input-bordered input-sm remarks-input" 
                                            value="{{ student.remarks|default_if_none:'' }}">
                                 </td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
-                    <div class="card-actions justify-end mt-4">
-                        <button type="submit" class="btn btn-primary">Save All Results</button>
-                    </div>
+                </div>
+                <div class="card-actions justify-end mt-4">
+                    <button type="submit" class="btn btn-primary no-print">Save All Results</button>
                 </div>
             </form>
         </div>
-    </div>
-    {% endif %}
-
-    <!-- Existing Exam Results Table -->
-    {% if exam_results %}
-    <div class="card bg-base-100 shadow-xl print-section">
-        <div class="card-body">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="card-title">
-                    {% if students|length == exam_results|length %}
-                        All Results Submitted
-                    {% else %}
-                        Existing Exam Results ({{ exam_results|length }} of {{ students|length }} students)
-                    {% endif %}
-                </h2>
-                <div class="flex gap-2">
-                    {% if not edit_mode %}
-                    <a href="?edit=1" class="btn btn-secondary btn-sm">
-                        <i class="fas fa-edit mr-2"></i>Edit Results
-                    </a>
-                    {% endif %}
-                    <button id="printButton" class="btn btn-primary btn-sm print:hidden">
-                        <i class="fas fa-print mr-2"></i>Print Results
-                    </button>
-                </div>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="table w-full">
-                    <thead>
-                        <tr>
-                            <th>University Roll No</th>
-                            <th>Student Name</th>
-                            <th>College Roll No</th>
-                            <th>Course</th>
-                            <th>Midterm</th>
-                            <th>Sessional</th>
-                            <th>Final</th>
-                            {% if course_offering.course.lab_work > 0 %}
-                            <th>Practical</th>
-                            {% endif %}
-                            <th>Total Obtained Marks</th>
-                            <th>Total Marks</th>
-                            <th>Percentage</th>
-                            <th>Academic Session</th>
-                            <th>Remarks</th>
-                            <th class="no-print">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for result in exam_results %}
-                        <tr> 
-                            <td>{{ result.student.university_roll_no|default:"N/A" }}</td>
-                            <td>{{ result.student.applicant.full_name }}</td>
-                            <td>{{ result.student.college_roll_no|default:"N/A" }}</td>
-                            <td>{{ result.course_offering.course.code }}</td>
-                            <td>{{ result.midterm_obtained|default:"0" }}/{{ result.midterm_total }}</td>
-                            <td>{{ result.sessional_obtained|default:"0" }}/{{ result.sessional_total }}</td>
-                            <td>{{ result.final_obtained|default:"0" }}/{{ result.final_total }}</td>
-                            {% if course_offering.course.lab_work > 0 %}
-                            <td>{{ result.practical_obtained|default:"0" }}/{{ result.practical_total }}</td>
-                            {% endif %}
-                            <td>{{ result.total_marks }}</td>
-                            <td>{{ result.midterm_total|default:0|add:result.sessional_total|default:0|add:result.final_total|default:0|add:result.practical_total|default:0 }}</td>
-                            <td>{{ result.percentage|floatformat:2 }}%</td>
-                            <td>{{ result.academic_session }}</td>
-                            <td>{{ result.remarks|default:"No Remarks" }}</td>
-                            <td class="no-print">
-                                <button type="button" class="btn btn-info btn-xs edit-result" 
-                                        data-result-id="{{ result.id }}"
-                                        data-course-offering-id="{{ result.course_offering.id }}"
-                                        data-student-id="{{ result.student.applicant.id }}"
-                                        data-midterm="{{ result.midterm_obtained|default:'' }}"
-                                        data-sessional="{{ result.sessional_obtained|default:'' }}"
-                                        data-final="{{ result.final_obtained|default:'' }}"
-                                        data-practical="{{ result.practical_obtained|default:'' }}"
-                                        data-remarks="{{ result.remarks|default:'' }}"
-                                        data-midterm-max="{{ result.midterm_total }}"
-                                        data-sessional-max="{{ result.sessional_total }}"
-                                        data-final-max="{{ result.final_total }}"
-                                        data-practical-max="{{ result.practical_total }}"
-                                        title="Edit {{ result.student.applicant.full_name }}'s results">
-                                    <i class="fas fa-edit"></i> Edit
-                                </button>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="{% if course_offering.course.lab_work > 0 %}14{% else %}13{% endif %}" class="text-center">No exam results found.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-    {% endif %} 
-
-    <!-- Edit Result Modal -->
-    <input type="checkbox" id="editResultModal" class="modal-toggle" />
-    <div class="modal" role="dialog">
-        <div class="modal-box">
-            <h3 class="font-bold text-lg">Edit Exam Result</h3>
-            <form id="edit-result-form" method="post" action="{% url 'faculty_staff:record_exam_results' %}">
-                {% csrf_token %}
-                <input type="hidden" id="edit_result_id" name="result_id" value="">
-                <input type="hidden" id="edit_course_offering_id" name="course_offering_id" value="">
-                <input type="hidden" id="edit_student_id" name="student_ids" value="">
-                <div class="form-control mb-3">
-                    <label class="label" for="edit_midterm">
-                        <span class="label-text">Midterm Marks (Max: <span id="edit_midterm_max">{{ midterm_max }}</span>)</span>
-                    </label>
-                    <input type="number" class="input input-bordered marks-input" id="edit_midterm" name="midterm" min="0" max="{{ midterm_max }}" step="1" value="0">
-                </div>
-                <div class="form-control mb-3">
-                    <label class="label" for="edit_sessional">
-                        <span class="label-text">Sessional Marks (Max: <span id="edit_sessional_max">{{ sessional_max }}</span>)</span>
-                    </label>
-                    <input type="number" class="input input-bordered marks-input" id="edit_sessional" name="sessional" min="0" max="{{ sessional_max }}" step="1" value="0">
-                </div>
-                <div class="form-control mb-3">
-                    <label class="label" for="edit_final">
-                        <span class="label-text">Final Marks (Max: <span id="edit_final_max">{{ final_max }}</span>)</span>
-                    </label>
-                    <input type="number" class="input input-bordered marks-input" id="edit_final" name="final" min="0" max="{{ final_max }}" step="1" value="0">
-                </div>
-                {% if course_offering.course.lab_work > 0 %}
-                <div class="form-control mb-3">
-                    <label class="label" for="edit_practical">
-                        <span class="label-text">Practical Marks (Max: <span id="edit_practical_max">{{ practical_max }}</span>)</span>
-                    </label>
-                    <input type="number" class="input input-bordered marks-input" id="edit_practical" name="practical" min="0" max="{{ practical_max }}" step="1" value="0">
-                </div>
-                {% endif %}
-                <div class="form-control mb-3">
-                    <label class="label" for="edit_total_obtained">
-                        <span class="label-text">Total Obtained Marks</span>
-                    </label>
-                    <input type="number" class="input input-bordered" id="edit_total_obtained" name="total_obtained" readonly>
-                </div>
-                <div class="form-control mb-3">
-                    <label class="label" for="edit_total_max">
-                        <span class="label-text">Total Marks</span>
-                    </label>
-                    <input type="number" class="input input-bordered" id="edit_total_max" name="total_max" value="{{ totalMax }}" readonly>
-                </div>
-                <div class="form-control mb-3">
-                    <label class="label" for="edit_percentage">
-                        <span class="label-text">Percentage</span>
-                    </label>
-                    <input type="text" class="input input-bordered" id="edit_percentage" name="percentage" readonly>
-                </div>
-                <div class="form-control mb-3">
-                    <label class="label" for="edit_remarks">
-                        <span class="label-text">Remarks</span>
-                    </label>
-                    <textarea class="textarea textarea-bordered" id="edit_remarks" name="remarks" rows="3"></textarea>
-                </div>
-                <div class="modal-action">
-                    <label for="editResultModal" class="btn btn-ghost">Close</label>
-                    <button type="submit" class="btn btn-primary">Save changes</button>
-                </div>
-            </form>
-        </div>
-    </div>
+    </div>  
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
@@ -357,23 +274,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (percentageInput) percentageInput.value = `${percentage}%`;
     }
 
-    // Calculate totals for edit modal
-    function calculateEditTotals() {
-        const midterm = parseFloat(document.getElementById('edit_midterm').value) || 0;
-        const sessional = parseFloat(document.getElementById('edit_sessional').value) || 0;
-        const final = parseFloat(document.getElementById('edit_final').value) || 0;
-        const practical = hasPractical ? parseFloat(document.getElementById('edit_practical')?.value || 0) : 0;
-
-        const total = midterm + sessional + final + practical;
-        const percentage = totalMax > 0 ? ((total / totalMax) * 100).toFixed(2) : 0;
-
-        document.getElementById('edit_total_obtained').value = total.toFixed(2);
-        document.getElementById('edit_percentage').value = percentage + '%';
-    }
-
     // Real-time update with debouncing
     const debouncedCalculateTotals = debounce(calculateTotals, 100);
-    const debouncedCalculateEditTotals = debounce(calculateEditTotals, 100);
 
     // Attach event listeners to table inputs
     document.querySelectorAll('#studentsTableBody tr').forEach(row => {
@@ -387,164 +289,110 @@ document.addEventListener('DOMContentLoaded', () => {
         calculateTotals(studentId);
     });
 
-    // Attach real-time calculation to edit modal inputs
-    ['edit_midterm', 'edit_sessional', 'edit_final', 'edit_practical'].forEach(id => {
-        const input = document.getElementById(id);
-        if (input) {
-            ['input', 'change', 'keyup'].forEach(eventType => {
-                input.addEventListener(eventType, debouncedCalculateEditTotals);
-            });
-        }
-    });
-
-    // Handle edit button click
-    document.querySelectorAll('.edit-result').forEach(button => {
-        button.addEventListener('click', () => {
-            const resultId = button.dataset.resultId;
-            const courseOfferingId = button.dataset.courseOfferingId;
-            const studentId = button.dataset.studentId;
-            const midterm = button.dataset.midterm || 0;
-            const sessional = button.dataset.sessional || 0;
-            const final = button.dataset.final || 0;
-            const practical = button.dataset.practical || 0;
-            const totalMarks = button.dataset.totalmarks || 0;
-            const percentage = button.dataset.percentage || 0;
-            const remarks = button.dataset.remarks || '';
-            const hasPractical = {{ course_offering.course.lab_work|default:0 }} > 0;
-
-            document.getElementById('edit_result_id').value = resultId;
-            document.getElementById('edit_course_offering_id').value = courseOfferingId;
-            document.getElementById('edit_student_id').value = studentId;
-            // Set form values
-            const midtermInput = document.getElementById('edit_midterm');
-            const sessionalInput = document.getElementById('edit_sessional');
-            const finalInput = document.getElementById('edit_final');
-            const practicalInput = document.getElementById('edit_practical');
-            const totalObtainedInput = document.getElementById('edit_total_obtained');
-            const percentageInput = document.getElementById('edit_percentage');
-            const remarksInput = document.getElementById('edit_remarks');
-
-            if (midtermInput) midtermInput.value = midterm || 0;
-            if (sessionalInput) sessionalInput.value = sessional || 0;
-            if (finalInput) finalInput.value = final || 0;
-            if (hasPractical && practicalInput) {
-                practicalInput.value = practical || 0;
-            }
-            if (totalObtainedInput) totalObtainedInput.value = parseFloat(totalMarks || 0).toFixed(2);
-            if (percentageInput) percentageInput.value = parseFloat(percentage || 0).toFixed(2) + '%';
-            if (remarksInput) remarksInput.value = remarks;
-
-            // Update max marks in modal
-            const midtermMaxEl = document.getElementById('edit_midterm_max');
-            const sessionalMaxEl = document.getElementById('edit_sessional_max');
-            const finalMaxEl = document.getElementById('edit_final_max');
-            const practicalMaxEl = document.getElementById('edit_practical_max');
-            
-            if (midtermMaxEl) midtermMaxEl.textContent = {{ midterm_max|default:0 }};
-            if (sessionalMaxEl) sessionalMaxEl.textContent = {{ sessional_max|default:0 }};
-            if (finalMaxEl) finalMaxEl.textContent = {{ final_max|default:0 }};
-            if (hasPractical && practicalMaxEl) {
-                practicalMaxEl.textContent = {{ practical_max|default:0 }};
-            }
-        });
-    });
-
     // Print functionality
     const printButton = document.getElementById('printButton');
     if (printButton) {
         printButton.addEventListener('click', () => {
-        const printWindow = window.open('', '', 'width=1000,height=600');
-        const tableRows = Array.from(document.querySelectorAll('.print-section .overflow-x-auto tbody tr'))
-            .filter(row => row.querySelectorAll('td').length > 1)
-            .map((row, index) => `
-                <tr>
-                    <td>${index + 1}</td>
-                    <td>${row.querySelector('td:nth-child(1)').textContent}</td>
-                    <td>${row.querySelector('td:nth-child(2)').textContent}</td>
-                    <td>${row.querySelector('td:nth-child(3)').textContent}</td>
-                    <td>${row.querySelector('td:nth-child(4)').textContent}</td>
-                    <td>${row.querySelector('td:nth-child(5)').textContent}</td>
-                    <td>${row.querySelector('td:nth-child(6)').textContent}</td>
-                    <td>${row.querySelector('td:nth-child(7)').textContent}</td>
-                    ${hasPractical ? `<td>${row.querySelector('td:nth-child(8)').textContent}</td>` : ''}
-                    <td>${row.querySelector(hasPractical ? 'td:nth-child(9)' : 'td:nth-child(8)').textContent}</td>
-                    <td>${row.querySelector(hasPractical ? 'td:nth-child(10)' : 'td:nth-child(9)').textContent}</td>
-                    <td>${row.querySelector(hasPractical ? 'td:nth-child(11)' : 'td:nth-child(10)').textContent}</td>
-                    <td>${row.querySelector(hasPractical ? 'td:nth-child(12)' : 'td:nth-child(11)').textContent}</td>
-                    <td>${row.querySelector(hasPractical ? 'td:nth-child(13)' : 'td:nth-child(12)').textContent}</td>
-                </tr>
-            `).join('');
-
-        const tableHtml = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Exam Results - ${document.querySelector('h1').textContent}</title>
-                <style>
-                    body { font-family: Arial, sans-serif; margin: 20px; font-size: 12px; }
-                    h1 { color: #333; text-align: center; margin-bottom: 20px; font-size: 18px; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
-                    th, td { border: 1px solid #000; padding: 6px; text-align: left; }
-                    th { background-color: #f1f1f1; font-weight: bold; white-space: nowrap; }
-                    .print-header { text-align: center; margin-bottom: 15px; }
-                    .print-header h1 { margin: 0 0 5px 0; }
-                    .print-header p { margin: 3px 0; font-size: 11px; }
-                    @page { 
-                        size: A4 landscape; 
-                        margin: 0.5cm;
-                        @bottom-center {
-                            content: "Page " counter(page) " of " counter(pages);
-                            font-size: 10px;
-                        }
-                    }
-                    @media print {
-                        table { page-break-inside: auto; }
-                        tr { page-break-inside: avoid; page-break-after: auto; }
-                        thead { display: table-header-group; }
-                        tfoot { display: table-footer-group; }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="print-header">
-                    <h1>${document.querySelector('h1').textContent}</h1>
-                    <p>${document.querySelector('h1').nextElementSibling.textContent}</p>
-                    <p>Printed on: ${new Date().toLocaleString()}</p>
-                </div>
-                <table class="table w-full">
-                    <thead>
+            const printWindow = window.open('', '', 'width=1000,height=600');
+            const tableRows = Array.from(document.querySelectorAll('.print-section .table-container tbody tr'))
+                .filter(row => row.querySelectorAll('td').length > 1)
+                .map((row, index) => {
+                    const studentId = row.dataset.studentId;
+                    const universityRollNo = row.querySelector('td:nth-child(1)').textContent;
+                    const studentName = row.querySelector('td:nth-child(2)').textContent;
+                    const midterm = row.querySelector(`input[name="midterm_${studentId}"]`).value || '0';
+                    const sessional = row.querySelector(`input[name="sessional_${studentId}"]`).value || '0';
+                    const final = row.querySelector(`input[name="final_${studentId}"]`).value || '0';
+                    const practical = hasPractical ? (row.querySelector(`input[name="practical_${studentId}"]`)?.value || '0') : '';
+                    const totalObtained = row.querySelector(`input[name="total_obtained_${studentId}"]`).value || '0';
+                    const totalMarks = row.querySelector(`input[name="total_max_${studentId}"]`).value || '0';
+                    const percentage = row.querySelector(`input[name="percentage_${studentId}"]`).value || '0%';
+                    const remarks = row.querySelector(`input[name="remarks_${studentId}"]`).value || 'No Remarks';
+                    
+                    return `
                         <tr>
-                            <th>PRN</th>
-                            <th>University Roll No</th>
-                            <th>Student Name</th>
-                            <th>College Roll No</th>
-                            <th>Course</th>
-                            <th>Midterm</th>
-                            <th>Sessional</th>
-                            <th>Final</th>
-                            ${hasPractical ? '<th>Practical</th>' : ''}
-                            <th>Total Obtained Marks</th>
-                            <th>Total Marks</th>
-                            <th>Percentage</th>
-                            <th>Academic Session</th>
-                            <th>Remarks</th>
+                            <td>${index + 1}</td>
+                            <td>${universityRollNo}</td>
+                            <td>${studentName}</td>
+                            <td>${midterm}/${midtermMax}</td>
+                            <td>${sessional}/${sessionalMax}</td>
+                            <td>${final}/${finalMax}</td>
+                            ${hasPractical ? `<td>${practical}/${practicalMax}</td>` : ''}
+                            <td>${totalObtained}</td>
+                            <td>${totalMarks}</td>
+                            <td>${percentage}</td>
+                            <td>${remarks}</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        ${tableRows}
-                    </tbody>
-                </table>
-            </body>
-            </html>
-        `;
-        printWindow.document.open();
-        printWindow.document.write(tableHtml);
-        printWindow.document.close();
-        printWindow.onload = () => {
-            printWindow.print();
-            printWindow.close();
-        };
-    });
+                    `;
+                }).join('');
+
+            const tableHtml = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Exam Results - ${document.querySelector('h1').textContent}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; font-size: 12px; }
+                        h1 { color: #333; text-align: center; margin-bottom: 20px; font-size: 18px; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
+                        th, td { border: 1px solid #000; padding: 6px; text-align: left; }
+                        th { background-color: #f1f1f1; font-weight: bold; white-space: nowrap; }
+                        .print-header { text-align: center; margin-bottom: 15px; }
+                        .print-header h1 { margin: 0 0 5px 0; }
+                        .print-header p { margin: 3px 0; font-size: 11px; }
+                        @page { 
+                            size: A4 landscape; 
+                            margin: 0.5cm;
+                            @bottom-center {
+                                content: "Page " counter(page) " of " counter(pages);
+                                font-size: 10px;
+                            }
+                        }
+                        @media print {
+                            table { page-break-inside: auto; }
+                            tr { page-break-inside: avoid; page-break-after: auto; }
+                            thead { display: table-header-group; }
+                            tfoot { display: table-footer-group; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="print-header">
+                        <h1>${document.querySelector('h1').textContent}</h1>
+                        <p>${document.querySelector('h1').nextElementSibling.textContent}</p>
+                        <p>Printed on: ${new Date().toLocaleString()}</p>
+                    </div>
+                    <table class="table w-full">
+                        <thead>
+                            <tr>
+                                <th>PRN</th>
+                                <th>University Roll No</th>
+                                <th>Student</th>
+                                <th>Midterm</th>
+                                <th>Sessional</th>
+                                <th>Final</th>
+                                ${hasPractical ? '<th>Practical</th>' : ''}
+                                <th>Total Obtained Marks</th>
+                                <th>Total Marks</th>
+                                <th>Percentage</th>
+                                <th>Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRows}
+                        </tbody>
+                    </table>
+                </body>
+                </html>
+            `;
+            printWindow.document.open();
+            printWindow.document.write(tableHtml);
+            printWindow.document.close();
+            printWindow.onload = () => {
+                printWindow.print();
+                printWindow.close();
+            };
+        });
     }
 
     // Form validation

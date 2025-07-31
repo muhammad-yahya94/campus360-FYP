@@ -121,31 +121,18 @@ def student_dashboard(request):
         'semester__program'
     ).order_by('-semester__start_time', '-semester__number')
 
-    # Get all course enrollments across all semesters, including reattempts
+    # Initialize data structures
     course_enrollments = []
     semester_courses = {}
+    repeat_courses = []
     
-    # Get all course enrollments with is_repeat flag
-    all_enrollments = CourseEnrollment.objects.filter(
-        student_semester_enrollment__student=student
-    ).select_related(
-        'course_offering__course',
-        'student_semester_enrollment__semester'
-    ).order_by('student_semester_enrollment__semester__start_time')
-    
-    # Debug: Print course enrollment status
-    logger.debug("Course enrollments for student %s:", student.applicant.full_name)
-    for enroll in all_enrollments:
-        logger.debug(
-            "  Course %s (ID: %s) - Status: %s, is_repeat: %s",
-            enroll.course_offering.course.code,
-            enroll.id,
-            enroll.status,
-            enroll.is_repeat
-        )
-    
+    # Process each semester enrollment
     for sem_enrollment in semester_enrollments:
-        # Get all course enrollments for this semester (all statuses)
+        # Get regular courses (non-repeat) for this semester
+        regular_courses = []
+        sem_repeat_courses = []
+        
+        # Get all courses for this semester
         sem_courses = CourseEnrollment.objects.filter(
             student_semester_enrollment=sem_enrollment
         ).select_related(
@@ -155,25 +142,25 @@ def student_dashboard(request):
             'course_offering__academic_session'
         ).order_by('course_offering__course__code')
         
-        # Use the is_repeat flag directly from the model
-        annotated_courses = list(sem_courses)
-        for course in annotated_courses:
-            logger.debug(
-                "Course %s (ID: %s) - Status: %s, is_repeat: %s",
-                course.course_offering.course.code,
-                course.id,
-                course.status,
-                course.is_repeat
-            )
+        # Separate regular and repeat courses
+        for course in sem_courses:
+            if course.is_repeat:
+                sem_repeat_courses.append(course)
+            else:
+                regular_courses.append(course)
         
-        if annotated_courses:
+        # Add to repeat courses list
+        repeat_courses.extend(sem_repeat_courses)
+        
+        # Only add semester to semester_courses if it has regular courses
+        if regular_courses:
             semester_courses[sem_enrollment.semester.id] = {
                 'semester': sem_enrollment.semester,
-                'courses': annotated_courses,
+                'courses': regular_courses,
                 'session': sem_enrollment.semester.session,
                 'is_active': sem_enrollment.semester.is_active
             }
-            course_enrollments.extend(annotated_courses)
+            course_enrollments.extend(regular_courses)
 
     # Get the most recent active semester for the student's program and session
     active_semester = Semester.objects.filter(
@@ -204,8 +191,10 @@ def student_dashboard(request):
         'notices': notices,
         'current_session': current_session,
         'all_enrollments': course_enrollments,
+        'repeat_courses': repeat_courses,
         'is_graduated': is_graduated,
     })
+
 
 
 def my_courses(request):
@@ -228,12 +217,15 @@ def my_courses(request):
             print(f"Selected semester number: {selected_semester_number}")
             enrollments = CourseEnrollment.objects.filter(
                 student_semester_enrollment__student=student,
-                course_offering__semester__number=selected_semester_number
+                course_offering__semester__number=selected_semester_number,
+                course_offering__academic_session=student.applicant.session,
+                is_repeat=False
             ).select_related('course_offering__course', 'course_offering__semester', 'course_offering__teacher__user')
         except ValueError:
             enrollments = CourseEnrollment.objects.filter(
                 student_semester_enrollment__student=student,
-                course_offering__academic_session=current_session
+                course_offering__academic_session=student.applicant.session,
+                is_repeat=False
             ).select_related('course_offering__course', 'course_offering__semester', 'course_offering__teacher__user')
     else:
         # Default to the first semester number if no selection
@@ -243,7 +235,9 @@ def my_courses(request):
         if first_semester_number:
             enrollments = CourseEnrollment.objects.filter(
                 student_semester_enrollment__student=student,
-                course_offering__semester__number=first_semester_number
+                course_offering__semester__number=first_semester_number,
+                course_offering__academic_session=student.applicant.session,
+                is_repeat=False
             ).select_related('course_offering__course', 'course_offering__semester', 'course_offering__teacher__user')
         else:
             enrollments = CourseEnrollment.objects.none()  # No enrollments if no semesters exist
@@ -261,6 +255,7 @@ def my_courses(request):
         'selected_semester_number': selected_semester_number or first_semester_number,
     }
     return render(request, 'my_courses.html', context)
+
 
 @login_required
 def assignments(request, course_offering_id):
@@ -880,10 +875,14 @@ def student_attendance_stats(request):
         program=student.program,
     ).first()
 
-    # Get all semester enrollments for the student
+    # Get all semester enrollments for the student, excluding those with repeat courses
+    # and only for the student's session
     semester_enrollments = StudentSemesterEnrollment.objects.filter(
-        student=student
-    ).select_related('semester').order_by('semester__number')
+        student=student,
+        semester__session=student.applicant.session  # Only show semesters from the student's session
+    ).exclude(
+        course_enrollments__is_repeat=True  # Exclude semesters with any repeat courses
+    ).select_related('semester').order_by('semester__number').distinct()
 
     print("Total semester enrollments found:", semester_enrollments.count())
 

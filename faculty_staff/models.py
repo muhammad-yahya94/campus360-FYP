@@ -110,7 +110,7 @@ class DepartmentFund(models.Model):
         help_text="Check this if the fund is currently active"
     )
     
-    class Meta:
+    class Meta:  
         verbose_name = "Department Fund"
         verbose_name_plural = "Department Funds"
         ordering = ['-created_at']

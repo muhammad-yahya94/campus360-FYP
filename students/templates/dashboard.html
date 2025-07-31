@@ -144,6 +144,73 @@
     </div>
   {% endif %}
 
+  <!-- Repeat Courses Section -->
+  {% if repeat_courses %}
+  <div class="card bg-base-100 shadow-lg rounded-lg overflow-hidden mb-6">
+    <div class="card-body">
+      <h2 class="card-title text-2xl text-base-content mb-4">
+        Repeat Courses
+        <span class="badge badge-warning ml-2">{{ repeat_courses|length }} course(s)</span>
+      </h2>
+      
+      <div class="overflow-x-auto">
+        <table class="table table-zebra w-full">
+          <thead>
+            <tr>
+              <th>Course Code</th>
+              <th>Course Name</th>
+              <th>Instructor</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for enrollment in repeat_courses %}
+            <tr class="bg-warning/10">
+              <td>{{ enrollment.course_offering.course.code }}</td>
+              <td>
+                <div class="flex items-center gap-2">
+                  {{ enrollment.course_offering.course.name }}
+                  <span class="badge badge-warning badge-sm">Repeat</span>
+                </div>
+              </td>
+              <td>{{ enrollment.course_offering.teacher.user.get_full_name|default:"TBA" }}</td>
+              <td>{{ enrollment.course_offering.get_offering_type_display }}</td>
+              <td>
+                <span class="badge {% if enrollment.status == 'enrolled' %}badge-success{% else %}badge-warning{% endif %}">
+                  {{ enrollment.get_status_display }}
+                </span>
+              </td>
+              <td>
+                <div class="flex gap-2">
+                  <a href="{% url 'students:study_materials' enrollment.course_offering.id %}"
+                     class="btn btn-xs btn-ghost" title="Course Content">
+                    <i class="fas fa-book"></i>
+                  </a>
+                  <a href="{% url 'students:assignments' enrollment.course_offering.id %}"
+                     class="btn btn-xs btn-ghost" title="Assignments">
+                    <i class="fas fa-tasks"></i>
+                  </a>
+                  <a href="{% url 'students:attendance' enrollment.course_offering.id %}"
+                     class="btn btn-xs btn-ghost" title="Attendance">
+                    <i class="fas fa-calendar-check"></i>
+                  </a>
+                  <a href="{% url 'students:solve_quiz' enrollment.course_offering.id %}"
+                     class="btn btn-xs btn-ghost" title="Quizzes">
+                    <i class="fas fa-question-circle"></i>
+                  </a>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- Quick Actions -->
   <div class="card bg-base-100 shadow-lg rounded-lg">
     <div class="card-body">

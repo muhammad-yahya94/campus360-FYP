@@ -1,7 +1,7 @@
 from django.contrib.auth import views as auth_views
 from django.urls import reverse_lazy
 from django.contrib.auth.forms import PasswordResetForm
-from django.contrib.auth.models import User
+from users.models import CustomUser
 from django.contrib import messages
 from django.shortcuts import redirect
 from django.template.loader import render_to_string
@@ -25,15 +25,15 @@ class OfficePasswordResetView(auth_views.PasswordResetView):
         If the form is valid, send the password reset email.
         """
         email = form.cleaned_data['email']
-        associated_users = User.objects.filter(email=email)
+        associated_users = CustomUser.objects.filter(email__iexact=email)
         
         if associated_users.exists():
             for user in associated_users:
                 # Check if the user is an office staff member
-                if hasattr(user, 'officestaff'):
+                if hasattr(user, 'officestaff_profile'):
                     context = {
                         'email': user.email,
-                        'domain': self.request.META['HTTP_HOST'],
+                        'domain': self.request.get_host(), 
                         'site_name': 'Campus360',
                         'uid': urlsafe_base64_encode(force_bytes(user.pk)),
                         'user': user,

@@ -11,17 +11,13 @@
                 <h1 class="mb-4">All Upcoming Events</h1>
                 {% if events %}
                     {% for event in events %}
-                    <div class="event-item bg-light p-4 mb-4 rounded">
-                        <div class="d-flex align-items-center">
-                            <div class="event-date bg-primary text-white text-center p-2 me-4 rounded" style="min-width: 80px;">
-                                <h4 class="mb-0">{{ event.event_start_date|date:"d" }}</h4>
-                                <small>{{ event.event_start_date|date:"M" }}</small>
-                            </div>
-                            <div class="flex-grow-1">
-                                <h5 class="mb-2">{{ event.title }}</h5>
-                                <p class="mb-0"><i class="fa fa-clock text-primary me-2"></i>{{ event.event_start_date|date:"h:i A" }} - {{ event.event_end_date|date:"h:i A" }}</p>
-                                <p class="mb-0"><i class="fa fa-map-marker-alt text-primary me-2"></i>{{ event.location }}</p>
-                            </div>
+                    <div class="event-item bg-light p-3 mb-3 rounded">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <a href="{% url 'events_detail' event.slug %}" class="text-decoration-none">
+                                    {{ event.title }}
+                                </a>
+                            </h5>
                             <a href="{% url 'events_detail' event.slug %}" class="btn btn-sm btn-primary px-3">Details</a>
                         </div>
                     </div>
@@ -55,21 +51,14 @@
                 <h1 class="mb-4">Latest News</h1>
                 {% if recent_news %}
                     {% for news in recent_news %}
-                    <div class="news-item bg-light p-4 mb-4 rounded">
-                        <div class="d-flex">
-                            {% if news.image %}
-                            <img src="{{ news.image.url }}" class="img-fluid me-3" style="width: 100px; height: 100px; object-fit: cover;" alt="{{ news.title }}">
-                            {% else %}
-                            <img src="{% static 'img/course-1.jpg' %}" class="img-fluid me-3" style="width: 100px; height: 100px; object-fit: cover;" alt="{{ news.title }}">
-                            {% endif %}
-                            <div>
-                                <small class="text-primary"><i class="far fa-calendar-alt me-2"></i>{{ news.published_date|date:"d M, Y" }}</small>
-                                <h5 class="mb-2">{{ news.title }}</h5>
-                                <div class="ck-content">
-                                    <p class="mb-0">{{ news.content|truncatechars_html:100|safe }}</p>
-                                </div>
-                                <a href="{% url 'news_detail' news.slug %}" class="btn btn-link clr-dark p-0">Read More <i class="fa fa-arrow-right ms-2"></i></a>
-                            </div>
+                    <div class="news-item bg-light p-3 mb-3 rounded">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <a href="{% url 'news_detail' news.slug %}" class="text-decoration-none">
+                                    {{ news.title }}
+                                </a>
+                            </h5>
+                            <a href="{% url 'news_detail' news.slug %}" class="btn btn-sm btn-primary px-3">Read More</a>
                         </div>
                     </div>
                     {% endfor %}

@@ -1,0 +1,134 @@
+/* CKEditor Content Styling */
+.ck-content {
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; /* Match your site’s font */
+    font-size: 1rem; /* Base font size for paragraphs, matching Bootstrap’s default */
+    line-height: 1.6; /* Comfortable line spacing */
+    color: #333; /* Dark text for readability */
+    margin: 0; /* Remove default margins */
+    padding: 0; /* Remove default padding */
+}
+
+/* Headings */
+.ck-content h1,
+.ck-content h2,
+.ck-content h3,
+.ck-content h4,
+.ck-content h5,
+.ck-content h6 {
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    font-weight: 500; /* Medium weight for headings */
+    color: #1a1a1a; /* Darker color for headings */
+    margin-bottom: 0.75rem;
+}
+
+.ck-content h1 { font-size: 2rem; }
+.ck-content h2 { font-size: 1.75rem; }
+.ck-content h3 { font-size: 1.5rem; }
+.ck-content h4 { font-size: 1.25rem; }
+.ck-content h5 { font-size: 1rem; }
+.ck-content h6 { font-size: 0.875rem; }
+
+/* Paragraphs */
+.ck-content p {
+    margin-bottom: 1rem; /* Consistent with Bootstrap’s paragraph spacing */
+}
+
+/* Links */
+.ck-content a {
+    color: #007bff; /* Match Bootstrap’s text-primary */
+    text-decoration: none; /* Remove underline for consistency */
+    transition: color 0.2s ease-in-out;
+}
+
+.ck-content a:hover {
+    color: #0056b3; /* Darker shade on hover */
+    text-decoration: underline; /* Underline on hover for clarity */
+}
+
+/* Lists */
+.ck-content ul,
+.ck-content ol {
+    margin-bottom: 1rem;
+    padding-left: 1.5rem; /* Align with Bootstrap’s list padding */
+}
+
+.ck-content ul li,
+.ck-content ol li {
+    margin-bottom: 0.5rem;
+}
+
+/* Blockquotes */
+.ck-content blockquote {
+    border-left: 4px solid #007bff; /* Match text-primary */
+    padding: 0.5rem 0 0.5rem 1rem;
+    margin: 1rem 0;
+    font-style: italic;
+    background-color: #f8f9fa; /* Match bg-light */
+}
+
+/* Images */
+.ck-content img {
+    max-width: 100%; /* Responsive images */
+    height: auto;
+    border-radius: 0.25rem; /* Match rounded corners in your layout */
+    margin-bottom: 1rem;
+}
+
+/* Code Blocks */
+.ck-content pre,
+.ck-content code {
+    background-color: #f8f9fa; /* Match bg-light */
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+/* Tables */
+.ck-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+}
+
+.ck-content table th,
+.ck-content table td {
+    border: 1px solid #dee2e6; /* Bootstrap’s border color */
+    padding: 0.75rem;
+}
+
+.ck-content table th {
+    background-color: #f8f9fa; /* Match bg-light */
+    font-weight: 500;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 767.98px) {
+    .ck-content {
+        font-size: 0.95rem; /* Slightly smaller text on mobile */
+    }
+
+    .ck-content h1 { font-size: 1.75rem; }
+    .ck-content h2 { font-size: 1.5rem; }
+    .ck-content h3 { font-size: 1.25rem; }
+    .ck-content h4 { font-size: 1.1rem; }
+}
+
+/* Specific Styling for Truncated Content */
+.news-item .ck-content p {
+    font-size: 0.95rem; /* Slightly smaller for news previews */
+    color: #555; /* Lighter text for previews */
+    line-height: 1.5;
+}
+
+/* Link Styling for "Read More" */
+.news-item .btn-link.clr-dark {
+    color: #007bff; /* Match text-primary */
+    font-weight: 500;
+    padding: 0; /* Override default padding */
+}
+
+.news-item .btn-link.clr-dark:hover {
+    color: #0056b3; /* Darker on hover */
+    text-decoration: none; /* Keep consistent with other links */
+}
+

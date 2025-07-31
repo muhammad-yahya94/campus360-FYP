@@ -14,7 +14,19 @@
                     <i class="fa fa-calendar-alt text-primary me-2"></i>{{ news_details.published_date|date:"d M, Y" }}
                 </p>
                 {% if news_details.image %}
-                <img src="{{ news_details.image.url }}" class="img-fluid mb-4" style="max-width: 100%; height: auto; border-radius: 0.5rem;" alt="{{ news_details.title }}">
+                <div class="news-image-container mb-4 text-center">
+                    <img 
+                        src="{{ news_details.image.url }}" 
+                        class="img-fluid rounded shadow-sm" 
+                        style="max-width: 100%; 
+                               height: auto; 
+                               max-height: 500px; 
+                               object-fit: contain; 
+                               width: 100%;" 
+                        alt="{{ news_details.title }}"
+                        loading="lazy"
+                    >
+                </div>
                 {% endif %}
                 <div class="news-content ck-content">
                     {{ news_details.content|safe }}

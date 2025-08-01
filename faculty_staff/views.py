@@ -33,7 +33,7 @@ from django.db.models import Sum, Q, Count, Max, Subquery, OuterRef, F, Value
 from django.db.utils import IntegrityError
 from django.db.models.functions import ExtractYear
 from django.forms.models import inlineformset_factory
-from django.http import JsonResponse
+from django.http import JsonResponse,HttpResponseRedirect
 from django.shortcuts import render, get_object_or_404, redirect
 from django.template.loader import get_template, render_to_string
 from django.urls import reverse
@@ -1387,7 +1387,7 @@ def course_offerings(request):
     course_offerings = course_offerings.select_related('course', 'teacher', 'program', 'department', 'academic_session', 'semester')
 
     # Pagination for course offerings
-    paginator = Paginator(course_offerings, 20)  # 10 items per page
+    paginator = Paginator(course_offerings, 20)  
     page_obj = paginator.get_page(page)
 
     # Filter timetable slots for active semesters and programs
@@ -1558,16 +1558,18 @@ def search_venues(request):
     return JsonResponse({'results': [], 'pagination': {'more': False}})
 
 
+
+
+
+
+
+
+
+@hod_required
+@require_POST
 @transaction.atomic
 def save_course_offering(request):
-    print(f"Received request: method={request.method}, user={request.user}")
-    
-    if request.method != "POST" or not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
-        print("Request validation failed: Invalid method or insufficient permissions")
-        return JsonResponse({
-            'success': False,
-            'message': 'Invalid request method or insufficient permissions.'
-        })
+    print(f"Received save request: method={request.method}, user={request.user}")
 
     course_id = request.POST.get('course_id')
     teacher_id = request.POST.get('teacher_id')
@@ -1576,11 +1578,12 @@ def save_course_offering(request):
     academic_session_id = request.POST.get('academic_session_id')
     offering_type = request.POST.get('offering_type')
     shift = request.POST.get('shift')
-    print(f"Input parameters: course_id={course_id}, teacher_id={teacher_id}, program_id={program_id}, semester_id={semester_id}, academic_session_id={academic_session_id}, offering_type={offering_type}, shift={shift}")
+    is_active = 'is_active' in request.POST
+    print(f"Input parameters: course_id={course_id}, teacher_id={teacher_id}, program_id={program_id}, semester_id={semester_id}, academic_session_id={academic_session_id}, offering_type={offering_type}, shift={shift}, is_active={is_active}")
 
     required_fields = {
         'course_id': 'Course',
-        'teacher_id': 'Teacher',     
+        'teacher_id': 'Teacher',
         'program_id': 'Program',
         'semester_id': 'Semester',
         'academic_session_id': 'Academic Session',
@@ -1590,121 +1593,85 @@ def save_course_offering(request):
     missing_fields = [field_name for field_name, field_label in required_fields.items() if not request.POST.get(field_name)]
     if missing_fields:
         print(f"Missing fields detected: {missing_fields}")
-        return JsonResponse({
-            'success': False,
-            'message': f'Missing required fields: {", ".join([required_fields[field] for field in missing_fields])}'
-        })
+        messages.error(request, f'Missing required fields: {", ".join([required_fields[field] for field in missing_fields])}')
+        return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))
 
     valid_offering_types = [choice[0] for choice in CourseOffering.OFFERING_TYPES]
     if offering_type not in valid_offering_types:
         print(f"Invalid offering type: {offering_type}, valid types: {valid_offering_types}")
-        return JsonResponse({
-            'success': False,
-            'message': 'Invalid offering type selected.'
-        })
+        messages.error(request, 'Invalid offering type selected.')
+        return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))
 
     valid_shifts = ['morning', 'evening', 'both']
     if shift not in valid_shifts:
         print(f"Invalid shift: {shift}, valid shifts: {valid_shifts}")
-        return JsonResponse({
-            'success': False,
-            'message': 'Invalid shift selected.'
-        })
+        messages.error(request, 'Invalid shift selected.')
+        return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))
 
-    try:  
+    try:
         print("Fetching database objects...")
-        course = Course.objects.get(id=course_id)
-        teacher = Teacher.objects.get(id=teacher_id, is_active=True)
-        program = Program.objects.get(id=program_id)
-        semester = Semester.objects.get(id=semester_id)
-        academic_session = AcademicSession.objects.get(id=academic_session_id)
+        course = get_object_or_404(Course, id=course_id)
+        teacher = get_object_or_404(Teacher, id=teacher_id, is_active=True)
+        program = get_object_or_404(Program, id=program_id)
+        semester = get_object_or_404(Semester, id=semester_id)
+        academic_session = get_object_or_404(AcademicSession, id=academic_session_id)
         print(f"Fetched: course={course.code}, teacher={teacher}, program={program}, semester={semester}, academic_session={academic_session}")
-    except (Course.DoesNotExist, Teacher.DoesNotExist, Program.DoesNotExist, 
-            Semester.DoesNotExist, AcademicSession.DoesNotExist) as e:
+    except Exception as e:
         print(f"Database fetch error: {str(e)}")
-        return JsonResponse({
-            'success': False,
-            'message': 'One or more selected items no longer exist.'
-        })
+        messages.error(request, 'One or more selected items no longer exist.')
+        return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))
 
-    # Check for existing offerings with the same credentials (excluding teacher)
+    # Check for existing offerings (ignoring offering_type)
     print("Checking for existing course offerings...")
     existing_offerings = CourseOffering.objects.filter(
         course=course,
         program=program,
         academic_session=academic_session,
-        semester=semester,
-        offering_type=offering_type
+        semester=semester
     )
     existing_shifts = set(existing_offerings.values_list('shift', flat=True))
     print(f"Existing shifts found: {existing_shifts}")
 
-    # Check for exact shift match (regardless of teacher)
-    if existing_offerings.filter(shift=shift).exists():
-        print(f"Duplicate shift detected: {shift} already exists for this course offering")
-        return JsonResponse({
-            'success': False,
-            'message': f'This course offering with {shift.capitalize()} shift already exists.'
-        })
-    
     # Shift validation rules
     if existing_shifts:
         if 'both' in existing_shifts:
             print("Shift validation failed: 'both' shift already exists")
-            return JsonResponse({
-                'success': False,
-                'message': 'This course is already offered for both shifts. No other shifts can be added.'
-            })
+            messages.error(request, 'This course is already offered for both shifts. No other shifts can be added.')
+            return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))
         if shift == 'both':
-            print("Shift validation failed: Attempting to add 'both' when other shifts exist")
-            return JsonResponse({
-                'success': False,
-                'message': 'Cannot offer for both shifts when other shifts already exist.'
-            })
-        if shift == 'morning' and 'evening' not in existing_shifts:
-            print("Shift validation failed: Attempting to add 'morning' without 'evening'")
-            return JsonResponse({
-                'success': False,
-                'message': 'Can only add morning shift if evening shift exists.'
-            })
-        if shift == 'evening' and 'morning' not in existing_shifts:
-            print("Shift validation failed: Attempting to add 'evening' without 'morning'")
-            return JsonResponse({
-                'success': False,
-                'message': 'Can only add evening shift if morning shift exists.'
-            })
+            print("Shift validation failed: Attempting to set 'both' when other shifts exist")
+            messages.error(request, 'Cannot set to both shifts when other shifts already exist.')
+            return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))
+        if shift == 'morning' and 'morning' in existing_shifts:
+            print("Shift validation failed: 'morning' shift already exists")
+            messages.error(request, f'A course offering for {course.code} with Morning shift already exists.')
+            return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))
+        if shift == 'evening' and 'evening' in existing_shifts:
+            print("Shift validation failed: 'evening' shift already exists")
+            messages.error(request, f'A course offering for {course.code} with Evening shift already exists.')
+            return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))
 
-    print("Fetching active students...")
+    # Check for active students
+    print("Checking for active students...")
     active_students = Student.objects.filter(
         applicant__session=academic_session,
         program=program,
         current_status='active'
     )
-    print(f"Found {active_students.count()} active students")
-
     if not active_students.exists():
-        print("No active students found for this program and semester")
-        return JsonResponse({
-            'success': False,
-            'message': 'No active students found for this program and semester.'
-        })
+        print("No active students found")
+        messages.error(request, 'No active students found for this program and semester.')
+        return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))
 
-    compatible_students = []
-    for student in active_students:
-        applicant_shift = student.applicant.shift
-        if shift == 'both' or applicant_shift == shift:
-            compatible_students.append(student)
-            print(f"Compatible student found: {student.applicant.full_name}, shift={applicant_shift}")
-
+    # Filter students compatible with the shift
+    compatible_students = [student for student in active_students if shift == 'both' or student.applicant.shift == shift]
     if not compatible_students:
-        print("No compatible students found for the selected shift")
-        return JsonResponse({
-            'success': False,
-            'message': 'No students have a compatible shift preference for this course offering.'
-        })
+        print("No compatible students for the shift")
+        messages.error(request, 'No students have a compatible shift preference for this course offering.')
+        return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))
 
     try:
-        print("Creating new course offering...")
+        print("Creating course offering...")
         offering = CourseOffering.objects.create(
             course=course,
             teacher=teacher,
@@ -1712,23 +1679,21 @@ def save_course_offering(request):
             program=program,
             academic_session=academic_session,
             semester=semester,
-            is_active=True,
+            is_active=is_active,
             offering_type=offering_type,
             shift=shift,
-            current_enrollment=0   
+            current_enrollment=0
         )
-        print(f"Course offering created: ID={offering.id}")
+        print(f"Course offering created: ID={offering.id}, shift={shift}, is_active={is_active}")
 
+        print("Enrolling students...")
         enrolled_count = 0
-        enrolled_student_names = []
         for student in compatible_students:
-            print(f"Processing enrollment for student: {student.applicant.full_name}")
             semester_enrollment, created = StudentSemesterEnrollment.objects.get_or_create(
                 student=student,
                 semester=semester,
                 defaults={'status': 'enrolled'}
             )
-            print(f"Semester enrollment {'created' if created else 'fetched'} for student: {student.applicant.full_name}")
             course_enrollment, created = CourseEnrollment.objects.get_or_create(
                 student_semester_enrollment=semester_enrollment,
                 course_offering=offering,
@@ -1738,26 +1703,17 @@ def save_course_offering(request):
                 course_enrollment.status = 'enrolled'
                 course_enrollment.save()
                 enrolled_count += 1
-                enrolled_student_names.append(student.applicant.full_name)
-                print(f"Student enrolled: {student.applicant.full_name}")
 
         offering.current_enrollment = enrolled_count
         offering.save()
-        print(f"Updated offering enrollment count: {enrolled_count}")
-        
-        return JsonResponse({  
-            'success': True,
-            'message': f'Successfully created course offering for {course.code} ({shift.capitalize()} shift) with {enrolled_count} students enrolled.',
-            'offering_id': offering.id
-        })
+        print(f"Enrolled {enrolled_count} students")
+
+        messages.success(request, f'Successfully created course offering for {course.code} ({shift.capitalize()} shift) with {enrolled_count} students enrolled.')
     except Exception as e:
-        print(f"Error during course offering creation: {str(e)}")
-        return JsonResponse({
-            'success': False,
-            'message': f'Error saving course offering: {str(e)}'
-        })  
-        
-        
+        print(f"Error saving course offering: {str(e)}")
+        messages.error(request, f'Error saving course offering: {str(e)}')
+
+    return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))       
 
 
 
@@ -2364,26 +2320,20 @@ def edit_course_offering(request):
     missing_fields = [field_name for field_name, field_label in required_fields.items() if not request.POST.get(field_name)]
     if missing_fields:
         print(f"Missing fields detected: {missing_fields}")
-        return JsonResponse({
-            'success': False,
-            'message': f'Missing required fields: {", ".join([required_fields[field] for field in missing_fields])}'
-        })
+        messages.error(request, f'Missing required fields: {", ".join([required_fields[field] for field in missing_fields])}')
+        return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))
 
     valid_offering_types = [choice[0] for choice in CourseOffering.OFFERING_TYPES]
     if offering_type not in valid_offering_types:
         print(f"Invalid offering type: {offering_type}, valid types: {valid_offering_types}")
-        return JsonResponse({
-            'success': False,
-            'message': 'Invalid offering type selected.'
-        })
+        messages.error(request, 'Invalid offering type selected.')
+        return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))
 
     valid_shifts = ['morning', 'evening', 'both']
     if shift not in valid_shifts:
         print(f"Invalid shift: {shift}, valid shifts: {valid_shifts}")
-        return JsonResponse({
-            'success': False,
-            'message': 'Invalid shift selected.'
-        })
+        messages.error(request, 'Invalid shift selected.')
+        return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))
 
     try:
         print("Fetching database objects...")
@@ -2396,83 +2346,106 @@ def edit_course_offering(request):
         print(f"Fetched: offering_id={offering_id}, course={course.code}, teacher={teacher}, program={program}, semester={semester}, academic_session={academic_session}")
     except Exception as e:
         print(f"Database fetch error: {str(e)}")
-        return JsonResponse({
-            'success': False,
-            'message': 'One or more selected items no longer exist.'
-        })
+        messages.error(request, 'One or more selected items no longer exist.')
+        return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))
 
-    # Check for existing offerings with the same credentials (excluding teacher and current offering)
+    # Check for existing offerings (excluding current offering, ignoring offering_type)
     print("Checking for existing course offerings...")
     existing_offerings = CourseOffering.objects.filter(
         course=course,
         program=program,
         academic_session=academic_session,
-        semester=semester,
-        offering_type=offering_type
+        semester=semester
     ).exclude(id=offering_id)
     existing_shifts = set(existing_offerings.values_list('shift', flat=True))
     print(f"Existing shifts found (excluding current offering): {existing_shifts}")
-
-    # Check for exact shift match (regardless of teacher)
-    if existing_offerings.filter(shift=shift).exists():
-        print(f"Duplicate shift detected: {shift} already exists for this course offering")
-        return JsonResponse({
-            'success': False,
-            'message': f'This course offering with {shift.capitalize()} shift already exists.'
-        })
 
     # Shift validation rules
     if existing_shifts:
         if 'both' in existing_shifts:
             print("Shift validation failed: 'both' shift already exists")
-            return JsonResponse({
-                'success': False,
-                'message': 'This course is already offered for both shifts. No other shifts can be added.'
-            })
+            messages.error(request, 'This course is already offered for both shifts. No other shifts can be added.')
+            return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))
         if shift == 'both':
             print("Shift validation failed: Attempting to set 'both' when other shifts exist")
-            return JsonResponse({
-                'success': False,
-                'message': 'Cannot set to both shifts when other shifts already exist.'
-            })
-        if shift == 'morning' and 'evening' not in existing_shifts:
-            print("Shift validation failed: Attempting to set 'morning' without 'evening'")
-            return JsonResponse({
-                'success': False,
-                'message': 'Can only set morning shift if evening shift exists.'
-            })
-        if shift == 'evening' and 'morning' not in existing_shifts:
-            print("Shift validation failed: Attempting to set 'evening' without 'morning'")
-            return JsonResponse({
-                'success': False,
-                'message': 'Can only set evening shift if morning shift exists.'
-            })
+            messages.error(request, 'Cannot set to both shifts when other shifts already exist.')
+            return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))
+        if shift == 'morning' and 'morning' in existing_shifts:
+            print("Shift validation failed: 'morning' shift already exists")
+            messages.error(request, f'A course offering for {course.code} with Morning shift already exists.')
+            return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))
+        if shift == 'evening' and 'evening' in existing_shifts:
+            print("Shift validation failed: 'evening' shift already exists")
+            messages.error(request, f'A course offering for {course.code} with Evening shift already exists.')
+            return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))
+
+    # Check for active students
+    print("Checking for active students...")
+    active_students = Student.objects.filter(
+        applicant__session=academic_session,
+        program=program,
+        current_status='active'
+    )
+    if not active_students.exists():
+        print("No active students found")
+        messages.error(request, 'No active students found for this program and semester.')
+        return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))
+
+    # Filter students compatible with the shift
+    compatible_students = [student for student in active_students if shift == 'both' or student.applicant.shift == shift]
+    if not compatible_students:
+        print("No compatible students for the shift")
+        messages.error(request, 'No students have a compatible shift preference for this course offering.')
+        return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))
 
     try:
         print("Updating course offering...")
         offering.course = course
         offering.teacher = teacher
         offering.program = program
+        offering.department = program.department
         offering.academic_session = academic_session
         offering.semester = semester
         offering.offering_type = offering_type
         offering.shift = shift
         offering.is_active = is_active
+        offering.current_enrollment = 0  # Reset enrollment count before re-enrolling
         offering.save()
         print(f"Course offering updated: ID={offering.id}, shift={shift}, is_active={is_active}")
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Successfully updated course offering for {course.code} ({shift.capitalize()} shift).'
-        })
+
+        print("Re-enrolling students...")
+        CourseEnrollment.objects.filter(
+            student_semester_enrollment__semester=semester,
+            course_offering=offering
+        ).delete()
+
+        enrolled_count = 0
+        for student in compatible_students:
+            semester_enrollment, created = StudentSemesterEnrollment.objects.get_or_create(
+                student=student,
+                semester=semester,
+                defaults={'status': 'enrolled'}
+            )
+            course_enrollment, created = CourseEnrollment.objects.get_or_create(
+                student_semester_enrollment=semester_enrollment,
+                course_offering=offering,
+                defaults={'status': 'enrolled'}
+            )
+            if created or course_enrollment.status != 'enrolled':
+                course_enrollment.status = 'enrolled'
+                course_enrollment.save()
+                enrolled_count += 1
+
+        offering.current_enrollment = enrolled_count
+        offering.save()
+        print(f"Enrolled {enrolled_count} students")
+
+        messages.success(request, f'Successfully updated course offering for {course.code} ({shift.capitalize()} shift) with {enrolled_count} students enrolled.')
     except Exception as e:
         print(f"Error during course offering update: {str(e)}")
-        return JsonResponse({
-            'success': False,
-            'message': f'Error updating course offering: {str(e)}'
-        })
+        messages.error(request, f'Error updating course offering: {str(e)}')
 
-
+    return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))
 
 
 
@@ -3021,14 +2994,34 @@ def search_course_offerings(request):
 
 
 @hod_required
+@transaction.atomic
 def delete_course_offering(request):
-    if request.method == "POST" and request.user.teacher_profile.designation == 'head_of_department':
-        offering_id = request.POST.get('offering_id')
-        if offering_id:
-            offering = get_object_or_404(CourseOffering, id=offering_id)
-            offering.delete()
-            return JsonResponse({'success': True, 'message': 'Course offering deleted successfully.'})
-    return JsonResponse({'success': False, 'message': 'Invalid request.'})
+    print(f"Received delete request: method={request.method}, user={request.user}")
+
+    if request.method != "POST" or not hasattr(request.user, 'teacher_profile') or request.user.teacher_profile.designation != 'head_of_department':
+        print("Invalid request method or insufficient permissions")
+        messages.error(request, 'Invalid request method or insufficient permissions.')
+        return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))
+
+    offering_id = request.POST.get('offering_id')
+    if not offering_id:
+        print("Missing offering_id")
+        messages.error(request, 'No course offering specified.')
+        return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))
+
+    try:
+        print(f"Fetching course offering: offering_id={offering_id}")
+        offering = get_object_or_404(CourseOffering, id=offering_id)
+        course_code = offering.course.code
+        print(f"Deleting course offering: ID={offering_id}, course={course_code}")
+        offering.delete()
+        messages.success(request, f'Successfully deleted course offering for {course_code}.')
+        print(f"Course offering deleted: ID={offering_id}")
+    except Exception as e:
+        print(f"Error deleting course offering: {str(e)}")
+        messages.error(request, f'Error deleting course offering: {str(e)}')
+
+    return HttpResponseRedirect(reverse('faculty_staff:course_offerings'))
 
 
 @hod_or_professor_required

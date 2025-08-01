@@ -5,7 +5,7 @@ from . import views, auth_views
 
 app_name = 'faculty_staff'   
 
-urlpatterns = [
+urlpatterns = [   
 
     # ========== 1. Authentication ==========
     path('login/', views.login_view, name='login'),

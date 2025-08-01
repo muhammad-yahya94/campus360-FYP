@@ -5623,14 +5623,17 @@ def student_performance(request, course_offering_id, student_id):
     logger.info(f"Fetched performance data for student {student.applicant.full_name} in course offering {course_offering_id}")
     return render(request, 'faculty_staff/student_performance.html', context)
 
+
+
+
+@hod_or_professor_required
 def student_semester_performance(request, student_id):
     student = get_object_or_404(Student, pk=student_id)
 
-    # Get all semester enrollments for the student, excluding those with repeat subjects
-    # and only for the student's session
+    # Get all semester enrollments for the student
     semester_enrollments = StudentSemesterEnrollment.objects.filter(
         student=student,
-        semester__session=student.applicant.session  # Only show semesters from student's session
+        semester__session=student.applicant.session  
     ).exclude(
         course_enrollments__is_repeat=True
     ).select_related('semester').order_by('semester__number').distinct()
@@ -5780,9 +5783,7 @@ def student_semester_performance(request, student_id):
         'stats_by_semester': stats_by_page,
     }
     logger.info(f"Fetched semester performance data for student {student.applicant.full_name}")
-    return render(request, 'faculty_staff/student_semester_performance.html', context)    
-    
-    
+    return render(request, 'faculty_staff/student_semester_performance.html', context)
     
     
 @hod_or_professor_required

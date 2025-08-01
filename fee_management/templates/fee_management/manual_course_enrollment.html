@@ -50,17 +50,25 @@
                 <input type="hidden" name="step" value="enroll">
                 <input type="hidden" name="student_id" value="{{ student.pk }}">
 
-                <!-- Semester Selection -->
+                <!-- Semester Selection (Disabled) -->
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text font-semibold">Select Semester</span>
+                        <span class="label-text font-semibold">Selected Semester</span>
                     </label>
-                    <select name="semester" class="select select-bordered w-full" required>
+                    <select name="semester" class="select select-bordered w-full" disabled required>
                         <option value="" disabled selected>Select a semester</option>
                         {% for semester in semesters %}
                         <option value="{{ semester.pk }}">{{ semester }}</option>
                         {% endfor %}
                     </select>
+                </div>
+
+                <!-- Course Search -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Search Courses</span>
+                    </label>
+                    <input type="text" id="course-search" class="input input-bordered w-full" placeholder="Search by course name or code">
                 </div>
 
                 <!-- Course Selection -->
@@ -71,7 +79,7 @@
                     <div class="max-h-64 overflow-y-auto border rounded-lg p-2" id="course-container">
                         {% for item in course_data %}
                         {% with course=item.course %}
-                        <div class="form-control course-item" data-semester="{{ course.semester.id }}">
+                        <div class="form-control course-item" data-semester="{{ course.semester.id }}" data-course-name="{{ course.course.name|lower }}" data-course-code="{{ course.course.code|lower }}">
                             <label class="label cursor-pointer justify-start gap-2 hover:bg-base-200 p-2 rounded {% if item.is_repeat %}bg-warning/10{% endif %}">
                                 <input type="checkbox" 
                                        name="courses" 
@@ -81,7 +89,7 @@
                                        {% if item.is_repeat %}data-repeat="true"{% endif %} />
                                 <div class="flex flex-col">
                                     <div class="flex items-center">
-                                        <span class="label-text ml-2">{{ course.course.name }} ({{ course.semester }})</span>
+                                        <span class="label-text ml-2">{{ course.course.code }} - {{ course.course.name }} ({{ course.semester }})</span>
                                         {% if item.is_repeat %}
                                         <span class="badge badge-warning ml-2">Repeat</span>
                                         {% endif %}
@@ -134,31 +142,19 @@ document.addEventListener('DOMContentLoaded', function() {
         {% endfor %}
     };
 
-    // Add change event listeners to all course checkboxes
-    courseCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            if (this.checked) {
-                // When a course is checked, set the corresponding semester
-                const semesterId = courseSemesterMap[this.value];
-                if (semesterId && semesterSelect) {
-                    semesterSelect.value = semesterId;
-                    
-                    // Trigger change event in case there are other listeners
-                    const event = new Event('change');
-                    semesterSelect.dispatchEvent(event);
-                }
-            }
-        });
-    });
-    
-    // Filter courses based on selected semester
-    function filterCoursesBySemester() {
-        const selectedSemester = semesterSelect.value;
+    // Filter courses based on search query
+    function filterCoursesBySearch() {
+        const searchQuery = document.getElementById('course-search').value.toLowerCase().trim();
         const courseItems = document.querySelectorAll('.course-item');
         
         courseItems.forEach(item => {
-            const itemSemester = item.dataset.semester;
-            if (selectedSemester === '' || itemSemester === selectedSemester) {
+            const courseName = item.dataset.courseName;
+            const courseCode = item.dataset.courseCode;
+            const matchesSearch = searchQuery === '' || 
+                                 courseName.includes(searchQuery) || 
+                                 courseCode.includes(searchQuery);
+            
+            if (matchesSearch) {
                 item.style.display = 'block';
             } else {
                 item.style.display = 'none';
@@ -166,11 +162,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Update semester selection when any course checkbox changes
+    // Update semester selection based on selected courses
     function updateSemesterSelection() {
         const checkedCourses = Array.from(document.querySelectorAll('input[name="courses"]:checked'));
         
         if (checkedCourses.length === 0) {
+            semesterSelect.value = '';
             return;
         }
         
@@ -180,42 +177,35 @@ document.addEventListener('DOMContentLoaded', function() {
             
         if (semesterIds.length === 1) {
             // All selected courses are from the same semester
-            if (semesterSelect.value !== semesterIds[0]) {
-                semesterSelect.value = semesterIds[0];
-                filterCoursesBySemester();
-            }
+            semesterSelect.value = semesterIds[0];
         } else if (semesterIds.length > 1) {
             // Courses from multiple semesters selected
             console.warn('Courses from multiple semesters selected');
+            semesterSelect.value = ''; // Reset if multiple semesters
+            alert('Please select courses from only one semester.');
+            checkedCourses.forEach(checkbox => checkbox.checked = false); // Uncheck all
         }
     }
     
     // Handle course selection changes
     function handleCourseSelection(event) {
         const checkbox = event.target;
-        const courseItem = checkbox.closest('.course-item');
         
-        if (!checkbox.checked) {
-            // If unchecking, just update the semester selection
-            updateSemesterSelection();
-            return;
+        if (checkbox.checked) {
+            const semesterId = courseSemesterMap[checkbox.value];
+            if (semesterSelect.value && semesterSelect.value !== semesterId) {
+                // If a different semester is already selected, prevent checking
+                checkbox.checked = false;
+                alert('Please select courses from only one semester.');
+                return;
+            }
         }
         
-        // If checking, first update the semester
-        const semesterId = courseItem.dataset.semester;
-        if (semesterSelect.value !== semesterId) {
-            semesterSelect.value = semesterId;
-            filterCoursesBySemester();
-        }
-        
-        // Then update the semester selection
         updateSemesterSelection();
     }
     
     // Add event listeners
-    if (semesterSelect) {
-        semesterSelect.addEventListener('change', filterCoursesBySemester);
-    }
+    document.getElementById('course-search').addEventListener('input', filterCoursesBySearch);
     
     // Use event delegation for course checkboxes
     document.getElementById('course-container').addEventListener('change', function(event) {
@@ -225,7 +215,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Initial filter on page load
-    filterCoursesBySemester();
+    filterCoursesBySearch();
 });
 </script>
 {% endblock %}

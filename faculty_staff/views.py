@@ -3642,16 +3642,22 @@ def grade_submission(request):
 
 @login_required
 def notice_board(request):
+    print(f"Received notice board request: method={request.method}, user={request.user}")
+
+    # Determine notices based on user type
     if request.user.teacher_profile and request.user.teacher_profile.designation == 'head_of_department':
+        print("User is HoD, fetching all notices")
         # HoD view: Manage all notices
         notices = Notice.objects.all().order_by('-created_at')
     elif request.user.teacher_profile:
-        # Teacher view: View only notices relevant to their department's programs
+        print("User is regular teacher, fetching department-related notices")
+        # Teacher view: View notices relevant to their department's programs
         department = request.user.teacher_profile.department
         notices = Notice.objects.filter(
             Q(programs__department=department) | Q(sessions__semesters__program__department=department)
         ).distinct().order_by('-created_at')
     else:
+        print("User is student, fetching student-specific notices")
         # Student view: Filter by enrolled program and session
         student = getattr(request.user, 'student_profile', None)
         if student:
@@ -3669,16 +3675,18 @@ def notice_board(request):
         else:
             notices = Notice.objects.none()
 
+    # Handle POST requests for creating, editing, toggling, or deleting notices
     if request.method == 'POST':
         if 'create_notice' in request.POST:
             if not request.user.teacher_profile:
+                print("Non-teacher attempted to create notice")
                 messages.error(request, "Only teachers can create notices.")
-                return redirect('notice_board')
+                return redirect('faculty_staff:notice_board')
 
             title = request.POST.get('title', '').strip()
             content = request.POST.get('content', '').strip()
             notice_type = request.POST.get('notice_type', 'general')
-            priority = request.POST.get('priority', 'medium')  
+            priority = request.POST.get('priority', 'medium')
             program_ids = request.POST.getlist('programs')
             session_ids = request.POST.getlist('sessions')
             valid_from = request.POST.get('valid_from') or timezone.now()
@@ -3686,13 +3694,16 @@ def notice_board(request):
             attachment = request.FILES.get('attachment')
             is_pinned = request.POST.get('is_pinned') == 'on'
 
+            print(f"Creating notice: title={title}, notice_type={notice_type}, priority={priority}, programs={program_ids}, sessions={session_ids}")
+
             # Validate required fields
             if not title or not content:
+                print("Missing title or content")
                 messages.error(request, "Title and content are required fields.")
-                return redirect('notice_board')
+                return redirect('faculty_staff:notice_board')
 
             try:
-                # First create the notice without the many-to-many relationships
+                # Create notice without many-to-many relationships
                 notice = Notice.objects.create(
                     title=title,
                     content=content,
@@ -3703,30 +3714,42 @@ def notice_board(request):
                     attachment=attachment,
                     created_by=request.user.teacher_profile,
                     is_pinned=is_pinned,
-                    is_active=True  
+                    is_active=True
                 )
+                # Set many-to-many relationships
+                if program_ids:
+                    notice.programs.set(program_ids)
+                if session_ids:
+                    notice.sessions.set(session_ids)
+                print(f"Notice created: ID={notice.id}")
+                messages.success(request, "Notice created successfully.")
             except Exception as e:
                 logger.error(f"Error creating notice: {str(e)}")
+                print(f"Error creating notice: {str(e)}")
                 messages.error(request, f"Error creating notice: {str(e)}")
-                return redirect('notice_board')
-            # Now that the notice has an ID, we can set the many-to-many relationships
-            if program_ids:
-                notice.programs.set(program_ids)
-            if session_ids:
-                notice.sessions.set(session_ids)
-            messages.success(request, "Notice created successfully.")
+                return redirect('faculty_staff:notice_board')
+
         elif 'toggle_active' in request.POST:
             notice_id = request.POST.get('notice_id')
             notice = get_object_or_404(Notice, id=notice_id)
             if request.user.teacher_profile:
+                print(f"Toggling notice active status: ID={notice_id}, current is_active={notice.is_active}")
                 notice.is_active = not notice.is_active
                 notice.save()
                 messages.success(request, f"Notice '{notice.title}' {'activated' if notice.is_active else 'deactivated'} successfully.")
+            else:
+                print("Non-teacher attempted to toggle notice")
+                messages.error(request, "Only teachers can toggle notices.")
+                return redirect('faculty_staff:notice_board')
+
         elif 'edit_notice' in request.POST:
             notice_id = request.POST.get('notice_id')
             notice = get_object_or_404(Notice, id=notice_id)
-            if request.user.teacher_profile and (request.user.teacher_profile.designation == 'head_of_department' or 
-                                              notice.created_by == request.user.teacher_profile):
+            if request.user.teacher_profile and (
+                request.user.teacher_profile.designation == 'head_of_department' or
+                notice.created_by == request.user.teacher_profile
+            ):
+                print(f"Editing notice: ID={notice_id}")
                 notice.title = request.POST.get('title')
                 notice.content = request.POST.get('content')
                 notice.notice_type = request.POST.get('notice_type')
@@ -3739,32 +3762,43 @@ def notice_board(request):
                     notice.attachment = request.FILES.get('attachment')
                 notice.is_pinned = request.POST.get('is_pinned') == 'on'
                 notice.save()
+                print(f"Notice updated: ID={notice_id}")
                 messages.success(request, "Notice updated successfully.")
+            else:
+                print("Unauthorized edit attempt")
+                messages.error(request, "You are not authorized to edit this notice.")
+                return redirect('faculty_staff:notice_board')
+
         elif 'delete_notice' in request.POST:
             notice_id = request.POST.get('notice_id')
             notice = get_object_or_404(Notice, id=notice_id)
-            if request.user.teacher_profile and (request.user.teacher_profile.designation == 'head_of_department' or 
-                                              notice.created_by == request.user.teacher_profile):
+            if request.user.teacher_profile and (
+                request.user.teacher_profile.designation == 'head_of_department' or
+                notice.created_by == request.user.teacher_profile
+            ):
+                print(f"Deleting notice: ID={notice_id}")
                 notice.delete()
                 messages.success(request, "Notice deleted successfully.")
+            else:
+                print("Unauthorized delete attempt")
+                messages.error(request, "You are not authorized to delete this notice.")
+                return redirect('faculty_staff:notice_board')
+
+        return redirect('faculty_staff:notice_board')   
 
     # Pagination
+    print("Applying pagination to notices")
     paginator = Paginator(notices, 10)  # 10 notices per page
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
     # Get programs based on user type
     if request.user.teacher_profile:
-        if request.user.teacher_profile.designation == 'head_of_department':
-            # HoD can see all programs in their department
-            programs = Program.objects.filter(department=request.user.teacher_profile.department)
-        else:
-            # Regular teachers can see programs they're associated with
-            programs = Program.objects.filter(
-                Q(department=request.user.teacher_profile.department) |
-                Q(courses__assigned_teachers=request.user.teacher_profile)
-            ).distinct()
+        print("Fetching programs for teacher")
+        # Both HoD and regular teachers see all programs in their department
+        programs = Program.objects.filter(department=request.user.teacher_profile.department)
     else:
+        print("Fetching programs for student")
         # For students, show only their enrolled program
         student = getattr(request.user, 'student_profile', None)
         if student and hasattr(student, 'program'):
@@ -3772,7 +3806,8 @@ def notice_board(request):
         else:
             programs = Program.objects.none()
 
-    sessions = AcademicSession.objects.filter(is_active=True) 
+    sessions = AcademicSession.objects.filter(is_active=True)
+    print(f"Fetched {programs.count()} programs, {sessions.count()} active sessions")
 
     return render(request, 'faculty_staff/notice_board.html', {
         'notices': page_obj,
@@ -3781,6 +3816,8 @@ def notice_board(request):
         'notice_types': dict(Notice.NOTICE_TYPES),
         'priorities': dict(Notice.PRIORITY_LEVELS)
     })
+
+
 
 
 @login_required

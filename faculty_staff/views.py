@@ -5005,35 +5005,76 @@ def add_semester(request):
         if number < 1:
             raise ValueError("Semester number must be a positive integer.")
         
-        # Create semester with session
-        semester = Semester(
+        # Check if semester already exists
+        semester, created = Semester.objects.get_or_create(
             program=program,
             session=session,
             number=number,
-            name=name,
-            description=description,
-            start_time=start_time or None,
-            end_time=end_time or None,
-            is_active=is_active
+            defaults={
+                'name': name,
+                'description': description,
+                'start_time': start_time or None,
+                'end_time': end_time or None,
+                'is_active': is_active
+            }
         )
-        semester.save()
         
-        # Update CourseEnrollment statuses for this semester
-        enrollments_updated = False
-        enrollment_count = 0
-        semester_enrollments = StudentSemesterEnrollment.objects.filter(semester=semester)
-        for semester_enrollment in semester_enrollments:
-            course_enrollments = semester_enrollment.course_enrollments.exclude(status='dropped')
-            enrollment_count += course_enrollments.count()
-            for course_enrollment in course_enrollments:
-                course_enrollment.status = 'enrolled' if is_active else 'completed'
-                course_enrollment.save()
-            enrollments_updated = enrollment_count > 0
+        if not created:
+            # Semester already exists, update its details
+            semester.name = name
+            semester.description = description
+            semester.start_time = start_time or None
+            semester.end_time = end_time or None
+            semester.is_active = is_active
+            semester.save()
+            message = f'Semester {semester.name} updated successfully for session {session.name}!'
+        else:
+            message = f'Semester {semester.name} added successfully for session {session.name}!'
+        
+        # Create or update student semester enrollments
+        status = 'enrolled' if is_active else 'completed'
+        students = Student.objects.filter(
+            applicant__program=program,
+            applicant__session=session
+        ).select_related('applicant')
+        
+        # Get existing enrollments to avoid duplicates
+        existing_enrollments = set(
+            StudentSemesterEnrollment.objects.filter(
+                student__in=students,
+                semester=semester
+            ).values_list('student__applicant_id', flat=True)
+        )
+        
+        # Create new enrollments
+        new_enrollments = []
+        for student in students:
+            if student.applicant_id not in existing_enrollments:
+                new_enrollments.append(StudentSemesterEnrollment(
+                    student=student,
+                    semester=semester,
+                    status=status
+                ))
+        
+        # Bulk create new enrollments
+        if new_enrollments:
+            StudentSemesterEnrollment.objects.bulk_create(new_enrollments)
+        
+        # Update status of existing enrollments if needed
+        updated_count = 0
+        if existing_enrollments:
+            student_ids = [s.applicant_id for s in students if s.applicant_id in existing_enrollments]
+            updated_count = StudentSemesterEnrollment.objects.filter(
+                student__applicant_id__in=student_ids,
+                semester=semester
+            ).exclude(status=status).update(status=status)
+        
+        total_enrollments = len(new_enrollments) + updated_count
         
         print(f'Semester created: {semester} by user: {request.user} for session: {session}')
         message = f'Semester {semester.name} added successfully for session {session.name}!'
-        if enrollments_updated:
-            message += f' {enrollment_count} course enrollments set to {"enrolled" if is_active else "completed"}.'
+        if total_enrollments > 0:
+            message += f' {total_enrollments} student enrollments set to {status}.'
         
         return JsonResponse({
             'success': True,
@@ -5055,6 +5096,9 @@ def add_semester(request):
     except Exception as e:
         print(f'Error adding semester: {str(e)}')
         return JsonResponse({'success': False, 'message': f'Error adding semester: {str(e)}'})
+
+
+
 
 @login_required   
 def edit_semester(request):
@@ -5112,19 +5156,36 @@ def edit_semester(request):
             f"Number: {semester.number}, Active: {semester.is_active}"
         )
 
+        # If making this semester active, deactivate other semesters in the same program and session
+        if is_active and semester.is_active != is_active:
+            Semester.objects.filter(
+                program=program,
+                session=session,
+                is_active=True
+            ).exclude(id=semester.id).update(is_active=False)
+        
         # Update CourseEnrollment statuses if is_active changes
         enrollments_updated = False
         enrollment_count = 0
         if semester.is_active != is_active:
+            # Update semester enrollments
             semester_enrollments = StudentSemesterEnrollment.objects.filter(semester=semester)
-            for semester_enrollment in semester_enrollments:
-                course_enrollments = semester_enrollment.course_enrollments.exclude(status='dropped')
-                enrollment_count += course_enrollments.count()
-                for course_enrollment in course_enrollments:
-                    course_enrollment.status = 'enrolled' if is_active else 'completed'
-                    course_enrollment.save()
-                enrollments_updated = enrollment_count > 0
-            logger.info(f'Marked {enrollment_count} course enrollments as {"enrolled" if is_active else "completed"} for semester: {semester.name}')
+            status = 'enrolled' if is_active else 'completed'
+            
+            # Update status of all student semester enrollments
+            updated_count = semester_enrollments.update(status=status)
+            logger.info(f'Updated {updated_count} student semester enrollments to {status} for semester: {semester.name}')
+            
+            # Update all related course enrollments
+            course_enrollments = CourseEnrollment.objects.filter(
+                student_semester_enrollment__in=semester_enrollments
+            ).exclude(status='dropped')
+            
+            enrollment_count = course_enrollments.count()
+            if enrollment_count > 0:
+                course_enrollments.update(status=status)
+                enrollments_updated = True
+                logger.info(f'Updated {enrollment_count} course enrollments to {status} for semester: {semester.name}')
 
         # Apply updates
         semester.program = program
@@ -5171,6 +5232,12 @@ def edit_semester(request):
     except Exception as e:
         logger.error(f'Unexpected error while editing semester: {e}')
         return JsonResponse({'success': False, 'message': f'Error: {e}'})
+    
+    
+    
+    
+    
+    
     
     
     

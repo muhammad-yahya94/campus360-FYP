@@ -86,6 +86,9 @@ class StudentSemesterEnrollment(models.Model):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
 
+
+
+
 class CourseEnrollment(models.Model):
     student_semester_enrollment = models.ForeignKey(StudentSemesterEnrollment, on_delete=models.CASCADE, related_name='course_enrollments')
     course_offering = models.ForeignKey('courses.CourseOffering', on_delete=models.CASCADE, related_name='enrollments')

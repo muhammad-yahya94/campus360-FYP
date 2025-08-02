@@ -53,7 +53,67 @@ class TeacherAdmin(admin.ModelAdmin):
             except Exception as e:
                 print(f"Failed to send email to {obj.user.email}: {str(e)}")
 
-
+@admin.register(TeacherDetails)
+class TeacherDetailsAdmin(admin.ModelAdmin):
+    list_display = ('get_full_name', 'get_designation', 'get_qualification', 'get_contact_no', 'get_hire_date', 'get_experience')
+    list_filter = ('teacher__designation', 'teacher__hire_date', 'teacher__department')
+    search_fields = ('teacher__user__first_name', 'teacher__user__last_name', 'teacher__user__email', 'teacher__qualification', 'teacher__contact_no')
+    readonly_fields = ('last_updated',)
+    
+    fieldsets = (
+        ('Teacher Information', {
+            'fields': ('teacher',)
+        }),
+        ('Employment Details', {
+            'fields': ('employment_type', 'salary_per_lecture', 'fixed_salary', 'status')
+        }),
+        ('System Information', {
+            'fields': ('last_updated',),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def get_full_name(self, obj):
+        if obj.teacher and obj.teacher.user:
+            return obj.teacher.user.get_full_name() or f"{obj.teacher.user.first_name} {obj.teacher.user.last_name}"
+        return 'No Teacher'
+    get_full_name.short_description = 'Full Name'
+    get_full_name.admin_order_field = 'teacher__user__first_name'
+    
+    def get_designation(self, obj):
+        if obj.teacher:
+            return obj.teacher.get_designation_display()
+        return 'No Designation'
+    get_designation.short_description = 'Designation'
+    get_designation.admin_order_field = 'teacher__designation'
+    
+    def get_qualification(self, obj):
+        if obj.teacher:
+            return obj.teacher.qualification
+        return 'No Qualification'
+    get_qualification.short_description = 'Qualification'
+    get_qualification.admin_order_field = 'teacher__qualification'
+    
+    def get_contact_no(self, obj):
+        if obj.teacher:
+            return obj.teacher.contact_no
+        return 'No Contact'
+    get_contact_no.short_description = 'Contact No'
+    get_contact_no.admin_order_field = 'teacher__contact_no'
+    
+    def get_hire_date(self, obj):
+        if obj.teacher:
+            return obj.teacher.hire_date
+        return 'No Hire Date'
+    get_hire_date.short_description = 'Hire Date'
+    get_hire_date.admin_order_field = 'teacher__hire_date'
+    
+    def get_experience(self, obj):
+        if obj.teacher:
+            return obj.teacher.experience or 'No Experience Listed'
+        return 'No Experience'
+    get_experience.short_description = 'Experience'
+    get_experience.admin_order_field = 'teacher__experience'
 
 @admin.register(Office)
 class OfficeAdmin(admin.ModelAdmin):

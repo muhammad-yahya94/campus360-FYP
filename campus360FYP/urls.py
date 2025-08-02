@@ -29,6 +29,5 @@ urlpatterns = [
     path('accounts/', include('django.contrib.auth.urls')),
     path('student/', include('students.urls')),
     path('payments/', include('payment.urls')),
-    path('bgtask/', include('bgtask.urls')),
     path('fees/', include('fee_management.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

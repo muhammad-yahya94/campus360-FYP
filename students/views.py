@@ -119,7 +119,7 @@ def student_dashboard(request):
         'semester',   
         'semester__session',
         'semester__program'
-    ).order_by('-semester__start_time', '-semester__number')
+    ).order_by('-semester__number')
 
     # Initialize data structures
     course_enrollments = []

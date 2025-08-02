@@ -1,77 +1,252 @@
 {% extends "core_base.html" %}
 {% load static %}
+
+{% block title %}{{ teacher.user.full_name|default:teacher.user.first_name }} - Faculty Details{% endblock %}
+
 {% block core_content %}
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <div class="card shadow-lg rounded-4 border-0" style="background: linear-gradient(135deg, #f7f9fc 0%, #e0e7ff 100%);">
-                <div class="card-body text-center p-5">
-                    {% if teacher.user.profile_picture %}
-                        <img class="rounded-circle mb-4 border border-4 border-primary" src="{{ teacher.user.profile_picture.url }}" width="180" height="180" alt="{{ teacher.user.full_name }}" style="box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                    {% else %}
-                        <img class="rounded-circle mb-4 border border-4 border-primary" src="{% static 'img/default-photo.png' %}" width="180" height="180" alt="{{ teacher.user.full_name }}" style="box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                    {% endif %}
 
-                    <h2 class="card-title text-primary fw-bold">{{ teacher.user.full_name|default:teacher.user.first_name }}</h2>
-                    <h6 class="text-muted mb-4">{{ teacher.get_designation_display }}</h6>
+    {% include "navbar.html" %}
 
-                    <div class="text-start px-4">
-                        <ul class="list-group list-group-flush">
-                            {% if teacher.qualification %}
-                                <li class="list-group-item bg-light rounded-3 mb-2 shadow-sm">
-                                    <strong class="text-primary">Qualification:</strong> {{ teacher.qualification }}
-                                </li>
-                            {% endif %}
-                            {% if teacher.contact_no %}
-                                <li class="list-group-item bg-light rounded-3 mb-2 shadow-sm">
-                                    <strong class="text-primary">Contact:</strong> {{ teacher.contact_no }}
-                                </li>
-                            {% endif %}
-                            {% if teacher.hire_date %}
-                                <li class="list-group-item bg-light rounded-3 mb-2 shadow-sm">
-                                    <strong class="text-primary">Hire Date:</strong> {{ teacher.hire_date|date:"F j, Y" }}
-                                </li>
-                            {% endif %}
-                            {% if teacher.experience %}
-                                <li class="list-group-item bg-light rounded-3 mb-2 shadow-sm">
-                                    <strong class="text-primary">Experience:</strong> {{ teacher.experience }}
-                                </li>
-                            {% endif %}
-                            {% if teacher.description %}
-                                <li class="list-group-item bg-light rounded-3 mb-2 shadow-sm">
-                                    <strong class="text-primary">About:</strong> {{ teacher.description }}
-                                </li>
-                            {% endif %}
-                        </ul>
+    <!-- Page Header Start -->
+    <div class="container-fluid bg-primary py-5 mb-5 wow fadeIn" data-wow-delay="0.1s">
+        <div class="container py-5">
+            <div class="row justify-content-center">
+                <div class="col-lg-10 text-center">
+                    <h1 class="display-3 text-white animated slideInDown">Faculty Profile</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb justify-content-center">
+                            <li class="breadcrumb-item"><a class="text-white" href="{% url 'home' %}">Home</a></li>
+                            <li class="breadcrumb-item"><a class="text-white" href="#">Faculty</a></li>
+                            <li class="breadcrumb-item text-white active" aria-current="page">{{ teacher.user.full_name|default:teacher.user.first_name }}</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Page Header End -->
 
+    <!-- Faculty Details Start -->
+    <div class="container-xxl py-5">
+        <div class="container">
+            <div class="row g-5">
+                <!-- Profile Image Column -->
+                <div class="col-lg-4 wow fadeInUp" data-wow-delay="0.1s">
+                    <div class="text-center">
+                        <div class="profile-image-container mb-4">
+                            {% if teacher.user.profile_picture %}
+                                <img class="img-fluid rounded shadow-lg profile-image" src="{{ teacher.user.profile_picture.url }}" alt="{{ teacher.user.full_name }}">
+                            {% else %}
+                                <img class="img-fluid rounded shadow-lg profile-image" src="{% static 'img/default-photo.png' %}" alt="{{ teacher.user.full_name }}">
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Social Links -->
                         {% if teacher.linkedin_url or teacher.twitter_url or teacher.personal_website %}
-                            <div class="mt-5">
-                                <h6 class="text-primary fw-bold mb-3">Social Profiles:</h6>
-                                <div class="d-flex justify-content-center gap-3 mt-2">
+                            <div class="social-links mt-4">
+                                <h6 class="text-primary fw-bold mb-3">Connect With Me</h6>
+                                <div class="d-flex justify-content-center gap-2">
                                     {% if teacher.linkedin_url %}
-                                        <a href="{{ teacher.linkedin_url }}" target="_blank" class="btn btn-outline-primary btn-sm rounded-pill" title="LinkedIn">
-                                            <i class="fab fa-linkedin"></i> LinkedIn
+                                        <a href="{{ teacher.linkedin_url }}" target="_blank" class="btn btn-outline-primary btn-sm" title="LinkedIn">
+                                            <i class="fab fa-linkedin-in"></i>
                                         </a>
                                     {% endif %}
                                     {% if teacher.twitter_url %}
-                                        <a href="{{ teacher.twitter_url }}" target="_blank" class="btn btn-outline-info btn-sm rounded-pill" title="Twitter">
-                                            <i class="fab fa-twitter"></i> Twitter
+                                        <a href="{{ teacher.twitter_url }}" target="_blank" class="btn btn-outline-info btn-sm" title="Twitter">
+                                            <i class="fab fa-twitter"></i>
                                         </a>
                                     {% endif %}
                                     {% if teacher.personal_website %}
-                                        <a href="{{ teacher.personal_website }}" target="_blank" class="btn btn-outline-dark btn-sm rounded-pill" title="Website">
-                                            <i class="fas fa-globe"></i> Website
+                                        <a href="{{ teacher.personal_website }}" target="_blank" class="btn btn-outline-dark btn-sm" title="Website">
+                                            <i class="fas fa-globe"></i>
                                         </a>
                                     {% endif %}
                                 </div>
                             </div>
                         {% endif %}
                     </div>
+                </div>
 
-                    <a href="javascript:history.back();" class="btn btn-primary mt-4 rounded-pill px-4">Back</a>
+                <!-- Profile Information Column -->
+                <div class="col-lg-8 wow fadeInUp" data-wow-delay="0.3s">
+                    <div class="faculty-info">
+                        <h2 class="mb-2 text-primary">{{ teacher.user.full_name|default:teacher.user.first_name }}</h2>
+                        <h5 class="text-muted mb-4">{{ teacher.get_designation_display }}</h5>
+                        
+                        {% if teacher.description %}
+                            <div class="about-section mb-4">
+                                <h4 class="text-primary mb-3">About</h4>
+                                <p class="text-muted">{{ teacher.description }}</p>
+                            </div>
+                        {% endif %}
+
+                        <!-- Professional Information -->
+                        <div class="professional-info">
+                            <h4 class="text-primary mb-3">Professional Information</h4>
+                            <div class="row g-3">
+                                {% if teacher.qualification %}
+                                    <div class="col-md-6">
+                                        <div class="info-card p-3 bg-light rounded">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-graduation-cap text-primary me-3 fs-4"></i>
+                                                <div>
+                                                    <h6 class="mb-1 text-primary">Qualification</h6>
+                                                    <p class="mb-0 text-muted">{{ teacher.qualification }}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+
+                                {% if teacher.experience %}
+                                    <div class="col-md-6">
+                                        <div class="info-card p-3 bg-light rounded">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-briefcase text-primary me-3 fs-4"></i>
+                                                <div>
+                                                    <h6 class="mb-1 text-primary">Experience</h6>
+                                                    <p class="mb-0 text-muted">{{ teacher.experience }}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+
+                                {% if teacher.hire_date %}
+                                    <div class="col-md-6">
+                                        <div class="info-card p-3 bg-light rounded">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-calendar-alt text-primary me-3 fs-4"></i>
+                                                <div>
+                                                    <h6 class="mb-1 text-primary">Joined</h6>
+                                                    <p class="mb-0 text-muted">{{ teacher.hire_date|date:"F j, Y" }}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+
+                                {% if teacher.contact_no %}
+                                    <div class="col-md-6">
+                                        <div class="info-card p-3 bg-light rounded">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-phone text-primary me-3 fs-4"></i>
+                                                <div>
+                                                    <h6 class="mb-1 text-primary">Contact</h6>
+                                                    <p class="mb-0 text-muted">{{ teacher.contact_no }}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="action-buttons mt-4">
+                            <a href="javascript:history.back();" class="btn btn-primary me-3">
+                                <i class="fas fa-arrow-left me-2"></i>Back
+                            </a>
+                            {% if teacher.contact_no %}
+                                <a href="tel:{{ teacher.contact_no }}" class="btn btn-outline-primary">
+                                    <i class="fas fa-phone me-2"></i>Call
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
-{% endblock %}
+    <!-- Faculty Details End -->
+
+    <!-- Custom CSS for Professional Styling -->
+    <style>
+        .profile-image-container {
+            position: relative;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+        
+        .profile-image {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+            object-position: center;
+            border: 4px solid #fff;
+            transition: transform 0.3s ease;
+        }
+        
+        .profile-image:hover {
+            transform: scale(1.02);
+        }
+        
+        .info-card {
+            transition: all 0.3s ease;
+            border: 1px solid #e9ecef;
+        }
+        
+        .info-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .faculty-info h2 {
+            font-weight: 700;
+        }
+        
+        .faculty-info h4 {
+            font-weight: 600;
+            border-bottom: 2px solid #f8f9fa;
+            padding-bottom: 10px;
+        }
+        
+        .social-links .btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .social-links .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .action-buttons .btn {
+            padding: 10px 25px;
+            font-weight: 500;
+            border-radius: 25px;
+        }
+        
+        @media (max-width: 768px) {
+            .profile-image {
+                height: 250px;
+            }
+            
+            .action-buttons .btn {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            
+            .action-buttons .me-3 {
+                margin-right: 0 !important;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .profile-image {
+                height: 200px;
+            }
+            
+            .info-card {
+                margin-bottom: 15px;
+            }
+        }
+    </style>
+
+    {% include "footer.html" %}
+
+{% endblock core_content %}

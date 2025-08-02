@@ -82,19 +82,19 @@ BS_SESSIONS = [
     {'name': '2023-2027', 'start_year': 2023, 'end_year': 2027, 'semesters': 4},
     {'name': '2024-2028', 'start_year': 2024, 'end_year': 2028, 'semesters': 2},
 ]
-MS_SESSIONS = [
-    {'name': '2023-2025', 'start_year': 2023, 'end_year': 2025, 'semesters': 4},
-    {'name': '2024-2026', 'start_year': 2024, 'end_year': 2026, 'semesters': 2},
-]
-STUDENTS_PER_SESSION = 5
-TEACHERS_PER_DEPARTMENT = 10
+# MS_SESSIONS = [
+#     {'name': '2023-2025', 'start_year': 2023, 'end_year': 2025, 'semesters': 4},
+#     {'name': '2024-2026', 'start_year': 2024, 'end_year': 2026, 'semesters': 2},
+# ]
+STUDENTS_PER_SESSION = 10
+TEACHERS_PER_DEPARTMENT = 7
 ATTENDANCE_PER_STUDENT_PER_SEMESTER = 5
 ASSIGNMENTS_PER_STUDENT_PER_SEMESTER = 3
 NOTICES_PER_SESSION = 5
-NUM_OFFICES = 3
-NUM_OFFICE_STAFF_PER_OFFICE = 3
-NUM_VENUES_PER_DEPARTMENT = 3
-NUM_COURSES_PER_DEPARTMENT = 5
+NUM_OFFICES = 1
+NUM_OFFICE_STAFF_PER_OFFICE = 1
+NUM_VENUES_PER_DEPARTMENT = 5
+NUM_COURSES_PER_DEPARTMENT = 20
 
 def create_fake_image():
     """Return None to disable image generation for performance."""
@@ -296,7 +296,7 @@ def create_sessions_semesters(programs):
     
     with redirect_stdout(output):
         with transaction.atomic():
-            for session_data in BS_SESSIONS + MS_SESSIONS:
+            for session_data in BS_SESSIONS:
                 if AcademicSession.objects.filter(name=session_data['name']).exists():
                     skip_count += 1
                     print(f"Skipping existing Session '{session_data['name']}' (Skip #{skip_count})")
@@ -309,7 +309,7 @@ def create_sessions_semesters(programs):
                         name=session_data['name'],
                         start_year=session_data['start_year'],
                         end_year=session_data['end_year'],
-                        is_active=(session_data['start_year'] == 2024),
+                        is_active=True,
                         description=random.choice(DESCRIPTIONS),
                         created_at=now,
                         updated_at=now
@@ -325,10 +325,9 @@ def create_sessions_semesters(programs):
                     logger.warning(f"Skipping Session '{session_data['name']}' due to conflict: {str(e)}")
                     continue
             for session in sessions:
-                session_info = next(s for s in (BS_SESSIONS + MS_SESSIONS) if s['name'] == session.name)
+                session_info = next(s for s in BS_SESSIONS if s['name'] == session.name)
                 num_semesters = session_info['semesters']
-                applicable_programs = [p for p in programs if (p.degree_type == 'BS' and session.start_year <= 2024) or 
-                                      (p.degree_type == 'MS' and session.start_year >= 2023)]
+                applicable_programs = [p for p in programs if (p.degree_type == 'BS' and session.start_year <= 2024)]
                 for program in applicable_programs:
                     for number in range(1, num_semesters + 1):
                         if Semester.objects.filter(program=program, session=session, number=number).exists():
@@ -403,6 +402,7 @@ def create_teachers(departments, users, start_index):
                             user=user,
                             department=department,
                             designation=designation,
+                            gender=random.choice(['male', 'female']),
                             contact_no=random.choice(PHONE_NUMBERS),
                             qualification=random.choice(SENTENCES),
                             hire_date=datetime(2020, random.randint(1, 12), 1),
@@ -762,6 +762,7 @@ def create_applicants_students(sessions, programs, users, start_index):
                                     cnic=random.choice(CNICS),
                                     dob=datetime(2000, random.randint(1, 12), random.randint(1, 28)),
                                     contact_no=random.choice(PHONE_NUMBERS),
+                                    gender=random.choice(['male', 'female']),
                                     identification_mark=random.choice(SENTENCES),
                                     father_name=f"{random.choice(MUSLIM_MALE_NAMES)} {random.choice(MUSLIM_LAST_NAMES)}",
                                     father_occupation=random.choice(JOBS),
@@ -794,6 +795,7 @@ def create_applicants_students(sessions, programs, users, start_index):
                                     user=user,
                                     university_roll_no=roll_no,
                                     college_roll_no=random.randint(10000000, 99999999),
+                                    Registration_number=f"{session.name.split('-')[0]}-GGCJ-{random.randint(10000, 99999)}",
                                     enrollment_date=datetime(session.start_year, 1, 1),
                                     program=program,
                                     current_status='active',
@@ -1136,19 +1138,40 @@ def create_academic_records(semester_enrollments, course_offerings, teachers):
                         exam_result_count += 1
                         continue
                     try:
+                        # Calculate marks based on course credits and lab work
+                        credits = offering.course.credits
+                        lab_work = offering.course.lab_work
+                        
+                        midterm_obtained = random.randint(0, credits * 4)
+                        midterm_total = credits * 4
+                        final_obtained = random.randint(0, credits * 14)
+                        final_total = credits * 14
+                        sessional_obtained = random.randint(0, credits * 2)
+                        sessional_total = credits * 2
+                        practical_obtained = random.randint(0, lab_work * 20) if lab_work > 0 else 0
+                        practical_total = lab_work * 20 if lab_work > 0 else 0
+                        
+                        # Calculate total marks and percentage
+                        total_marks = midterm_obtained + final_obtained + sessional_obtained + practical_obtained
+                        max_marks = midterm_total + final_total + sessional_total + practical_total
+                        percentage = (total_marks / max_marks * 100) if max_marks > 0 else 0
+                        
                         exam_result = ExamResult(
                             course_offering=offering,
                             student=student,
-                            midterm_obtained=random.randint(0, 100),
-                            midterm_total=100,
-                            final_obtained=random.randint(0, 100),
-                            final_total=100,
-                            sessional_obtained=random.randint(0, 50),
-                            sessional_total=50,
-                            project_obtained=random.randint(0, 50),
-                            project_total=50,
-                            practical_obtained=random.randint(0, 50),
-                            practical_total=50,
+                            midterm_obtained=midterm_obtained,
+                            midterm_total=midterm_total,
+                            final_obtained=final_obtained,
+                            final_total=final_total,
+                            sessional_obtained=sessional_obtained,
+                            sessional_total=sessional_total,
+                            practical_obtained=practical_obtained,
+                            practical_total=practical_total,
+                            total_marks=total_marks,
+                            percentage=percentage,
+                            is_fail=False,
+                            is_published=random.choice([True, False]),
+                            published_at=timezone.now() if random.choice([True, False]) else None,
                             graded_by=offering.teacher,
                             remarks=random.choice(SENTENCES)
                         )
@@ -1286,6 +1309,7 @@ def create_offices_staff(users, start_index):
                         staff = OfficeStaff(
                             user=user,
                             office=office,
+                            gender=random.choice(['male', 'female']),
                             position=random.choice(JOBS),
                             contact_no=random.choice(PHONE_NUMBERS)
                         )
@@ -1317,9 +1341,9 @@ def generate_fake_data():
             existing_emails = set(CustomUser.objects.values_list('email', flat=True))
             logger.debug(f"Found {len(existing_emails)} existing emails, {len(existing_course_codes)} existing course codes")
 
-            total_users_needed = (STUDENTS_PER_SESSION * (len(BS_SESSIONS) + len(MS_SESSIONS)) * len(FACULTIES) * 2 * 2) + \
-                                 (TEACHERS_PER_DEPARTMENT * len(FACULTIES) * 2) + \
-                                 (NUM_OFFICES * NUM_OFFICE_STAFF_PER_OFFICE)
+            total_users_needed = (STUDENTS_PER_SESSION * len(BS_SESSIONS) * len(FACULTIES) * 2 + \
+                                 TEACHERS_PER_DEPARTMENT * len(FACULTIES) * 2 + \
+                                 NUM_OFFICES * NUM_OFFICE_STAFF_PER_OFFICE)
             logger.debug(f"Total users needed: {total_users_needed}")
 
             with transaction.atomic():

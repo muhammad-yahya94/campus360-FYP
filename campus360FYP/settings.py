@@ -73,8 +73,6 @@ INSTALLED_APPS = [
     'students',
     'django_extensions',
     'payment',
-    'background_task', #ya wesy pakadge k liy add kia gaya hai
-    'bgtask',
     'fee_management',
 ]
 

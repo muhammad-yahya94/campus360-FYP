@@ -216,7 +216,71 @@ def testimonial(request):
     return render(request, 'testimonial.html')
 
 
+from django.core.mail import send_mail, BadHeaderError
+from django.conf import settings
+from django.contrib import messages
+from django.http import HttpResponseRedirect
+
 def contact(request):
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        email = request.POST.get('email')
+        message = request.POST.get('message')
+        
+        # Basic validation
+        if not all([name, email, message]):
+            messages.error(request, 'Please fill in all required fields.')
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER', '/contact/'))
+        
+        try:
+            # Email subject and message
+            subject = f'New Contact Form Submission from {name}'
+            email_message = f'''
+            Name: {name}
+            Email: {email}
+            
+            Message:
+            {message}
+            
+            ---
+            This message was sent from the contact form on {request.get_host()}
+            '''
+            
+            # Get admin email(s)
+            admin_emails = []
+            
+            # First try to get ADMIN_EMAIL
+            if hasattr(settings, 'ADMIN_EMAIL'):
+                admin_emails = [settings.ADMIN_EMAIL]
+            # Fallback to ADMINS setting
+            elif hasattr(settings, 'ADMINS') and settings.ADMINS:
+                admin_emails = [admin[1] for admin in settings.ADMINS]
+            else:
+                # If no admin emails configured, use DEFAULT_FROM_EMAIL
+                admin_emails = [settings.DEFAULT_FROM_EMAIL]
+            
+            # Send email to admin(s)
+            send_mail(
+                subject=subject.strip(),
+                message=email_message.strip(),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=admin_emails,
+                fail_silently=False,
+            )
+            
+            messages.success(request, 'Thank you for your message! We will get back to you soon.')
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER', '/contact/'))
+            
+        except BadHeaderError:
+            messages.error(request, 'Invalid header found.')
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER', '/contact/'))
+            
+        except Exception as e:
+            messages.error(request, f'An error occurred while sending your message: {str(e)}')
+            print(f"Error sending contact form: {str(e)}")
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER', '/contact/'))
+    
+    # GET request - just render the form
     return render(request, 'contact.html')
 
 

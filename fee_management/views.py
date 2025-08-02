@@ -1661,12 +1661,17 @@ def manual_course_enrollment(request):
                 context['student'] = student
                 student_program = student.applicant.program
                 
+                # Get the student's department from their program
+                student_department = student_program.department
+                
+                # Filter semesters by the student's department
                 context['semesters'] = Semester.objects.filter(
-                    program=student_program
+                    program__department=student_department
                 ).select_related('session').order_by('start_time', 'number')
                 
+                # Filter courses by the student's department
                 courses = CourseOffering.objects.filter(
-                    program=student_program
+                    program__department=student_department
                 ).select_related('course', 'semester', 'academic_session').order_by('academic_session__start_year', 'course__code')
                 
                 # Check for previously taken courses

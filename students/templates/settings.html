@@ -3,7 +3,7 @@
 {% block title %}Settings{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto space-y-6 px-2 sm:px-4 py-6">
+<div class=" mx-auto space-y-6 px-2 sm:px-4 py-6">
     <!-- Header -->
     <div class="hero bg-base-200 text-base-content rounded-lg shadow-lg mb-6">
         <div class="hero-content text-center py-6">
@@ -52,7 +52,7 @@
                         <label class="label">
                             <span class="label-text text-sm sm:text-base">Full Name</span>
                         </label>
-                        <input type="text" name="full_name" readonly class="input input-bordered text-sm sm:text-base" value="{{ user_form.instance.full_name }}" required>
+                        <input type="text" name="full_name"  readonly class="input input-bordered text-sm sm:text-base bg-gray-100" value="{{ user_form.instance.full_name }}" required>
                         {% if form_errors.full_name %}
                         <span class="text-error text-xs sm:text-sm">{{ form_errors.full_name }}</span>
                         {% endif %}
@@ -61,7 +61,7 @@
                         <label class="label">
                             <span class="label-text text-sm sm:text-base">Email</span>
                         </label>
-                        <input type="email" name="email" class="input input-bordered text-sm sm:text-base" value="{{ user_form.instance.email }}" required>
+                        <input type="email" name="email"  readonly class="input input-bordered text-sm sm:text-base bg-gray-100" value="{{ user_form.instance.email }}" required>
                         {% if form_errors.email %}
                         <span class="text-error text-xs sm:text-sm">{{ form_errors.email }}</span>
                         {% endif %}

@@ -1,10 +1,12 @@
 {% extends "core_base.html" %}
 {% load static %}
+
 {% block core_content %}
 {% include "navbar.html" %}
 
 <div class="container py-5">
     <div class="row g-5 align-items-start">
+
         <!-- LEFT SIDE -->
         <div class="col-lg-8 wow fadeInUp" data-wow-delay="0.1s">
             <!-- Event Detail -->
@@ -22,9 +24,11 @@
                 {% if event_details.image %}
                     <img src="{{ event_details.image.url }}" class="img-fluid mb-3 rounded" alt="{{ event_details.title }}">
                 {% endif %}
-                <div class="ck-content">
-                    {{ event_details.description|safe }}
-                </div>
+                {% if event_details.description %}
+                    <div class="ck-content">
+                        {{ event_details.description|safe }}
+                    </div>
+                {% endif %}
             </div>
 
             <!-- Upcoming Events -->
@@ -33,7 +37,7 @@
             </h3>
             {% if recent_events %}
                 {% for event in recent_events %}
-                <div class="event-item bg-light p-3 p-md-4 mb-4 rounded">
+                <div class="event-item bg-light p-3 p-md-4 mb-4 rounded shadow-sm">
                     <div class="d-flex flex-column flex-md-row align-items-md-center">
                         <div class="event-date bg-primary text-white text-center p-2 me-md-4 mb-3 mb-md-0 rounded" style="min-width: 80px">
                             <h4 class="mb-0">{{ event.event_start_date|date:"d" }}</h4>
@@ -42,123 +46,44 @@
                         <div class="flex-grow-1 me-md-3">
                             <h5 class="mb-2">{{ event.title }}</h5>
                             <p class="mb-1">
-                                <i class="fa fa-clock text-primary me-2"></i>{{ event.event_start_date|date:"h:i A" }} - {{ event.event_end_date|date:"h:i A" }}
+                                <i class="fa fa-clock text-primary me-2"></i>
+                                {{ event.event_start_date|date:"h:i A" }} - {{ event.event_end_date|date:"h:i A" }}
                             </p>
-                            <p class="mb-2 mt-3 mb-md-0">
+                            <p class="mb-2">
                                 <i class="fa fa-map-marker-alt text-primary me-2"></i>{{ event.location }}
                             </p>
-                        </div>
-                        <div class="mt-3 mt-md-0">
-                            <a href="{% url 'events_detail' event.slug %}" class="btn btn-sm btn-primary w-100 w-md-auto px-3">Details</a>
+                            <a href="{% url 'events_detail' event.slug %}" class="btn btn-sm btn-outline-primary">View Details</a>
                         </div>
                     </div>
                 </div>
                 {% endfor %}
             {% else %}
-                <p class="text-muted">No upcoming events available.</p>
+                <p class="text-muted">No upcoming events.</p>
             {% endif %}
-            <div class="text-center mt-4">
-                <a href="{% url 'events' %}" class="btn btn-primary py-2 px-4">View All Events</a>
-            </div>
         </div>
 
-        <!-- RIGHT SIDE -->
-        <div class="col-lg-4 wow fadeInUp" data-wow-delay="0.1s">
-            <h3 class="mb-4">Latest News</h3>
-            {% if recent_news %}
-                {% for news in recent_news %}
-                <div class="news-item bg-light p-4 mb-4 rounded">
-                    <div class="d-flex">
-                        {% if news.image %}
-                            <img src="{{ news.image.url }}" class="img-fluid me-3" style="width: 100px; height: 100px; object-fit: cover;" alt="{{ news.title }}">
-                        {% else %}
-                            <img src="{% static 'img/default-news.jpg' %}" class="img-fluid me-3" style="width: 100px; height: 100px; object-fit: cover;" alt="{{ news.title }}">
-                        {% endif %}
-                        <div>
-                            <small class="text-primary"><i class="far fa-calendar-alt me-2"></i>{{ news.published_date|date:"d M, Y" }}</small>
-                            <h5 class="mb-2">{{ news.title }}</h5>
-                            <div class="ck-content">
-                                <p class="mb-0">{{ news.content|truncatechars_html:100|safe }}</p>
-                            </div>
-                            <a href="{% url 'news_detail' news.slug %}" class="btn btn-link clr-dark p-0">Read More <i class="fa fa-arrow-right ms-2"></i></a>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            {% else %}
-                <p class="text-muted">No news available.</p>
-            {% endif %}
+        <!-- RIGHT SIDE (optional for future additions) -->
+        <div class="col-lg-4">
+            <!-- Add sidebar content here if needed -->
         </div>
+
     </div>
 </div>
 
 {% include "footer.html" %}
 
 <style>
-    .ck-content {
-        font-size: 1rem;
-        line-height: 1.7;
-    }
-    .ck-content img {
-        max-width: 100%;
-        height: auto;
-        border-radius: 0.5rem;
-        margin-bottom: 1rem;
-        display: block;
-    }
-    .ck-content h1, .ck-content h2, .ck-content h3, .ck-content h4, .ck-content h5, .ck-content h6 {
-        margin-top: 1rem;
-        margin-bottom: 0.5rem;
-        color: #333;
-        font-weight: 600;
-    }
-    .ck-content ul, .ck-content ol {
-        padding-left: 1.2rem;
-        margin-bottom: 1rem;
-    }
-    .ck-content ul {
-        list-style: none;
-    }
-    .ck-content ul li {
-        position: relative;
-        padding-left: 2rem;
-        margin-bottom: 0.5rem;
-    }
-    .ck-content ul li::before {
-        content: "\f00c";
-        font-family: "Font Awesome 5 Free";
-        font-weight: 900;
-        color: #0d6efd;
-        position: absolute;
-        left: 0;
-        top: 0;
-    }
-    .ck-content ol li {
-        margin-bottom: 0.5rem;
-    }
-    .ck-content p {
-        margin-bottom: 1rem;
-    }
-    .ck-content .text-muted {
-        color: #6c757d !important;
-    }
-    .ck-content .fa {
-        margin-right: 0.5rem;
-        color: #0d6efd;
-    }
-    @media (max-width: 768px) {
-        .ck-content {
-            font-size: 0.9rem;
-        }
-        .ck-content img {
-            margin: 0 auto 1rem;
-        }
-        .ck-content h1, .ck-content h2, .ck-content h3 {
-            font-size: 1.5rem;
-        }
-        .ck-content h4, .ck-content h5, .ck-content h6 {
-            font-size: 1.2rem;
-        }
-    }
+.ck-content {
+    font-size: 1rem;
+    line-height: 1.6;
+    word-wrap: break-word;
+}
+.ck-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
 </style>
+
 {% endblock core_content %}

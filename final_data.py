@@ -27,6 +27,8 @@ from admissions.models import AcademicSession, AdmissionCycle, Applicant, Academ
 from faculty_staff.models import Teacher, TeacherDetails, Office, OfficeStaff
 from courses.models import Course, CourseOffering, Venue, TimetableSlot, StudyMaterial, Assignment, AssignmentSubmission, Notice, ExamResult, Attendance
 from students.models import Student, StudentSemesterEnrollment, CourseEnrollment
+from fee_management.models import FeeType, SemesterFee, FeeVoucher, StudentFeePayment, MeritList, MeritListEntry
+from django.contrib.postgres.fields import JSONField
 
 # Predefined data lists and dictionaries
 MUSLIM_MALE_NAMES = [
@@ -43,42 +45,9 @@ MUSLIM_LAST_NAMES = [
 ]
 DOMAINS = ['warren-fuller.com', 'techlearn.org', 'edusys.net', 'campus360.com', 'studyhub.org']
 COURSE_NAMES = {
-    'CS': [
-        'Introduction to Programming',
-        'Data Structures',
-        'Algorithms',
-        'Database Systems',
-        'Operating Systems',
-        'Computer Networks',
-        'Software Engineering',
-        'Machine Learning',
-        'Artificial Intelligence',
-        'Web Development',
-        'Mobile App Development',
-        'Cybersecurity Fundamentals',
-        'Cloud Computing',
-        'Computer Graphics',
-        'Distributed Systems'
-    ],
-    'EE': [
-        'Circuit Analysis',
-        'Electronics',
-        'Digital Systems',
-        'Power Systems',
-        'Control Systems',
-        'Electromagnetics',
-        'Signal Processing',
-        'Microprocessors and Microcontrollers',
-        'Communication Systems',
-        'Electrical Machines',
-        'Renewable Energy Systems',
-        'High Voltage Engineering',
-        'Instrumentation and Measurement',
-        'Embedded Systems',
-        'Analog and Digital Communication'
-    ]
+    'CS': ['Introduction to Programming', 'Data Structures', 'Algorithms', 'Database Systems', 'Operating Systems', 'Web Development', 'Software Engineering', 'AI Fundamentals'],
+    'EE': ['Circuit Analysis', 'Electronics', 'Digital Systems', 'Power Systems', 'Control Systems']
 }
-
 DESCRIPTIONS = [
     'This is a foundational course covering key concepts.',
     'Advanced topics in system design and analysis.',
@@ -97,24 +66,27 @@ SENTENCES = [
     'This is a sample description.', 'Learn advanced techniques in this field.', 
     'Hands-on experience with modern tools.', 'Explore real-world applications.'
 ]
-STUDY_MATERIAL_TOPICS = [
-    'Introduction to Course', 'Core Concepts', 'Advanced Topics', 'Practical Examples', 'Case Studies'
-]
-STUDY_MATERIAL_TITLES = [
-    'Lecture Notes', 'Tutorial Guide', 'Reference Material', 'Practice Problems', 'Summary Slides'
-]
-USEFUL_LINKS = [
-    'https://example.com/resource1\nhttps://example.com/resource2',
-    'https://docs.example.com/guide',
-    'https://tutorial.example.com',
-    ''
+FEE_TYPES = ['Tuition Fee', 'Library Fee', 'Lab Fee', 'Examination Fee', 'Registration Fee']
+DYNAMIC_FEE_HEADS = {
+    'Tuition Fee': {'base_fee': 50000, 'misc': 5000},
+    'Library Fee': {'resource_access': 2000, 'late_fine': 500},
+    'Lab Fee': {'equipment': 3000, 'maintenance': 1000},
+    'Examination Fee': {'midterm': 1500, 'final': 2000},
+    'Registration Fee': {'admin': 1000, 'processing': 500}
+}
+STUDY_MATERIAL_TOPICS = ['Introduction', 'Core Concepts', 'Advanced Topics', 'Practical Applications', 'Case Studies']
+STUDY_MATERIAL_TITLES = ['Lecture Notes', 'Tutorial Guide', 'Reference Material', 'Practice Problems', 'Supplementary Reading']
+STUDY_MATERIAL_LINKS = [
+    'https://example.com/resource1',
+    'https://example.com/resource2',
+    'https://example.com/video'
 ]
 
 # Configuration
 FACULTIES = [
     {'name': 'Faculty of Engineering and Technology', 'departments': [
         {'name': 'Department of Computer Science', 'code': 'CS', 'programs': [
-            ('BS Computer Science', 'BS'), ('MS Computer Science', 'MS')
+            ('BS Computer Science', 'BS'), ('MS Computer Science', 'MS'), ('BSIT', 'BS')
         ]},
         {'name': 'Department of Electrical Engineering', 'code': 'EE', 'programs': [
             ('BS Electrical Engineering', 'BS'), ('MS Electrical Engineering', 'MS')
@@ -126,17 +98,20 @@ BS_SESSIONS = [
     {'name': '2022-2026', 'start_year': 2022, 'end_year': 2026, 'semesters': 6},
     {'name': '2023-2027', 'start_year': 2023, 'end_year': 2027, 'semesters': 4},
     {'name': '2024-2028', 'start_year': 2024, 'end_year': 2028, 'semesters': 2},
+    {'name': '2025-2029', 'start_year': 2025, 'end_year': 2029, 'semesters': 1},
 ]
-STUDENTS_PER_SESSION = 20
+STUDENTS_PER_SESSION = 10
 TEACHERS_PER_DEPARTMENT = 7
 ATTENDANCE_PER_STUDENT_PER_SEMESTER = 5
 ASSIGNMENTS_PER_STUDENT_PER_SEMESTER = 3
 NOTICES_PER_SESSION = 5
-NUM_OFFICES = 1
+NUM_OFFICES = 3
 NUM_OFFICE_STAFF_PER_OFFICE = 1
 NUM_VENUES_PER_DEPARTMENT = 5
 NUM_COURSES_PER_DEPARTMENT = 20
-NUM_STUDY_MATERIALS_PER_OFFERING = 3
+NUM_STUDY_MATERIALS_PER_COURSE = 3
+NUM_FEE_VOUCHERS_PER_STUDENT = 1
+NUM_MERIT_LISTS_PER_PROGRAM = 2
 
 def create_fake_image():
     """Return None to disable image generation for performance."""
@@ -327,7 +302,7 @@ def create_faculties_departments_programs():
     return faculties, departments, programs
 
 def create_sessions_semesters(programs):
-    """Create AcademicSession and Semester records, saving each individually."""
+    """Create AcademicSession and Semester records, saving each individually, all sessions active."""
     sessions = []
     semesters = []
     session_count = 0
@@ -351,7 +326,7 @@ def create_sessions_semesters(programs):
                         name=session_data['name'],
                         start_year=session_data['start_year'],
                         end_year=session_data['end_year'],
-                        is_active=True,
+                        is_active=True,  # All sessions active
                         description=random.choice(DESCRIPTIONS),
                         created_at=now,
                         updated_at=now
@@ -369,7 +344,7 @@ def create_sessions_semesters(programs):
             for session in sessions:
                 session_info = next(s for s in BS_SESSIONS if s['name'] == session.name)
                 num_semesters = session_info['semesters']
-                applicable_programs = [p for p in programs if (p.degree_type == 'BS' and session.start_year <= 2024)]
+                applicable_programs = [p for p in programs if (p.degree_type == 'BS')]
                 for program in applicable_programs:
                     for number in range(1, num_semesters + 1):
                         if Semester.objects.filter(program=program, session=session, number=number).exists():
@@ -390,7 +365,7 @@ def create_sessions_semesters(programs):
                                 description=random.choice(DESCRIPTIONS),
                                 start_time=start_date,
                                 end_time=end_date,
-                                is_active=(number == session_info['semesters'] and session.start_year == 2024)
+                                is_active=(number == session_info['semesters'])
                             )
                             semester.save()
                             semesters.append(semester)
@@ -444,7 +419,6 @@ def create_teachers(departments, users, start_index):
                             user=user,
                             department=department,
                             designation=designation,
-                            gender=random.choice(['male', 'female']),
                             contact_no=random.choice(PHONE_NUMBERS),
                             qualification=random.choice(SENTENCES),
                             hire_date=datetime(2020, random.randint(1, 12), 1),
@@ -492,12 +466,23 @@ def create_teachers(departments, users, start_index):
         print(f"Total records skipped: {skip_count}")
         logger.debug(f"Total records skipped: {skip_count}")
     
-    print(output.getvalue(), end='', flush=True)
+    output_str = output.getvalue()
     output.close()
+    if output_str.strip():
+        print(output_str, end='', flush=True)
     return teachers, user_index
 
 def create_courses(departments, existing_course_codes):
-    """Create Course records with predefined names, saving each individually."""
+    """
+    Create Course records with predefined names, ensuring data integrity.
+    
+    Args:
+        departments: List of Department objects
+        existing_course_codes: Set of existing course codes to avoid duplicates
+        
+    Returns:
+        List of created Course objects
+    """
     courses = []
     course_count = 0
     skip_count = 0
@@ -506,51 +491,97 @@ def create_courses(departments, existing_course_codes):
     with redirect_stdout(output):
         with transaction.atomic():
             for department in departments:
-                course_names = COURSE_NAMES[department.code]
+                # Get course names for this department's code
+                dept_code = department.code.upper()
+                course_names = COURSE_NAMES.get(dept_code, [])
+                
+                if not course_names:
+                    print(f"No course names defined for department code: {dept_code}")
+                    logger.warning(f"No course names defined for department code: {dept_code}")
+                    continue
+                    
                 for i, name in enumerate(course_names, 1):
-                    code = f"{department.code}{100 + i}"
+                    # Generate course code (e.g., CS101, CS102, etc.)
+                    code = f"{dept_code}{100 + i}"
+                    
+                    # Ensure code is unique
                     attempts = 0
                     while code in existing_course_codes and attempts < 100:
-                        code = f"{department.code}{100 + i + random.randint(1, 1000)}"
+                        code = f"{dept_code}{100 + i + random.randint(1, 1000)}"
                         attempts += 1
+                        
                     if attempts >= 100:
                         skip_count += 1
                         print(f"Skipping Course due to code generation failure (Skip #{skip_count})")
-                        logger.warning(f"Skipping Course due to code generation failure")
+                        logger.warning("Skipping Course due to code generation failure")
                         continue
-                    if Course.objects.filter(code=code).exists():
+                        
+                    # Check if course already exists
+                    try:
+                        course = Course.objects.get(code=code)
                         skip_count += 1
                         print(f"Skipping existing Course '{code}' (Skip #{skip_count})")
                         logger.debug(f"Skipping existing Course '{code}'")
-                        courses.append(Course.objects.get(code=code))
-                        course_count += 1
-                        continue
-                    existing_course_codes.add(code)
-                    try:
-                        course = Course(
-                            opt=random.choice([True, False]),
-                            code=code,
-                            name=name,
-                            credits=random.randint(1, 4),
-                            lab_work=random.randint(0, 2),
-                            is_active=True,
-                            description=random.choice(DESCRIPTIONS)
-                        )
-                        course.save()
                         courses.append(course)
                         course_count += 1
-                        print(f"{course_count} course created: {code} - {name}")
-                        logger.debug(f"Course {course_count}: {code} - {name}")
+                        continue
+                    except Course.DoesNotExist:
+                        pass  # Course doesn't exist, we'll create it
+                        
+                    existing_course_codes.add(code)
+                    
+                    try:
+                        # Create course with valid data
+                        course = Course(
+                            opt=random.choice([True, False]),  # Randomly make some courses optional
+                            code=code,
+                            name=name,
+                            department=department,  # Link to department
+                            credits=random.randint(1, 6),  # 1-6 credits as per model validation
+                            lab_work=random.randint(0, 4),  # 0-4 lab hours as per model validation
+                            is_active=random.choice([True, False]),  # Some courses might be inactive
+                            description=random.choice(DESCRIPTIONS)[:1000]  # Ensure within max length
+                        )
+                        
+                        # Save the course
+                        course.full_clean()  # Explicitly validate before save
+                        course.save()
+                        
+                        # Add to our list of created courses
+                        courses.append(course)
+                        course_count += 1
+                        
+                        print(f"{course_count}. Created course: {code} - {name}")
+                        logger.info(f"Created course: {code} - {name}")
+                        
+                    except ValidationError as ve:
+                        skip_count += 1
+                        print(f"Skipping Course '{code}' due to validation error: {ve} (Skip #{skip_count})")
+                        logger.warning(f"Validation error for course {code}: {ve}")
+                        continue
+                        
                     except IntegrityError as e:
                         skip_count += 1
-                        print(f"Skipping Course '{code}' due to conflict: {str(e)} (Skip #{skip_count})")
-                        logger.warning(f"Skipping Course '{code}' due to conflict: {str(e)}")
+                        print(f"Skipping Course '{code}' due to database error: {e} (Skip #{skip_count})")
+                        logger.error(f"Database error creating course {code}: {e}")
                         continue
-        print(f"Total records skipped: {skip_count}")
-        logger.debug(f"Total records skipped: {skip_count}")
+                        
+                    except Exception as e:
+                        skip_count += 1
+                        print(f"Skipping Course '{code}' due to unexpected error: {e} (Skip #{skip_count})")
+                        logger.error(f"Unexpected error creating course {code}: {e}", exc_info=True)
+                        continue
+            
+            # Print summary
+            print(f"\n=== Course Creation Summary ===")
+            print(f"Total courses created: {course_count}")
+            print(f"Total courses skipped: {skip_count}")
+            logger.info(f"Created {course_count} courses, skipped {skip_count}")
     
+    # Ensure output is flushed
     print(output.getvalue(), end='', flush=True)
     output.close()
+    
     return courses
 
 def create_course_offerings(semesters, courses, teachers):
@@ -655,7 +686,7 @@ def create_venues(departments):
     return venues
 
 def create_timetable_slots(course_offerings, venues):
-    """Create TimetableSlot records for all sessions, saving each individually."""
+    """Create TimetableSlot records, saving each individually."""
     timetable_slots = []
     slot_count = 0
     skip_count = 0
@@ -665,8 +696,7 @@ def create_timetable_slots(course_offerings, venues):
     with redirect_stdout(output):
         with transaction.atomic():
             for offering in course_offerings:
-                # Increase number of lectures per course offering
-                for _ in range(random.randint(2, 5)):
+                for _ in range(random.randint(1, 3)):
                     start_time = datetime.strptime(f"{random.randint(8, 16)}:00", "%H:%M").time()
                     start_datetime = datetime.combine(datetime.today(), start_time)
                     end_time = (start_datetime + timedelta(hours=1)).time()
@@ -690,8 +720,8 @@ def create_timetable_slots(course_offerings, venues):
                         slot.save()
                         timetable_slots.append(slot)
                         slot_count += 1
-                        print(f"{slot_count} timetable slot created: {offering.course.code} on {day} for session {offering.academic_session.name}")
-                        logger.debug(f"Timetable slot {slot_count}: {offering.course.code} on {day} for session {offering.academic_session.name}")
+                        print(f"{slot_count} timetable slot created: {offering.course.code} on {day}")
+                        logger.debug(f"Timetable slot {slot_count}: {offering.course.code} on {day}")
                     except (IntegrityError, ValueError) as e:
                         skip_count += 1
                         print(f"Skipping TimetableSlot for {offering.course.code} due to {str(e)} (Skip #{skip_count})")
@@ -704,64 +734,8 @@ def create_timetable_slots(course_offerings, venues):
     output.close()
     return timetable_slots
 
-def create_study_materials(course_offerings, teachers):
-    """Create StudyMaterial records for each course offering, saving each individually."""
-    study_materials = []
-    material_count = 0
-    skip_count = 0
-    now = timezone.now()
-    output = StringIO()
-    
-    with redirect_stdout(output):
-        with transaction.atomic():
-            for offering in course_offerings:
-                department_teachers = [t for t in teachers if t.department == offering.department]
-                if not department_teachers:
-                    print(f"No teachers available for {offering.department.name}")
-                    logger.warning(f"No teachers available for {offering.department.name}")
-                    continue
-                for i in range(NUM_STUDY_MATERIALS_PER_OFFERING):
-                    topic = random.choice(STUDY_MATERIAL_TOPICS)
-                    title = f"{random.choice(STUDY_MATERIAL_TITLES)} {i+1} - {offering.course.code}"
-                    if StudyMaterial.objects.filter(course_offering=offering, title=title).exists():
-                        skip_count += 1
-                        print(f"Skipping existing StudyMaterial '{title}' for {offering.course.code} (Skip #{skip_count})")
-                        logger.debug(f"Skipping existing StudyMaterial '{title}' for {offering.course.code}")
-                        study_materials.append(StudyMaterial.objects.filter(course_offering=offering, title=title).first())
-                        material_count += 1
-                        continue
-                    try:
-                        material = StudyMaterial(
-                            course_offering=offering,
-                            teacher=random.choice(department_teachers),
-                            topic=topic,
-                            title=title,
-                            description=random.choice(DESCRIPTIONS),
-                            useful_links=random.choice(USEFUL_LINKS),
-                            video_link=f"https://video.example.com/{offering.course.code.lower()}{i+1}" if random.choice([True, False]) else None,
-                            image=create_fake_image(),
-                            created_at=now,
-                            updated_at=now
-                        )
-                        material.save()
-                        study_materials.append(material)
-                        material_count += 1
-                        print(f"{material_count} study material created: {title} for {offering.course.code}")
-                        logger.debug(f"Study material {material_count}: {title} for {offering.course.code}")
-                    except IntegrityError as e:
-                        skip_count += 1
-                        print(f"Skipping StudyMaterial '{title}' for {offering.course.code} due to conflict: {str(e)} (Skip #{skip_count})")
-                        logger.warning(f"Skipping StudyMaterial '{title}' for {offering.course.code}: {str(e)}")
-                        continue
-        print(f"Total records skipped: {skip_count}")
-        logger.debug(f"Total records skipped: {skip_count}")
-    
-    print(output.getvalue(), end='', flush=True)
-    output.close()
-    return study_materials
-
 def create_admission_cycles(sessions, programs):
-    """Create AdmissionCycle records, saving each individually."""
+    """Create AdmissionCycle records, saving each individually, 2025-2029 open."""
     admission_cycles = []
     cycle_count = 0
     skip_count = 0
@@ -770,8 +744,7 @@ def create_admission_cycles(sessions, programs):
     with redirect_stdout(output):
         with transaction.atomic():
             for session in sessions:
-                applicable_programs = [p for p in programs if (p.degree_type == 'BS' and session.start_year <= 2024) or 
-                                      (p.degree_type == 'MS' and session.start_year >= 2023)]
+                applicable_programs = [p for p in programs if (p.degree_type == 'BS')]
                 for program in applicable_programs:
                     if AdmissionCycle.objects.filter(program=program, session=session).exists():
                         skip_count += 1
@@ -786,7 +759,7 @@ def create_admission_cycles(sessions, programs):
                             session=session,
                             application_start=datetime(session.start_year, 1, 1),
                             application_end=datetime(session.start_year, 6, 30),
-                            is_open=(session.start_year == 2024)
+                            is_open=(session.start_year == 2025)  # Open for 2025-2029
                         )
                         cycle.save()
                         admission_cycles.append(cycle)
@@ -820,8 +793,7 @@ def create_applicants_students(sessions, programs, users, start_index):
     with redirect_stdout(output):
         with transaction.atomic():
             for session in sessions:
-                applicable_programs = [p for p in programs if (p.degree_type == 'BS' and session.start_year <= 2024) or 
-                                      (p.degree_type == 'MS' and session.start_year >= 2023)]
+                applicable_programs = [p for p in programs if (p.degree_type == 'BS')]
                 for program in applicable_programs:
                     for shift in ['morning', 'evening']:
                         for _ in range(STUDENTS_PER_SESSION // 2):
@@ -861,7 +833,6 @@ def create_applicants_students(sessions, programs, users, start_index):
                                     cnic=random.choice(CNICS),
                                     dob=datetime(2000, random.randint(1, 12), random.randint(1, 28)),
                                     contact_no=random.choice(PHONE_NUMBERS),
-                                    gender=random.choice(['male', 'female']),
                                     identification_mark=random.choice(SENTENCES),
                                     father_name=f"{random.choice(MUSLIM_MALE_NAMES)} {random.choice(MUSLIM_LAST_NAMES)}",
                                     father_occupation=random.choice(JOBS),
@@ -1297,8 +1268,7 @@ def create_notices(sessions, programs, teachers):
     with redirect_stdout(output):
         with transaction.atomic():
             for session in sessions:
-                applicable_programs = [p for p in programs if (p.degree_type == 'BS' and session.start_year <= 2024) or 
-                                      (p.degree_type == 'MS' and session.start_year >= 2023)]
+                applicable_programs = [p for p in programs if (p.degree_type == 'BS')]
                 for _ in range(NOTICES_PER_SESSION):
                     title = random.choice(NOTICE_TITLES)
                     if Notice.objects.filter(title=title, created_by__in=teachers).exists():
@@ -1403,7 +1373,6 @@ def create_offices_staff(users, start_index):
                         staff = OfficeStaff(
                             user=user,
                             office=office,
-                            gender=random.choice(['male', 'female']),
                             position=random.choice(JOBS),
                             contact_no=random.choice(PHONE_NUMBERS)
                         )
@@ -1424,59 +1393,517 @@ def create_offices_staff(users, start_index):
     output.close()
     return offices, office_staffs
 
-def generate_fake_data():
-    """Generate fake data, saving each record individually."""
-    start_time = time.time()
+def create_fee_types():
+    """Create FeeType records, saving each individually."""
+    fee_types = []
+    fee_type_count = 0
+    skip_count = 0
     output = StringIO()
     
+    with redirect_stdout(output):
+        with transaction.atomic():
+            for name in FEE_TYPES:
+                if FeeType.objects.filter(name=name).exists():
+                    skip_count += 1
+                    print(f"Skipping existing FeeType '{name}' (Skip #{skip_count})")
+                    logger.debug(f"Skipping existing FeeType '{name}'")
+                    fee_types.append(FeeType.objects.get(name=name))
+                    fee_type_count += 1
+                    continue
+                try:
+                    fee_type = FeeType(
+                        name=name,
+                        description=random.choice(DESCRIPTIONS),
+                        is_active=True
+                    )
+                    fee_type.save()
+                    fee_types.append(fee_type)
+                    fee_type_count += 1
+                    print(f"{fee_type_count} fee type created: {name}")
+                    logger.debug(f"FeeType {fee_type_count}: {name}")
+                except IntegrityError as e:
+                    skip_count += 1
+                    print(f"Skipping FeeType '{name}' due to conflict: {str(e)} (Skip #{skip_count})")
+                    logger.warning(f"Skipping FeeType '{name}': {str(e)}")
+                    continue
+        print(f"Total records skipped: {skip_count}")
+        logger.debug(f"Total records skipped: {skip_count}")
+    
+    print(output.getvalue(), end='', flush=True)
+    output.close()
+    return fee_types
+
+def create_semester_fees(fee_types):
+    """Create SemesterFee records, saving each individually."""
+    semester_fees = []
+    semester_fee_count = 0
+    skip_count = 0
+    output = StringIO()
+    
+    with redirect_stdout(output):
+        with transaction.atomic():
+            for fee_type in fee_types:
+                for shift in ['morning', 'evening']:
+                    if SemesterFee.objects.filter(fee_type=fee_type, shift=shift).exists():
+                        skip_count += 1
+                        print(f"Skipping existing SemesterFee for {fee_type.name} ({shift}) (Skip #{skip_count})")
+                        logger.debug(f"Skipping existing SemesterFee for {fee_type.name} ({shift})")
+                        semester_fees.append(SemesterFee.objects.get(fee_type=fee_type, shift=shift))
+                        semester_fee_count += 1
+                        continue
+                    try:
+                        dynamic_fees = DYNAMIC_FEE_HEADS.get(fee_type.name, {})
+                        total_amount = sum(dynamic_fees.values())
+                        semester_fee = SemesterFee(
+                            fee_type=fee_type,
+                            is_active=True,
+                            shift=shift,
+                            dynamic_fees=dynamic_fees,
+                            total_amount=total_amount
+                        )
+                        semester_fee.save()
+                        semester_fees.append(semester_fee)
+                        semester_fee_count += 1
+                        print(f"{semester_fee_count} semester fee created: {fee_type.name} ({shift})")
+                        logger.debug(f"SemesterFee {semester_fee_count}: {fee_type.name} ({shift})")
+                    except IntegrityError as e:
+                        skip_count += 1
+                        print(f"Skipping SemesterFee for {fee_type.name} ({shift}) due to conflict: {str(e)} (Skip #{skip_count})")
+                        logger.warning(f"Skipping SemesterFee for {fee_type.name} ({shift}): {str(e)}")
+                        continue
+        print(f"Total records skipped: {skip_count}")
+        logger.debug(f"Total records skipped: {skip_count}")
+    
+    print(output.getvalue(), end='', flush=True)
+    output.close()
+    return semester_fees
+
+def create_fee_to_programs(semester_fees, sessions, programs, semesters):
+    """Create FeeToProgram records, saving each individually."""
+    fee_to_programs = []
+    fee_to_program_count = 0
+    skip_count = 0
+    output = StringIO()
+    
+    with redirect_stdout(output):
+        with transaction.atomic():
+            for session in sessions:
+                applicable_programs = [p for p in programs if p.degree_type == 'BS']
+                applicable_semesters = [s for s in semesters if s.session == session]
+                for semester_fee in semester_fees:
+                    for program in applicable_programs:
+                        for semester in applicable_semesters:
+                            if semester.program != program:
+                                continue
+                            if FeeToProgram.objects.filter(SemesterFee=semester_fee, academic_session=session, programs=program, semester_number=semester).exists():
+                                skip_count += 1
+                                print(f"Skipping existing FeeToProgram for {semester_fee.fee_type.name} in {session.name} (Skip #{skip_count})")
+                                logger.debug(f"Skipping existing FeeToProgram for {semester_fee.fee_type.name}")
+                                fee_to_programs.append(FeeToProgram.objects.get(SemesterFee=semester_fee, academic_session=session, programs=program, semester_number=semester))
+                                fee_to_program_count += 1
+                                continue
+                            try:
+                                fee_to_program = FeeToProgram(
+                                    SemesterFee=semester_fee,
+                                    academic_session=session
+                                )
+                                fee_to_program.save()
+                                fee_to_program.programs.add(program)
+                                fee_to_program.semester_number.add(semester)
+                                fee_to_programs.append(fee_to_program)
+                                fee_to_program_count += 1
+                                print(f"{fee_to_program_count} fee to program created: {semester_fee.fee_type.name} in {session.name}")
+                                logger.debug(f"FeeToProgram {fee_to_program_count}: {semester_fee.fee_type.name} in {session.name}")
+                            except IntegrityError as e:
+                                skip_count += 1
+                                print(f"Skipping FeeToProgram for {semester_fee.fee_type.name} in {session.name} due to conflict: {str(e)} (Skip #{skip_count})")
+                                logger.warning(f"Skipping FeeToProgram for {semester_fee.fee_type.name} in {session.name}: {str(e)}")
+                                continue
+        print(f"Total records skipped: {skip_count}")
+        logger.debug(f"Total records skipped: {skip_count}")
+    
+    print(output.getvalue(), end='', flush=True)
+    output.close()
+    return fee_to_programs
+
+def create_student_fee_payments(students, semester_fees):
+    """Create StudentFeePayment records, saving each individually."""
+    student_fee_payments = []
+    payment_count = 0
+    skip_count = 0
+    output = StringIO()
+    
+    with redirect_stdout(output):
+        with transaction.atomic():
+            for student in students:
+                applicable_fees = [f for f in semester_fees if f.shift == student.applicant.shift]
+                for semester_fee in applicable_fees:
+                    if StudentFeePayment.objects.filter(student=student, semester_fee=semester_fee).exists():
+                        skip_count += 1
+                        print(f"Skipping existing StudentFeePayment for {student.user.email} in {semester_fee.fee_type.name} (Skip #{skip_count})")
+                        logger.debug(f"Skipping existing StudentFeePayment for {student.user.email}")
+                        student_fee_payments.append(StudentFeePayment.objects.get(student=student, semester_fee=semester_fee))
+                        payment_count += 1
+                        continue
+                    try:
+                        amount_paid = semester_fee.total_amount * random.uniform(0.8, 1.0)
+                        payment = StudentFeePayment(
+                            student=student,
+                            semester_fee=semester_fee,
+                            amount_paid=amount_paid,
+                            remarks=random.choice(SENTENCES)
+                        )
+                        payment.save()
+                        student_fee_payments.append(payment)
+                        payment_count += 1
+                        print(f"{payment_count} student fee payment created: {student.user.email} for {semester_fee.fee_type.name}")
+                        logger.debug(f"StudentFeePayment {payment_count}: {student.user.email} for {semester_fee.fee_type.name}")
+                    except IntegrityError as e:
+                        skip_count += 1
+                        print(f"Skipping StudentFeePayment for {student.user.email} in {semester_fee.fee_type.name} due to conflict: {str(e)} (Skip #{skip_count})")
+                        logger.warning(f"Skipping StudentFeePayment for {student.user.email} in {semester_fee.fee_type.name}: {str(e)}")
+                        continue
+        print(f"Total records skipped: {skip_count}")
+        logger.debug(f"Total records skipped: {skip_count}")
+    
+    print(output.getvalue(), end='', flush=True)
+    output.close()
+    return student_fee_payments
+
+def create_fee_vouchers(students, semester_fees, semesters, offices, student_fee_payments):
+    """Create FeeVoucher records, saving each individually."""
+    fee_vouchers = []
+    voucher_count = 0
+    skip_count = 0
+    now = timezone.now()
+    output = StringIO()
+    
+    with redirect_stdout(output):
+        with transaction.atomic():
+            for student in students:
+                applicable_semesters = [s for s in semesters if s.program == student.program and s.session == student.applicant.session]
+                applicable_fees = [f for f in semester_fees if f.shift == student.applicant.shift]
+                if not applicable_semesters or not applicable_fees:
+                    print(f"No applicable semesters or fees for {student.user.email}")
+                    logger.warning(f"No applicable semesters or fees for {student.user.email}")
+                    continue
+                for semester in applicable_semesters:
+                    for semester_fee in applicable_fees:
+                        if FeeVoucher.objects.filter(student=student, semester=semester, semester_fee=semester_fee).exists():
+                            skip_count += 1
+                            print(f"Skipping existing FeeVoucher for {student.user.email} in {semester.name} (Skip #{skip_count})")
+                            logger.debug(f"Skipping existing FeeVoucher for {student.user.email} in {semester.name}")
+                            fee_vouchers.append(FeeVoucher.objects.get(student=student, semester=semester, semester_fee=semester_fee))
+                            voucher_count += 1
+                            continue
+                        try:
+                            due_date = semester.start_time + timedelta(days=30)
+                            payment = random.choice([p for p in student_fee_payments if p.student == student and p.semester_fee == semester_fee]) if random.choice([True, False]) else None
+                            voucher = FeeVoucher(
+                                student=student,
+                                semester_fee=semester_fee,
+                                semester=semester,
+                                due_date=due_date,
+                                is_paid=(payment is not None),
+                                paid_at=now if payment else None,
+                                payment=payment,
+                                office=random.choice(offices)
+                            )
+                            voucher.save()
+                            fee_vouchers.append(voucher)
+                            voucher_count += 1
+                            print(f"{voucher_count} fee voucher created: {student.user.email} in {semester.name}")
+                            logger.debug(f"FeeVoucher {voucher_count}: {student.user.email} in {semester.name}")
+                        except IntegrityError as e:
+                            skip_count += 1
+                            print(f"Skipping FeeVoucher for {student.user.email} in {semester.name} due to conflict: {str(e)} (Skip #{skip_count})")
+                            logger.warning(f"Skipping FeeVoucher for {student.user.email} in {semester.name}: {str(e)}")
+                            continue
+        print(f"Total records skipped: {skip_count}")
+        logger.debug(f"Total records skipped: {skip_count}")
+    
+    print(output.getvalue(), end='', flush=True)
+    output.close()
+    return fee_vouchers
+
+def create_merit_lists(sessions, programs, applicants):
+    """Create MeritList and MeritListEntry records, saving each individually."""
+    merit_lists = []
+    merit_list_entries = []
+    merit_list_count = 0
+    entry_count = 0
+    skip_count = 0
+    now = timezone.now()
+    output = StringIO()
+    
+    with redirect_stdout(output):
+        with transaction.atomic():
+            for session in sessions:
+                applicable_programs = [p for p in programs if p.degree_type == 'BS']
+                for program in applicable_programs:
+                    for shift in ['morning', 'evening']:
+                        for list_number in range(1, NUM_MERIT_LISTS_PER_PROGRAM + 1):
+                            if MeritList.objects.filter(program=program, list_number=list_number, shift=shift, session=session).exists():
+                                skip_count += 1
+                                print(f"Skipping existing MeritList for {program.name} ({shift}) list {list_number} (Skip #{skip_count})")
+                                logger.debug(f"Skipping existing MeritList for {program.name} ({shift}) list {list_number}")
+                                merit_lists.append(MeritList.objects.get(program=program, list_number=list_number, shift=shift, session=session))
+                                merit_list_count += 1
+                                continue
+                            try:
+                                merit_list = MeritList(
+                                    program=program,
+                                    session=session,
+                                    list_number=list_number,
+                                    shift=shift,
+                                    is_published=random.choice([True, False]),
+                                    published_at=now if random.choice([True, False]) else None,
+                                    created_at=now,
+                                    updated_at=now
+                                )
+                                merit_list.save()
+                                merit_lists.append(merit_list)
+                                merit_list_count += 1
+                                print(f"{merit_list_count} merit list created: {program.name} ({shift}) list {list_number}")
+                                logger.debug(f"MeritList {merit_list_count}: {program.name} ({shift}) list {list_number}")
+                            except IntegrityError as e:
+                                skip_count += 1
+                                print(f"Skipping MeritList for {program.name} ({shift}) list {list_number} due to conflict: {str(e)} (Skip #{skip_count})")
+                                logger.warning(f"Skipping MeritList for {program.name} ({shift}) list {list_number}: {str(e)}")
+                                continue
+                            # Create MeritListEntry for each applicable applicant
+                            applicable_applicants = [a for a in applicants if a.program == program and a.session == session and a.shift == shift]
+                            selected_applicants = random.sample(applicable_applicants, min(len(applicable_applicants), 5))
+                            for rank, applicant in enumerate(selected_applicants, 1):
+                                if MeritListEntry.objects.filter(merit_list=merit_list, applicant=applicant).exists():
+                                    skip_count += 1
+                                    print(f"Skipping existing MeritListEntry for {applicant.full_name} in {program.name} (Skip #{skip_count})")
+                                    logger.debug(f"Skipping existing MeritListEntry for {applicant.full_name}")
+                                    merit_list_entries.append(MeritListEntry.objects.get(merit_list=merit_list, applicant=applicant))
+                                    entry_count += 1
+                                    continue
+                                try:
+                                    entry = MeritListEntry(
+                                        merit_list=merit_list,
+                                        applicant=applicant,
+                                        rank=rank,
+                                        aggregate_score=random.uniform(60.0, 95.0),
+                                        remarks=random.choice(SENTENCES)
+                                    )
+                                    entry.save()
+                                    merit_list_entries.append(entry)
+                                    entry_count += 1
+                                    print(f"{entry_count} merit list entry created: {applicant.full_name} in {program.name}")
+                                    logger.debug(f"MeritListEntry {entry_count}: {applicant.full_name} in {program.name}")
+                                except IntegrityError as e:
+                                    skip_count += 1
+                                    print(f"Skipping MeritListEntry for {applicant.full_name} in {program.name} due to conflict: {str(e)} (Skip #{skip_count})")
+                                    logger.warning(f"Skipping MeritListEntry for {applicant.full_name} in {program.name}: {str(e)}")
+                                    continue
+        print(f"Total records skipped: {skip_count}")
+        logger.debug(f"Total records skipped: {skip_count}")
+    
+    print(output.getvalue(), end='', flush=True)
+    output.close()
+    return merit_lists, merit_list_entries
+
+def create_study_materials(courses, teachers):
+    """Create StudyMaterial records, saving each individually."""
+    study_materials = []
+    material_count = 0
+    skip_count = 0
+    now = timezone.now()
+    output = StringIO()
+    
+    with redirect_stdout(output):
+        with transaction.atomic():
+            for course in courses:
+                department_teachers = [t for t in teachers if t.department == course.department]
+                if not department_teachers:
+                    print(f"No teachers available for {course.name}")
+                    logger.warning(f"No teachers available for {course.name}")
+                    continue
+                for _ in range(NUM_STUDY_MATERIALS_PER_COURSE):
+                    title = f"{random.choice(STUDY_MATERIAL_TITLES)} - {course.code}"
+                    if StudyMaterial.objects.filter(course=course, title=title).exists():
+                        skip_count += 1
+                        print(f"Skipping existing StudyMaterial '{title}' for {course.code} (Skip #{skip_count})")
+                        logger.debug(f"Skipping existing StudyMaterial '{title}' for {course.code}")
+                        study_materials.append(StudyMaterial.objects.get(course=course, title=title))
+                        material_count += 1
+                        continue
+                    try:
+                        material = StudyMaterial(
+                            course=course,
+                            teacher=random.choice(department_teachers),
+                            title=title,
+                            topic=random.choice(STUDY_MATERIAL_TOPICS),
+                            description=random.choice(DESCRIPTIONS),
+                            material_type=random.choice([choice[0] for choice in StudyMaterial.MATERIAL_TYPES]),
+                            resource_link=random.choice(STUDY_MATERIAL_LINKS) if random.choice([True, False]) else None,
+                            file=create_fake_file() if random.choice([True, False]) else None,
+                            is_active=True,
+                            created_at=now,
+                            updated_at=now
+                        )
+                        material.save()
+                        study_materials.append(material)
+                        material_count += 1
+                        print(f"{material_count} study material created: {title} for {course.code}")
+                        logger.debug(f"StudyMaterial {material_count}: {title} for {course.code}")
+                    except IntegrityError as e:
+                        skip_count += 1
+                        print(f"Skipping StudyMaterial '{title}' for {course.code} due to conflict: {str(e)} (Skip #{skip_count})")
+                        logger.warning(f"Skipping StudyMaterial '{title}' for {course.code}: {str(e)}")
+                        continue
+        print(f"Total records skipped: {skip_count}")
+        logger.debug(f"Total records skipped: {skip_count}")
+    
+    print(output.getvalue(), end='', flush=True)
+    output.close()
+    return study_materials
+
+def main():
+    """Main function to orchestrate fake data generation."""
+    print("Starting fake data generation...")
+    logger.info("Starting fake data generation")
+    start_time = time.time()
+    
     try:
-        with redirect_stdout(output):
-            existing_course_codes = set(Course.objects.values_list('code', flat=True))
-            existing_emails = set(CustomUser.objects.values_list('email', flat=True))
-            logger.debug(f"Found {len(existing_emails)} existing emails, {len(existing_course_codes)} existing course codes")
-
-            total_users_needed = (STUDENTS_PER_SESSION * len(BS_SESSIONS) * len(FACULTIES) * 2 + \
-                                 TEACHERS_PER_DEPARTMENT * len(FACULTIES) * 2 + \
-                                 NUM_OFFICES * NUM_OFFICE_STAFF_PER_OFFICE)
-            logger.debug(f"Total users needed: {total_users_needed}")
-
-            with transaction.atomic():
-                users = create_users(total_users_needed, existing_emails)
-                faculties, departments, programs = create_faculties_departments_programs()
-                sessions, semesters = create_sessions_semesters(programs)
-                teachers, user_index = create_teachers(departments, users, 0)
-                courses = create_courses(departments, existing_course_codes)
-                course_offerings = create_course_offerings(semesters, courses, teachers)
-                venues = create_venues(departments)
-                timetable_slots = create_timetable_slots(course_offerings, venues)
-                study_materials = create_study_materials(course_offerings, teachers)
-                admission_cycles = create_admission_cycles(sessions, programs)
-                applicants, students, user_index = create_applicants_students(sessions, programs, users, user_index)
-                qualifications = create_academic_qualifications(applicants)
-                activities = create_extracurricular_activities(applicants)
-                semester_enrollments = create_semester_enrollments(students, semesters)
-                course_enrollments = create_course_enrollments(semester_enrollments, course_offerings)
-                attendances, assignments, assignment_submissions, exam_results = \
-                    create_academic_records(semester_enrollments, course_offerings, teachers)
-                notices = create_notices(sessions, programs, teachers)
-                offices, office_staffs = create_offices_staff(users, user_index)
-
-            print(f"Total execution time: {time.time() - start_time:.2f} seconds")
-            logger.debug(f"Total execution time: {time.time() - start_time:.2f} seconds")
-    except (IntegrityError, DatabaseError) as e:
-        print(f"Transaction failed: {str(e)}")
-        logger.error(f"Transaction failed: {str(e)}", exc_info=True)
-        raise
-    finally:
-        print(output.getvalue(), end='', flush=True)
-        output.close()
-
-if __name__ == '__main__':
-    try:
-        generate_fake_data()
-        print("Fake data generation completed!")
-        logger.info("Fake data generation completed")
+        # Initialize sets for unique identifiers
+        existing_emails = set(CustomUser.objects.values_list('email', flat=True))
+        existing_course_codes = set(Course.objects.values_list('code', flat=True))
+        
+        # Create users
+        total_users_needed = len(BS_SESSIONS) * STUDENTS_PER_SESSION + len(FACULTIES) * len(FACULTIES[0]['departments']) * TEACHERS_PER_DEPARTMENT + NUM_OFFICES * NUM_OFFICE_STAFF_PER_OFFICE
+        users = create_users(total_users_needed, existing_emails)
+        print(f"Created {len(users)} users")
+        logger.info(f"Created {len(users)} users")
+        
+        # Create faculties, departments, and programs
+        faculties, departments, programs = create_faculties_departments_programs()
+        print(f"Created {len(faculties)} faculties, {len(departments)} departments, {len(programs)} programs")
+        logger.info(f"Created {len(faculties)} faculties, {len(departments)} departments, {len(programs)} programs")
+        
+        # Create sessions and semesters
+        sessions, semesters = create_sessions_semesters(programs)
+        print(f"Created {len(sessions)} sessions, {len(semesters)} semesters")
+        logger.info(f"Created {len(sessions)} sessions, {len(semesters)} semesters")
+        
+        # Create teachers
+        user_index = 0
+        teachers, user_index = create_teachers(departments, users, user_index)
+        print(f"Created {len(teachers)} teachers")
+        logger.info(f"Created {len(teachers)} teachers")
+        
+        # Create courses
+        courses = create_courses(departments, existing_course_codes)
+        print(f"Created {len(courses)} courses")
+        logger.info(f"Created {len(courses)} courses")
+        
+        # Create course offerings
+        course_offerings = create_course_offerings(semesters, courses, teachers)
+        print(f"Created {len(course_offerings)} course offerings")
+        logger.info(f"Created {len(course_offerings)} course offerings")
+        
+        # Create venues
+        venues = create_venues(departments)
+        print(f"Created {len(venues)} venues")
+        logger.info(f"Created {len(venues)} venues")
+        
+        # Create timetable slots
+        timetable_slots = create_timetable_slots(course_offerings, venues)
+        print(f"Created {len(timetable_slots)} timetable slots")
+        logger.info(f"Created {len(timetable_slots)} timetable slots")
+        
+        # Create admission cycles
+        admission_cycles = create_admission_cycles(sessions, programs)
+        print(f"Created {len(admission_cycles)} admission cycles")
+        logger.info(f"Created {len(admission_cycles)} admission cycles")
+        
+        # Create applicants and students
+        applicants, students, user_index = create_applicants_students(sessions, programs, users, user_index)
+        print(f"Created {len(applicants)} applicants, {len(students)} students")
+        logger.info(f"Created {len(applicants)} applicants, {len(students)} students")
+        
+        # Create academic qualifications
+        academic_qualifications = create_academic_qualifications(applicants)
+        print(f"Created {len(academic_qualifications)} academic qualifications")
+        logger.info(f"Created {len(academic_qualifications)} academic qualifications")
+        
+        # Create extracurricular activities
+        extracurricular_activities = create_extracurricular_activities(applicants)
+        print(f"Created {len(extracurricular_activities)} extracurricular activities")
+        logger.info(f"Created {len(extracurricular_activities)} extracurricular activities")
+        
+        # Create semester enrollments
+        semester_enrollments = create_semester_enrollments(students, semesters)
+        print(f"Created {len(semester_enrollments)} semester enrollments")
+        logger.info(f"Created {len(semester_enrollments)} semester enrollments")
+        
+        # Create course enrollments
+        course_enrollments = create_course_enrollments(semester_enrollments, course_offerings)
+        print(f"Created {len(course_enrollments)} course enrollments")
+        logger.info(f"Created {len(course_enrollments)} course enrollments")
+        
+        # Create academic records
+        attendances, assignments, assignment_submissions, exam_results = create_academic_records(semester_enrollments, course_offerings, teachers)
+        print(f"Created {len(attendances)} attendances, {len(assignments)} assignments, {len(assignment_submissions)} submissions, {len(exam_results)} exam results")
+        logger.info(f"Created {len(attendances)} attendances, {len(assignments)} assignments, {len(assignment_submissions)} submissions, {len(exam_results)} exam results")
+        
+        # Create notices
+        notices = create_notices(sessions, programs, teachers)
+        print(f"Created {len(notices)} notices")
+        logger.info(f"Created {len(notices)} notices")
+        
+        # Create offices and office staff
+        offices, office_staffs = create_offices_staff(users, user_index)
+        print(f"Created {len(offices)} offices, {len(office_staffs)} office staff")
+        logger.info(f"Created {len(offices)} offices, {len(office_staffs)} office staff")
+        
+        # Create fee types
+        fee_types = create_fee_types()
+        print(f"Created {len(fee_types)} fee types")
+        logger.info(f"Created {len(fee_types)} fee types")
+        
+        # Create semester fees
+        semester_fees = create_semester_fees(fee_types)
+        print(f"Created {len(semester_fees)} semester fees")
+        logger.info(f"Created {len(semester_fees)} semester fees")
+        
+        # Create fee to programs
+        fee_to_programs = create_fee_to_programs(semester_fees, sessions, programs, semesters)
+        print(f"Created {len(fee_to_programs)} fee to programs")
+        logger.info(f"Created {len(fee_to_programs)} fee to programs")
+        
+        # Create student fee payments
+        student_fee_payments = create_student_fee_payments(students, semester_fees)
+        print(f"Created {len(student_fee_payments)} student fee payments")
+        logger.info(f"Created {len(student_fee_payments)} student fee payments")
+        
+        # Create fee vouchers
+        fee_vouchers = create_fee_vouchers(students, semester_fees, semesters, offices, student_fee_payments)
+        print(f"Created {len(fee_vouchers)} fee vouchers")
+        logger.info(f"Created {len(fee_vouchers)} fee vouchers")
+        
+        # # Create merit lists and entries
+        # merit_lists, merit_list_entries = create_merit_lists(sessions, programs, applicants)
+        # print(f"Created {len(merit_lists)} merit lists, {len(merit_list_entries)} merit list entries")
+        # logger.info(f"Created {len(merit_lists)} merit lists, {len(merit_list_entries)} merit list entries")
+        
+        # Create study materials
+        study_materials = create_study_materials(courses, teachers)
+        print(f"Created {len(study_materials)} study materials")
+        logger.info(f"Created {len(study_materials)} study materials")
+        
     except Exception as e:
         print(f"Error during data generation: {str(e)}")
-        logger.error(f"Error during data generation: {str(e)}", exc_info=True)
-        sys.exit(1)
+        logger.error(f"Error during data generation: {str(e)}")
+        raise
+    
+    end_time = time.time()
+    print(f"Data generation completed in {end_time - start_time:.2f} seconds")
+    logger.info(f"Data generation completed in {end_time - start_time:.2f} seconds")
+
+if __name__ == "__main__":
+    main()

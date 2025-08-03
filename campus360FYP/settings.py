@@ -25,24 +25,25 @@ SECRET_KEY = 'django-insecure-*8m_21!ps4x3$^h72ccd%5js4i_^y+swwkx%qqk(y1^504m9*8
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['.trycloudflare.com', 'localhost', '127.0.0.1']
-
-
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.trycloudflare.com']
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://knows-sender-necessarily-jeff.trycloudflare.com',
+    'https://bruce-granted-pounds-homework.trycloudflare.com',
+    'http://127.0.0.1:8000',
+    'http://localhost:8000',
 ]
-
 
 STRIPE_PUBLIC_KEY = 'pk_test_51RVc14DCFgsH63aPMLiGzlXEuqSGbyxbqTXyWsnqFbx6IXnTjDF0crV3RB3Avil0rAeRU7KVQsrA369EZdzQWmUx00numghDOP'
 STRIPE_SECRET_KEY = 'sk_test_51RVc14DCFgsH63aPcCG3IteORSTlv0oPziVNNsLZkB3cx9Wtb9q7InvToT8CRHZf5wJ1pqsJGGdGe9LjOuzVAZ1P00STSNm7U3'
-STRIPE_ENDPOINT_SECRET = 'whsec_etRtmwacOWudfKX2BIHNHgBgn6jb4djo'
+STRIPE_ENDPOINT_SECRET = 'whsec_etRtmwacOWudfKX2BIHNHgBgn6jb4djo'  # Update if Stripe CLI gives new one
+
 from urllib.parse import urljoin
 
-SITE_URL = 'https://knows-sender-necessarily-jeff.trycloudflare.com'
+# LOCAL development site URL
+SITE_URL = 'https://bruce-granted-pounds-homework.trycloudflare.com'
+
 PAYMENT_SUCCESS_URL = urljoin(SITE_URL, '/payments/success/?session_id={CHECKOUT_SESSION_ID}')
 PAYMENT_CANCEL_URL = urljoin(SITE_URL, '/payments/cancel/?session_id={CHECKOUT_SESSION_ID}')
-
 
 
 

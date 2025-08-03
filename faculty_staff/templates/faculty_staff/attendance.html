@@ -56,6 +56,7 @@
         </div>
     </div>
 
+    {% if is_active_slot %}
     <!-- Record Attendance Section -->
     <div class="card mb-4">
         <div class="card-body">
@@ -168,6 +169,19 @@
             </form>
         </div>
     </div>
+    {% else %}
+    <div class="card mb-4 border-danger">
+        <div class="card-body">
+            <h5 class="card-title text-danger">Attendance Not Allowed Now</h5>
+            <p class="text-danger">You cannot take attendance at this time. Your allowed days and times for this course are:</p>
+            <ul>
+                {% for slot in all_slots %}
+                <li><strong>{{ slot.day|capfirst }}</strong>: {{ slot.start_time }} - {{ slot.end_time }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Existing Attendance Table -->
     <div class="card">

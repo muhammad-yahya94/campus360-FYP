@@ -5386,7 +5386,8 @@ def attendance(request, offering_id=None):
                 'selected_shift': selected_shift,
                 'today_date': today_date,
                 'is_active_slot': is_active_slot,
-                'error_message': f"Error loading course offering: {str(e)}"
+                'error_message': f"Error loading course offering: {str(e)}",
+                'all_slots': [],
             })
 
     print(f'slot is: {is_active_slot}, course shift is {course_shift}, selected shift is {selected_shift}')
@@ -5397,6 +5398,7 @@ def attendance(request, offering_id=None):
         'selected_shift': selected_shift,
         'today_date': today_date,
         'is_active_slot': is_active_slot,
+        'all_slots': all_slots if course_offering_id else [],
     }
     return render(request, 'faculty_staff/attendance.html', context)
 
@@ -5555,7 +5557,7 @@ def load_attendance(request):
                     'university_roll_no': a.student.university_roll_no,
                     'course_code': a.course_offering.course.code,
                     'status': a.status,
-                    'shift': a.shift,
+                    'shift': a.shift or getattr(a.student.applicant, 'shift', None),
                     'recorded_by': a.recorded_by.user.get_full_name() if a.recorded_by else 'Unknown'
                 } for a in attendances]
                 

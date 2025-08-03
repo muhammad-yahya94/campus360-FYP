@@ -12,7 +12,7 @@ from payment.models import Payment
 import json   
 import logging
 from datetime import datetime  
-from site_elements.models import Alumni, Gallery
+from site_elements.models import Alumni, Gallery, Slider
 from faculty_staff.models import Teacher, Office, OfficeStaff
 from django.core.exceptions import ObjectDoesNotExist
 from django.template.loader import render_to_string
@@ -114,8 +114,9 @@ def password_reset_view(request):
 def home(request):
     recent_news = News.objects.all().order_by('-published_date')[:5]
     recent_events = Event.objects.all().order_by('-event_start_date')[:5]
-    
+    slider = Slider.objects.filter(is_active=True)
     context = {
+        'slider': slider,
         'recent_news': recent_news,
         'recent_events': recent_events,
     }

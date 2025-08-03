@@ -936,7 +936,6 @@ def get_semesters_by_roll(request):
 
 
 
-
 def student_generate_voucher(request):
     """
     View for students to generate their own fee vouchers.
@@ -1214,14 +1213,56 @@ def generate_voucher(request):
                 'office': office
             }
         )
-        
+
+        # Use original generated_at if voucher already exists (assume created_at field exists; fallback to voucher.due_date minus 7 days if not)
+        if hasattr(voucher, 'created_at'):
+            generated_at = voucher.created_at.strftime('%d %B %Y %I:%M %p PKT')
+        else:
+            generated_at = (voucher.due_date - timedelta(days=7)).strftime('%d %B %Y %I:%M %p PKT') if voucher.due_date else datetime.now().strftime('%d %B %Y %I:%M %p PKT')
+
         # Update office if it wasn't set during creation
         if not created and not voucher.office and office:
             voucher.office = office
             voucher.save(update_fields=['office'])
-        
-        # Prepare context for HTML
-        generated_at = datetime.now().strftime('%d %B %Y %I:%M %p PKT')  # Use PKT timezone
+
+        # Check if student's semester is active
+        enrollment = StudentSemesterEnrollment.objects.filter(student=student, semester=semester).first()
+        is_active_semester = enrollment and enrollment.status == 'enrolled'
+        dynamic_fees = dict(semester_fee.dynamic_fees) if semester_fee.dynamic_fees else {}
+        total_amount = semester_fee.total_amount
+        late_fee_type = None
+        late_fee_amount = 0
+        today = date.today()
+        due_passed = voucher.due_date and voucher.due_date < today
+        new_voucher_created = False
+        # Late fee logic
+        if due_passed:
+            if is_active_semester:
+                # Add Late Fee 10%
+                late_fee_type = 'Late Fee 10%'
+                late_fee_amount = (Decimal('0.1') * total_amount).quantize(Decimal('1.00'))
+                dynamic_fees[late_fee_type] = str(late_fee_amount)
+                total_amount = total_amount + late_fee_amount
+            else:
+                # Add Late Fee 100%
+                late_fee_type = 'Late Fee 100%'
+                late_fee_amount = total_amount
+                dynamic_fees[late_fee_type] = str(late_fee_amount)
+                total_amount = total_amount + late_fee_amount
+            # Instead of creating a new voucher, update the due_date of the existing voucher
+            voucher.due_date = today + timedelta(days=7)
+            voucher.save(update_fields=['due_date'])
+            new_voucher_created = True
+            # Set generated_at to now for the new voucher period (optional: keep original if you want)
+            generated_at = datetime.now().strftime('%d %B %Y %I:%M %p PKT')
+        elif not is_active_semester:
+            # Add Late Dues 100% (same as total_amount)
+            late_fee_type = 'Late Dues'
+            late_fee_amount = total_amount
+            dynamic_fees[late_fee_type] = str(late_fee_amount)
+            total_amount = total_amount + late_fee_amount
+        # Calculate updated_total_amount (total including all dynamic fees)
+        updated_total_amount = sum(Decimal(str(amount)) for amount in dynamic_fees.values()) if dynamic_fees else Decimal(str(total_amount))
         context = {
             'voucher_id': voucher.voucher_id,
             'student_name': student.applicant.full_name,
@@ -1232,13 +1273,17 @@ def generate_voucher(request):
             'shift': student_shift,
             'academic_session': fee_to_program.academic_session.name,
             'fee_type': semester_fee.fee_type.name,
-            'dynamic_fees': semester_fee.dynamic_fees,  # Dictionary of fee heads and amounts
-            'total_amount': str(semester_fee.total_amount),
+            'dynamic_fees': dynamic_fees,  # Dictionary of fee heads and amounts
+            'total_amount': str(total_amount),
             'due_date': voucher.due_date.strftime('%d %B %Y'),
             'office_name': voucher.office.name if voucher.office else 'N/A',
             'office_address': voucher.office.location if voucher.office else 'N/A',
             'office_contact': voucher.office.contact_phone if voucher.office else 'N/A',
             'generated_at': generated_at,
+            'late_fee_type': late_fee_type,
+            'late_fee_amount': str(late_fee_amount) if late_fee_amount else None,
+            'new_voucher_created': new_voucher_created,
+            'updated_total_amount': str(updated_total_amount),
         }
         
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -1249,6 +1294,9 @@ def generate_voucher(request):
         return render(request, 'fee_management/generate_voucher.html', context)
     
     return render(request, 'fee_management/generate_voucher.html', {'errors': errors})
+
+
+
 
 #  meirt list related section 
 def active_session_required(program_id):

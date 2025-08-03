@@ -21,6 +21,12 @@
         </div>
       </div>
       <h3 class="font-semibold mt-2">Fee Details</h3>
+      {% if late_fee_type %}
+      <p class="bg-yellow-50 font-bold p-2 mb-2">Late Fee/Dues: {{ late_fee_amount|floatformat:2 }}</p>
+    {% endif %}
+    {% if new_voucher_created %}
+      <p class="bg-green-50 font-bold p-2 mb-2">New Voucher Generated</p>
+    {% endif %}
       <table class="w-full mt-1">
         <thead>
           <tr>
@@ -30,7 +36,7 @@
         </thead>
         <tbody>
           {% for head, amount in dynamic_fees.items %}
-          <tr>
+          <tr{% if head == late_fee_type %} class="bg-yellow-50 font-bold"{% endif %}>
             <td class="border p-2">{{ head }}</td>
             <td class="border p-2 text-right">{{ amount|floatformat:2 }}</td>
           </tr>
@@ -42,7 +48,7 @@
           {% endfor %}
           <tr>
             <td class="border p-2 font-semibold">Total Amount</td>
-            <td class="border p-2 text-right font-semibold">{{ total_amount|floatformat:2 }}</td>
+            <td class="border p-2 text-right font-semibold">{{ updated_total_amount|floatformat:2 }}</td>
           </tr>
         </tbody>
       </table>
@@ -77,6 +83,12 @@
         </div>
       </div>
       <h3 class="font-semibold mt-2">Fee Details</h3>
+      {% if late_fee_type %}
+        <p class="bg-yellow-50 font-bold p-2 mb-2">Late Fee/Dues: {{ late_fee_amount|floatformat:2 }}</p>
+      {% endif %}
+      {% if new_voucher_generated %}
+        <p class="bg-green-50 font-bold p-2 mb-2">New Voucher Generated</p>
+      {% endif %}
       <table class="w-full mt-1">
         <thead>
           <tr>
@@ -86,7 +98,7 @@
         </thead>
         <tbody>
           {% for head, amount in dynamic_fees.items %}
-          <tr>
+          <tr{% if head == late_fee_type %} class="bg-yellow-50 font-bold"{% endif %}>
             <td class="border p-2">{{ head }}</td>
             <td class="border p-2 text-right">{{ amount|floatformat:2 }}</td>
           </tr>
@@ -98,7 +110,7 @@
           {% endfor %}
           <tr>
             <td class="border p-2 font-semibold">Total Amount</td>
-            <td class="border p-2 text-right font-semibold">{{ total_amount|floatformat:2 }}</td>
+            <td class="border p-2 text-right font-semibold">{{ updated_total_amount|floatformat:2 }}</td>
           </tr>
         </tbody>
       </table>
@@ -133,6 +145,12 @@
         </div>
       </div>
       <h3 class="font-semibold mt-2">Fee Details</h3>
+      {% if late_fee_type %}
+      <p class="bg-yellow-50 font-bold p-2 mb-2">Late Fee/Dues: {{ late_fee_amount|floatformat:2 }}</p>
+    {% endif %}
+    {% if new_voucher_created %}
+      <p class="bg-green-50 font-bold p-2 mb-2">New Voucher Generated</p>
+    {% endif %}
       <table class="w-full mt-1">
         <thead>
           <tr>
@@ -142,7 +160,7 @@
         </thead>
         <tbody>
           {% for head, amount in dynamic_fees.items %}
-          <tr>
+          <tr{% if head == late_fee_type %} class="bg-yellow-50 font-bold"{% endif %}>
             <td class="border p-2">{{ head }}</td>
             <td class="border p-2 text-right">{{ amount|floatformat:2 }}</td>
           </tr>
@@ -154,7 +172,7 @@
           {% endfor %}
           <tr>
             <td class="border p-2 font-semibold">Total Amount</td>
-            <td class="border p-2 text-right font-semibold">{{ total_amount|floatformat:2 }}</td>
+            <td class="border p-2 text-right font-semibold">{{ updated_total_amount|floatformat:2 }}</td>
           </tr>
         </tbody>
       </table>

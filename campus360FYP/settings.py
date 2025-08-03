@@ -87,7 +87,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# FREEZE_TIME = "2025-08-02 10:00:00"
+# FREEZE_TIME = "2025-09-19 10:00:00"
 
 # if DEBUG:
 #     MIDDLEWARE.insert(0, 'utils.middleware.FreezeTimeMiddleware')

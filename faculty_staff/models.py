@@ -186,8 +186,6 @@ class OfficeStaff(models.Model):
     def __str__(self):
         return f"{(self.user.get_full_name() or self.user.first_name)} ({self.position})"
 
-
-
     class Meta:
         verbose_name = "Office Staff"
         verbose_name_plural = "Office Staff"

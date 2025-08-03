@@ -56,4 +56,10 @@ urlpatterns = [
     path('password-reset/done/', OfficePasswordResetDoneView.as_view(), name='password_reset_done'),
     path('reset/<uidb64>/<token>/', OfficePasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('reset/done/', OfficePasswordResetCompleteView.as_view(), name='password_reset_complete'),
+    
+    
+    # ========== 10. Settings & Profile ==========
+    path('settings/', views.settings, name='settings'),
+    path('update_account/', views.update_account, name='update_account'),
+    path('change_password/', views.change_password, name='change_password'),
 ] 

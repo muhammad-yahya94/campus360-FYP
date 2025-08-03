@@ -4,11 +4,11 @@ import subprocess
 import logging
 from django.urls import reverse 
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
 from faculty_staff.models import OfficeStaff, Office
-from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.http import HttpResponse, JsonResponse
 from .models import SemesterFee, FeeType, FeeVoucher, StudentFeePayment, FeeToProgram, MeritList, MeritListEntry
@@ -25,7 +25,7 @@ from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.db import transaction
 from students.models import StudentSemesterEnrollment, CourseEnrollment
-
+from .forms import OfficerUpdateForm, OfficerPasswordChangeForm 
 from .models import SemesterFee, FeeType, FeeVoucher, StudentFeePayment
 from students.models import Student
 from academics.models import Program
@@ -1853,3 +1853,82 @@ def manual_course_enrollment(request):
             return render(request, 'fee_management/manual_course_enrollment.html', context)
 
     return render(request, 'fee_management/manual_course_enrollment.html', context)
+
+
+
+
+
+
+
+@login_required
+def settings(request):
+    user = request.user
+    
+    if request.method == 'POST':
+        # Check which form was submitted
+        if 'update_account' in request.POST:
+            form = OfficerUpdateForm(
+                request.POST, 
+                request.FILES, 
+                instance=user
+            )
+            if form.is_valid():
+                form.save()
+                messages.success(request, 'Your account has been updated successfully!')
+                return redirect('fee_management:settings')
+        elif 'change_password' in request.POST:
+            form = OfficerPasswordChangeForm(user, request.POST)
+            if form.is_valid():
+                user = form.save()
+                update_session_auth_hash(request, user)  # Important to keep the user logged in
+                messages.success(request, 'Your password was successfully updated!')
+                return redirect('fee_management:settings')
+            else:
+                # If password form is invalid, show errors
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        messages.error(request, f"{field}: {error}")
+                return redirect('fee_management:settings?tab=security')
+    else:
+        # Initialize forms
+        form = OfficerUpdateForm(instance=user)
+        password_form = OfficerPasswordChangeForm(user)
+    
+    return render(request, 'fee_management/settings.html', {
+        'active_tab': request.GET.get('tab', 'account'),
+        'form': form,
+        'password_form': password_form,
+    })
+
+
+def update_account(request):
+    if request.method == 'POST':
+        user = request.user
+        user_form = UserUpdateForm(request.POST, request.FILES, instance=user)
+        
+        if user_form.is_valid():
+            user_form.save()
+            
+            # Update officer profile if it exists
+            if hasattr(user, 'officestaff_profile'):
+                profile = user.officestaff_profile
+                profile.contact_no = request.POST.get('contact_no', '')
+                profile.save()
+            
+            messages.success(request, 'Account updated successfully.')
+            return redirect('fee_management:settings')
+        else:
+            messages.error(request, 'Error updating account. Please check the form.')
+    return redirect('fee_management:settings')
+
+
+def change_password(request):
+    if request.method == 'POST':
+        password_form = PasswordChangeForm(request.user, request.POST)
+        if password_form.is_valid():
+            user = password_form.save()
+            update_session_auth_hash(request, user)  # Keep the user logged in
+            messages.success(request, 'Password changed successfully.')
+        else:
+            messages.error(request, 'Error changing password. Please check the form.')
+    return redirect('fee_management:settings')

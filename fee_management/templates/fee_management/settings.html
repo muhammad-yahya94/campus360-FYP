@@ -1,0 +1,252 @@
+{% extends 'fee_management/office_base.html' %}
+{% load static %}
+
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<div class="mx-auto space-y-6 px-2 sm:px-4 py-6 max-w-4xl">
+    <!-- Header -->
+    <div class="hero bg-gradient-to-r from-indigo-600 to-purple-500 text-white rounded-xl shadow-lg">
+        <div class="hero-content text-center py-6 sm:py-8">
+            <div>
+                <h1 class="text-3xl sm:text-4xl font-bold mb-2">Profile Settings</h1>
+                <p class="text-base sm:text-lg opacity-90">Manage your account information and security</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="space-y-2">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} shadow-lg">
+            <div>
+                <span>{{ message }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Tabs -->
+    <div class="tabs tabs-boxed bg-base-200 p-1 rounded-lg">
+        <a href="?tab=account" class="tab {% if active_tab == 'account' or not active_tab %}tab-active{% endif %}">
+            <i class="fas fa-user-circle mr-2"></i> Account
+        </a>
+        <a href="?tab=security" class="tab {% if active_tab == 'security' %}tab-active{% endif %}">
+            <i class="fas fa-shield-alt mr-2"></i> Security
+        </a>
+    </div>
+
+    <!-- Account Tab Content -->
+    <div id="account-tab" class="{% if active_tab != 'account' and active_tab %}hidden{% endif %}">
+        <div class="card bg-base-100 shadow-md">
+            <div class="card-body">
+                <h2 class="card-title text-xl font-medium mb-4">
+                    <i class="fas fa-user-circle mr-2"></i> Account Information
+                </h2>
+                
+                <form method="post" enctype="multipart/form-data" class="space-y-4">
+                    {% csrf_token %}
+                    <input type="hidden" name="update_account" value="1">
+                    
+                    <!-- Profile Picture -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-medium">Profile Picture</span>
+                        </label>
+                        <div class="flex items-center space-x-6">
+                            <div class="relative w-24 h-24">
+                                <img id="profile-preview" 
+                                     src="{% if form.instance.profile_picture %}{{ form.instance.profile_picture.url }}{% else %}{% static 'images/default-avatar.png' %}{% endif %}" 
+                                     alt="Profile Preview" 
+                                     class="w-full h-full rounded-full object-cover border-2 border-base-200">
+                            </div>
+                            <div class="flex-1">
+                                {{ form.profile_picture }}
+                                {% if form.profile_picture.errors %}
+                                <div class="text-error text-xs mt-1">{{ form.profile_picture.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Personal Information -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                        <!-- First Name -->
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">First Name</span>
+                            </label>
+                            {{ form.first_name }}
+                            {% if form.first_name.errors %}
+                            <div class="text-error text-xs mt-1">{{ form.first_name.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Last Name -->
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">Last Name</span>
+                            </label>
+                            {{ form.last_name }}
+                            {% if form.last_name.errors %}
+                            <div class="text-error text-xs mt-1">{{ form.last_name.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Email -->
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">Email Address</span>
+                            </label>
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                            <div class="text-error text-xs mt-1">{{ form.email.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Contact Number -->
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">Contact Number</span>
+                            </label>
+                            {{ form.contact_no }}
+                            {% if form.contact_no.errors %}
+                            <div class="text-error text-xs mt-1">{{ form.contact_no.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- About/Bio -->
+                    <div class="form-control mt-4">
+                        <label class="label">
+                            <span class="label-text font-medium">About Me</span>
+                        </label>
+                        {{ form.info }}
+                        {% if form.info.errors %}
+                        <div class="text-error text-xs mt-1">{{ form.info.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Save Button -->
+                    <div class="flex justify-end mt-6">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save mr-2"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security Tab Content -->
+    <div id="security-tab" class="{% if active_tab != 'security' %}hidden{% endif %}">
+        <div class="card bg-base-100 shadow-md">
+            <div class="card-body">
+                <h2 class="card-title text-xl font-medium mb-4">
+                    <i class="fas fa-shield-alt mr-2"></i> Security Settings
+                </h2>
+                
+                <form method="post" class="space-y-4">
+                    {% csrf_token %}
+                    <input type="hidden" name="change_password" value="1">
+                    
+                    <div class="space-y-4">
+                        {% for field in password_form %}
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">{{ field.label }}</span>
+                            </label>
+                            <div class="relative">
+                                {{ field }}
+                                {% if field.name == 'old_password' %}
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                                    <i class="fas fa-lock text-gray-400"></i>
+                                </div>
+                                {% elif field.name == 'new_password1' %}
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                                    <i class="fas fa-key text-gray-400"></i>
+                                </div>
+                                {% elif field.name == 'new_password2' %}
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                                    <i class="fas fa-check-double text-gray-400"></i>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% if field.help_text %}
+                            <div class="text-xs text-gray-500 mt-1">{{ field.help_text }}</div>
+                            {% endif %}
+                            {% if field.errors %}
+                            <div class="text-error text-xs mt-1">{{ field.errors }}</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        
+                        <div class="flex justify-end mt-6">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-key mr-2"></i> Update Password
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    // Profile picture preview
+    document.addEventListener('DOMContentLoaded', function() {
+        // Profile picture preview
+        const profilePicInput = document.getElementById('profile_picture');
+        const profilePreview = document.getElementById('profile-preview');
+        
+        if (profilePicInput) {
+            profilePicInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        profilePreview.src = e.target.result;
+                    }
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+        
+        // Tab switching
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('[id$="-tab"]');
+        
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetTab = this.getAttribute('href').split('=')[1] || 'account';
+                
+                // Update active tab
+                tabs.forEach(t => t.classList.remove('tab-active'));
+                this.classList.add('tab-active');
+                
+                // Show target tab content
+                tabContents.forEach(content => content.classList.add('hidden'));
+                document.getElementById(`${targetTab}-tab`).classList.remove('hidden');
+                
+                // Update URL
+                const url = new URL(window.location);
+                url.searchParams.set('tab', targetTab);
+                window.history.pushState({}, '', url);
+            });
+        });
+        
+        // Initialize tooltips
+        const tooltipElements = document.querySelectorAll('[data-tip]');
+        tooltipElements.forEach(el => {
+            el.setAttribute('data-tip', el.getAttribute('data-tip'));
+        });
+    });
+</script>
+{% endblock %}
+
+{% endblock %}

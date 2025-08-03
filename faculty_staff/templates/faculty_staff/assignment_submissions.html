@@ -83,6 +83,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                 {% else %}
                                 <span class="text-base-content/50">No file submitted</span>
                                 {% endif %}
+                                <a href="{% url 'faculty_staff:assignment_submission_detail' submission.id %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-info-circle"></i> View Details
+                                </a>
                                 {% if not submission.marks_obtained %}
                                 <button class="btn btn-sm btn-warning open-modal" data-submission-id="{{ submission.id }}">
                                     <i class="fas fa-pen"></i> Grade

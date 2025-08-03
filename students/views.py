@@ -365,19 +365,27 @@ def submit_assignment(request, assignment_id):
             messages.error(request, 'Submission deadline has passed.')
             return redirect('students:assignments', course_offering_id=assignment.course_offering.id)
 
-        content = request.POST.get('content')
+        text_content = request.POST.get('text_content', '')
+        code_content = request.POST.get('code_content', '')
+        submission_type = request.POST.get('submission_type', 'text')
+        code_language = request.POST.get('code_language', 'none')
         file = request.FILES.get('files')
 
-        submission.content = content
+        # Update submission fields
+        submission.text_content = text_content
+        submission.code_content = code_content
+        submission.submission_type = submission_type
+        submission.code_language = code_language if submission_type == 'code' else 'none'
         submission.submitted_at = timezone.now()
 
+        # Handle file upload
         if file:
             fs = FileSystemStorage()
             filename = fs.save(file.name, file)
             submission.file = filename
 
         submission.save()
-        logger.info(f"Assignment {assignment_id} submitted successfully by student: {student}")
+        logger.info(f"Assignment {assignment_id} submitted successfully by student: {student} (Type: {submission_type}, Language: {code_language})")
         messages.success(request, 'Assignment submitted successfully!')
         return redirect('students:assignments', course_offering_id=assignment.course_offering.id)
 
@@ -844,11 +852,18 @@ def student_attendance(request, course_offering_id):
         'percentage': round(percentage, 2)
     }
 
+    # Fetch assignment submissions for the student and course offering
+    assignment_submissions = AssignmentSubmission.objects.filter(
+        student=student,
+        assignment__course_offering=course_offering
+    ).select_related('assignment').order_by('-submitted_at')
+
     context = {
         'student': student,
         'attendances': attendances,
         'course_stats': course_stats,
         'course_offering': course_offering,
+        'assignment_submissions': assignment_submissions,
     }
     return render(request, 'attendance.html', context)
 

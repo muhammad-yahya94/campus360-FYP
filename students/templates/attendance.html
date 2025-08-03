@@ -105,6 +105,47 @@
       <span>No attendance records available for {{ course_offering.course.code }} - {{ course_offering.course.name }}.</span>
     </div>
   {% endif %}
+
+  <!-- Assignment Submissions -->
+  {% if assignment_submissions %}
+    <div class="card bg-base-100 shadow-lg rounded-lg overflow-hidden mb-6">
+      <div class="card-body">
+        <h2 class="card-title text-2xl text-base-content mb-4">
+          Assignment Submissions
+        </h2>
+        <div class="space-y-6">
+          {% for submission in assignment_submissions %}
+            <div class="border border-gray-300 rounded-lg p-4">
+              <h3 class="text-xl font-semibold mb-2">{{ submission.assignment.title }}</h3>
+              <p class="mb-2"><strong>Submitted At:</strong> {{ submission.submitted_at|date:"Y-m-d H:i" }}</p>
+              {% if submission.text_content %}
+                <div class="mb-4">
+                  <h4 class="font-semibold mb-1">Text Content:</h4>
+                  <div class="prose max-w-full" style="white-space: pre-wrap;">{{ submission.text_content|safe }}</div>
+                </div>
+              {% endif %}
+              {% if submission.code_content %}
+                <div class="mb-4">
+                  <h4 class="font-semibold mb-1">Code Content:</h4>
+                  <pre class="bg-gray-100 p-3 rounded overflow-x-auto"><code>{{ submission.code_content }}</code></pre>
+                </div>
+              {% endif %}
+              {% if submission.file %}
+                <div class="mb-4">
+                  <h4 class="font-semibold mb-1">Uploaded File:</h4>
+                  {% if submission.file.url|lower|endswith:".jpg" or submission.file.url|lower|endswith:".jpeg" or submission.file.url|lower|endswith:".png" or submission.file.url|lower|endswith:".gif" %}
+                    <img src="{{ submission.file.url }}" alt="Uploaded Image" class="max-w-full h-auto rounded" />
+                  {% else %}
+                    <a href="{{ submission.file.url }}" target="_blank" class="text-primary underline">Download File</a>
+                  {% endif %}
+                </div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
 </div>
 
 {% endblock %}

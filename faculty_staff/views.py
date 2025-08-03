@@ -3611,6 +3611,19 @@ def assignment_submissions(request, assignment_id):
     return render(request, 'faculty_staff/assignment_submissions.html', {'assignment': assignment, 'submissions': submissions})
 
 @hod_or_professor_required
+def assignment_submission_detail(request, submission_id):
+    submission = get_object_or_404(
+        AssignmentSubmission,
+        id=submission_id,
+        assignment__course_offering__teacher=request.user.teacher_profile
+    )
+    # Log the content for debugging
+    logger.debug(f"Submission text_content: {submission.text_content}")
+    logger.debug(f"Submission code_content: {submission.code_content}")
+    logger.debug(f"Submission file: {submission.file}")
+    return render(request, 'faculty_staff/assignment_submission_detail.html', {'submission': submission})
+
+@hod_or_professor_required
 def grade_submission(request):
     submission_id = request.POST.get('submission_id')
     marks_obtained = request.POST.get('marks_obtained')

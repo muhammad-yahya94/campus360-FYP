@@ -91,7 +91,9 @@
         </div>
 
         <!-- Quill -->
-        <div id="submissionText"></div>
+        <div id="submissionText">
+            
+        </div>
 
         <!-- CodeMirror -->
         <div id="code-editor-container" class="hidden">
@@ -113,7 +115,8 @@
             <textarea id="code-editor"></textarea>
         </div>
 
-        <input type="hidden" id="submissionContent" name="content">
+        <input type="hidden" id="textContent" name="text_content">
+        <input type="hidden" id="codeContent" name="code_content">
         <input type="hidden" id="submissionType" name="submission_type" value="text">
         <input type="hidden" id="codeLanguage" name="code_language" value="none">
 
@@ -257,11 +260,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Form submit
     document.querySelector('form').addEventListener('submit', function () {
+        textContent.value = quill.root.innerHTML;
+        codeContent.value = codeEditor.getValue();
         if (submissionType.value === 'text') {
-            submissionContent.value = quill.root.innerHTML;
             codeLanguage.value = 'none';
-        } else {
-            submissionContent.value = codeEditor.getValue();
         }
     });
 

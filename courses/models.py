@@ -324,9 +324,31 @@ class Assignment(models.Model):
 
 # ===== Assignment Submission =====
 class AssignmentSubmission(models.Model):
+    SUBMISSION_TYPES = [
+        ('text', 'Rich Text'),
+        ('code', 'Code'),
+    ]
+    
+    CODE_LANGUAGES = [
+        ('none', 'None'),
+        ('python', 'Python'),
+        ('javascript', 'JavaScript'),
+        ('html', 'HTML'),
+        ('css', 'CSS'),
+        ('c', 'C'),
+        ('cpp', 'C++'),
+        ('java', 'Java'),
+        ('php', 'PHP'),
+        ('sql', 'SQL'),
+    ]
+    
     assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name='submissions', help_text="The assignment this submission is for.")
     student = models.ForeignKey('students.Student', on_delete=models.CASCADE, related_name='submissions', help_text="The student who submitted this assignment.")
-    content = models.TextField(blank=True, help_text="Rich text content of the submission.")
+    text_content = models.TextField(blank=True, help_text="Rich text content of the submission.")
+    code_content = models.TextField(blank=True, help_text="Code content of the submission.")
+    submission_type = models.CharField(max_length=10, choices=SUBMISSION_TYPES, default='text', help_text="Type of submission content.")
+    code_language = models.CharField(max_length=20, choices=CODE_LANGUAGES, default='none', help_text="Programming language for code submissions.")
+    formatted_content = models.TextField(blank=True, help_text="Formatted content for display purposes.")
     file = models.FileField(upload_to='submissions/', blank=True, null=True, help_text="The file submitted by the student.")
     submitted_at = models.DateTimeField(auto_now_add=True, help_text="The date and time when the submission was made.")
     marks_obtained = models.PositiveIntegerField(null=True, blank=True, help_text="Marks obtained by the student for this submission.")
@@ -336,6 +358,19 @@ class AssignmentSubmission(models.Model):
 
     def __str__(self):
         return f"Submission by {self.student} for {self.assignment}"
+
+    def save(self, *args, **kwargs):
+        # Format content based on submission type
+        if self.submission_type == 'code' and self.code_content:
+            # For code submissions, preserve line breaks and formatting
+            self.formatted_content = self.code_content
+        elif self.submission_type == 'text' and self.text_content:
+            # For text submissions, keep the rich text formatting
+            self.formatted_content = self.text_content
+        else:
+            self.formatted_content = self.text_content or self.code_content
+        
+        super().save(*args, **kwargs)
 
     class Meta:
         unique_together = ('assignment', 'student')

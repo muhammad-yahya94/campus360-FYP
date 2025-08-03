@@ -82,6 +82,7 @@ urlpatterns = [
     path('edit-assignment/', views.edit_assignment, name='edit_assignment'),
     path('delete-assignment/', views.delete_assignment, name='delete_assignment'),
     path('assignment-submissions/<int:assignment_id>/', views.assignment_submissions, name='assignment_submissions'),
+    path('assignment-submission/<int:submission_id>/', views.assignment_submission_detail, name='assignment_submission_detail'),
     path('grade-submission/', views.grade_submission, name='grade_submission'),
 
 

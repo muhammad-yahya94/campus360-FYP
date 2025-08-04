@@ -3375,15 +3375,20 @@ def search_course_offerings(request):
     })
 
 
+from django.db.models import Exists, OuterRef
+
 @hod_or_professor_required
 def assignments(request, offering_id):    
     course_offering_id = offering_id
     if course_offering_id:
         try:
             course_offering = get_object_or_404(CourseOffering, id=course_offering_id, teacher=request.user.teacher_profile)
+            submissions_qs = AssignmentSubmission.objects.filter(assignment=OuterRef('pk'))
             assignments = Assignment.objects.filter(
                 course_offering_id=course_offering_id,
                 course_offering__teacher=request.user.teacher_profile
+            ).annotate(
+                has_submissions=Exists(submissions_qs)
             ).select_related('course_offering').order_by('-created_at')
             logger.info(f"Retrieved assignments for course offering {course_offering_id}: {list(assignments)}")
         except ValueError:
@@ -3395,8 +3400,11 @@ def assignments(request, offering_id):
                 'error': 'Invalid course offering ID.'
             })
     else:
+        submissions_qs = AssignmentSubmission.objects.filter(assignment=OuterRef('pk'))
         assignments = Assignment.objects.filter(
             course_offering__teacher=request.user.teacher_profile
+        ).annotate(
+            has_submissions=Exists(submissions_qs)
         ).select_related('course_offering').order_by('-created_at')
         course_offering = None
         logger.info(f"Retrieved all assignments for teacher {request.user.teacher_profile}: {list(assignments)}")
@@ -3609,19 +3617,6 @@ def assignment_submissions(request, assignment_id):
     submissions = AssignmentSubmission.objects.filter(assignment=assignment).order_by('-submitted_at')
     logger.info(f"Retrieved submissions for assignment ID {assignment_id}: {list(submissions)}")
     return render(request, 'faculty_staff/assignment_submissions.html', {'assignment': assignment, 'submissions': submissions})
-
-@hod_or_professor_required
-def assignment_submission_detail(request, submission_id):
-    submission = get_object_or_404(
-        AssignmentSubmission,
-        id=submission_id,
-        assignment__course_offering__teacher=request.user.teacher_profile
-    )
-    # Log the content for debugging
-    logger.debug(f"Submission text_content: {submission.text_content}")
-    logger.debug(f"Submission code_content: {submission.code_content}")
-    logger.debug(f"Submission file: {submission.file}")
-    return render(request, 'faculty_staff/assignment_submission_detail.html', {'submission': submission})
 
 @hod_or_professor_required
 def grade_submission(request):
@@ -6648,3 +6643,12 @@ def view_exam_schedules(request):
             'error': str(e),
             'schedules': []
         }, status=500)
+    
+@hod_or_professor_required
+def assignment_submission_detail(request, submission_id):
+    submission = get_object_or_404(
+        AssignmentSubmission,
+        id=submission_id,
+        assignment__course_offering__teacher=request.user.teacher_profile
+    )
+    return render(request, 'faculty_staff/assignment_submission_detail.html', {'submission': submission})

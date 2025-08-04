@@ -118,7 +118,8 @@
                                     </a>
                                     <button type="button" class="btn btn-sm btn-warning edit-assignment" data-assignment-id="{{ assignment.id }}"
                                             data-title="{{ assignment.title }}" data-description="{{ assignment.description|default:'' }}"
-                                            data-due-date="{{ assignment.due_date|date:'Y-m-d\TH:i' }}" data-max-points="{{ assignment.max_points }}">
+                                            data-due-date="{{ assignment.due_date|date:'Y-m-d\TH:i' }}" data-max-points="{{ assignment.max_points }}"
+                                            {% if assignment.has_submissions %} disabled style="opacity: 0.5; cursor: not-allowed;" title="Cannot edit after submissions" {% endif %}>
                                         <i class="fas fa-edit"></i>
                                         Edit
                                     </button>

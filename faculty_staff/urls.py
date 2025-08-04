@@ -144,4 +144,5 @@ urlpatterns = [
     path('get-programs-exam-ds/', views.get_programs_exam_ds, name='get_programs_ds'),
     path('get-semesters-exam-ds/', views.get_semesters_exam_ds, name='get_semesters_ds'),
     path('get-courses-exam-ds/', views.get_courses_exam_ds, name='get_courses_ds'),
+    path('exam-datesheet/update/', views.update_exam_schedule_ajax, name='update_exam_schedule_ajax'),
 ]

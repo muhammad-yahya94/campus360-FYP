@@ -55,11 +55,12 @@
                             <th>Date</th>
                             <th>Time</th>
                             <th>Exam Center</th>
+                            <th>Edit</th>
                         </tr>
                     </thead>
                     <tbody id="schedule-rows">
                         <tr>
-                            <td colspan="6" class="text-center py-4">
+                            <td colspan="7" class="text-center py-4">
                                 <div class="text-gray-500">
                                     <i class="fas fa-calendar-alt text-3xl mb-2"></i>
                                     <p>Select filters to view exam schedule</p>
@@ -161,6 +162,22 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                // Does this cookie string begin with the name we want?
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
     const sessionSelect = document.getElementById('academic_session');
     const programSelect = document.getElementById('program');
     const semesterSelect = document.getElementById('semester');
@@ -321,7 +338,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 return response.json();
             })
-            .then(data => {
+                    .then(data => {
                 // Reset button state
                 viewScheduleBtn.disabled = false;
                 viewScheduleBtn.textContent = 'View Schedule';
@@ -345,7 +362,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         const headerRow = document.createElement('tr');
                         headerRow.className = 'bg-base-200';
                         headerRow.innerHTML = `
-                            <td colspan="6" class="font-bold">
+                            <td colspan="7" class="font-bold">
                                 ${examType.charAt(0).toUpperCase() + examType.slice(1)} Exams
                             </td>
                         `;
@@ -353,8 +370,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         
                         // Add schedules for this exam type
                         schedules.forEach(schedule => {
+                            const today = new Date();
+                            const examDate = schedule.exam_date ? new Date(schedule.exam_date) : new Date('2100-01-01');
+                            const isEditable = examDate >= today;
                             const row = document.createElement('tr');
                             row.className = 'hover:bg-base-200';
+                            row.dataset.scheduleId = schedule.id;  // Store schedule id in data attribute
                             row.innerHTML = `
                                 <td>${schedule.course_code || 'N/A'}</td>
                                 <td>${schedule.course_name || 'N/A'}</td>
@@ -362,6 +383,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <td>${schedule.exam_date || 'Not set'}</td>
                                 <td>${schedule.start_time ? schedule.start_time + (schedule.end_time ? ' - ' + schedule.end_time : '') : 'Not set'}</td>
                                 <td>${schedule.exam_center || 'Not set'}</td>
+                                <td>${isEditable ? '<button type="button" class="btn btn-sm btn-info edit-btn">Edit</button>' : ''}</td>
                             `;
                             scheduleRows.appendChild(row);
                         });
@@ -370,7 +392,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Show no results message
                     scheduleRows.innerHTML = `
                         <tr>
-                            <td colspan="6" class="text-center py-8">
+                            <td colspan="7" class="text-center py-8">
                                 <div class="text-gray-500">
                                     <i class="fas fa-calendar-times text-4xl mb-2"></i>
                                     <p class="text-lg">No exam schedules found</p>
@@ -485,6 +507,130 @@ document.addEventListener('DOMContentLoaded', function() {
                 loadCoursesButton.textContent = 'Load Courses';
             });
     });
+
+    // Add event listener for edit buttons after schedules are loaded
+    document.addEventListener('click', function(event) {
+        if (event.target && event.target.classList.contains('edit-btn')) {
+            const row = event.target.closest('tr');
+            if (!row) return;
+
+            // Get current values from the row
+            const courseCode = row.cells[0].textContent;
+            const examDate = row.cells[3].textContent === 'Not set' ? '' : row.cells[3].textContent;
+            const timeText = row.cells[4].textContent;
+            let startTime = '', endTime = '';
+            if (timeText && timeText !== 'Not set') {
+                const times = timeText.split(' - ');
+                startTime = times[0] || '';
+                endTime = times[1] || '';
+            }
+            const examCenter = row.cells[5].textContent === 'Not set' ? '' : row.cells[5].textContent;
+
+            // Fill modal inputs
+            document.getElementById('modal-course-code').textContent = courseCode;
+            document.getElementById('modal-exam-date').value = examDate;
+            document.getElementById('modal-start-time').value = startTime;
+            document.getElementById('modal-end-time').value = endTime;
+            document.getElementById('modal-exam-center').value = examCenter;
+
+            // Store the row being edited
+            window.currentEditRow = row;
+
+            // Show modal
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+    });
+
+    // Modal save button handler
+    document.getElementById('modal-save-btn').addEventListener('click', function() {
+        if (!window.currentEditRow) return;
+
+        // Get values from modal inputs
+        const newExamDate = document.getElementById('modal-exam-date').value;
+        const newStartTime = document.getElementById('modal-start-time').value;
+        const newEndTime = document.getElementById('modal-end-time').value;
+        const newExamCenter = document.getElementById('modal-exam-center').value;
+
+        // Get schedule id from the row data attribute
+        const scheduleId = window.currentEditRow.dataset.scheduleId;
+
+        // Send AJAX POST to update exam schedule in backend
+        fetch("{% url 'faculty_staff:update_exam_schedule_ajax' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': getCookie('csrftoken'),
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: new URLSearchParams({
+                'schedule_id': scheduleId,
+                'exam_date': newExamDate,
+                'start_time': newStartTime,
+                'end_time': newEndTime,
+                'exam_center': newExamCenter
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update the row cells
+                window.currentEditRow.cells[3].textContent = newExamDate || 'Not set';
+                window.currentEditRow.cells[4].textContent = newStartTime + (newEndTime ? ' - ' + newEndTime : '');
+                window.currentEditRow.cells[5].textContent = newExamCenter || 'Not set';
+
+                // Also update the hidden inputs in the form if present
+                const inputs = window.currentEditRow.querySelectorAll('input');
+                inputs.forEach(input => {
+                    if (input.name.includes('exam_date')) input.value = newExamDate;
+                    if (input.name.includes('start_time')) input.value = newStartTime;
+                    if (input.name.includes('end_time')) input.value = newEndTime;
+                    if (input.name.includes('exam_center')) input.value = newExamCenter;
+                });
+
+                // Hide modal
+                document.getElementById('editModal').classList.add('hidden');
+                window.currentEditRow = null;
+            } else {
+                alert('Failed to update exam schedule: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error updating exam schedule: ' + error);
+        });
+    });
+
+    // Modal cancel button handler
+    document.getElementById('modal-cancel-btn').addEventListener('click', function() {
+        document.getElementById('editModal').classList.add('hidden');
+        window.currentEditRow = null;
+    });
 });
 </script>
+
+<!-- Edit Modal -->
+<div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg shadow-lg p-6 w-96">
+        <h3 class="text-lg font-semibold mb-4">Edit Exam Schedule for <span id="modal-course-code"></span></h3>
+        <div class="mb-3">
+            <label for="modal-exam-date" class="block font-medium mb-1">Exam Date</label>
+            <input type="date" id="modal-exam-date" class="input input-bordered w-full">
+        </div>
+        <div class="mb-3">
+            <label for="modal-start-time" class="block font-medium mb-1">Start Time</label>
+            <input type="time" id="modal-start-time" class="input input-bordered w-full">
+        </div>
+        <div class="mb-3">
+            <label for="modal-end-time" class="block font-medium mb-1">End Time</label>
+            <input type="time" id="modal-end-time" class="input input-bordered w-full">
+        </div>
+        <div class="mb-4">
+            <label for="modal-exam-center" class="block font-medium mb-1">Exam Center</label>
+            <input type="text" id="modal-exam-center" class="input input-bordered w-full" placeholder="e.g., Room 101">
+        </div>
+        <div class="flex justify-end space-x-3">
+            <button id="modal-cancel-btn" class="btn btn-secondary">Cancel</button>
+            <button id="modal-save-btn" class="btn btn-primary">Save</button>
+        </div>
+    </div>
+</div>
 {% endblock %}

@@ -10,6 +10,7 @@ from datetime import time, date
 from datetime import datetime, timedelta
 from calendar import month_name
 from django.db.models.functions import ExtractWeek
+from faculty_staff.models import ExamDateSheet
 
 # Third-party Imports
 import pytz
@@ -6497,6 +6498,80 @@ def exam_datesheet(request):
     
     context = {'academic_sessions': academic_sessions, 'title': 'Exam Datesheet Management'}
     return render(request, 'faculty_staff/exam_datesheet.html', context)
+
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+
+@hod_required
+@csrf_exempt
+def update_exam_schedule_ajax(request):
+    if request.method == 'POST' and request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        try:
+            schedule_id = request.POST.get('schedule_id')
+            exam_date = request.POST.get('exam_date')
+            start_time = request.POST.get('start_time')
+            end_time = request.POST.get('end_time')
+            exam_center = request.POST.get('exam_center')
+
+            if not schedule_id:
+                return JsonResponse({'success': False, 'message': 'Schedule ID is required.'}, status=400)
+
+            try:
+                schedule = ExamDateSheet.objects.get(id=schedule_id)
+            except ExamDateSheet.DoesNotExist:
+                return JsonResponse({'success': False, 'message': 'Exam schedule not found.'}, status=404)
+
+            # Validate date and time fields
+            try:
+                if exam_date:
+                    schedule.exam_date = exam_date
+                if start_time:
+                    schedule.start_time = start_time
+                if end_time:
+                    schedule.end_time = end_time
+                    # Validate end_time is after start_time
+                    if start_time and end_time and end_time <= start_time:
+                        return JsonResponse({
+                            'success': False,
+                            'message': 'End time must be after start time.'
+                        }, status=400)
+                if exam_center is not None:
+                    schedule.exam_center = exam_center
+
+                schedule.full_clean()  # Run model validation
+                schedule.save()
+                
+                return JsonResponse({
+                    'success': True, 
+                    'message': 'Exam schedule updated successfully.',
+                    'updated_data': {
+                        'exam_date': schedule.exam_date.strftime('%Y-%m-%d') if schedule.exam_date else None,
+                        'start_time': schedule.start_time.strftime('%H:%M') if schedule.start_time else None,
+                        'end_time': schedule.end_time.strftime('%H:%M') if schedule.end_time else None,
+                        'exam_center': schedule.exam_center
+                    }
+                })
+            except ValidationError as e:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Validation error',
+                    'errors': dict(e)
+                }, status=400)
+            except Exception as e:
+                return JsonResponse({
+                    'success': False,
+                    'message': f'Error updating schedule: {str(e)}'
+                }, status=500)
+
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'Server error: {str(e)}'
+            }, status=500)
+    return JsonResponse({
+        'success': False,
+        'message': 'Invalid request method or not AJAX.'
+    }, status=400)
 
 @hod_required
 def get_programs_exam_ds(request):

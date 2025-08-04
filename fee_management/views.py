@@ -182,6 +182,8 @@ def applicant_verification(request):
     }
     return render(request, 'fee_management/applicant_verification.html', context)
 
+
+
 @office_required
 def verify_applicant(request, applicant_id):
     applicant = get_object_or_404(Applicant, id=applicant_id)
@@ -229,10 +231,6 @@ def view_applicant(request, applicant_id):
 @office_required
 def student_management(request):
     return render(request, 'fee_management/student_management.html')
-
-
-
-
 
 
 
@@ -478,23 +476,71 @@ def results(request):
 
 
 
-
-
-
-
-
-
-
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.db.models import Q
 from django.template.loader import render_to_string
-from .models import SemesterFee, FeeType, AcademicSession, Program, FeeToProgram, Semester
+from .models import SemesterFee, FeeType, AcademicSession, Program, FeeToProgram, Semester, OfficeToHODNotification
 from django.contrib.auth.decorators import login_required
 from decimal import Decimal
 from django.http import JsonResponse
 
 import json
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_http_methods
+from academics.models import Department
+from users.models import CustomUser
+
+@office_required
+@require_http_methods(["GET", "POST"])
+def office_notice_view(request):
+    if request.method == "POST":
+        title = request.POST.get("title", "").strip()
+        message = request.POST.get("message", "").strip()
+        department_ids = request.POST.getlist("departments")
+        attached_file = request.FILES.get("attached_file")
+        user = request.user
+
+        if not title:
+            messages.error(request, "Title is required.")
+        if not message:
+            messages.error(request, "Message is required.")
+        if not department_ids:
+            messages.error(request, "Please select at least one department.")
+
+        if messages.get_messages(request):
+            # There are error messages, re-render form with errors
+            departments = Department.objects.all()
+            return render(request, "fee_management/office_notices.html", {
+                "departments": departments,
+                "title": title,
+                "message": message,
+                "selected_departments": list(map(int, department_ids)),
+            })
+
+        # Create notification
+        notification = OfficeToHODNotification.objects.create(
+            title=title,
+            message=message,
+            sent_by=user,
+            attached_file=attached_file if attached_file else None,
+        )
+        # Add departments
+        departments = Department.objects.filter(id__in=department_ids)
+        notification.departments.set(departments)
+        notification.save()
+
+        # TODO: Implement actual notification sending logic here (e.g., email to department heads)
+
+        messages.success(request, "Notification sent successfully.")
+        return redirect("fee_management:office_notice")
+
+    else:
+        departments = Department.objects.all()
+        return render(request, "fee_management/office_notices.html", {
+            "departments": departments,
+        })
+
 
 @office_required
 def semester_fee(request):
@@ -1853,3 +1899,102 @@ def manual_course_enrollment(request):
             return render(request, 'fee_management/manual_course_enrollment.html', context)
 
     return render(request, 'fee_management/manual_course_enrollment.html', context)
+
+from .forms import OfficeToHODNotificationForm
+from .models import OfficeToHODNotification
+
+def is_office(user):
+    return hasattr(user, 'officestaff')  # Adjust as needed
+
+@login_required
+@user_passes_test(is_office)
+def send_notification(request):
+    if request.method == 'POST':
+        form = OfficeToHODNotificationForm(request.POST, request.FILES)
+        if form.is_valid():
+            notification = form.save(commit=False)
+            notification.sent_by = request.user
+            notification.save()
+            return redirect('fee_management:notification_list')
+    else:
+        form = OfficeToHODNotificationForm()
+    return render(request, 'fee_management/send_notification.html', {'form': form})
+
+@login_required
+def notification_list(request):
+    notifications = OfficeToHODNotification.objects.order_by('-created_at')
+    return render(request, 'fee_management/office_notices_list.html', {'notifications': notifications})
+
+@office_required
+def office_notice_detail_view(request, pk):
+    notification = get_object_or_404(OfficeToHODNotification, pk=pk)
+    return render(request, "fee_management/office_notices_detail.html", {
+        "notification": notification
+    })
+
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from django.db.models import Q
+from django.template.loader import render_to_string
+from .models import SemesterFee, FeeType, AcademicSession, Program, FeeToProgram, Semester, OfficeToHODNotification
+from django.contrib.auth.decorators import login_required
+from decimal import Decimal
+from django.http import JsonResponse
+
+import json
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_http_methods
+from academics.models import Department
+from users.models import CustomUser
+
+@office_required
+@require_http_methods(["GET", "POST"])
+def office_notice_view(request):
+    if request.method == "POST":
+        title = request.POST.get("title", "").strip()
+        message = request.POST.get("message", "").strip()
+        department_ids = request.POST.getlist("departments")
+        attached_file = request.FILES.get("attached_file")
+        user = request.user
+
+        if not title:
+            messages.error(request, "Title is required.")
+        if not message:
+            messages.error(request, "Message is required.")
+        if not department_ids:
+            messages.error(request, "Please select at least one department.")
+
+        if messages.get_messages(request):
+            # There are error messages, re-render form with errors
+            departments = Department.objects.all()
+            return render(request, "fee_management/office_notices.html", {
+                "departments": departments,
+                "title": title,
+                "message": message,
+                "selected_departments": list(map(int, department_ids)),
+            })
+
+        # Create notification
+        notification = OfficeToHODNotification.objects.create(
+            title=title,
+            message=message,
+            sent_by=user,
+            attached_file=attached_file if attached_file else None,
+        )
+        # Add departments
+        departments = Department.objects.filter(id__in=department_ids)
+        notification.departments.set(departments)
+        notification.save()
+
+        # TODO: Implement actual notification sending logic here (e.g., email to department heads)
+
+        messages.success(request, "Notification sent successfully.")
+        return redirect("fee_management:office_notice")
+
+    else:
+        departments = Department.objects.all()
+        return render(request, "fee_management/office_notices.html", {
+            "departments": departments,
+        })
+

@@ -46,7 +46,10 @@ urlpatterns = [
     path('get_semesters/', views.get_semesters, name='get_semesters'),  # 7.2 Get Semesters (AJAX)
     path('get_semesters_by_roll/', views.get_semesters_by_roll, name='get_semesters_by_roll'),  # 7.3 Get Semesters by Roll (AJAX)
     
-    
+    # ========== 10. Office Notices ==========
+    path('office-notices/', views.notification_list, name='office_notice_list'),
+    path('office-notices/new/', views.office_notice_view, name='office_notice'),
+    path('office-notices/<int:pk>/', views.office_notice_detail_view, name='office_notice_detail'),
     
     # ========= 8. course enrollment ========
     path('repeat-course-enrollment/', views.manual_course_enrollment, name='manual_course_enrollment'),
@@ -56,4 +59,4 @@ urlpatterns = [
     path('password-reset/done/', OfficePasswordResetDoneView.as_view(), name='password_reset_done'),
     path('reset/<uidb64>/<token>/', OfficePasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('reset/done/', OfficePasswordResetCompleteView.as_view(), name='password_reset_complete'),
-] 
+]

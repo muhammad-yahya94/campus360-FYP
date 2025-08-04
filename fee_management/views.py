@@ -690,6 +690,10 @@ def semester_fee(request):
         'fee_type_errors': fee_type_errors
     })
 
+
+
+
+
 @office_required
 def get_programs(request):
     session_id = request.GET.get('session_id')

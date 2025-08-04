@@ -1568,15 +1568,24 @@ def semester_fees(request):
     Display student's semester fees with voucher status and total amounts.
     """
     try:
+        logger.debug("Entering semester_fees view for user: %s", request.user)
+
+        # Get student
+        logger.debug("Fetching student for user: %s", request.user)
         student = Student.objects.get(user=request.user)
-        
+        logger.debug("Student found: %s (Applicant ID: %s)", student, student.applicant.id)
+
         # Get all semesters for the student's program and session
+        logger.debug("Fetching semesters for program: %s, session: %s", 
+                    student.program, student.applicant.session)
         semesters = Semester.objects.filter(
             program=student.program,
             session=student.applicant.session,
         ).order_by('name')
-        
-        # Get all fee vouchers for this student with related data
+        logger.debug("Found %d semesters", semesters.count())
+
+        # Get all fee vouchers for this student
+        logger.debug("Fetching fee vouchers for student: %s", student)
         fee_vouchers = FeeVoucher.objects.filter(
             student=student
         ).select_related(
@@ -1585,12 +1594,16 @@ def semester_fees(request):
             'semester_fee__fee_type',
             'payment'
         ).order_by('-due_date')
-        
+        logger.debug("Found %d fee vouchers", fee_vouchers.count())
+
         # Create a dictionary to store semester data
         semester_data = {}
-        
+        logger.debug("Processing fee vouchers")
+
         # Process fee vouchers
         for voucher in fee_vouchers:
+            logger.debug("Processing voucher: %s (Semester ID: %s)", 
+                        voucher.voucher_id, voucher.semester_id)
             if voucher.semester_id not in semester_data:
                 semester_data[voucher.semester_id] = {
                     'semester': voucher.semester,
@@ -1599,18 +1612,49 @@ def semester_fees(request):
                     'is_fully_paid': True,
                     'due_date': voucher.due_date
                 }
-            
+                logger.debug("Initialized semester_data for semester ID: %s", 
+                           voucher.semester_id)
+
+            # Get payment details for this voucher
+            payment_details = []
+            if voucher.payment:
+                logger.debug("Found payment for voucher: %s", voucher.voucher_id)
+                payment_details.append({
+                    'amount': voucher.payment.amount_paid,
+                    'date': voucher.payment.payment_date,
+                    'receipt_number': voucher.payment.receipt_number,
+                    'remarks': voucher.payment.remarks or 'No remarks'
+                })
+            else:
+                logger.debug("No payment found for voucher: %s", voucher.voucher_id)
+
+            # Add payment details to voucher
+            voucher.payment_details = payment_details
+            voucher.total_paid = voucher.payment.amount_paid if voucher.payment else 0
+            voucher.payment_count = 1 if voucher.payment else 0
+            # Calculate remaining amount
+            voucher.remaining_amount = voucher.semester_fee.total_amount - voucher.total_paid if voucher.total_paid < voucher.semester_fee.total_amount else 0
+            logger.debug("Voucher %s: total_paid=%s, payment_count=%d, remaining_amount=%s", 
+                        voucher.voucher_id, voucher.total_paid, voucher.payment_count, voucher.remaining_amount)
+
             semester_data[voucher.semester_id]['vouchers'].append(voucher)
             semester_data[voucher.semester_id]['total_amount'] += voucher.semester_fee.total_amount
-            if not voucher.is_paid:
+            logger.debug("Updated total_amount for semester %s: %s", 
+                        voucher.semester_id, semester_data[voucher.semester_id]['total_amount'])
+
+            # Check if fully paid
+            if voucher.total_paid < voucher.semester_fee.total_amount:
                 semester_data[voucher.semester_id]['is_fully_paid'] = False
-        
+                logger.debug("Semester %s marked as not fully paid", voucher.semester_id)
+
         # Convert to list and sort by semester name
+        logger.debug("Sorting semester data")
         semester_list = sorted(
             semester_data.values(), 
             key=lambda x: x['semester'].name
         )
-        
+        logger.debug("Prepared %d semesters for rendering", len(semester_list))
+
         context = {
             'student': student,
             'semester_list': semester_list,
@@ -1618,16 +1662,22 @@ def semester_fees(request):
             'today_date': timezone.now().date(),
             'has_payments': any(sem['is_fully_paid'] for sem in semester_list)
         }
-        
+        logger.debug("Context prepared: %s", context)
+
+        logger.debug("Rendering semester_fees.html template")
         return render(request, 'students/semester_fees.html', context)
         
     except Student.DoesNotExist:
+        logger.error("Student profile not found for user: %s", request.user, exc_info=True)
         messages.error(request, 'Student profile not found.')
-        return redirect('students:semester_fees')
+        return render(request, 'students/error.html', {'error': 'Student profile not found.'}, status=404)
     except Exception as e:
-        logger.error(f"Error in semester_fees view: {str(e)}", exc_info=True)
+        logger.error("Error in semester_fees view: %s", str(e), exc_info=True)
         messages.error(request, 'An error occurred while loading your fee status.')
-        return redirect('students:semester_fees')
+        return render(request, 'students/error.html', {'error': 'An error occurred while loading your fee status.'}, status=500)
+
+
+
 
 def change_password(request):
     """

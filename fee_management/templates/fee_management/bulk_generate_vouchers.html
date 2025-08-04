@@ -1,0 +1,407 @@
+{% extends 'fee_management/office_base.html' %}
+{% load static %}
+
+{% block title %}Bulk Generate Vouchers{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-6xl px-4 py-8">
+    <h1 class="text-2xl font-bold mb-6">Bulk Generate Fee Vouchers</h1>
+    
+    {% if messages %}
+    <div class="mb-6 space-y-2">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} shadow-lg">
+            <div>
+                <span>{{ message }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="card bg-base-100 shadow-md mb-8">
+        <div class="card-body">
+            <form id="bulkVoucherForm" class="space-y-4">
+                {% csrf_token %}
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Session -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-medium">Academic Session</span>
+                        </label>
+                        <select name="session" id="session" class="select select-bordered w-full" required>
+                            <option value="" selected disabled>Select Session</option>
+                            {% for session in sessions %}
+                            <option value="{{ session.id }}">{{ session.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Department -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-medium">Department</span>
+                        </label>
+                        <select name="department" id="department" class="select select-bordered w-full" required disabled>
+                            <option value="" selected disabled>Select Department</option>
+                            {% if debug_departments %}
+                                <!-- Debug: Using debug_departments -->
+                                {% for dept in debug_departments %}
+                                <option value="{{ dept.department_id }}">
+                                    {{ dept.department_name }} ({{ dept.code }})
+                                </option>
+                                {% endfor %}
+                            {% elif departments %}
+                                <!-- Fallback to departments if debug_departments is not available -->
+                                {% for dept in departments %}
+                                <option value="{{ dept.department_id }}">
+                                    {{ dept.department_name }} ({{ dept.code }})
+                                </option>
+                                {% endfor %}
+                            {% else %}
+                                <option value="" disabled>No departments available</option>
+                            {% endif %}
+                        </select>
+                        <!-- Debug Info -->
+                        <!-- debug_departments exists: {{ debug_departments|yesno:"Yes,No" }} -->
+                        <!-- departments exists: {{ departments|yesno:"Yes,No" }} -->
+                        <!-- debug_departments count: {{ debug_departments|length|default:0 }} -->
+                        <!-- departments count: {{ departments|length|default:0 }} -->
+                    </div>
+                    
+                    <!-- Program -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-medium">Program</span>
+                        </label>
+                        <select name="program" id="program" class="select select-bordered w-full" required disabled>
+                            <option value="" selected disabled>Select Program</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Semester -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-medium">Semester</span>
+                        </label>
+                        <select name="semester" id="semester" class="select select-bordered w-full" required disabled>
+                            <option value="" selected disabled>Select Semester</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-control mt-6">
+                    <button type="submit" class="btn btn-primary" id="generateBtn">
+                        <i class="fas fa-file-invoice-dollar mr-2"></i> Generate Vouchers
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Results Section -->
+    <div id="results" class="mt-8 hidden">
+        <div class="card bg-base-100 shadow-md">
+            <div class="card-body">
+                <h2 class="card-title text-xl font-medium mb-4">
+                    <i class="fas fa-file-alt mr-2"></i> Voucher Generation Results
+                </h2>
+                <div class="overflow-x-auto">
+                    <table class="table w-full">
+                        <thead>
+                            <tr>
+                                <th>Roll Number</th>
+                                <th>Student Name</th>
+                                <th>Department</th>
+                                <th>Voucher ID</th>
+                                <th>Status</th>
+                                <th>Message</th>
+                            </tr>
+                        </thead>
+                        <tbody id="vouchersList">
+                            <!-- Vouchers will be listed here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="summary" class="mt-4 text-right font-medium">
+                    <p>Total: <span id="totalCount">0</span> | 
+                       Created: <span id="createdCount" class="text-success">0</span> | 
+                       Exists: <span id="existsCount" class="text-warning">0</span> | 
+                       Errors: <span id="errorCount" class="text-error">0</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-white p-6 rounded-lg shadow-xl text-center">
+        <div class="loading loading-spinner loading-lg text-primary mb-4"></div>
+        <p class="text-lg font-medium">Generating vouchers, please wait...</p>
+        <p class="text-sm text-gray-600 mt-2" id="progressText">Processing 0/0 students</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const departmentSelect = document.getElementById('department');
+    const programSelect = document.getElementById('program');
+    const sessionSelect = document.getElementById('session');
+    const semesterSelect = document.getElementById('semester');
+    const bulkVoucherForm = document.getElementById('bulkVoucherForm');
+    const resultsDiv = document.getElementById('results');
+    const vouchersList = document.getElementById('vouchersList');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const progressText = document.getElementById('progressText');
+    
+    // Enable department selection when session is selected
+    sessionSelect.addEventListener('change', function() {
+        const sessionId = this.value;
+        departmentSelect.disabled = !sessionId;
+        programSelect.disabled = true;
+        semesterSelect.disabled = true;
+        programSelect.innerHTML = '<option value="" selected disabled>Select Program</option>';
+        semesterSelect.innerHTML = '<option value="" selected disabled>Select Semester</option>';
+    });
+    
+    // Load programs when department is selected
+    departmentSelect.addEventListener('change', function() {
+        const department = this.value;
+        const sessionId = sessionSelect.value;
+        
+        if (!department || !sessionId) {
+            programSelect.innerHTML = '<option value="" selected disabled>Select Program</option>';
+            programSelect.disabled = true;
+            semesterSelect.innerHTML = '<option value="" selected disabled>Select Semester</option>';
+            semesterSelect.disabled = true;
+            return;
+        }
+        
+        // Show loading state
+        programSelect.disabled = true;
+        programSelect.innerHTML = '<option value="">Loading programs...</option>';
+        
+        // Fetch programs for the selected department and session
+        fetch(`/fees/get_bulk_programs/?department=${encodeURIComponent(department)}&session_id=${encodeURIComponent(sessionId)}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                programSelect.innerHTML = '<option value="" selected disabled>Select Program</option>';
+                if (data.success && data.programs && data.programs.length > 0) {
+                    data.programs.forEach(program => {
+                        const option = document.createElement('option');
+                        option.value = program.id;
+                        option.textContent = program.name;
+                        programSelect.appendChild(option);
+                    });
+                    programSelect.disabled = false;
+                } else {
+                    programSelect.innerHTML = '<option value="">No programs found</option>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading programs:', error);
+                programSelect.innerHTML = '<option value="">Error loading programs</option>';
+                programSelect.disabled = false;
+            });
+    });
+    
+    // Load semesters when program is selected
+    programSelect.addEventListener('change', function() {
+        const programId = this.value;
+        const sessionId = sessionSelect.value;
+        
+        if (!programId || !sessionId) {
+            semesterSelect.innerHTML = '<option value="" selected disabled>Select Semester</option>';
+            semesterSelect.disabled = true;
+            return;
+        }
+        
+        // Show loading state
+        semesterSelect.disabled = true;
+        semesterSelect.innerHTML = '<option value="">Loading semesters...</option>';
+        
+        // Fetch semesters for the selected program and session
+        fetch(`/fees/get_bulk_semesters/?program_id=${encodeURIComponent(programId)}&session_id=${encodeURIComponent(sessionId)}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                semesterSelect.innerHTML = '<option value="" selected disabled>Select Semester</option>';
+                if (data.success && data.semesters && data.semesters.length > 0) {
+                    data.semesters.forEach(semester => {
+                        const option = document.createElement('option');
+                        option.value = semester.id;
+                        option.textContent = `${semester.name} (${semester.program_name})`;
+                        semesterSelect.appendChild(option);
+                    });
+                    semesterSelect.disabled = false;
+                } else {
+                    semesterSelect.innerHTML = '<option value="">No active semesters found</option>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading semesters:', error);
+                semesterSelect.innerHTML = '<option value="">Error loading semesters</option>';
+                semesterSelect.disabled = false;
+            });
+    });
+    
+    // Handle form submission
+    bulkVoucherForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // Validate form
+        if (!departmentSelect.value || !programSelect.value || !sessionSelect.value || !semesterSelect.value) {
+            alert('Please fill in all required fields');
+            return;
+        }
+        
+        // Show loading overlay
+        loadingOverlay.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        
+        // Prepare request data
+        const requestData = {
+            department: departmentSelect.value,
+            program: programSelect.value,
+            session: sessionSelect.value,
+            semester: semesterSelect.value
+        };
+        
+        try {
+            // Get CSRF token from cookie
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+            
+            const csrftoken = getCookie('csrftoken');
+            
+            // Submit form via AJAX
+            const response = await fetch('{% url "fee_management:bulk_generate_vouchers" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrftoken
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify(requestData)
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to generate vouchers');
+            }
+            
+            // Display results
+            renderResults(data);
+            
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred while generating vouchers: ' + error.message);
+        } finally {
+            // Hide loading overlay
+            loadingOverlay.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+    });
+    
+    // Function to render results
+    function renderResults(data) {
+        if (!data.success) {
+            alert('Error: ' + (data.error || 'Unknown error occurred'));
+            return;
+        }
+        
+        // Clear previous results
+        vouchersList.innerHTML = '';
+        
+        // Counters for summary
+        let createdCount = 0;
+        let existsCount = 0;
+        let errorCount = 0;
+        
+        // Process each voucher result
+        data.vouchers.forEach(voucher => {
+            const row = document.createElement('tr');
+            
+            // Update counters
+            if (voucher.status === 'created') createdCount++;
+            else if (voucher.status === 'exists') existsCount++;
+            else if (voucher.status === 'error') errorCount++;
+            
+            // Set row class based on status
+            let statusClass = '';
+            if (voucher.status === 'created') statusClass = 'bg-success/10';
+            else if (voucher.status === 'exists') statusClass = 'bg-warning/10';
+            else if (voucher.status === 'error') statusClass = 'bg-error/10';
+            
+            row.className = statusClass;
+            row.innerHTML = `
+                <td>${voucher.student || 'N/A'}</td>
+                <td>${voucher.name || 'N/A'}</td>
+                <td>${voucher.department_name || 'N/A'}</td>
+                <td>${voucher.voucher_id || 'N/A'}</td>
+                <td>
+                    <span class="badge ${getStatusBadgeClass(voucher.status)}">
+                        ${getStatusText(voucher.status)}
+                    </span>
+                </td>
+                <td>${voucher.message || ''}</td>
+            `;
+            
+            vouchersList.appendChild(row);
+        });
+        
+        // Update summary
+        document.getElementById('totalCount').textContent = data.vouchers.length;
+        document.getElementById('createdCount').textContent = createdCount;
+        document.getElementById('existsCount').textContent = existsCount;
+        document.getElementById('errorCount').textContent = errorCount;
+        
+        // Show results section
+        resultsDiv.classList.remove('hidden');
+        resultsDiv.scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    // Helper function to get status badge class
+    function getStatusBadgeClass(status) {
+        switch(status) {
+            case 'created': return 'badge-success';
+            case 'exists': return 'badge-warning';
+            case 'error': return 'badge-error';
+            default: return 'badge-ghost';
+        }
+    }
+    
+    // Helper function to get status text
+    function getStatusText(status) {
+        return status.charAt(0).toUpperCase() + status.slice(1);
+    }
+});
+</script>
+{% endblock %}

@@ -26,9 +26,13 @@ from django.shortcuts import render, redirect
 from django.db import transaction
 from students.models import StudentSemesterEnrollment, CourseEnrollment
 from .forms import OfficerUpdateForm, OfficerPasswordChangeForm 
-from .models import SemesterFee, FeeType, FeeVoucher, StudentFeePayment
+from .models import SemesterFee, FeeType, FeeVoucher, StudentFeePayment, FeeToProgram
 from students.models import Student
-from academics.models import Program
+from academics.models import Program, Semester
+from admissions.models import AcademicSession
+from django.db.models import Q
+import json
+from django.views.decorators.http import require_http_methods
 from admissions.models import AcademicSession
 from fee_management.models import FeeToProgram
 from courses.models import CourseOffering
@@ -204,6 +208,8 @@ def verify_applicant(request, applicant_id):
         return redirect('fee_management:view_applicant', applicant_id=applicant_id)
 
     return redirect('fee_management:view_applicant', applicant_id=applicant_id)
+
+
 @office_required
 def view_applicant(request, applicant_id):
     applicant = get_object_or_404(Applicant, id=applicant_id)
@@ -259,9 +265,12 @@ def calculate_grade(percentage):
         return 'F'
 
 
-from django.db.models import Q
+from django.db.models import Q, F
 from students.models import Student
 from django.contrib import messages
+import logging
+
+logger = logging.getLogger(__name__)
 from collections import defaultdict
 import math
 
@@ -695,6 +704,8 @@ def get_programs(request):
             return JsonResponse({'programs': []})
     return JsonResponse({'programs': []})
 
+
+
 @office_required
 def get_semesters(request):
     session_id = request.GET.get('session_id')
@@ -720,6 +731,282 @@ def get_semesters(request):
     return JsonResponse({'semesters': []})    
     
     
+@office_required
+def get_bulk_programs(request):
+    """
+    AJAX view to get programs filtered by department and session for bulk voucher generation.
+    Expected GET parameters:
+    - department: Department ID
+    - session_id: Academic session ID
+    """
+    print("\n=== DEBUG: get_bulk_programs ===")
+    print(f"Request GET params: {request.GET}")
+    
+    try:
+        session_id = request.GET.get('session_id')
+        department_id = request.GET.get('department')
+        
+        print(f"Session ID: {session_id}, Department ID: {department_id}")
+        
+        if not department_id or not session_id:
+            error_msg = 'Both department ID and session_id are required'
+            print(f"Error: {error_msg}")
+            return JsonResponse(
+                {'success': False, 'error': error_msg}, 
+                status=400
+            )
+        
+        # Debug: Check if department exists
+        from academics.models import Department
+        try:
+            dept = Department.objects.get(id=department_id)
+            print(f"Found department: {dept.name} (ID: {dept.id})")
+        except Department.DoesNotExist:
+            error_msg = f"Department with ID {department_id} does not exist"
+            print(error_msg)
+            return JsonResponse(
+                {'success': False, 'error': error_msg}, 
+                status=400
+            )
+        
+        # Debug: Check if session exists
+        from admissions.models import AcademicSession
+        try:
+            session = AcademicSession.objects.get(id=session_id)
+            print(f"Found session: {session.name} (ID: {session.id})")
+        except AcademicSession.DoesNotExist:
+            error_msg = f"Session with ID {session_id} does not exist"
+            print(error_msg)
+            return JsonResponse(
+                {'success': False, 'error': error_msg}, 
+                status=400
+            )
+        
+        # Get programs for the selected department and session
+        programs = Program.objects.filter(
+            department_id=department_id,
+            semesters__session_id=session_id
+        ).distinct()
+        
+        print(f"Found {programs.count()} programs for department {department_id} and session {session_id}")
+        for p in programs:
+            print(f"- {p.name} (ID: {p.id})")
+        
+        programs_data = [
+            {'id': program.id, 'name': program.name} 
+            for program in programs
+        ]
+        
+        response_data = {
+            'success': True,
+            'programs': programs_data
+        }
+        
+        print(f"Sending response: {response_data}")
+        print("==========================\n")
+        return JsonResponse(response_data)
+        
+    except Exception as e:
+        return JsonResponse(
+            {'success': False, 'error': f'An error occurred while fetching programs: {str(e)}'}, 
+            status=500
+        )
+
+@office_required
+def get_bulk_semesters(request):
+    """
+    AJAX view to get active semesters for bulk voucher generation.
+    Expected GET parameters:
+    - program_id: Program ID
+    - session_id: Academic session ID
+    """
+    try:
+        program_id = request.GET.get('program_id')
+        session_id = request.GET.get('session_id')
+        
+        if not program_id or not session_id:
+            return JsonResponse(
+                {'success': False, 'error': 'Both program ID and session_id are required'}, 
+                status=400
+            )
+        
+        # Get active semesters for the selected program and session
+        semesters = Semester.objects.filter(
+            program_id=program_id,
+            session_id=session_id,
+            is_active=True
+        ).select_related('program')
+        
+        semesters_data = [
+            {
+                'id': semester.id,
+                'name': semester.name,
+                'number': semester.number,
+                'program_name': semester.program.name
+            }
+            for semester in semesters
+        ]
+        
+        return JsonResponse({
+            'success': True,
+            'semesters': semesters_data
+        })
+        
+    except Exception as e:
+        return JsonResponse(
+            {'success': False, 'error': f'An error occurred while fetching semesters: {str(e)}'}, 
+            status=500
+        )
+    
+@login_required
+@office_required
+def bulk_generate_vouchers(request):
+    print(f'this is showing view of bult voucher genrte.......')
+    if request.method == 'POST' and request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        try:
+            data = json.loads(request.body)
+            department_id = data.get('department')
+            program_id = data.get('program')
+            session_id = data.get('session')
+            semester_id = data.get('semester')
+            
+            # Validate required fields
+            if not all([department_id, program_id, session_id, semester_id]):
+                return JsonResponse({'success': False, 'error': 'All fields are required'}, status=400)
+            
+            # Get the office of the current officer
+            try:
+                office = request.user.officestaff_profile.office
+            except OfficeStaff.DoesNotExist:
+                return JsonResponse({'success': False, 'error': 'Officer profile not found'}, status=400)
+            
+            # Get the semester fee for the selected program and semester
+            try:
+                fee_to_program = FeeToProgram.objects.get(
+                    programs__id=program_id,
+                    semester_number__id=semester_id,
+                    academic_session_id=session_id
+                )
+                semester_fee = fee_to_program.SemesterFee
+                
+                # Get all students matching the criteria through semester enrollments
+                students = Student.objects.filter(
+                    program_id=program_id,
+                    semester_enrollments__semester_id=semester_id,
+                    semester_enrollments__semester__session_id=session_id
+                ).select_related('program__department').distinct()
+                
+                if not students.exists():
+                    return JsonResponse({'success': False, 'error': 'No students found matching the criteria'}, status=400)
+                
+                # Generate vouchers
+                generated_vouchers = []
+                for student in students:
+                    student_department_name = student.program.department.name if student.program and student.program.department else 'N/A'
+                    
+                    # Check if a voucher already exists
+                    existing_voucher = FeeVoucher.objects.filter(
+                        student=student,
+                        semester_fee=semester_fee,
+                        semester_id=semester_id
+                    ).first()
+                    
+                    if existing_voucher:
+                        generated_vouchers.append({
+                            'student': student.university_roll_no or f"ID-{student.pk}",
+                            'name': student.applicant.full_name if hasattr(student, 'applicant') else 'Unknown',
+                            'voucher_id': existing_voucher.voucher_id,
+                            'status': 'exists',
+                            'message': f'Voucher {existing_voucher.voucher_id} already exists',
+                            'department_name': student_department_name
+                        })
+                        continue
+                    
+                    # Create new voucher
+                    try:
+                        voucher = FeeVoucher.objects.create(
+                            student=student,
+                            semester_fee=semester_fee,
+                            semester_id=semester_id,
+                            due_date=timezone.now().date() + timezone.timedelta(days=15),
+                            office=office
+                        )
+                        generated_vouchers.append({
+                            'student': student.university_roll_no or f"ID-{student.pk}",
+                            'name': student.applicant.full_name if hasattr(student, 'applicant') else 'Unknown',
+                            'voucher_id': voucher.voucher_id,
+                            'status': 'created',
+                            'message': 'Voucher created successfully',
+                            'department_name': student_department_name
+                        })
+                    except Exception as e:
+                        generated_vouchers.append({
+                            'student': student.university_roll_no or f"ID-{student.pk}",
+                            'name': student.applicant.full_name if hasattr(student, 'applicant') else 'Unknown',
+                            'voucher_id': None,
+                            'status': 'error',
+                            'message': str(e),
+                            'department_name': student_department_name
+                        })
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Successfully generated {len([v for v in generated_vouchers if v["status"] == "created"])} vouchers',
+                    'vouchers': generated_vouchers
+                })
+                
+            except FeeToProgram.DoesNotExist:
+                return JsonResponse({'success': False, 'error': 'No fee structure found for the selected criteria'}, status=400)
+            
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    # GET request - show the form
+    from academics.models import Department
+    
+    # Get all active departments
+    departments = Department.objects.filter(
+        programs__isnull=False  # Only departments with programs
+    ).distinct().order_by('name')
+    print(f'this is departments: {departments}')
+    # Format the departments to match the expected structure
+    departments_list = [
+        {
+            'department_id': dept.id,
+            'department_name': dept.name,
+            'code': dept.code  # Include the code if needed
+        }
+        for dept in departments
+    ]
+    
+    # Debug output
+    print("\n=== DEBUG: Departments Data ===")
+    print(f"Number of departments: {len(departments_list)}")
+    for dept in departments_list:
+        print(f"ID: {dept['department_id']}, Name: {dept['department_name']}, Code: {dept['code']}")
+    print("==========================\n")
+    
+    # Debug template context
+    context = {
+        'departments': departments_list,
+        'sessions': AcademicSession.objects.filter(is_active=True).order_by('-start_year'),
+        'debug_departments': departments_list,  # For template debugging
+    }
+    
+    print("\n=== DEBUG: Template Context ===")
+    print(f"Context keys: {list(context.keys())}")
+    print(f"Departments in context: {len(context['departments'])} items")
+    print("First department:", context['departments'][0] if context['departments'] else 'No departments')
+    print("==========================\n")
+    
+    # Use the context dictionary we prepared
+    return render(request, 'fee_management/bulk_generate_vouchers.html', context)
+    
+    
+    
+
 @office_required
 def fee_verification(request):
     context = {}
@@ -936,202 +1223,232 @@ def get_semesters_by_roll(request):
 
 
 
+# def student_generate_voucher(request):
+#     """
+#     View for students to view and print their existing fee vouchers.
+#     Students cannot generate new vouchers - they can only view/print existing ones.
+#     """
+#     if not hasattr(request.user, 'student_profile'):
+#         return redirect('login')
+    
+#     student = request.user.student_profile
+    
+#     # Get all existing vouchers for the student
+#     vouchers = FeeVoucher.objects.filter(
+#         student=student
+#     ).select_related('semester', 'semester_fee', 'semester_fee__fee_type').order_by('-generated_at')
+    
+#     # Get all semesters for the student's program and session
+#     all_semesters = Semester.objects.filter(
+#         program=student.program, 
+#         session=student.applicant.session
+#     ).order_by('name')
+    
+#     # Get semester details for each voucher
+#     voucher_data = []
+#     for voucher in vouchers:
+#         try:
+#             fee_details = json.loads(voucher.semester_fee.dynamic_fees) if \
+#                 isinstance(voucher.semester_fee.dynamic_fees, str) else \
+#                 voucher.semester_fee.dynamic_fees or {"Semester Fee": float(voucher.semester_fee.total_amount)}
+#         except (json.JSONDecodeError, AttributeError):
+#             fee_details = {"Semester Fee": float(voucher.semester_fee.total_amount)}
+            
+#         voucher_data.append({
+#             'id': voucher.id,
+#             'voucher_id': voucher.voucher_id,
+#             'semester': voucher.semester.name,
+#             'fee_type': voucher.semester_fee.fee_type.name,
+#             'amount': voucher.semester_fee.total_amount,
+#             'due_date': voucher.due_date.strftime('%d %B %Y'),
+#             'is_paid': voucher.is_paid,
+#             'paid_at': voucher.paid_at.strftime('%d %B %Y %I:%M %p') if voucher.paid_at else None,
+#             'generated_at': voucher.generated_at.strftime('%d %B %Y %I:%M %p'),
+#             'fee_details': fee_details
+#         })
+    
+#     context = {
+#         'vouchers': voucher_data,
+#         'all_semesters': all_semesters,
+#         'student_name': student.applicant.full_name,
+#         'program': student.program.name,
+#     }
+    
+#     # Handle AJAX request for viewing a specific voucher
+#     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+#         voucher_id = request.GET.get('voucher_id')
+#         if voucher_id:
+#             try:
+#                 voucher = FeeVoucher.objects.get(
+#                     id=voucher_id,
+#                     student=student
+#                 )
+                
+#                 # Prepare voucher context
+#                 office = voucher.office
+#                 dynamic_fees = {}
+#                 try:
+#                     dynamic_fees = json.loads(voucher.semester_fee.dynamic_fees) if \
+#                         isinstance(voucher.semester_fee.dynamic_fees, str) else \
+#                         voucher.semester_fee.dynamic_fees or {"Semester Fee": float(voucher.semester_fee.total_amount)}
+#                 except (json.JSONDecodeError, AttributeError):
+#                     dynamic_fees = {"Semester Fee": float(voucher.semester_fee.total_amount)}
+                
+#                 context = {
+#                     'voucher_id': voucher.voucher_id,
+#                     'student_name': f"{student.applicant.full_name}",
+#                     'cnic': getattr(student.applicant, 'cnic', 'N/A'),
+#                     'father_name': getattr(student.applicant, 'father_name', 'N/A'),
+#                     'program': student.program.name,
+#                     'semester': voucher.semester.name,
+#                     'shift': getattr(voucher.semester_fee, 'shift', 'Morning').title(),
+#                     'academic_session': student.applicant.session.name,
+#                     'fee_type': voucher.semester_fee.fee_type.name,
+#                     'dynamic_fees': dynamic_fees,
+#                     'total_amount': str(voucher.semester_fee.total_amount),
+#                     'due_date': voucher.due_date.strftime('%d %B %Y'),
+#                     'office_name': office.name if office else 'N/A',
+#                     'office_address': office.location if office else 'N/A',
+#                     'office_contact': office.contact_phone if office else 'N/A',
+#                     'generated_at': voucher.generated_at.strftime('%d %B %Y %I:%M %p PKT'),
+#                     'is_paid': voucher.is_paid,
+#                     'paid_at': voucher.paid_at.strftime('%d %B %Y %I:%M %p') if voucher.paid_at else None,
+#                 }
+                
+#                 voucher_html = render_to_string('fee_management/voucher.html', context, request)
+#                 return JsonResponse({
+#                     'success': True,
+#                     'voucher_html': voucher_html,
+#                     'voucher_id': str(voucher.voucher_id)
+#                 })
+#             except FeeVoucher.DoesNotExist:
+#                 return JsonResponse({'error': 'Voucher not found or access denied'}, status=404)
+        
+#         return JsonResponse({
+#             'success': True,
+#             'vouchers': voucher_data
+#         })
+    
+#     return render(request, 'fee_management/student_generate_voucher.html', context)
+
 def student_generate_voucher(request):
     """
-    View for students to generate their own fee vouchers.
-    Students can only generate vouchers for themselves.
+    View for students to view and print their existing fee voucher for the active semester.
+    Students cannot generate new vouchers.
     """
-    errors = []
-    
     if not hasattr(request.user, 'student_profile'):
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({'errors': ['Student profile not found.']}, status=400)
         return redirect('login')
     
     student = request.user.student_profile
     
-    if request.method == 'GET':
-        # Get all semesters for the student's program and session
-        all_semesters = Semester.objects.filter(program=student.program, session=student.applicant.session)
-        
-        # Get IDs of semesters that already have paid vouchers
-        paid_semester_ids = FeeVoucher.objects.filter(
-            student=student,
-            is_paid=True
-        ).values_list('semester_id', flat=True)
-        
-        # Exclude already paid semesters
-        available_semesters = all_semesters.exclude(id__in=paid_semester_ids)
-        
-        print("\n=== DEBUG: Available Semesters ===")
-        print(f"All semesters: {list(all_semesters.values_list('name', flat=True))}")
-        print(f"Paid semester IDs: {list(paid_semester_ids)}")
-        print(f"Available semesters: {list(available_semesters.values_list('name', flat=True))}")
-        print("==============================\n")
-        
-        return render(request, 'fee_management/student_generate_voucher.html', {
-            'semesters': available_semesters,
-            'errors': errors
-        })
-    
-    # Handle POST request (form submission)
-    semester_id = request.POST.get('semester')
-    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-    
-    if not semester_id:
-        errors.append("Semester is required.")
-        if is_ajax:
-            return JsonResponse({'errors': errors}, status=400)
-        semesters = Semester.objects.filter(program=student.program, session=student.session)
-        return render(request, 'fee_management/student_generate_voucher.html', {
-            'semesters': semesters,
-            'errors': errors
-        })
-    
-    try:
-        semester = Semester.objects.get(pk=semester_id)
-    except Semester.DoesNotExist:
-        errors.append("Invalid semester selected.")
-        if is_ajax:
-            return JsonResponse({'errors': errors}, status=400)
-        semesters = Semester.objects.filter(program=student.program, session=student.session)
-        return render(request, 'fee_management/student_generate_voucher.html', {
-            'semesters': semesters,
-            'errors': errors
-        })
-    
-    # Get student's shift (assuming it's stored in the student model)
-    student_shift = getattr(student, 'shift', 'morning').lower()
-    
-    # Find matching fee program
-    fee_to_program = FeeToProgram.objects.filter(
-        semester_number=semester,
-        programs=student.program,
-        academic_session=student.applicant.session,
-        SemesterFee__shift__iexact=student_shift
+    # Determine the active semester
+    current_semester = Semester.objects.filter(
+        program=student.program,
+        session=student.applicant.session,
+        is_active=True
     ).first()
     
-    if not fee_to_program:
-        # Try without shift filter if no match found
-        fee_to_program = FeeToProgram.objects.filter(
-            semester_number=semester,
-            programs=student.program,
-            academic_session=student.applicant.session
-        ).first()
-        
-        if not fee_to_program:
-            error_msg = f"No fee schedule found for {student_shift} shift in this program and semester."
-            if is_ajax:
-                return JsonResponse({'errors': [error_msg]}, status=400)
-            errors.append(error_msg)
-            semesters = Semester.objects.filter(program=student.program, session=student.applicant.session)
-            return render(request, 'fee_management/student_generate_voucher.html', {
-                'semesters': semesters,
-                'errors': errors
-            })
+    if not current_semester:
+        # Fallback: Get the latest semester based on name
+        current_semester = Semester.objects.filter(
+            program=student.program,
+            session=student.applicant.session
+        ).order_by('-name').first()
     
-    semester_fee = fee_to_program.SemesterFee
-    
-    # Get the office (use default or first available)
-    office = Office.objects.first()
-    
-    # Check or create voucher
-    voucher, created = FeeVoucher.objects.get_or_create(
+    # Get the existing voucher for the active semester, if any
+    voucher = FeeVoucher.objects.filter(
         student=student,
-        semester_fee=semester_fee,
-        semester=semester,
-        defaults={   
-            'due_date': date.today() + timedelta(days=7),
-            'office': office
-        }
-    )
+        semester=current_semester
+    ).select_related('semester', 'semester_fee', 'semester_fee__fee_type').first()
     
-    # Update office if it wasn't set during creation
-    if not created and not voucher.office and office:
-        voucher.office = office
-        voucher.save(update_fields=['office'])
-    
-    # Prepare dynamic fees dictionary
-    dynamic_fees = {}
-    if semester_fee.dynamic_fees:
+    voucher_data = []
+    if voucher:
         try:
-            # If dynamic_fees is a string, try to parse it as JSON
-            if isinstance(semester_fee.dynamic_fees, str):
-                print("Dynamic fees is a string, attempting to parse as JSON")
-                dynamic_fees = json.loads(semester_fee.dynamic_fees)
-            # If it's already a dictionary, use it directly
-            elif isinstance(semester_fee.dynamic_fees, dict):
-                print("Dynamic fees is already a dictionary")
-                dynamic_fees = semester_fee.dynamic_fees
-            else:
-                print(f"Unexpected type for dynamic_fees: {type(semester_fee.dynamic_fees)}")
-                try:
-                    dynamic_fees = dict(semester_fee.dynamic_fees)
-                    print("Converted to dictionary successfully")
-                except (TypeError, ValueError) as e:
-                    print(f"Could not convert to dictionary: {e}")
-        except json.JSONDecodeError as e:
-            print(f"JSON decode error: {e}")
-            print(f"Problematic JSON string: {semester_fee.dynamic_fees}")
-            errors.append("Invalid fee structure in database.")
-        except Exception as e:
-            print(f"Error parsing dynamic_fees: {e}")
-            errors.append("Error processing fee structure.")
-    else:
-        print("No dynamic_fees found in semester_fee")
-        # Fallback: Use total_amount as a single fee head
-        dynamic_fees = {"Semester Fee": float(semester_fee.total_amount)}
-        print(f"Fallback dynamic_fees: {dynamic_fees}")
-    
-    # Validate dynamic_fees
-    if not dynamic_fees:
-        errors.append("No fee details available for this semester.")
-        if is_ajax:
-            return JsonResponse({'errors': errors}, status=400)
-        semesters = Semester.objects.filter(program=student.program, session=student.applicant.session)
-        return render(request, 'fee_management/student_generate_voucher.html', {
-            'semesters': semesters,
-            'errors': errors
+            fee_details = json.loads(voucher.semester_fee.dynamic_fees) if \
+                isinstance(voucher.semester_fee.dynamic_fees, str) else \
+                voucher.semester_fee.dynamic_fees or {"Semester Fee": float(voucher.semester_fee.total_amount)}
+        except (json.JSONDecodeError, AttributeError):
+            fee_details = {"Semester Fee": float(voucher.semester_fee.total_amount)}
+            
+        voucher_data.append({
+            'id': voucher.id,
+            'voucher_id': voucher.voucher_id,
+            'semester': voucher.semester.name,
+            'fee_type': voucher.semester_fee.fee_type.name,
+            'amount': voucher.semester_fee.total_amount,
+            'due_date': voucher.due_date.strftime('%d %B %Y') if voucher.due_date else 'N/A',
+            'is_paid': voucher.is_paid,
+            'paid_at': voucher.paid_at.strftime('%d %B %Y %I:%M %p') if voucher.paid_at else None,
+            'generated_at': voucher.generated_at.strftime('%d %B %Y %I:%M %p') if voucher.generated_at else 'N/A',
+            'fee_details': fee_details
         })
     
-    print("\n=== DEBUGGING FEE DATA ===")
-    print(f"Semester Fee ID: {semester_fee.id}")
-    print(f"Dynamic Fees Type: {type(semester_fee.dynamic_fees)}")
-    print(f"Dynamic Fees Content: {semester_fee.dynamic_fees}")
-    print(f"Final dynamic_fees: {dynamic_fees}")
-    print("=== END DEBUGGING ===\n")
-    
-    # Prepare context for template
-    generated_at = timezone.now().strftime('%d %B %Y %I:%M %p PKT')
     context = {
-        'voucher_id': voucher.voucher_id,
-        'student_name': f"{student.applicant.full_name}",
-        'cnic': getattr(student.applicant, 'cnic', 'N/A'),
-        'father_name': getattr(student.applicant, 'father_name', 'N/A'),
+        'vouchers': voucher_data,
+        'current_semester': current_semester,
+        'student_name': student.applicant.full_name,
         'program': student.program.name,
-        'semester': semester.name,
-        'shift': student_shift.title(),
-        'academic_session': student.applicant.session.name,
-        'fee_type': semester_fee.fee_type.name,
-        'dynamic_fees': dynamic_fees,  # Use the parsed or fallback dictionary
-        'total_amount': str(semester_fee.total_amount),
-        'due_date': voucher.due_date.strftime('%d %B %Y'),
-        'office_name': office.name if office else 'N/A',
-        'office_address': office.location if office else 'N/A',
-        'office_contact': office.contact_phone if office else 'N/A',
-        'generated_at': generated_at,
     }
     
-    if is_ajax:
-        # Render the voucher HTML
-        voucher_html = render_to_string('fee_management/voucher.html', context, request)
+    # Handle AJAX requests for viewing a specific voucher
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        voucher_id = request.GET.get('voucher_id')
+        if voucher_id:
+            try:
+                voucher = FeeVoucher.objects.get(
+                    id=voucher_id,
+                    student=student,
+                    semester=current_semester
+                )
+                
+                # Prepare voucher context
+                office = voucher.office
+                dynamic_fees = {}
+                try:
+                    dynamic_fees = json.loads(voucher.semester_fee.dynamic_fees) if \
+                        isinstance(voucher.semester_fee.dynamic_fees, str) else \
+                        voucher.semester_fee.dynamic_fees or {"Semester Fee": float(voucher.semester_fee.total_amount)}
+                except (json.JSONDecodeError, AttributeError):
+                    dynamic_fees = {"Semester Fee": float(voucher.semester_fee.total_amount)}
+                
+                voucher_context = {
+                    'voucher_id': voucher.voucher_id,
+                    'student_name': f"{student.applicant.full_name}",
+                    'cnic': getattr(student.applicant, 'cnic', 'N/A'),
+                    'father_name': getattr(student.applicant, 'father_name', 'N/A'),
+                    'program': student.program.name,
+                    'semester': voucher.semester.name,
+                    'shift': getattr(voucher.semester_fee, 'shift', 'Morning').title(),
+                    'academic_session': student.applicant.session.name,
+                    'fee_type': voucher.semester_fee.fee_type.name,
+                    'dynamic_fees': dynamic_fees,
+                    'total_amount': str(voucher.semester_fee.total_amount),
+                    'updated_total_amount': str(voucher.semester_fee.total_amount),
+                    'due_date': voucher.due_date.strftime('%d %B %Y') if voucher.due_date else 'N/A',
+                    'generated_at': voucher.generated_at.strftime('%d %B %Y %I:%M %p') if voucher.generated_at else 'N/A',
+                    'office_name': office.name if office else 'N/A',
+                    'office_address': office.location if office else 'N/A',
+                    'office_contact': office.contact_phone if office else 'N/A',
+                    'is_paid': voucher.is_paid,
+                    'paid_at': voucher.paid_at.strftime('%d %B %Y %I:%M %p') if voucher.paid_at else None,
+                }
+                
+                voucher_html = render_to_string('fee_management/voucher.html', voucher_context, request)
+                return JsonResponse({
+                    'success': True,
+                    'voucher_html': voucher_html,
+                    'voucher_id': str(voucher.voucher_id)
+                })
+            except FeeVoucher.DoesNotExist:
+                return JsonResponse({'error': 'Voucher not found or access denied'}, status=404)
+        
         return JsonResponse({
             'success': True,
-            'voucher_html': voucher_html,
-            'voucher_id': str(voucher.voucher_id)
+            'vouchers': voucher_data
         })
     
-    return render(request, 'fee_management/voucher.html', context)
+    return render(request, 'fee_management/student_generate_voucher.html', context)
+
 
 
 def generate_voucher(request):
@@ -1191,7 +1508,7 @@ def generate_voucher(request):
                 errors.append(f"No fee schedule found for {student_shift} shift in this program and semester.")
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     return JsonResponse({'errors': errors}, status=400)
-                return render(request, 'fee_management/generate_voucher.html', {'errors': errors})
+                return render(request, 'fee_management/voucher.html', {'errors': errors})
         
         semester_fee = fee_to_program.SemesterFee
         
@@ -1291,7 +1608,7 @@ def generate_voucher(request):
             voucher_html = render_to_string('fee_management/voucher.html', context)
             return JsonResponse({'voucher_html': voucher_html})
         
-        return render(request, 'fee_management/generate_voucher.html', context)
+        return render(request, 'fee_management/voucher.html', context)
     
     return render(request, 'fee_management/generate_voucher.html', {'errors': errors})
 
@@ -1859,7 +2176,6 @@ def manual_course_enrollment(request):
 
 
 
-
 @login_required
 def settings(request):
     user = request.user
@@ -1927,7 +2243,7 @@ def change_password(request):
         password_form = PasswordChangeForm(request.user, request.POST)
         if password_form.is_valid():
             user = password_form.save()
-            update_session_auth_hash(request, user)  # Keep the user logged in
+            update_session_auth_hash(request, user)
             messages.success(request, 'Password changed successfully.')
         else:
             messages.error(request, 'Error changing password. Please check the form.')

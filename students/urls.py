@@ -34,7 +34,7 @@ urlpatterns = [
     path('exam-results/', views.exam_results, name='exam_results'),  # 5.2 Exam Results
     path('exam_slip/', views.exam_slip, name='exam_slip'),
     
-    # ========== 6. Timetable ==========
+    # ========== 6. Timetable ==========  
     path('timetable/', views.student_timetable, name='timetable'),  # 6.1 Student Timetable
 
     # ========== 7. Attendance ==========

@@ -54,6 +54,11 @@
                         </a>
                     </li>
                     <li>
+                        <a href="{% url 'fee_management:bulk_generate_vouchers' %}" class="{% if request.resolver_match.url_name == 'bulk_generate_vouchers' %}active{% endif %} text-base">
+                            <i class="fas fa-print text-lg w-6"></i> Bulk Generate Vouchers
+                        </a>
+                    </li>
+                    <li>
                         <a href="{% url 'fee_management:generate_voucher' %}" class="{% if request.resolver_match.url_name == 'generate_voucher' %}active{% endif %} text-base">
                             <i class="fas fa-print text-lg w-6"></i> Generate Voucher
                         </a>
@@ -273,6 +278,11 @@
                         <li>
                             <a href="{% url 'fee_management:semester-fee' %}" class="{% if request.resolver_match.url_name == 'semester-fee' %}active{% endif %} text-lg py-3">
                                 <i class="fas fa-file-invoice-dollar text-lg w-6"></i> Semester Fee
+                            </a>
+                        </li>   
+                        <li>
+                            <a href="{% url 'fee_management:bulk_generate_vouchers' %}" class="{% if request.resolver_match.url_name == 'bulk_generate_vouchers' %}active{% endif %} text-lg py-3">
+                                <i class="fas fa-print text-lg w-6"></i> Bulk Generate Vouchers
                             </a>
                         </li>
                         <li>

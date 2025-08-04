@@ -76,6 +76,36 @@ class FeeVoucher(models.Model):
     semester = models.ForeignKey(Semester, on_delete=models.CASCADE, related_name='fee_vouchers')
     due_date = models.DateField()
     generated_at = models.DateTimeField(auto_now_add=True)
+    
+    def save(self, *args, **kwargs):
+        if not self.voucher_id:
+            from django.db import transaction
+            from datetime import datetime
+            
+            with transaction.atomic():
+                # Get the current timestamp
+                now = datetime.now()
+                timestamp = now.strftime("%Y%m%d%H%M%S")
+                
+                # Get the count of vouchers created in the same second
+                count = FeeVoucher.objects.filter(
+                    voucher_id__startswith=timestamp
+                ).count() + 1
+                
+                # Format: YYYYMMDDHHMMSSXXXX (where X is the sequence number)
+                self.voucher_id = f"{timestamp}{count:04d}"
+                
+                # Ensure the voucher_id is unique by incrementing the counter if needed
+                while FeeVoucher.objects.filter(voucher_id=self.voucher_id).exists():
+                    count += 1
+                    self.voucher_id = f"{timestamp}{count:04d}"
+                
+                # Call the parent's save method
+                super().save(*args, **kwargs)
+        else:
+            # If voucher_id already exists, just save normally
+            super().save(*args, **kwargs)
+            
     is_paid = models.BooleanField(default=False)
     paid_at = models.DateTimeField(null=True, blank=True)
     payment = models.OneToOneField(
@@ -97,14 +127,7 @@ class FeeVoucher(models.Model):
         unique_together = ('student', 'semester', 'semester_fee')
         ordering = ['-generated_at']
 
-    def save(self, *args, **kwargs):
-        if not self.voucher_id:
-            from datetime import datetime
-            now = datetime.now()
-            # Format: YYYYMMDDHHMMSS
-            timestamp = now.strftime("%Y%m%d%H%M%S")
-            self.voucher_id = f"{timestamp}"
-        super().save(*args, **kwargs)
+    # Removed duplicate save() method
 
     def mark_as_paid(self, payment, commit=True):
         """
@@ -124,6 +147,8 @@ class FeeVoucher(models.Model):
     def __str__(self):
         status = "Paid" if self.is_paid else "Unpaid"
         return f"Voucher {self.voucher_id} - {self.student} - {self.semester} ({status})"
+
+
 
 class MeritList(models.Model):
     SHIFT_CHOICES = [

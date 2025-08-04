@@ -32,7 +32,8 @@ urlpatterns = [
     
     # ========== 5. Voucher Management ==========
     path('generate-voucher/', views.generate_voucher, name='generate_voucher'),  # 5.1 Generate Voucher (Admin)
-    path('student/generate-voucher/', views.student_generate_voucher, name='student_generate_voucher'),  # 5.2 Student Voucher Generation
+    path('bulk-generate-vouchers/', views.bulk_generate_vouchers, name='bulk_generate_vouchers'),  # 5.2 Bulk Generate Vouchers
+    path('student/generate-voucher/', views.student_generate_voucher, name='student_generate_voucher'),  # 5.3 Student Voucher Generation
     
     # ========== 6. Merit List Management ==========
     path('generate-merit-list/', views.generate_merit_list, name='generate_merit_list'),  # 6.1 Generate Merit List
@@ -43,9 +44,10 @@ urlpatterns = [
     
     # ========== 7. AJAX Endpoints ==========
     path('get_programs/', views.get_programs, name='get_programs'),  # 7.1 Get Programs (AJAX)
-    path('get_semesters/', views.get_semesters, name='get_semesters'),  # 7.2 Get Semesters (AJAX)
-    path('get_semesters_by_roll/', views.get_semesters_by_roll, name='get_semesters_by_roll'),  # 7.3 Get Semesters by Roll (AJAX)
-    
+    path('get_bulk_programs/', views.get_bulk_programs, name='get_bulk_programs'),  # 7.2 Get Programs for Bulk Voucher (AJAX)
+    path('get_bulk_semesters/', views.get_bulk_semesters, name='get_bulk_semesters'),  # 7.3 Get Semesters for Bulk Voucher (AJAX)
+    path('get_semesters/', views.get_semesters, name='get_semesters'),  # 7.4 Get Semesters (AJAX)
+    path('get_semesters_by_roll/', views.get_semesters_by_roll, name='get_semesters_by_roll'),  # 7.5 Get Semesters by Roll (AJAX)
     
     
     # ========= 8. course enrollment ========

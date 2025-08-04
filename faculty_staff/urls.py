@@ -19,6 +19,7 @@ urlpatterns = [
 
     # ========== 2. Dashboards ==========
     path('hod-dashboard/', views.hod_dashboard, name='hod_dashboard'),
+    path('hod-office-notices/', views.hod_office_notices, name='hod_office_notices'),
     path('prof-dashboard/', views.professor_dashboard, name='professor_dashboard'),
 
     # ========== 3. Staff Management ==========

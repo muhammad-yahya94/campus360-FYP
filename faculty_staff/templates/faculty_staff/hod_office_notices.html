@@ -1,0 +1,27 @@
+{% extends 'faculty_staff/base_dashboard.html' %}
+
+{% block title %}Office Notices{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <h1 class="text-3xl font-bold mb-6 border-b border-gray-300 pb-4">Office Notices</h1>
+    {% if notices %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for notice in notices %}
+                <div class="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
+                    <h2 class="text-2xl font-semibold mb-3 text-indigo-700">{{ notice.title }}</h2>
+                    <p class="mb-4 whitespace-pre-line text-gray-700">{{ notice.message }}</p>
+                    <p class="text-sm text-gray-500 mb-3">Sent on: {{ notice.created_at|date:"F j, Y, g:i a" }}</p>
+                    {% if notice.attached_file %}
+                        <a href="{{ notice.attached_file.url }}" class="inline-block bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition-colors duration-200" target="_blank" rel="noopener noreferrer">
+                            View Attachment
+                        </a>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-gray-600 text-lg">No office notices available.</p>
+    {% endif %}
+</div>
+{% endblock %}

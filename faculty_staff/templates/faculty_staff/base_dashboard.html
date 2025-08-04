@@ -279,6 +279,11 @@
                             </a>
                         </li>
                         <li>
+                            <a href="{% url 'faculty_staff:hod_office_notices' %}" class="{% if request.resolver_match.url_name == 'hod_office_notices' %}active{% endif %} text-lg py-3">
+                                <i class="fas fa-bell text-lg w-6"></i> Office Notices
+                            </a>
+                        </li>
+                        <li>
                             <a href="{% url 'faculty_staff:staff_management' %}" class="{% if request.resolver_match.url_name == 'staff_management' %}active{% endif %} text-lg py-3">
                                 <i class="fas fa-users text-lg w-6"></i> Staff Management
                             </a>

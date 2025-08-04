@@ -70,7 +70,7 @@ from django.db.models.functions import ExtractWeek
 # Decorators
 from .decorators import hod_or_professor_required, hod_required
 
-
+from fee_management.models import OfficeToHODNotification
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -144,6 +144,32 @@ def hod_dashboard(request):
         'department': hod_department,
     }
     return render(request, 'faculty_staff/hod_dashboard.html', context)
+
+
+@hod_required
+def hod_office_notices(request):
+    try:
+        teacher_profile = request.user.teacher_profile
+        if teacher_profile.designation != 'head_of_department':
+            messages.error(request, 'You do not have permission to access this page.')
+            return redirect('home')
+    except Teacher.DoesNotExist:
+        messages.error(request, 'You do not have a teacher profile. Please contact the administrator.')
+        return redirect('home')
+
+    hod_department = teacher_profile.department
+
+    from django.db.models import Q
+    # Fetch office notices filtered by HOD's department or all if no department filter
+    notices = OfficeToHODNotification.objects.filter(
+        Q(departments__isnull=True) | Q(departments=hod_department)
+    ).distinct().order_by('-created_at')
+
+    context = {
+        'notices': notices,
+        'department': hod_department,
+    }
+    return render(request, 'faculty_staff/hod_office_notices.html', context)
 
 
 @hod_or_professor_required

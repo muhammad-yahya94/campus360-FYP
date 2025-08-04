@@ -3846,12 +3846,14 @@ def search_students(request):
 
 
 
-
 @hod_or_professor_required
 def exam_results(request, course_offering_id):
     """
     Display the exam results page for a specific course offering, including is_published status.
+    Restrict result recording to after exam date and within 30 days of exam date.
     """
+    from datetime import timedelta
+
     course_offerings = CourseOffering.objects.filter(
         teacher=request.user.teacher_profile
     ).select_related('course', 'semester', 'academic_session').order_by('-academic_session__start_year', 'semester__number')
@@ -3865,6 +3867,8 @@ def exam_results(request, course_offering_id):
         'edit_mode': edit_mode,
     }
     
+    can_record_results = False  # Default: not allowed
+
     if course_offering_id:
         try:
             course_offering = get_object_or_404(
@@ -3872,6 +3876,23 @@ def exam_results(request, course_offering_id):
                 id=course_offering_id,
                 teacher=request.user.teacher_profile
             )
+            # --- Exam Datesheet restriction logic ---
+            # Get the exam date for this course offering (for 'final' exam_type, adjust if needed)
+            exam_datesheet = ExamDateSheet.objects.filter(
+                course_offering=course_offering,
+                exam_type='final'  # Change if you want to check for midterm/practical etc.
+            ).first()
+            print(exam_datesheet)
+            today = timezone.now().date()
+            print(f'[DEBUG] Today\'s date: {today}')
+            if exam_datesheet and exam_datesheet.exam_date:
+                exam_date = exam_datesheet.exam_date
+                # Allow only from the day after exam_date up to 30 days after exam_date (inclusive)
+                start_date = exam_date + timedelta(days=1)
+                end_date = exam_date + timedelta(days=30)
+                if start_date <= today <= end_date:
+                    can_record_results = True
+
             print(f'[DEBUG] Offering shift: {course_offering.shift}')
             print(f'[DEBUG] Course: {course_offering.course.code} - {course_offering.course.name}')
             print(f'[DEBUG] Semester: {course_offering.semester.name}')
@@ -4021,7 +4042,9 @@ def exam_results(request, course_offering_id):
                 'practical_max': practical_max,
                 'totalMax': total_max,
                 'show_form': show_form,
-                'publish': publish
+                'publish': publish,
+                'can_record_results': can_record_results,  # Pass to template
+                'exam_datesheet': exam_datesheet,  # Optional: for showing exam date in template
             })
             
         except CourseOffering.DoesNotExist:

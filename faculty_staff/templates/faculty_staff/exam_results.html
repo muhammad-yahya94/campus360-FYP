@@ -100,6 +100,7 @@
     </div>
 
     <!-- Record/Update Exam Results Form -->
+    {% if can_record_results %}
     <div class="card bg-base-100 shadow-xl mb-6 print-section">
         <div class="card-body">
             <div class="flex justify-between items-center mb-4">
@@ -189,6 +190,11 @@
             </form>
         </div>
     </div>
+    {% else %}
+        <div class="alert alert-warning">
+        You can only record exam results after the exam date and within 30 days of the exam date.
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
 

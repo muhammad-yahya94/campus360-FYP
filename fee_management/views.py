@@ -1039,26 +1039,72 @@ def fee_verification(request):
                     ).exclude(voucher__isnull=False).first()
                     
                     try:
+                        # Calculate late fees if applicable
+                        dynamic_fees = dict(voucher.semester_fee.dynamic_fees) if voucher.semester_fee.dynamic_fees else {}
+                        total_amount = voucher.semester_fee.total_amount
+                        late_fee_type = None
+                        late_fee_amount = 0
+                        today = date.today()
+                        due_passed = voucher.due_date and voucher.due_date < today
+                        
+                        # Check if student's semester is active
+                        enrollment = StudentSemesterEnrollment.objects.filter(
+                            student=voucher.student, 
+                            semester=voucher.semester
+                        ).first()
+                        is_active_semester = enrollment and enrollment.status == 'enrolled'
+                        
+                        # Late fee logic
+                        if due_passed and not voucher.is_paid:
+                            if is_active_semester:
+                                # Add Late Fee 10%
+                                late_fee_type = 'Late Fee 10%'
+                                late_fee_amount = (Decimal('0.1') * total_amount).quantize(Decimal('1.00'))
+                                dynamic_fees[late_fee_type] = str(late_fee_amount)
+                                total_amount += late_fee_amount
+                            else:
+                                # Add Late Fee 100%
+                                late_fee_type = 'Late Fee 100%'
+                                late_fee_amount = total_amount
+                                dynamic_fee_amount = total_amount
+                                dynamic_fees[late_fee_type] = str(late_fee_amount)
+                                total_amount += late_fee_amount
+                        elif not is_active_semester and not voucher.is_paid:
+                            # Add Late Dues 100% (same as total_amount)
+                            late_fee_type = 'Late Dues'
+                            late_fee_amount = total_amount
+                            dynamic_fees[late_fee_type] = str(late_fee_amount)
+                            total_amount += late_fee_amount
+                            
                         if not payment:
                             payment = StudentFeePayment.objects.create(
                                 student=voucher.student,
                                 semester_fee=voucher.semester_fee,
-                                amount_paid=voucher.semester_fee.total_amount,
-                                remarks=f'Payment verified against voucher {voucher_id}'
+                                amount_paid=total_amount,  # Use total_amount which includes late fees
+                                remarks=f'Payment verified against voucher {voucher_id}. ' + 
+                                       (f'Late fee applied: {late_fee_type} - {late_fee_amount} PKR' if late_fee_type else '')
                             )
                         
                         if not voucher.is_paid:
                             voucher.mark_as_paid(payment)
                             success_message = (
-                                f'Payment of {voucher.semester_fee.total_amount} PKR has been recorded ' 
-                                f'and voucher {voucher_id} marked as paid.'
+                                f'Payment of {total_amount} PKR (Base: {voucher.semester_fee.total_amount} PKR' +
+                                (f', Late Fee: {late_fee_amount} PKR' if late_fee_amount else '') +
+                                f') has been recorded and voucher {voucher_id} marked as paid.'
                             )
                             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                                # Update context with all necessary data including late fees
                                 context.update({
                                     'voucher': voucher,
                                     'student': voucher.student,
                                     'semester_fee': voucher.semester_fee,
-                                    'payment_exists': bool(voucher.payment)
+                                    'payment_exists': bool(voucher.payment),
+                                    'dynamic_fees': dynamic_fees,
+                                    'total_amount': total_amount,
+                                    'late_fee_type': late_fee_type,
+                                    'late_fee_amount': late_fee_amount,
+                                    'is_active_semester': is_active_semester,
+                                    'due_passed': due_passed
                                 })
                                 html = render_to_string('fee_management/voucher_details.html', context, request)
                                 return JsonResponse({'html': html, 'message': success_message})
@@ -1069,11 +1115,53 @@ def fee_verification(request):
                         messages.error(request, str(e))
                         return redirect('fee_management:fee_verification')
             
+            # Calculate late fees if applicable
+            dynamic_fees = dict(voucher.semester_fee.dynamic_fees) if voucher.semester_fee.dynamic_fees else {}
+            total_amount = voucher.semester_fee.total_amount
+            late_fee_type = None
+            late_fee_amount = 0
+            today = date.today()
+            due_passed = voucher.due_date and voucher.due_date < today
+            
+            # Check if student's semester is active
+            enrollment = StudentSemesterEnrollment.objects.filter(
+                student=voucher.student, 
+                semester=voucher.semester
+            ).first()
+            is_active_semester = enrollment and enrollment.status == 'enrolled'
+            
+            # Late fee logic
+            if due_passed and not voucher.is_paid:
+                if is_active_semester:
+                    # Add Late Fee 10%
+                    late_fee_type = 'Late Fee 10%'
+                    late_fee_amount = (Decimal('0.1') * total_amount).quantize(Decimal('1.00'))
+                    dynamic_fees[late_fee_type] = str(late_fee_amount)
+                    total_amount += late_fee_amount
+                else:
+                    # Add Late Fee 100%
+                    late_fee_type = 'Late Fee 100%'
+                    late_fee_amount = total_amount
+                    dynamic_fees[late_fee_type] = str(late_fee_amount)
+                    total_amount += late_fee_amount
+            elif not is_active_semester and not voucher.is_paid:
+                # Add Late Dues 100% (same as total_amount)
+                late_fee_type = 'Late Dues'
+                late_fee_amount = total_amount
+                dynamic_fees[late_fee_type] = str(late_fee_amount)
+                total_amount += late_fee_amount
+            
             context.update({
                 'voucher': voucher,
                 'student': voucher.student,
                 'semester_fee': voucher.semester_fee,
-                'payment_exists': bool(voucher.payment)
+                'payment_exists': bool(voucher.payment),
+                'dynamic_fees': dynamic_fees,
+                'total_amount': total_amount,
+                'late_fee_type': late_fee_type,
+                'late_fee_amount': late_fee_amount,
+                'is_active_semester': is_active_semester,
+                'due_passed': due_passed
             })
             
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -1087,6 +1175,9 @@ def fee_verification(request):
             return redirect('fee_management:fee_verification')
     
     return render(request, 'fee_management/fee_verification.html', context)
+
+
+
 
 
 

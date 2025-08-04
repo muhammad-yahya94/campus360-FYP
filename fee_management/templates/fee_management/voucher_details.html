@@ -44,8 +44,8 @@
                 </tr>
             </thead>
             <tbody>
-                {% for head, amount in semester_fee.dynamic_fees.items %}
-                <tr>
+                {% for head, amount in dynamic_fees.items %}
+                <tr {% if head == late_fee_type %}class="bg-yellow-50 font-semibold"{% endif %}>
                     <td>{{ head }}</td>
                     <td class="text-right">{{ amount|floatformat:2 }}</td>
                 </tr>
@@ -55,10 +55,24 @@
                     <td class="text-right">{{ semester_fee.total_amount|floatformat:2 }}</td>
                 </tr>
                 {% endfor %}
-                <tr class="font-bold">
-                    <td>Total Amount</td>
-                    <td class="text-right">PKR {{ semester_fee.total_amount|floatformat:2 }}</td>
+                {% if late_fee_type %}
+                <tr class="font-semibold">
+                    <td>{{ late_fee_type }}</td>
+                    <td class="text-right">{{ late_fee_amount|floatformat:2 }}</td>
                 </tr>
+                {% endif %}
+                <tr class="font-bold border-t-2 border-gray-300">
+                    <td class="pt-2">Total Amount</td>
+                    <td class="text-right pt-2">PKR {{ total_amount|floatformat:2 }}</td>
+                </tr>
+                {% if due_passed and not voucher.is_paid %}
+                <tr>
+                    <td colspan="2" class="text-sm text-red-600 pt-2">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                        This voucher is overdue since {{ voucher.due_date|date:"d M Y" }}
+                    </td>
+                </tr>
+                {% endif %}
             </tbody>
         </table>
     </div>

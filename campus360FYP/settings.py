@@ -223,7 +223,7 @@ DEFAULT_FROM_EMAIL = 'princeyahya052@gmail.com'  # Default 'from' address for em
 
 DAISY_SETTINGS = {
     'SITE_TITLE': '',  # The title of the site 
-    'SITE_HEADER': 'Campus 360',  # Header text displayed in the admin panel
+    'SITE_HEADER': 'Online Academic Management Platform',  # Header text displayed in the admin panel
     'INDEX_TITLE': 'Hi, You are welcome ',  # The title for the index page of dashboard
     'SITE_LOGO': '/static/img/logo.png',  # Path to the logo image displayed in the sidebar
     'EXTRA_STYLES': [],  # List of extra stylesheets to be loaded in base.html (optional)

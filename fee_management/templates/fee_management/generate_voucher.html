@@ -7,11 +7,11 @@
     margin: 10mm;
     orphans: 0;
     widows: 0;
-  }
+  }   
 
   dialog {
-    width: 90%;
-    max-width: 1000px;
+    width: 95%;
+    max-width: 1200px;
     border: 2px solid #000;
     background: #fff;
     padding: 0;
@@ -31,8 +31,8 @@
 
     dialog {
       border: none;
-      width: 297mm; /* A4 landscape width */
-      height: 187mm; /* A4 landscape height minus margins */
+      width: 297mm;
+      height: 187mm;
       margin: 0;
       padding: 0;
       box-sizing: border-box;
@@ -63,7 +63,7 @@
       box-sizing: border-box;
       page-break-inside: avoid !important;
       break-inside: avoid !important;
-      transform: scale(0.95); /* Slight scaling to prevent overflow */
+      transform: scale(0.95);
       transform-origin: top left;
     }
 
@@ -78,7 +78,7 @@
       padding: 3mm !important;
       border: 1px solid #000 !important;
       background: #fff !important;
-      font-size: 0.75em !important; /* Reduced font size for better fit */
+      font-size: 0.75em !important;
       overflow: hidden !important;
       box-sizing: border-box;
     }
@@ -86,7 +86,7 @@
     .office-details {
       display: block !important;
       visibility: visible !important;
-      font-size: 0.65em !important; /* Smaller font for office details */
+      font-size: 0.65em !important;
       margin-top: 5px !important;
       padding-top: 3px !important;
       border-top: 1px dashed #000;
@@ -97,16 +97,16 @@
     }
 
     .font-bold.text-lg.mb-4 {
-      display: none !important; /* Hide modal header during printing */
+      display: none !important;
     }
 
     table {
-      font-size: 0.75em !important; /* Smaller table font size */
+      font-size: 0.75em !important;
       line-height: 1.2 !important;
     }
 
     th, td {
-      padding: 2px !important; /* Reduced padding for tables */
+      padding: 2px !important;
     }
   }
 
@@ -159,18 +159,36 @@
   }
 
   .modal-actions {
-    text-align: center;
-    margin-top: 10px;
-    padding-top: 10px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+    padding: 10px;
     border-top: 1px solid #000;
+    background: #f9f9f9;
   }
 
   .modal-actions button {
     padding: 8px 16px;
-    margin: 0 5px;
     border: 1px solid #000;
+    border-radius: 4px;
     background: #fff;
     cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .modal-actions button:hover {
+    background: #e0e0e0;
+  }
+
+  .modal-actions .btn-primary {
+    background: #2563eb;
+    color: #fff;
+    border: none;
+  }
+
+  .modal-actions .btn-primary:hover {
+    background: #1e40af;
   }
 </style>
 
@@ -240,20 +258,20 @@
 
 <!-- Voucher Modal -->
 <dialog id="voucherModal" class="modal">
-  <div class="modal-box w-11/12 max-w-5xl">
+  <div class="modal-box w-11/12 max-w-6xl">
     <h3 class="font-bold text-lg mb-4">Your Fee Voucher</h3>
     <div id="voucherContent" class="w-full">
       <!-- Voucher content will be loaded here -->
     </div>
-    <div class="modal-actions" style="margin-top:100px">
-      <button onclick="printVoucher()" class="btn btn-primary">
+    <div class="modal-actions">
+      <button onclick="initiatePrint()" class="btn btn-primary">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
         Print Voucher
       </button>
       <form method="dialog">
-        <button class="btn">Close</button>
+        <button class="btn">Cancel</button>
       </form>
     </div>
   </div>
@@ -284,18 +302,54 @@ function setLoading(isLoading) {
   }
 }
 
-function printVoucher() {
-  if (!window.isPrinting) {
-    window.isPrinting = true;
-    setTimeout(() => {
-      window.print();
-      window.onafterprint = () => {
-        document.getElementById('voucherModal').close();
-        window.isPrinting = false;
-        window.onafterprint = null;
-      };
-    }, 1000);
-  }
+function initiatePrint() {
+  if (window.isPrinting) return;
+  
+  window.isPrinting = true;
+  const modal = document.getElementById('voucherModal');
+  const voucherContent = document.getElementById('voucherContent');
+  
+  // Create a temporary print container
+  const printContainer = document.createElement('div');
+  printContainer.id = 'printContainer';
+  printContainer.style.position = 'absolute';
+  printContainer.style.top = '0';
+  printContainer.style.left = '0';
+  printContainer.style.width = '100%';
+  printContainer.style.height = '100%';
+  printContainer.style.background = '#fff';
+  printContainer.style.zIndex = '10000';
+  printContainer.innerHTML = voucherContent.innerHTML;
+  document.body.appendChild(printContainer);
+  
+  // Ensure modal is hidden during print
+  modal.style.display = 'none';
+  
+  // Trigger print
+  window.print();
+  
+  // Handle print cleanup
+  window.onafterprint = () => {
+    // Remove print container
+    if (document.getElementById('printContainer')) {
+      document.body.removeChild(printContainer);
+    }
+    // Ensure modal is closed
+    modal.close();
+    modal.style.display = '';
+    window.isPrinting = false;
+    window.onafterprint = null;
+  };
+
+  // Fallback for browsers that don't support onafterprint
+  setTimeout(() => {
+    if (document.getElementById('printContainer')) {
+      document.body.removeChild(printContainer);
+    }
+    modal.close();
+    modal.style.display = '';
+    window.isPrinting = false;
+  }, 1000);
 }
 
 async function fetchSemesters() {
@@ -440,18 +494,6 @@ document.addEventListener('DOMContentLoaded', function() {
       
       voucherContent.innerHTML = data.voucher_html;
       modal.showModal();
-      
-      if (!window.isPrinting) {
-        window.isPrinting = true;
-        setTimeout(() => {
-          window.print();
-          window.onafterprint = () => {
-            modal.close();
-            window.isPrinting = false;
-            window.onafterprint = null;
-          };
-        }, 1000);
-      }
       
     } catch (error) {
       console.error('Error:', error);

@@ -64,4 +64,9 @@ urlpatterns = [
     path('settings/', views.settings, name='settings'),
     path('update_account/', views.update_account, name='update_account'),
     path('change_password/', views.change_password, name='change_password'),
+    
+    # ========== 11. Office Notices ==========
+    path('office-notices/', views.notification_list, name='office_notice_list'),
+    path('office-notices/new/', views.office_notice_view, name='office_notice'),
+    path('office-notices/<int:pk>/', views.office_notice_detail_view, name='office_notice_detail'),
 ] 

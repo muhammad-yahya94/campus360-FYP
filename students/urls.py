@@ -27,7 +27,7 @@ urlpatterns = [
     path('assignments/<int:course_offering_id>/', views.assignments, name='assignments'),
     path('submit_assignment/<int:assignment_id>/', views.submit_assignment, name='submit_assignment'),
     path('upload_image/', views.upload_image, name='upload_image'),
-    path('study-materials/<int:course_offering_id>/', views.study_materials, name='study_materials'),  # 4.2 Study Materials
+    path('study-materials/<int:course_offering_id>/', views.study_materials, name='study_materials'),
 
     # ========== 5. Notices & Results ==========
     path('notices/', views.notices, name='notices'),  # 5.1 Notices

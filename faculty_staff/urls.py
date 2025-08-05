@@ -82,6 +82,7 @@ urlpatterns = [
     path('edit-assignment/', views.edit_assignment, name='edit_assignment'),
     path('delete-assignment/', views.delete_assignment, name='delete_assignment'),
     path('assignment-submissions/<int:assignment_id>/', views.assignment_submissions, name='assignment_submissions'),
+    path('assignment-submission/<int:submission_id>/', views.assignment_submission_detail, name='assignment_submission_detail'),
     path('grade-submission/', views.grade_submission, name='grade_submission'),
 
 
@@ -100,7 +101,7 @@ urlpatterns = [
  
     # ========== 13. Notice Board ==========
     path('notices/', views.notice_board, name='notice_board'),
-    
+    path('hod-office-notices/', views.hod_office_notices, name='hod_office_notices'),
     # ========== 14. Attendance ==========
     path('attendance/<int:offering_id>/', views.attendance, name='attendance'),
     path('load-students-for-course/', views.load_students_for_course, name='load_students_for_course'),
@@ -143,4 +144,5 @@ urlpatterns = [
     path('get-programs-exam-ds/', views.get_programs_exam_ds, name='get_programs_ds'),
     path('get-semesters-exam-ds/', views.get_semesters_exam_ds, name='get_semesters_ds'),
     path('get-courses-exam-ds/', views.get_courses_exam_ds, name='get_courses_ds'),
+    path('exam-datesheet/update/', views.update_exam_schedule_ajax, name='update_exam_schedule_ajax'),
 ]

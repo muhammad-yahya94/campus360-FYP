@@ -3,6 +3,11 @@
 {% block title %}Assignments - {{ selected_course_offering.course.name }}{% endblock %}
 
 {% block extra_head %}
+<!-- Prism.js for syntax highlighting -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
 <style>
   .prose {
     max-width: 100%;
@@ -23,6 +28,39 @@
   .modal-box {
     max-height: 80vh;
     overflow-y: auto;
+  }
+  .code-container {
+    background: #2d3748;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+    overflow-x: auto;
+  }
+  .code-container pre {
+    margin: 0;
+    background: transparent;
+  }
+  .code-container code {
+    color: #e2e8f0;
+    font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .submission-type-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+  .submission-type-text {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+  .submission-type-code {
+    background: #dcfce7;
+    color: #166534;
   }
 </style>
 {% endblock %}
@@ -107,7 +145,15 @@
                 </td>
                 <td class="px-4 py-4 text-sm text-base-content">
                   {% if item.status == "Submitted" %}
-                    <button onclick="viewSubmission('{{ item.assignment_data.content|escapejs }}', '{% if item.assignment_data.file and item.assignment_data.file.url %}{{ item.assignment_data.file.url }}{% else %}{% endif %}')" class="btn btn-ghost btn-xs">
+                    <button 
+                      class="btn btn-ghost btn-xs view-submission-btn"
+                      data-assignment-number="{{ forloop.counter }}"
+                      data-assignment-title="{% if item.status == 'Submitted' %}{{ item.assignment_data.assignment.title }}{% else %}{{ item.assignment_data.submission.assignment.title }}{% endif %}"
+                      data-text-content="{% if item.status == 'Submitted' %}{{ item.assignment_data.text_content|escapejs }}{% else %}{{ item.assignment_data.submission.text_content|escapejs }}{% endif %}"
+                      data-code-content="{% if item.status == 'Submitted' %}{{ item.assignment_data.code_content|escapejs }}{% else %}{{ item.assignment_data.submission.code_content|escapejs }}{% endif %}"
+                      data-file-url="{% if item.status == 'Submitted' and item.assignment_data.file and item.assignment_data.file.url %}{{ item.assignment_data.file.url }}{% elif item.assignment_data.submission.file and item.assignment_data.submission.file.url %}{{ item.assignment_data.submission.file.url }}{% else %}{% endif %}"
+                      data-file-name="{% if item.status == 'Submitted' and item.assignment_data.file and item.assignment_data.file.name %}{{ item.assignment_data.file.name }}{% elif item.assignment_data.submission.file and item.assignment_data.submission.file.name %}{{ item.assignment_data.submission.file.name }}{% else %}No file{% endif %}"
+                      data-code-language="{% if item.status == 'Submitted' %}{{ item.assignment_data.code_language|default:'none' }}{% else %}{{ item.assignment_data.submission.code_language|default:'none' }}{% endif %}">
                       View Submission
                     </button>
                   {% else %}
@@ -141,29 +187,28 @@
 <dialog id="submissionModal" class="modal">
   <div class="modal-box max-w-4xl">
     <div class="flex justify-between items-center mb-4">
-      <h3 class="font-bold text-lg">Your Submission</h3>
+      <h3 class="font-bold text-lg" id="modalAssignmentTitle">Assignment # - Title</h3>
       <button onclick="document.getElementById('submissionModal').close()" class="btn btn-sm btn-circle">
         &times;
       </button>
     </div>
     
-    <!-- Tabs -->
-    <div class="tabs tabs-boxed bg-base-200 p-1 mb-4">
-      <button class="tab tab-active" id="contentTab" onclick="switchTab('content')">Content</button>
-      <button class="tab" id="fileTab" onclick="switchTab('file')">File Submission</button>
-    </div>
-    
-    <!-- Content Tab -->
-    <div id="contentTabContent">
-      <div id="submissionContent" class="prose max-w-none">
-        <!-- Rich text content will be inserted here -->
+    <div class="mb-4">
+      <h4 class="font-semibold mb-2">Text Content</h4>
+      <div id="modalTextContent" class="prose max-w-none" style="white-space: pre-wrap;">
+        <!-- Text content will be inserted here -->
       </div>
     </div>
     
-    <!-- File Tab -->
-    <div id="fileTabContent" class="hidden">
-      <div id="fileSubmissionContent" class="space-y-4">
-        <!-- File submission content will be inserted here -->
+    <div class="mb-4">
+      <h4 class="font-semibold mb-2">Code Content</h4>
+      <pre id="modalCodeContent" class="bg-gray-100 p-3 rounded overflow-x-auto"><code></code></pre>
+    </div>
+    
+    <div class="mb-4">
+      <h4 class="font-semibold mb-2">Uploaded Files</h4>
+      <div id="modalFileContent" class="space-y-4">
+        <!-- Uploaded files will be inserted here -->
       </div>
     </div>
   </div>
@@ -173,56 +218,118 @@
 </dialog>
 
 <script>
-  function viewSubmission(content, fileUrl = null) {
-    const modal = document.getElementById('submissionModal');
-    const contentDiv = document.getElementById('submissionContent');
-    const fileDiv = document.getElementById('fileSubmissionContent');
-    
-    // Set content tab
-    if (!content || content.trim() === '') {
-      contentDiv.innerHTML = '<p class="text-gray-500 italic">No text content available for this submission.</p>';
-    } else {
-      contentDiv.innerHTML = content;
-    }
-    
-    // Set file tab
-    if (!fileUrl) {
-      fileDiv.innerHTML = '<p class="text-gray-500 italic">No file was submitted with this assignment.</p>';
-    } else {
-      fileDiv.innerHTML = `
-        <div class="flex items-center space-x-4 p-4 bg-base-200 rounded-lg">
-          <div class="flex-shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-gray-900 truncate">Submitted File</p>
-            <p class="text-sm text-gray-500 truncate">Click to download</p>
-          </div>
-          <div class="flex-shrink-0">
-            <a href="${fileUrl}" download class="btn btn-sm btn-primary" target="_blank">Download</a>
-          </div>
-        </div>
-      `;
-    }
-    
-    // Show the modal and reset to content tab
-    modal.showModal();
-    switchTab('content');
-  }
-  
-  // Switch between tabs
-  function switchTab(tabName) {
-    // Update active tab
-    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('tab-active'));
-    document.getElementById(`${tabName}Tab`).classList.add('tab-active');
-    
-    // Show active content
-    document.querySelectorAll('[id$="TabContent"]').forEach(content => {
-      content.classList.add('hidden');
+  // Add event listeners for view submission buttons
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.view-submission-btn').forEach(button => {
+      button.addEventListener('click', function() {
+        const assignmentNumber = this.dataset.assignmentNumber;
+        const assignmentTitle = this.dataset.assignmentTitle;
+        const textContent = this.dataset.textContent;
+        const codeContent = this.dataset.codeContent;
+        const fileUrl = this.dataset.fileUrl;
+        const fileName = this.dataset.fileName;
+        const codeLanguage = this.dataset.codeLanguage;
+        
+        openSubmissionModal(assignmentNumber, assignmentTitle, textContent, codeContent, fileUrl, fileName, codeLanguage);
+      });
     });
-    document.getElementById(`${tabName}TabContent`).classList.remove('hidden');
+  });
+
+  function openSubmissionModal(assignmentNumber, assignmentTitle, textContent, codeContent, fileUrl, fileName, codeLanguage) {
+    const modal = document.getElementById('submissionModal');
+    const modalTitle = document.getElementById('modalAssignmentTitle');
+    const modalText = document.getElementById('modalTextContent');
+    const modalCode = document.getElementById('modalCodeContent').querySelector('code');
+    const modalFile = document.getElementById('modalFileContent');
+
+    // Set assignment title
+    modalTitle.textContent = `Assignment ${assignmentNumber} - ${assignmentTitle}`;
+
+    // Set text content
+    if (textContent && textContent.trim() !== '') {
+      // Decode unicode escape sequences in text content
+      function decodeUnicodeEscape(str) {
+        return str.replace(/\\u[\dA-Fa-f]{4}/g, function(match) {
+          return String.fromCharCode(parseInt(match.replace('\\u', ''), 16));
+        });
+      }
+      const decodedText = decodeUnicodeEscape(textContent);
+
+      try {
+        // Try to parse JSON encoded content (if stored as JSON string)
+        const parsedContent = JSON.parse(decodedText);
+        modalText.innerHTML = parsedContent;
+      } catch (e) {
+        // If not JSON, treat as raw HTML
+        modalText.innerHTML = decodedText;
+      }
+    } else {
+      modalText.innerHTML = '<p class="text-gray-500 italic">No text content available.</p>';
+    }
+
+    // Set code content
+    if (codeContent && codeContent.trim() !== '') {
+      // Decode unicode escape sequences
+      function decodeUnicodeEscape(str) {
+        return str.replace(/\\u[\dA-Fa-f]{4}/g, function(match) {
+          return String.fromCharCode(parseInt(match.replace('\\u', ''), 16));
+        });
+      }
+      const decodedCode = decodeUnicodeEscape(codeContent);
+
+      // Escape HTML special characters in code content
+      const escapedCode = decodedCode.replace(/&/g, '&amp;')
+                                    .replace(/</g, '&lt;')
+                                    .replace(/>/g, '&gt;')
+                                    .replace(/"/g, '&quot;')
+                                    .replace(/'/g, '&#039;');
+      modalCode.innerHTML = escapedCode;
+
+      // Remove existing language classes
+      modalCode.className = '';
+
+      // Map codeLanguage to Prism language class
+      const languageMap = {
+        'python': 'language-python',
+        'javascript': 'language-javascript',
+        'html': 'language-markup',
+        'css': 'language-css',
+        'c': 'language-c',
+        'cpp': 'language-cpp',
+        'java': 'language-java',
+        'php': 'language-php',
+        'sql': 'language-sql',
+        'none': ''
+      };
+      const prismClass = languageMap[codeLanguage.toLowerCase()] || '';
+      if (prismClass) {
+        modalCode.classList.add(prismClass);
+      }
+
+      // Apply syntax highlighting if Prism is available
+      if (typeof Prism !== 'undefined') {
+        Prism.highlightElement(modalCode);
+      }
+    } else {
+      modalCode.textContent = 'No code content available.';
+      modalCode.className = '';
+    }
+
+    // Set file content
+    if (fileUrl && fileUrl.trim() !== '') {
+      let fileHtml = '';
+      const lowerUrl = fileUrl.toLowerCase();
+      if (lowerUrl.endsWith('.jpg') || lowerUrl.endsWith('.jpeg') || lowerUrl.endsWith('.png') || lowerUrl.endsWith('.gif')) {
+        fileHtml = `<img src="${fileUrl}" alt="Uploaded Image" class="max-w-full h-auto rounded" />`;
+      } else {
+        fileHtml = `<a href="${fileUrl}" target="_blank" class="text-primary underline">${fileName || 'Download File'}</a>`;
+      }
+      modalFile.innerHTML = fileHtml;
+    } else {
+      modalFile.innerHTML = '<p class="text-gray-500 italic">No files uploaded.</p>';
+    }
+
+    modal.showModal();
   }
 
   // Close modal when clicking outside

@@ -99,3 +99,10 @@ class OfficerPasswordChangeForm(PasswordChangeForm):
             'placeholder': 'Confirm new password',
             'autocomplete': 'new-password',
         })
+
+from .models import OfficeToHODNotification
+
+class OfficeToHODNotificationForm(forms.ModelForm):
+    class Meta:
+        model = OfficeToHODNotification
+        fields = ['title', 'message', 'attached_file']

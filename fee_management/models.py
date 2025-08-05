@@ -223,3 +223,15 @@ class MeritListEntry(models.Model):
 
     def _str_(self):
         return f"#{self.merit_position} - {self.applicant.full_name} ({self.relevant_percentage}%) - {self.status}"
+
+from users.models import CustomUser    
+class OfficeToHODNotification(models.Model):
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='office_notifications_sent')
+    departments = models.ManyToManyField('academics.Department', related_name='notifications', blank=True)
+    attached_file = models.FileField(upload_to='notifications/', blank=True, null=True)
+
+    def __str__(self):
+        return self.title

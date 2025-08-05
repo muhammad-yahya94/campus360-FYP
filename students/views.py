@@ -365,19 +365,27 @@ def submit_assignment(request, assignment_id):
             messages.error(request, 'Submission deadline has passed.')
             return redirect('students:assignments', course_offering_id=assignment.course_offering.id)
 
-        content = request.POST.get('content')
+        text_content = request.POST.get('text_content', '')
+        code_content = request.POST.get('code_content', '')
+        submission_type = request.POST.get('submission_type', 'text')
+        code_language = request.POST.get('code_language', 'none')
         file = request.FILES.get('files')
 
-        submission.content = content
+        # Update submission fields
+        submission.text_content = text_content
+        submission.code_content = code_content
+        submission.submission_type = submission_type
+        submission.code_language = code_language if submission_type == 'code' else 'none'
         submission.submitted_at = timezone.now()
 
+        # Handle file upload
         if file:
             fs = FileSystemStorage()
             filename = fs.save(file.name, file)
             submission.file = filename
 
         submission.save()
-        logger.info(f"Assignment {assignment_id} submitted successfully by student: {student}")
+        logger.info(f"Assignment {assignment_id} submitted successfully by student: {student} (Type: {submission_type}, Language: {code_language})")
         messages.success(request, 'Assignment submitted successfully!')
         return redirect('students:assignments', course_offering_id=assignment.course_offering.id)
 
@@ -387,7 +395,6 @@ def submit_assignment(request, assignment_id):
         'has_submitted': has_submitted,
     }
     return render(request, 'submit_assignment.html', context)
-
 @login_required
 def upload_image(request):
     if request.method == 'POST' and request.FILES.get('file'):
@@ -1669,12 +1676,12 @@ def semester_fees(request):
         
     except Student.DoesNotExist:
         logger.error("Student profile not found for user: %s", request.user, exc_info=True)
-        messages.error(request, 'Student profile not found.')
-        return render(request, 'students/error.html', {'error': 'Student profile not found.'}, status=404)
+        # messages.error(request, 'Student profile not found.')
+        # return render(request, 'students/error.html', {'error': 'Student profile not found.'}, status=404)
     except Exception as e:
         logger.error("Error in semester_fees view: %s", str(e), exc_info=True)
-        messages.error(request, 'An error occurred while loading your fee status.')
-        return render(request, 'students/error.html', {'error': 'An error occurred while loading your fee status.'}, status=500)
+        # messages.error(request, 'An error occurred while loading your fee status.')
+        # return render(request, 'students/error.html', {'error': 'An error occurred while loading your fee status.'}, status=500)
 
 
 

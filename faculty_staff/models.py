@@ -277,6 +277,12 @@ class ExamDateSheet(models.Model):
     def __str__(self):
         return f"{self.course_offering.course.code} - {self.exam_type} ({self.academic_session.name}, {self.semester.name})"
 
+    def is_exam_date_passed(self):
+        """Check if the current date is after the exam date."""
+        from django.utils import timezone
+        today = timezone.now().date()
+        return today >= self.exam_date
+
     class Meta:
         verbose_name = "Exam Datesheet"
         verbose_name_plural = "Exam Datesheets"

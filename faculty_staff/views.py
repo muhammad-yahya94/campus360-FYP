@@ -3375,15 +3375,20 @@ def search_course_offerings(request):
     })
 
 
+from django.db.models import Exists, OuterRef
+
 @hod_or_professor_required
 def assignments(request, offering_id):    
     course_offering_id = offering_id
     if course_offering_id:
         try:
             course_offering = get_object_or_404(CourseOffering, id=course_offering_id, teacher=request.user.teacher_profile)
+            submissions_qs = AssignmentSubmission.objects.filter(assignment=OuterRef('pk'))
             assignments = Assignment.objects.filter(
                 course_offering_id=course_offering_id,
                 course_offering__teacher=request.user.teacher_profile
+            ).annotate(
+                has_submissions=Exists(submissions_qs)
             ).select_related('course_offering').order_by('-created_at')
             logger.info(f"Retrieved assignments for course offering {course_offering_id}: {list(assignments)}")
         except ValueError:
@@ -3395,8 +3400,11 @@ def assignments(request, offering_id):
                 'error': 'Invalid course offering ID.'
             })
     else:
+        submissions_qs = AssignmentSubmission.objects.filter(assignment=OuterRef('pk'))
         assignments = Assignment.objects.filter(
             course_offering__teacher=request.user.teacher_profile
+        ).annotate(
+            has_submissions=Exists(submissions_qs)
         ).select_related('course_offering').order_by('-created_at')
         course_offering = None
         logger.info(f"Retrieved all assignments for teacher {request.user.teacher_profile}: {list(assignments)}")
@@ -6635,3 +6643,112 @@ def view_exam_schedules(request):
             'error': str(e),
             'schedules': []
         }, status=500)
+
+from fee_management.models import OfficeToHODNotification
+@hod_required
+def hod_office_notices(request):
+    try:
+        teacher_profile = request.user.teacher_profile
+        if teacher_profile.designation != 'head_of_department':
+            messages.error(request, 'You do not have permission to access this page.')
+            return redirect('home')
+    except Teacher.DoesNotExist:
+        messages.error(request, 'You do not have a teacher profile. Please contact the administrator.')
+        return redirect('home')
+
+    hod_department = teacher_profile.department
+
+    from django.db.models import Q
+    # Fetch office notices filtered by HOD's department or all if no department filter
+    notices = OfficeToHODNotification.objects.filter(
+        Q(departments__isnull=True) | Q(departments=hod_department)
+    ).distinct().order_by('-created_at')
+
+    context = {
+        'notices': notices,
+        'department': hod_department,
+    }
+    return render(request, 'faculty_staff/hod_office_notices.html', context)
+
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+
+@hod_required
+@csrf_exempt
+def update_exam_schedule_ajax(request):
+    if request.method == 'POST' and request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        try:
+            schedule_id = request.POST.get('schedule_id')
+            exam_date = request.POST.get('exam_date')
+            start_time = request.POST.get('start_time')
+            end_time = request.POST.get('end_time')
+            exam_center = request.POST.get('exam_center')
+
+            if not schedule_id:
+                return JsonResponse({'success': False, 'message': 'Schedule ID is required.'}, status=400)
+
+            try:
+                schedule = ExamDateSheet.objects.get(id=schedule_id)
+            except ExamDateSheet.DoesNotExist:
+                return JsonResponse({'success': False, 'message': 'Exam schedule not found.'}, status=404)
+
+            # Validate date and time fields
+            try:
+                if exam_date:
+                    schedule.exam_date = exam_date
+                if start_time:
+                    schedule.start_time = start_time
+                if end_time:
+                    schedule.end_time = end_time
+                    # Validate end_time is after start_time
+                    if start_time and end_time and end_time <= start_time:
+                        return JsonResponse({
+                            'success': False,
+                            'message': 'End time must be after start time.'
+                        }, status=400)
+                if exam_center is not None:
+                    schedule.exam_center = exam_center
+
+                schedule.full_clean()  # Run model validation
+                schedule.save()
+                
+                return JsonResponse({
+                    'success': True, 
+                    'message': 'Exam schedule updated successfully.',
+                    'updated_data': {
+                        'exam_date': schedule.exam_date.strftime('%Y-%m-%d') if schedule.exam_date else None,
+                        'start_time': schedule.start_time.strftime('%H:%M') if schedule.start_time else None,
+                        'end_time': schedule.end_time.strftime('%H:%M') if schedule.end_time else None,
+                        'exam_center': schedule.exam_center
+                    }
+                })
+            except ValidationError as e:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Validation error',
+                    'errors': dict(e)
+                }, status=400)
+            except Exception as e:
+                return JsonResponse({
+                    'success': False,
+                    'message': f'Error updating schedule: {str(e)}'
+                }, status=500)
+
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'Server error: {str(e)}'
+            }, status=500)
+    return JsonResponse({
+        'success': False,
+        'message': 'Invalid request method or not AJAX.'
+    }, status=400)
+    
+@hod_or_professor_required
+def assignment_submission_detail(request, submission_id):
+    submission = get_object_or_404(
+        AssignmentSubmission.objects.select_related('assignment__course_offering__teacher'),
+        id=submission_id,
+        assignment__course_offering__teacher=request.user.teacher_profile
+    )
+    return render(request, 'faculty_staff/assignment_submission_detail.html', {'submission': submission})

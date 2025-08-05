@@ -2343,3 +2343,66 @@ def change_password(request):
         else:
             messages.error(request, 'Error changing password. Please check the form.')
     return redirect('fee_management:settings')
+
+from .models import OfficeToHODNotification
+@login_required
+def notification_list(request):
+    notifications = OfficeToHODNotification.objects.order_by('-created_at')
+    return render(request, 'fee_management/office_notices_list.html', {'notifications': notifications})
+
+@office_required
+def office_notice_detail_view(request, pk):
+    notification = get_object_or_404(OfficeToHODNotification, pk=pk)
+    return render(request, "fee_management/office_notices_detail.html", {
+        "notification": notification
+    })
+
+office_required
+@require_http_methods(["GET", "POST"])
+def office_notice_view(request):
+    if request.method == "POST":
+        title = request.POST.get("title", "").strip()
+        message = request.POST.get("message", "").strip()
+        department_ids = request.POST.getlist("departments")
+        attached_file = request.FILES.get("attached_file")
+        user = request.user
+
+        if not title:
+            messages.error(request, "Title is required.")
+        if not message:
+            messages.error(request, "Message is required.")
+        if not department_ids:
+            messages.error(request, "Please select at least one department.")
+
+        if messages.get_messages(request):
+            # There are error messages, re-render form with errors
+            departments = Department.objects.all()
+            return render(request, "fee_management/office_notices.html", {
+                "departments": departments,
+                "title": title,
+                "message": message,
+                "selected_departments": list(map(int, department_ids)),
+            })
+
+        # Create notification
+        notification = OfficeToHODNotification.objects.create(
+            title=title,
+            message=message,
+            sent_by=user,
+            attached_file=attached_file if attached_file else None,
+        )
+        # Add departments
+        departments = Department.objects.filter(id__in=department_ids)
+        notification.departments.set(departments)
+        notification.save()
+
+        # TODO: Implement actual notification sending logic here (e.g., email to department heads)
+
+        messages.success(request, "Notification sent successfully.")
+        return redirect("fee_management:office_notice")
+
+    else:
+        departments = Department.objects.all()
+        return render(request, "fee_management/office_notices.html", {
+            "departments": departments,
+        })

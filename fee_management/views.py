@@ -2391,8 +2391,13 @@ def student_fee_report(request):
     students = Student.objects.select_related(
         'user',
         'program__department',
-        'program'
+        'program',
+        'applicant__session'  # Add this to optimize session access
     )
+    
+    # Apply session filter to students if session is selected
+    if academic_session_id:
+        students = students.filter(applicant__session_id=academic_session_id)
     
     # Get all payments with related data for these students
     payments = StudentFeePayment.objects.select_related(
@@ -2427,7 +2432,16 @@ def student_fee_report(request):
     student_payments = {}
     
     # First, initialize all students (including those without payments)
+    print("\n=== DEBUG: Student Information ===")
     for student in students:
+        try:
+            print(f"\nStudent: {student.applicant.full_name}")
+            print(f"Session: {student.applicant.session}")
+            print(f"Program: {student.program}")
+            print(f"Department: {student.program.department if student.program else 'N/A'}")
+        except Exception as e:
+            print(f"Error getting student info: {str(e)}")
+            
         student_payments[student.applicant.id] = {
             'student': student,
             'fee_summary': {},
@@ -2501,7 +2515,7 @@ def student_fee_report(request):
     # Convert to list and sort by student name
     fee_data = sorted(
         student_payments.values(),
-        key=lambda x: x['student'].user.get_full_name()
+        key=lambda x: x['student'].applicant.full_name
     )
     
     context = {

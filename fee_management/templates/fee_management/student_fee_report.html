@@ -154,14 +154,14 @@
                         <div class="collapse-title bg-base-200 hover:bg-base-300">
                             <div class="flex justify-between items-center">
                                 <div>
-                                    <span class="font-semibold">{{ student_data.student.user.get_full_name }}</span>
+                                    <span class="font-semibold">{{ student_data.student.applicant.full_name }}</span>
                                     <span class="text-sm text-gray-500 ml-2">({{ student_data.student.university_roll_no|default:student_data.student.college_roll_no }})</span>
                                 </div>
                                 <div class="flex items-center space-x-4">
-                                    <div class="text-right">
+                                    {% comment %} <div class="text-right">
                                         <div class="text-sm text-gray-500">Total Due</div>
                                         <div class="font-semibold">Rs. {{ student_data.total_due|floatformat:2 }}</div>
-                                    </div>
+                                    </div> {% endcomment %}
                                     <div class="text-right">
                                         <div class="text-sm text-gray-500">Total Paid</div>
                                         <div class="font-semibold text-green-500">Rs. {{ student_data.total_paid|floatformat:2 }}</div>
@@ -185,9 +185,9 @@
                                             <th class="text-left">Semester</th>
                                             <th class="text-right">Amount Due</th>
                                             <th class="text-right">Amount Paid</th>
-                                            <th class="text-right">Balance</th>
+                                            {% comment %} <th class="text-right">Balance</th> {% endcomment %}
                                             <th class="text-center">Status</th>
-                                            <th class="text-center">Actions</th>
+                                            <th class="text-center">Remarks</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -197,9 +197,9 @@
                                             <td>{{ details.semester|default:'N/A' }}</td>
                                             <td class="text-right">{{ details.total_due|floatformat:2|default:'0.00' }}</td>
                                             <td class="text-right">{{ details.total_paid|floatformat:2|default:'0.00' }}</td>
-                                            <td class="text-right font-medium {% if details.remaining > 0 %}text-red-500{% else %}text-green-500{% endif %}">
+                                            {% comment %} <td class="text-right font-medium {% if details.remaining > 0 %}text-red-500{% else %}text-green-500{% endif %}">
                                                 {{ details.remaining|floatformat:2|default:'0.00' }}
-                                            </td>
+                                            </td> {% endcomment %}
                                             <td class="{% if details.total_paid >= details.total_due %}status-paid{% else %}status-pending{% endif %}">
                                                 {% if details.total_paid >= details.total_due %}
                                                     Paid ({{ details.total_paid|floatformat:2 }} / {{ details.total_due|floatformat:2 }})
@@ -215,7 +215,7 @@
                                                 {% endfor %}
                                             </td>
                                             <td class="text-center">
-                                                {% if details.payments %}
+                                                {% comment %} {% if details.payments %}
                                                 <label for="paymentDetailsModal" class="btn btn-sm btn-primary view-payments" 
                                                        data-payments='{{ details.payments|to_json }}'>
                                                     View Payments
@@ -223,7 +223,7 @@
                                                 {% else %}
                                                 <span class="text-gray-400">No Payments</span>
                                                 {% endif %}
-                                            </td>
+                                            </td> {% endcomment %}
                                         </tr>
                                         {% endfor %}
                                         {% if not student_data.fee_summary %}
@@ -255,10 +255,10 @@
                             <div class="stat-title">Total Paid</div>
                             <div class="stat-value text-2xl">Rs. {{ fee_data|sum_attr:'total_paid'|floatformat:2 }}</div>
                         </div>
-                        <div class="stat bg-base-100 rounded-lg p-4 shadow">
+                        {% comment %} <div class="stat bg-base-100 rounded-lg p-4 shadow">
                             <div class="stat-title">Total Due</div>
                             <div class="stat-value text-2xl">Rs. {{ fee_data|sum_attr:'total_due'|floatformat:2 }}</div>
-                        </div>
+                        </div> {% endcomment %}
                     </div>
                 </div>
             </div>

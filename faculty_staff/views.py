@@ -5299,6 +5299,14 @@ def attendance(request, offering_id=None):
     current_time = current_datetime.time()
     current_day = today_date.strftime('%A').lower()
     selected_shift = request.GET.get('shift')  # Get shift from query parameters (if provided)
+    
+    # Initialize variables
+    students = []
+    course_offering_id = offering_id
+    course_shift = None
+    selected_shift = request.GET.get('shift', 'both')
+    is_active_slot = False
+    all_slots = []  # Initialize all_slots as empty list
 
     logger.info(
         f"Processing attendance request. "
@@ -5313,34 +5321,37 @@ def attendance(request, offering_id=None):
             course_shift = course_offering.shift
             logger.info(f"Course offering found: {course_offering.course.code}, Shift: {course_shift}, Semester: {course_offering.semester}")
 
-            # Check for active timetable slot
-            timetable_slots = TimetableSlot.objects.filter(
-                course_offering=course_offering,
-                day=current_day,
-                start_time__lte=current_time,
-                end_time__gte=current_time
-            )
-            is_active_slot = timetable_slots.exists()
-
-            if is_active_slot:
-                for slot in timetable_slots:
-                    logger.info(
-                        f"Active timetable slot: Course: {course_offering.course.code}, "
-                        f"Day: {slot.day}, Start: {slot.start_time}, End: {slot.end_time}"
-                    )
-            else:
-                all_slots = TimetableSlot.objects.filter(course_offering=course_offering)
-                if all_slots.exists():
+            # Get all timetable slots for this course offering, ordered by day and start time
+            all_slots = TimetableSlot.objects.filter(
+                course_offering=course_offering
+            ).order_by('day', 'start_time')
+            
+            # Check if current time falls within any of today's slots
+            is_active_slot = False
+            today_slots = all_slots.filter(day=current_day)
+            
+            for slot in today_slots:
+                logger.info(f"Checking slot: {slot.day} {slot.start_time}-{slot.end_time}")
+                if slot.start_time <= current_time <= slot.end_time:
+                    is_active_slot = True
+                    logger.info(f"Found active slot: {slot.start_time}-{slot.end_time}")
+                    break
+            
+            # Log all available slots for this course offering
+            if all_slots.exists():
+                logger.info(f"All scheduled slots for {course_offering.course.code}:")
+                for slot in all_slots:
+                    logger.info(f"{slot.day}: {slot.start_time}-{slot.end_time}")
+                
+                if not is_active_slot and today_slots.exists():
                     logger.warning(
-                        f"No active timetable slot for Course Offering ID: {course_offering_id} "
-                        f"on {current_day} at {current_time}. Available slots:"
+                        f"No active time slot found for current time {current_time}. "
+                        f"Today's slots for {current_day}:"
                     )
-                    for slot in all_slots:
-                        logger.warning(
-                            f"Slot: Day: {slot.day}, Start: {slot.start_time}, End: {slot.end_time}"
-                        )
-                else:
-                    logger.warning(f"No timetable slots defined for Course Offering ID: {course_offering_id}")
+                    for slot in today_slots:
+                        logger.warning(f"Slot: {slot.start_time}-{slot.end_time}")
+            else:
+                logger.warning("No timetable slots defined for this course offering")
 
             # Determine effective shift for filtering
             effective_shift = selected_shift if selected_shift in ['morning', 'evening'] else course_shift

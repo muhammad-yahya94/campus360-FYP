@@ -56,6 +56,47 @@
         </div>
     </div>
 
+    <!-- Schedule Information Card -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title mb-3">Course Schedule</h5>
+            {% if all_slots %}
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Day</th>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for slot in all_slots %}
+                                <tr class="{% if slot.day == current_day|lower and is_active_slot %}table-success{% elif slot.day == current_day|lower %}table-warning{% endif %}">
+                                    <td>{{ slot.day|capfirst }}</td>
+                                    <td>{{ slot.start_time|time:"h:i A" }}</td>
+                                    <td>{{ slot.end_time|time:"h:i A" }}</td>
+                                    <td>
+                                        {% if slot.day == current_day|lower %}
+                                            {% if is_active_slot %}
+                                                <span class="badge bg-success">Current Session</span>
+                                            {% else %}
+                                                <span class="badge bg-warning">Today's Session</span>
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-warning">No schedule information available for this course.</div>
+            {% endif %}
+        </div>
+    </div>
+
     {% if is_active_slot %}
     <!-- Record Attendance Section -->
     <div class="card mb-4">
@@ -170,15 +211,21 @@
         </div>
     </div>
     {% else %}
-    <div class="card mb-4 border-danger">
+    <div class="card mb-4 border-warning">
         <div class="card-body">
-            <h5 class="card-title text-danger">Attendance Not Allowed Now</h5>
-            <p class="text-danger">You cannot take attendance at this time. Your allowed days and times for this course are:</p>
-            <ul>
-                {% for slot in all_slots %}
-                <li><strong>{{ slot.day|capfirst }}</strong>: {{ slot.start_time }} - {{ slot.end_time }}</li>
-                {% endfor %}
-            </ul>
+            <h5 class="card-title text-warning">Attendance Not Active</h5>
+            <p class="text-muted">You can only take attendance during scheduled class times.</p>
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                Next scheduled session: 
+                {% with next_slot=all_slots|first %}
+                    {% if next_slot %}
+                        {{ next_slot.day|capfirst }} {{ next_slot.start_time|time:"h:i A" }} - {{ next_slot.end_time|time:"h:i A" }}
+                    {% else %}
+                        No upcoming sessions scheduled
+                    {% endif %}
+                {% endwith %}
+            </div>
         </div>
     </div>
     {% endif %}

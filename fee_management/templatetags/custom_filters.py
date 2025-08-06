@@ -47,6 +47,29 @@ def absolute(value):
         return value
 
 @register.filter
+def sum_attr(iterable, attr):
+    """
+    Sum values of a specific attribute from a list of dictionaries or objects.
+    Handles both dictionaries and objects with the given attribute.
+    """
+    try:
+        total = 0
+        for item in iterable:
+            if hasattr(item, attr):
+                # Handle objects with attributes
+                value = getattr(item, attr, 0)
+            elif isinstance(item, dict) and attr in item:
+                # Handle dictionaries
+                value = item.get(attr, 0)
+            else:
+                value = 0
+            # Convert to float to handle both int/float/Decimal
+            total += float(str(value)) if value is not None else 0
+        return total
+    except (TypeError, ValueError, AttributeError):
+        return 0
+
+@register.filter
 def sum_queryset(queryset, field_name):
     """
     Sum the values of a specific field in a queryset or list of dictionaries.

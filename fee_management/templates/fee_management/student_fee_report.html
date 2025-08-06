@@ -18,8 +18,6 @@
 <!-- jsPDF and autoTable -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
     .select2-container .select2-selection--single {
@@ -36,6 +34,11 @@
     }
     .status-paid { color: #22c55e; font-weight: 600; }
     .status-pending { color: #ef4444; font-weight: 600; }
+    .remarks-cell {
+        max-width: 200px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
 </style>
 {% endblock %}
 
@@ -197,10 +200,19 @@
                                             <td class="text-right font-medium {% if details.remaining > 0 %}text-red-500{% else %}text-green-500{% endif %}">
                                                 {{ details.remaining|floatformat:2|default:'0.00' }}
                                             </td>
-                                            <td class="text-center">
-                                                <span class="{% if details.remaining > 0 %}status-pending{% else %}status-paid{% endif %}">
-                                                    {% if details.remaining > 0 %}Pending{% else %}Paid{% endif %}
-                                                </span>
+                                            <td class="{% if details.total_paid >= details.total_due %}status-paid{% else %}status-pending{% endif %}">
+                                                {% if details.total_paid >= details.total_due %}
+                                                    Paid ({{ details.total_paid|floatformat:2 }} / {{ details.total_due|floatformat:2 }})
+                                                {% else %}
+                                                    Pending ({{ details.total_paid|floatformat:2 }} / {{ details.total_due|floatformat:2 }})
+                                                {% endif %}
+                                            </td>
+                                            <td class="remarks-cell">
+                                                {% for payment in details.payments %}
+                                                    {% if payment.remarks %}
+                                                        {{ payment.remarks }}{% if not forloop.last %}<br>{% endif %}
+                                                    {% endif %}
+                                                {% endfor %}
                                             </td>
                                             <td class="text-center">
                                                 {% if details.payments %}
@@ -216,7 +228,7 @@
                                         {% endfor %}
                                         {% if not student_data.fee_summary %}
                                             <tr>
-                                                <td colspan="7" class="text-center text-gray-500">
+                                                <td colspan="8" class="text-center text-gray-500">
                                                     No fee records found for this student.
                                                 </td>
                                             </tr>
@@ -227,43 +239,30 @@
                         </div>
                     </div>
                     {% endfor %}
-                    
-                    <!-- Summary Card -->
-                    <div class="p-4 border-t bg-base-200 print-content">
-                        <div class="flex justify-between items-center">
-                            <div class="text-sm text-gray-600">
-                                Showing {{ fee_data|length }} student{{ fee_data|length|pluralize }}
-                            </div>
-                            <div class="flex space-x-4">
-                                <div class="text-right">
-                                    <div class="text-sm text-gray-500">Total Due</div>
-                                    <div class="font-semibold">{{ fee_data|sum_queryset:'total_due'|floatformat:2|default:'0.00' }}</div>
-                                </div>
-                                <div class="text-right">
-                                    <div class="text-sm text-gray-500">Total Paid</div>
-                                    <div class="font-semibold">{{ fee_data|sum_queryset:'total_paid'|floatformat:2|default:'0.00' }}</div>
-                                </div>
-                                <div class="text-right">
-                                    <div class="text-sm text-gray-500">Total Balance</div>
-                                    <div class="font-semibold {% if fee_data|sum_queryset:'total_remaining' > 0 %}text-error{% else %}text-success{% endif %}">
-                                        {{ fee_data|sum_queryset:'total_remaining'|floatformat:2|default:'0.00' }}
-                                    </div>
-                                </div>
-                            </div>
+                </div>  <!-- End of card-body -->
+            </div>  <!-- End of card -->
+                
+            <!-- Summary Card -->
+            <div class="card bg-base-100 shadow-md mb-8 print-content">
+                <div class="card-body p-4">
+                    <h3 class="text-lg font-semibold mb-4">Summary</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="stat bg-base-100 rounded-lg p-4 shadow">
+                            <div class="stat-title">Total Students</div>
+                            <div class="stat-value text-2xl">{{ fee_data|length }}</div>
+                        </div>
+                        <div class="stat bg-base-100 rounded-lg p-4 shadow">
+                            <div class="stat-title">Total Paid</div>
+                            <div class="stat-value text-2xl">Rs. {{ fee_data|sum_attr:'total_paid'|floatformat:2 }}</div>
+                        </div>
+                        <div class="stat bg-base-100 rounded-lg p-4 shadow">
+                            <div class="stat-title">Total Due</div>
+                            <div class="stat-value text-2xl">Rs. {{ fee_data|sum_attr:'total_due'|floatformat:2 }}</div>
                         </div>
                     </div>
-                    
-                    <!-- Fee Summary Chart -->
-                    {% if fee_data %}
-                    <div class="card bg-base-100 shadow-md mb-8 no-print">
-                        <div class="card-body p-6">
-                            <h2 class="card-title text-lg font-semibold mb-4">Fee Summary Chart</h2>
-                            <canvas id="feeSummaryChart"></canvas>
-                        </div>
-                    </div>
-                    {% endif %}
                 </div>
             </div>
+            
         {% else %}
             <div class="alert alert-warning shadow-lg">
                 <div class="flex items-center">
@@ -274,6 +273,7 @@
                 </div>
             </div>
         {% endif %}
+        
     {% else %}
         <div class="alert alert-info shadow-lg">
             <div class="flex items-center">
@@ -440,11 +440,6 @@ $(document).ready(function() {
         $('#paymentDetailsModal').prop('checked', true);
     });
     
-    // Print functionality
-    $('#printReport').on('click', function() {
-        window.print();
-    });
-    
     // Export to PDF
     $('#exportPdf').on('click', function() {
         const { jsPDF } = window.jspdf;
@@ -478,36 +473,11 @@ $(document).ready(function() {
         
         doc.save('student_fee_report.pdf');
     });
-    
-    // Chart.js for Fee Summary
-    {% if fee_data %}
-    const ctx = document.getElementById('feeSummaryChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: ['Total Due', 'Total Paid', 'Total Remaining'],
-            datasets: [{
-                label: 'Amount (Rs.)',
-                data: [
-                    {{ fee_data|sum_queryset:'total_due' }},
-                    {{ fee_data|sum_queryset:'total_paid' }},
-                    {{ fee_data|sum_queryset:'total_remaining' }}
-                ],
-                backgroundColor: ['#3b82f6', '#22c55e', '#ef4444'],
-                borderColor: ['#2563eb', '#16a34a', '#dc2626'],
-                borderWidth: 1
-            }]
-        },
-        options: {
-            scales: {
-                y: { beginAtZero: true }
-            },
-            plugins: {
-                legend: { display: false }
-            }
-        }
+
+    // Handle Print button
+    $('#printReport').on('click', function() {
+        window.print();
     });
-    {% endif %}
 });
 </script>
 {% endblock %}

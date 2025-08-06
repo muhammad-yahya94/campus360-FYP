@@ -2371,7 +2371,7 @@ def student_fee_report(request):
     semester_id = request.GET.get('semester')
     
     # Get all active sessions for the filter dropdown
-    academic_sessions = AcademicSession.objects.filter(is_active=True).order_by('-start_year')
+    academic_sessions = AcademicSession.objects.all().order_by('-start_year')
     departments = Department.objects.all()
     programs = Program.objects.none()
     semesters = Semester.objects.none()
@@ -2387,33 +2387,57 @@ def student_fee_report(request):
             session_id=academic_session_id
         ).distinct()
     
-    # Base query for payments with related data
+    # Get all enrolled students based on filters
+    students = Student.objects.select_related(
+        'user',
+        'program__department',
+        'program'
+    )
+    
+    # Get all payments with related data for these students
     payments = StudentFeePayment.objects.select_related(
         'student__user',
         'semester_fee__fee_type',
-        'voucher__semester__session',  # Get semester and session through voucher
-        'student__program__department'
+        'voucher__semester__session',
+        'student__program__department',
+        'voucher__semester_fee'
     ).filter(
-        voucher__isnull=False  # Only include payments with a voucher
+        student__in=students
     )
     
-    # Apply filters
-    if semester_id:
-        payments = payments.filter(voucher__semester_id=semester_id)
-    
+    # Apply filters to students
     if program_id:
-        payments = payments.filter(student__program_id=program_id)
-    
-    if academic_session_id:
-        payments = payments.filter(voucher__semester__session_id=academic_session_id)
+        students = students.filter(program_id=program_id)
     
     if department_id:
-        payments = payments.filter(student__program__department_id=department_id)
+        students = students.filter(program__department_id=department_id)
+    
+    # Apply semester and session filters to payments
+    payment_filters = {}
+    if semester_id:
+        payment_filters['voucher__semester_id'] = semester_id
+    if academic_session_id:
+        payment_filters['voucher__semester__session_id'] = academic_session_id
+    
+    if payment_filters:
+        payments = payments.filter(**payment_filters)
     
     # Group payments by student and fee type
     fee_data = []
     student_payments = {}
     
+    # First, initialize all students (including those without payments)
+    for student in students:
+        student_payments[student.applicant.id] = {
+            'student': student,
+            'fee_summary': {},
+            'total_due': 0,
+            'total_paid': 0,
+            'total_remaining': 0,
+            'has_payments': False
+        }
+    
+    # Then process all payments
     for payment in payments:
         student = payment.student
         fee_type = payment.semester_fee.fee_type.name
@@ -2422,19 +2446,14 @@ def student_fee_report(request):
         semester = payment.voucher.semester if payment.voucher else None
         semester_name = f"{semester.name} ({semester.session.name})" if semester else 'N/A'
         
-        if student.applicant.id not in student_payments:
-            student_payments[student.applicant.id] = {
-                'student': student,
-                'fee_summary': {},
-                'total_due': 0,
-                'total_paid': 0,
-                'total_remaining': 0
-            }
+        student_id = student.applicant.id
+        student_data = student_payments[student_id]
+        student_data['has_payments'] = True
         
         fee_key = f"{fee_type}_{semester.id if semester else 'none'}"
         
-        if fee_key not in student_payments[student.applicant.id]['fee_summary']:
-            student_payments[student.applicant.id]['fee_summary'][fee_key] = {
+        if fee_key not in student_data['fee_summary']:
+            student_data['fee_summary'][fee_key] = {
                 'fee_type': fee_type,
                 'semester': semester_name,
                 'semester_id': semester.id if semester else None,
@@ -2445,46 +2464,45 @@ def student_fee_report(request):
             }
         
         # Add payment details
-        payment_data = {
-            'amount': float(payment.amount_paid),
-            'date': payment.payment_date.isoformat(),
+        payment_detail = {
+            'amount': float(str(payment.amount_paid)),  # Convert Decimal to float for JSON serialization
+            'date': payment.payment_date.strftime('%Y-%m-%d'),
             'receipt': payment.receipt_number,
-            'remarks': payment.remarks or '',
-            'semester': semester_name,
+            'remarks': payment.remarks or 'No remarks',
             'voucher_id': payment.voucher.voucher_id if payment.voucher else None,
-            'is_paid': payment.voucher.is_paid if payment.voucher else False
+            'status': 'Paid' if (payment.voucher and payment.voucher.is_paid) else 'Pending'
         }
         
-        # Add to payments list
-        student_payments[student.applicant.id]['fee_summary'][fee_key]['payments'].append(payment_data)
+        # Get references to avoid repeated dictionary lookups
+        fee_summary = student_data['fee_summary'][fee_key]
         
-        # Update paid amount for this fee type and semester
-        student_payments[student.applicant.id]['fee_summary'][fee_key]['total_paid'] += float(payment.amount_paid)
+        # Add payment to fee summary
+        fee_summary['payments'].append(payment_detail)
+        
+        # Convert amount to Decimal for accurate calculations
+        amount_paid = Decimal(str(payment.amount_paid))
+        
+        # Update fee type totals
+        fee_summary['total_paid'] = fee_summary.get('total_paid', Decimal('0')) + amount_paid
         
         # Update student totals
-        student_payments[student.applicant.id]['total_paid'] += float(payment.amount_paid)
+        student_data['total_paid'] = student_data.get('total_paid', Decimal('0')) + amount_paid
         
-        # Get due amount from voucher if available
-        if payment.voucher and payment.voucher.semester_fee:
-            student_payments[student.applicant.id]['fee_summary'][fee_key]['total_due'] = float(payment.voucher.semester_fee.total_amount)
-            student_payments[student.applicant.id]['total_due'] = float(payment.voucher.semester_fee.total_amount)
+        # Get due amount from voucher if available, but don't override if already set
+        if payment.voucher and payment.voucher.semester_fee and 'total_due' not in fee_summary:
+            total_due = Decimal(str(payment.voucher.semester_fee.total_amount))
+            fee_summary['total_due'] = total_due
+            student_data['total_due'] = student_data.get('total_due', Decimal('0')) + total_due
         
         # Update remaining amounts
-        student_payments[student.applicant.id]['fee_summary'][fee_key]['remaining'] = (
-            student_payments[student.applicant.id]['fee_summary'][fee_key]['total_due'] -
-            student_payments[student.applicant.id]['fee_summary'][fee_key]['total_paid']
-        )
-        
-        student_payments[student.applicant.id]['total_remaining'] = (
-            student_payments[student.applicant.id]['total_due'] -
-            student_payments[student.applicant.id]['total_paid']
-        )
+        fee_summary['remaining'] = Decimal(str(fee_summary.get('total_due', 0))) - Decimal(str(fee_summary.get('total_paid', 0)))
+        student_data['total_remaining'] = Decimal(str(student_data.get('total_due', 0))) - Decimal(str(student_data.get('total_paid', 0)))
     
-    # Convert to list for template
-    fee_data = list(student_payments.values())
-    
-    # Sort by student name
-    fee_data.sort(key=lambda x: x['student'].user.get_full_name())
+    # Convert to list and sort by student name
+    fee_data = sorted(
+        student_payments.values(),
+        key=lambda x: x['student'].user.get_full_name()
+    )
     
     context = {
         'academic_sessions': academic_sessions,

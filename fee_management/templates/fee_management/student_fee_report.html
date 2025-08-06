@@ -1,0 +1,513 @@
+{% extends 'fee_management/office_base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}Student Fee Report{% endblock %}
+
+{% block extra_css %}
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- Tailwind CSS (already included in office_base.html or via CDN) -->
+<!-- <script src="https://cdn.tailwindcss.com"></script> -->
+<!-- DaisyUI (already included in office_base.html or via CDN) -->
+<link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" type="text/css" />
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<!-- jsPDF and autoTable -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+    .select2-container .select2-selection--single {
+        height: 38px;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.375rem;
+        padding: 0.5rem;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 24px;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 38px;
+    }
+    .status-paid { color: #22c55e; font-weight: 600; }
+    .status-pending { color: #ef4444; font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 print-content">
+    <div class="mb-6">
+        <h2 class="text-2xl font-bold">Student Fee Report</h2>
+    </div>
+    
+    <!-- Filter Card -->
+    <div class="card bg-base-100 shadow-md mb-8 no-print">
+        <div class="card-body p-6">
+            <h2 class="card-title text-lg font-semibold mb-4">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707v3.586a1 1 0 01-1.414.414l-2-2a1 1 0 01-.293-.707V12a1 1 0 00-.293-.707L4.293 4.707A1 1 0 014 4H3z"></path>
+                </svg>
+                Filter Report
+            </h2>
+            <form method="get" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="form-control">
+                    <label class="label" for="academic_session">
+                        <span class="label-text font-medium">Academic Session</span>
+                    </label>
+                    <select name="academic_session" id="academic_session" class="select select-bordered w-full">
+                        <option value="">Select Session</option>
+                        {% for session in academic_sessions %}
+                            <option value="{{ session.id }}" {% if selected_session == session.id|stringformat:'s' %}selected{% endif %}>
+                                {{ session.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label" for="department">
+                        <span class="label-text font-medium">Department</span>
+                    </label>
+                    <select name="department" id="department" class="select select-bordered w-full">
+                        <option value="">Select Department</option>
+                        {% for dept in departments %}
+                            <option value="{{ dept.id }}" {% if selected_department == dept.id|stringformat:'s' %}selected{% endif %}>
+                                {{ dept.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label" for="program">
+                        <span class="label-text font-medium">Program</span>
+                    </label>
+                    <select name="program" id="program" class="select select-bordered w-full" {% if not programs %}disabled{% endif %}>
+                        <option value="">Select Program</option>
+                        {% for prog in programs %}
+                            <option value="{{ prog.id }}" {% if selected_program == prog.id|stringformat:'s' %}selected{% endif %}>
+                                {{ prog.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label" for="semester">
+                        <span class="label-text font-medium">Semester</span>
+                    </label>
+                    <select name="semester" id="semester" class="select select-bordered w-full" {% if not semesters %}disabled{% endif %}>
+                        <option value="">Select Semester</option>
+                        {% for sem in semesters %}
+                            <option value="{{ sem.id }}" {% if selected_semester == sem.id|stringformat:'s' %}selected{% endif %}>
+                                {{ sem.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="flex items-end md:col-span-2 lg:col-span-4 space-x-2">
+                    <button type="submit" class="btn btn-primary">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707v3.586a1 1 0 01-1.414.414l-2-2a1 1 0 01-.293-.707V12a1 1 0 00-.293-.707L4.293 4.707A1 1 0 014 4H3z"></path>
+                        </svg>
+                        Apply Filters
+                    </button>
+                    <a href="{% url 'fee_management:student_fee_report' %}" class="btn btn-ghost">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        Reset
+                    </a>
+                    <button type="button" id="printReport" class="btn btn-secondary">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H7a2 2 0 00-2 2v4h12z"></path>
+                        </svg>
+                        Print
+                    </button>
+                    <button type="button" id="exportPdf" class="btn btn-secondary">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Export PDF
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Results -->
+    {% if has_filters %}
+        {% if fee_data %}
+            <div class="card bg-base-100 shadow-md mb-8 print-content">
+                <div class="card-body p-4">
+                    <h2 class="text-lg font-semibold">Fee Payment Summary</h2>
+                    <div class="divider"></div>
+                    
+                    {% for student_data in fee_data %}
+                    <div class="collapse collapse-arrow border-b">
+                        <input type="checkbox" class="peer" />
+                        <div class="collapse-title bg-base-200 hover:bg-base-300">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <span class="font-semibold">{{ student_data.student.user.get_full_name }}</span>
+                                    <span class="text-sm text-gray-500 ml-2">({{ student_data.student.university_roll_no|default:student_data.student.college_roll_no }})</span>
+                                </div>
+                                <div class="flex items-center space-x-4">
+                                    <div class="text-right">
+                                        <div class="text-sm text-gray-500">Total Due</div>
+                                        <div class="font-semibold">Rs. {{ student_data.total_due|floatformat:2 }}</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-sm text-gray-500">Total Paid</div>
+                                        <div class="font-semibold text-green-500">Rs. {{ student_data.total_paid|floatformat:2 }}</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-sm text-gray-500">Balance</div>
+                                        <div class="font-semibold {% if student_data.total_remaining > 0 %}text-red-500{% else %}text-green-500{% endif %}">
+                                            Rs. {{ student_data.total_remaining|absolute|floatformat:2 }}
+                                            {% if student_data.total_remaining > 0 %}(Due){% else %}(Paid){% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="collapse-content">
+                            <div class="overflow-x-auto">
+                                <table class="table w-full">
+                                    <thead>
+                                        <tr>
+                                            <th class="text-left">Fee Type</th>
+                                            <th class="text-left">Semester</th>
+                                            <th class="text-right">Amount Due</th>
+                                            <th class="text-right">Amount Paid</th>
+                                            <th class="text-right">Balance</th>
+                                            <th class="text-center">Status</th>
+                                            <th class="text-center">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for fee_type, details in student_data.fee_summary.items %}
+                                        <tr class="hover">
+                                            <td class="font-medium">{{ fee_type }}</td>
+                                            <td>{{ details.semester|default:'N/A' }}</td>
+                                            <td class="text-right">{{ details.total_due|floatformat:2|default:'0.00' }}</td>
+                                            <td class="text-right">{{ details.total_paid|floatformat:2|default:'0.00' }}</td>
+                                            <td class="text-right font-medium {% if details.remaining > 0 %}text-red-500{% else %}text-green-500{% endif %}">
+                                                {{ details.remaining|floatformat:2|default:'0.00' }}
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="{% if details.remaining > 0 %}status-pending{% else %}status-paid{% endif %}">
+                                                    {% if details.remaining > 0 %}Pending{% else %}Paid{% endif %}
+                                                </span>
+                                            </td>
+                                            <td class="text-center">
+                                                {% if details.payments %}
+                                                <label for="paymentDetailsModal" class="btn btn-sm btn-primary view-payments" 
+                                                       data-payments='{{ details.payments|to_json }}'>
+                                                    View Payments
+                                                </label>
+                                                {% else %}
+                                                <span class="text-gray-400">No Payments</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                        {% if not student_data.fee_summary %}
+                                            <tr>
+                                                <td colspan="7" class="text-center text-gray-500">
+                                                    No fee records found for this student.
+                                                </td>
+                                            </tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    <!-- Summary Card -->
+                    <div class="p-4 border-t bg-base-200 print-content">
+                        <div class="flex justify-between items-center">
+                            <div class="text-sm text-gray-600">
+                                Showing {{ fee_data|length }} student{{ fee_data|length|pluralize }}
+                            </div>
+                            <div class="flex space-x-4">
+                                <div class="text-right">
+                                    <div class="text-sm text-gray-500">Total Due</div>
+                                    <div class="font-semibold">{{ fee_data|sum_queryset:'total_due'|floatformat:2|default:'0.00' }}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm text-gray-500">Total Paid</div>
+                                    <div class="font-semibold">{{ fee_data|sum_queryset:'total_paid'|floatformat:2|default:'0.00' }}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm text-gray-500">Total Balance</div>
+                                    <div class="font-semibold {% if fee_data|sum_queryset:'total_remaining' > 0 %}text-error{% else %}text-success{% endif %}">
+                                        {{ fee_data|sum_queryset:'total_remaining'|floatformat:2|default:'0.00' }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Fee Summary Chart -->
+                    {% if fee_data %}
+                    <div class="card bg-base-100 shadow-md mb-8 no-print">
+                        <div class="card-body p-6">
+                            <h2 class="card-title text-lg font-semibold mb-4">Fee Summary Chart</h2>
+                            <canvas id="feeSummaryChart"></canvas>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        {% else %}
+            <div class="alert alert-warning shadow-lg">
+                <div class="flex items-center">
+                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                    <span>No fee records found matching the selected criteria.</span>
+                </div>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="alert alert-info shadow-lg">
+            <div class="flex items-center">
+                <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span>Please select filters to view fee report.</span>
+            </div>
+        </div>
+    {% endif %}
+    
+    <!-- Payment Details Modal -->
+    <input type="checkbox" id="paymentDetailsModal" class="modal-toggle" />
+    <div class="modal" role="dialog">
+        <div class="modal-box w-11/12 max-w-4xl">
+            <h3 class="font-bold text-lg">Payment Details</h3>
+            <div class="overflow-x-auto">
+                <table class="table w-full">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Amount</th>
+                            <th>Receipt</th>
+                            <th>Voucher ID</th>
+                            <th>Status</th>
+                            <th>Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody id="paymentDetailsBody"></tbody>
+                </table>
+            </div>
+            <div class="modal-action">
+                <label for="paymentDetailsModal" class="btn">Close</label>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Print Styles -->
+<style type="text/css" media="print">
+    @page { size: landscape; }
+    body * { visibility: hidden; }
+    .print-content, .print-content * { visibility: visible; }
+    .print-content { position: absolute; left: 0; top: 0; width: 100%; }
+    .no-print { display: none !important; }
+    .collapse { display: block !important; }
+    .collapse-title { display: none !important; }
+    .collapse-content { display: block !important; }
+    .modal { display: none !important; }
+</style>
+
+<script>
+$(document).ready(function() {
+    // Initialize Select2 for all dropdowns
+    $('#academic_session, #department, #program, #semester').select2({
+        width: '100%',
+        placeholder: function() { return $(this).attr('data-placeholder') || 'Select an option'; }
+    });
+
+    // Load programs when department changes
+    $('#department').on('change', function() {
+        var departmentId = $(this).val();
+        var $programSelect = $('#program');
+        var $semesterSelect = $('#semester');
+        
+        if (departmentId) {
+            $programSelect.prop('disabled', true).empty().append('<option value="">Loading programs...</option>').trigger('change');
+            
+            $.ajax({
+                url: '{% url "fee_management:get_filtered_programs" %}',
+                data: { 'department_id': departmentId },
+                dataType: 'json',
+                success: function(data) {
+                    $programSelect.empty().append('<option value="">Select Program</option>');
+                    if (data && data.length > 0) {
+                        $.each(data, function(index, program) {
+                            $programSelect.append(
+                                $('<option>', { value: program.id, text: program.name })
+                            );
+                        });
+                    } else {
+                        $programSelect.append('<option value="" disabled>No programs found</option>');
+                    }
+                    $programSelect.prop('disabled', false).trigger('change');
+                    $semesterSelect.empty().append('<option value="">Select Semester</option>').prop('disabled', true).trigger('change');
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error fetching programs:', error);
+                    $programSelect.empty().append('<option value="">Error loading programs</option>').prop('disabled', true).trigger('change');
+                    alert('Failed to load programs. Please try again.');
+                }
+            });
+        } else {
+            $programSelect.empty().append('<option value="">Select Program</option>').prop('disabled', true).trigger('change');
+            $semesterSelect.empty().append('<option value="">Select Semester</option>').prop('disabled', true).trigger('change');
+        }
+    });
+
+    // Handle program or session change to update semesters
+    function updateSemesters() {
+        var programId = $('#program').val();
+        var sessionId = $('#academic_session').val();
+        var $semesterSelect = $('#semester');
+        
+        if (programId && sessionId) {
+            $semesterSelect.prop('disabled', true).empty().append('<option value="">Loading semesters...</option>').trigger('change');
+            
+            $.ajax({
+                url: '{% url "fee_management:get_filtered_semesters" %}',
+                data: { 'program_id': programId, 'session_id': sessionId },
+                dataType: 'json',
+                success: function(data) {
+                    $semesterSelect.empty().append('<option value="">Select Semester</option>');
+                    if (data && data.length > 0) {
+                        $.each(data, function(index, semester) {
+                            $semesterSelect.append(
+                                $('<option>', {
+                                    value: semester.id,
+                                    text: semester.name || ('Semester ' + (semester.number || (index + 1)))
+                                })
+                            );
+                        });
+                    } else {
+                        $semesterSelect.append('<option value="" disabled>No semesters found</option>');
+                    }
+                    $semesterSelect.prop('disabled', false).trigger('change');
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error fetching semesters:', error);
+                    $semesterSelect.empty().append('<option value="">Error loading semesters</option>').prop('disabled', true).trigger('change');
+                    alert('Failed to load semesters. Please try again.');
+                }
+            });
+        } else {
+            $semesterSelect.empty().append('<option value="">Select Program and Session First</option>').prop('disabled', true).trigger('change');
+        }
+    }
+    
+    $('#program, #academic_session').on('change', updateSemesters);
+    
+    // Handle View Payments button
+    $('.view-payments').on('click', function() {
+        var payments = JSON.parse($(this).attr('data-payments'));
+        var $modalBody = $('#paymentDetailsBody');
+        $modalBody.empty();
+        
+        if (payments.length > 0) {
+            payments.forEach(function(payment) {
+                $modalBody.append(`
+                    <tr>
+                        <td>${payment.date}</td>
+                        <td>Rs. ${parseFloat(payment.amount).toFixed(2)}</td>
+                        <td>${payment.receipt || 'N/A'}</td>
+                        <td>${payment.voucher_id || 'N/A'}</td>
+                        <td>${payment.is_paid ? 'Paid' : 'Pending'}</td>
+                        <td>${payment.remarks || 'None'}</td>
+                    </tr>
+                `);
+            });
+        } else {
+            $modalBody.append('<tr><td colspan="6" class="text-center">No payment details available.</td></tr>');
+        }
+        
+        $('#paymentDetailsModal').prop('checked', true);
+    });
+    
+    // Print functionality
+    $('#printReport').on('click', function() {
+        window.print();
+    });
+    
+    // Export to PDF
+    $('#exportPdf').on('click', function() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'landscape' });
+        
+        doc.setFontSize(16);
+        doc.text('Student Fee Report', 14, 20);
+        
+        const tables = document.querySelectorAll('.print-content .collapse-content .table');
+        let startY = 30;
+        
+        tables.forEach((table, index) => {
+            doc.autoTable({
+                html: table,
+                startY: startY,
+                theme: 'grid',
+                headStyles: { fillColor: [200, 200, 200], textColor: [0, 0, 0] },
+                bodyStyles: { textColor: [0, 0, 0] },
+                columnStyles: {
+                    0: { cellWidth: 40 },
+                    1: { cellWidth: 40 },
+                    2: { cellWidth: 30 },
+                    3: { cellWidth: 30 },
+                    4: { cellWidth: 30 },
+                    5: { cellWidth: 30 },
+                    6: { cellWidth: 40 }
+                }
+            });
+            startY = doc.lastAutoTable.finalY + 10;
+        });
+        
+        doc.save('student_fee_report.pdf');
+    });
+    
+    // Chart.js for Fee Summary
+    {% if fee_data %}
+    const ctx = document.getElementById('feeSummaryChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Total Due', 'Total Paid', 'Total Remaining'],
+            datasets: [{
+                label: 'Amount (Rs.)',
+                data: [
+                    {{ fee_data|sum_queryset:'total_due' }},
+                    {{ fee_data|sum_queryset:'total_paid' }},
+                    {{ fee_data|sum_queryset:'total_remaining' }}
+                ],
+                backgroundColor: ['#3b82f6', '#22c55e', '#ef4444'],
+                borderColor: ['#2563eb', '#16a34a', '#dc2626'],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: { beginAtZero: true }
+            },
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+    {% endif %}
+});
+</script>
+{% endblock %}

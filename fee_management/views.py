@@ -491,10 +491,6 @@ def results(request):
 
 
 
-
-
-
-from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.db.models import Q
 from django.template.loader import render_to_string
@@ -1748,7 +1744,7 @@ def generate_merit_list(request):
         valid_until = request.POST.get('valid_until')
         notes = request.POST.get('notes', '')
         shift = request.POST.get('shift')
-        total_seats = request.POST.get('no_of_seats', 50)  # Default to 50 if not provided
+        total_seats = int(request.POST.get('no_of_seats', 50))   # Default to 50 if not provided
 
         # Validation
         if not program_id:
@@ -2345,6 +2341,8 @@ def change_password(request):
     return redirect('fee_management:settings')
 
 from .models import OfficeToHODNotification
+from django.db.models import Sum, F, Case, When, Value, DecimalField, IntegerField
+from django.db.models.functions import Coalesce
 @login_required
 def notification_list(request):
     notifications = OfficeToHODNotification.objects.order_by('-created_at')
@@ -2357,8 +2355,187 @@ def office_notice_detail_view(request, pk):
         "notification": notification
     })
 
-office_required
-@require_http_methods(["GET", "POST"])
+
+import json
+
+@login_required
+@user_passes_test(is_officestaff)
+def student_fee_report(request):
+    """
+    Simplified view to generate student fee payment reports with basic filters.
+    """
+    # Get filter parameters
+    academic_session_id = request.GET.get('academic_session')
+    department_id = request.GET.get('department')
+    program_id = request.GET.get('program')
+    semester_id = request.GET.get('semester')
+    
+    # Get all active sessions for the filter dropdown
+    academic_sessions = AcademicSession.objects.filter(is_active=True).order_by('-start_year')
+    departments = Department.objects.all()
+    programs = Program.objects.none()
+    semesters = Semester.objects.none()
+    
+    # Get programs if department is selected
+    if department_id:
+        programs = Program.objects.filter(department_id=department_id)
+    
+    # Get semesters if program and session are selected
+    if program_id and academic_session_id:
+        semesters = Semester.objects.filter(
+            program_id=program_id,
+            session_id=academic_session_id
+        ).distinct()
+    
+    # Base query for payments with related data
+    payments = StudentFeePayment.objects.select_related(
+        'student__user',
+        'semester_fee__fee_type',
+        'voucher__semester__session',  # Get semester and session through voucher
+        'student__program__department'
+    ).filter(
+        voucher__isnull=False  # Only include payments with a voucher
+    )
+    
+    # Apply filters
+    if semester_id:
+        payments = payments.filter(voucher__semester_id=semester_id)
+    
+    if program_id:
+        payments = payments.filter(student__program_id=program_id)
+    
+    if academic_session_id:
+        payments = payments.filter(voucher__semester__session_id=academic_session_id)
+    
+    if department_id:
+        payments = payments.filter(student__program__department_id=department_id)
+    
+    # Group payments by student and fee type
+    fee_data = []
+    student_payments = {}
+    
+    for payment in payments:
+        student = payment.student
+        fee_type = payment.semester_fee.fee_type.name
+        
+        # Get semester from voucher instead of semester_fee
+        semester = payment.voucher.semester if payment.voucher else None
+        semester_name = f"{semester.name} ({semester.session.name})" if semester else 'N/A'
+        
+        if student.applicant.id not in student_payments:
+            student_payments[student.applicant.id] = {
+                'student': student,
+                'fee_summary': {},
+                'total_due': 0,
+                'total_paid': 0,
+                'total_remaining': 0
+            }
+        
+        fee_key = f"{fee_type}_{semester.id if semester else 'none'}"
+        
+        if fee_key not in student_payments[student.applicant.id]['fee_summary']:
+            student_payments[student.applicant.id]['fee_summary'][fee_key] = {
+                'fee_type': fee_type,
+                'semester': semester_name,
+                'semester_id': semester.id if semester else None,
+                'total_due': payment.voucher.semester_fee.total_amount if payment.voucher else 0,
+                'total_paid': 0,
+                'remaining': 0,
+                'payments': []
+            }
+        
+        # Add payment details
+        payment_data = {
+            'amount': float(payment.amount_paid),
+            'date': payment.payment_date.isoformat(),
+            'receipt': payment.receipt_number,
+            'remarks': payment.remarks or '',
+            'semester': semester_name,
+            'voucher_id': payment.voucher.voucher_id if payment.voucher else None,
+            'is_paid': payment.voucher.is_paid if payment.voucher else False
+        }
+        
+        # Add to payments list
+        student_payments[student.applicant.id]['fee_summary'][fee_key]['payments'].append(payment_data)
+        
+        # Update paid amount for this fee type and semester
+        student_payments[student.applicant.id]['fee_summary'][fee_key]['total_paid'] += float(payment.amount_paid)
+        
+        # Update student totals
+        student_payments[student.applicant.id]['total_paid'] += float(payment.amount_paid)
+        
+        # Get due amount from voucher if available
+        if payment.voucher and payment.voucher.semester_fee:
+            student_payments[student.applicant.id]['fee_summary'][fee_key]['total_due'] = float(payment.voucher.semester_fee.total_amount)
+            student_payments[student.applicant.id]['total_due'] = float(payment.voucher.semester_fee.total_amount)
+        
+        # Update remaining amounts
+        student_payments[student.applicant.id]['fee_summary'][fee_key]['remaining'] = (
+            student_payments[student.applicant.id]['fee_summary'][fee_key]['total_due'] -
+            student_payments[student.applicant.id]['fee_summary'][fee_key]['total_paid']
+        )
+        
+        student_payments[student.applicant.id]['total_remaining'] = (
+            student_payments[student.applicant.id]['total_due'] -
+            student_payments[student.applicant.id]['total_paid']
+        )
+    
+    # Convert to list for template
+    fee_data = list(student_payments.values())
+    
+    # Sort by student name
+    fee_data.sort(key=lambda x: x['student'].user.get_full_name())
+    
+    context = {
+        'academic_sessions': academic_sessions,
+        'departments': departments,
+        'programs': programs,
+        'semesters': semesters,
+        'fee_data': fee_data,
+        'selected_session': academic_session_id,
+        'selected_department': department_id,
+        'selected_program': program_id,
+        'selected_semester': semester_id,
+        'has_filters': any([academic_session_id, department_id, program_id, semester_id])
+    }
+    
+    return render(request, 'fee_management/student_fee_report.html', context)
+
+
+
+
+def get_filtered_programs(request):
+    """AJAX view to get programs filtered by department."""
+    department_id = request.GET.get('department_id')
+    programs = Program.objects.filter(department_id=department_id).values('id', 'name')
+    return JsonResponse(list(programs), safe=False)
+
+
+def get_filtered_semesters(request):
+    """AJAX view to get semesters filtered by program and academic session."""
+    program_id = request.GET.get('program_id')
+    session_id = request.GET.get('session_id')
+    
+    if not program_id or not session_id:
+        return JsonResponse({'error': 'Both program_id and session_id are required'}, status=400)
+    
+    try:
+        # Get semesters for the specified program and session
+        semesters = Semester.objects.filter(
+            program_id=program_id,
+            session_id=session_id
+        ).order_by('number').values('id', 'name', 'number')
+        
+        return JsonResponse(list(semesters), safe=False)
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+
+
+
+
 def office_notice_view(request):
     if request.method == "POST":
         title = request.POST.get("title", "").strip()

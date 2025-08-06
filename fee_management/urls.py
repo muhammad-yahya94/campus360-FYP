@@ -48,6 +48,11 @@ urlpatterns = [
     path('get_bulk_semesters/', views.get_bulk_semesters, name='get_bulk_semesters'),  # 7.3 Get Semesters for Bulk Voucher (AJAX)
     path('get_semesters/', views.get_semesters, name='get_semesters'),  # 7.4 Get Semesters (AJAX)
     path('get_semesters_by_roll/', views.get_semesters_by_roll, name='get_semesters_by_roll'),  # 7.5 Get Semesters by Roll (AJAX)
+    path('get-filtered-programs/', views.get_filtered_programs, name='get_filtered_programs'),  # 7.6 Get Filtered Programs (AJAX)
+    path('get-filtered-semesters/', views.get_filtered_semesters, name='get_filtered_semesters'),  # 7.7 Get Filtered Semesters (AJAX)
+    
+    # ========== 8. Reports ==========
+    path('student-fee-report/', views.student_fee_report, name='student_fee_report'),  # 8.1 Student Fee Report
     
     
     # ========= 8. course enrollment ========

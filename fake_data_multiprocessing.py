@@ -177,9 +177,16 @@ def save_applicant(applicant_data):
     """Save a single applicant's data with transaction to ensure data integrity."""
     with transaction.atomic():
         try:
+            # Check if user with email already exists
+            email = applicant_data['user_data']['email']
+            existing_user = CustomUser.objects.filter(email=email).first()
+            if existing_user:
+                print(f"User with email {email} already exists. Skipping creation.")
+                return
+            
             # Create CustomUser
             user = CustomUser.objects.create_user(
-                email=applicant_data['user_data']['email'],
+                email=email,
                 first_name=applicant_data['user_data']['first_name'],
                 last_name=applicant_data['user_data']['last_name'],
                 password=applicant_data['user_data']['password']
@@ -296,10 +303,10 @@ def setup_initial_data():
 
 def generate_fake_data():
     """Main function to generate fake data using multiprocessing."""
-    # Get all programs
-    programs = Program.objects.all()
-    if not programs:
-        print("No programs found. Please create programs first.")
+    # Get all departments
+    departments = Department.objects.all()
+    if not departments:
+        print("No departments found. Please create departments first.")
         return
     
     # Initialize sets for unique fields
@@ -313,29 +320,31 @@ def generate_fake_data():
     
     # Prepare tasks for multiprocessing
     tasks = []
-    applicants_per_program = 50
+    applicants_per_department = 30
     start_year = 2024
     
-    for program in programs:
-        # Create AcademicSession based on program duration
-        end_year = start_year + program.duration_years
-        session_name = f"{start_year}-{end_year}"
-        session, _ = AcademicSession.objects.get_or_create(
-            name=session_name,
-            start_year=start_year,
-            end_year=end_year,
-            is_active=True
-        )
-        
-        # Ensure AdmissionCycle exists for the program
-        AdmissionCycle.objects.get_or_create(
-            program=program,
-            session=session,
-            application_start=timezone.now() - timedelta(days=30),
-            application_end=timezone.now() + timedelta(days=30),
-            is_open=True
-        )
-        tasks.append((program.id, session.id, applicants_per_program, existing_cnics, existing_emails, existing_usernames, cnic_lock, email_lock, username_lock))
+    for department in departments:
+        programs = Program.objects.filter(department=department)
+        if not programs.exists():
+            continue
+        applicants_per_program = max(1, applicants_per_department // programs.count())
+        for program in programs:
+            end_year = start_year + program.duration_years
+            session_name = f"{start_year}-{end_year}"
+            session, _ = AcademicSession.objects.get_or_create(
+                name=session_name,
+                start_year=start_year,
+                end_year=end_year,
+                is_active=True
+            )
+            AdmissionCycle.objects.get_or_create(
+                program=program,
+                session=session,
+                application_start=timezone.now() - timedelta(days=30),
+                application_end=timezone.now() + timedelta(days=30),
+                is_open=True
+            )
+            tasks.append((program.id, session.id, applicants_per_program, existing_cnics, existing_emails, existing_usernames, cnic_lock, email_lock, username_lock))
     
     # Use multiprocessing to generate data
     with Pool(processes=multiprocessing.cpu_count()) as pool:
@@ -346,7 +355,8 @@ def generate_fake_data():
         for applicant_data in applicants_data:
             save_applicant(applicant_data)
     
-    print(f"Generated {applicants_per_program} applicants for {len(programs)} programs.")
+    total_programs = sum(Program.objects.filter(department=dept).count() for dept in departments)
+    print(f"Generated approximately {applicants_per_department} applicants for each department across {total_programs} programs.")
 
 if __name__ == '__main__':
 

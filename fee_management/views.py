@@ -1,3 +1,4 @@
+
 import os
 import tempfile
 import subprocess
@@ -1322,8 +1323,7 @@ VALID_SHIFTS = ['morning', 'evening']
 @office_required
 def generate_merit_list(request):
     programs = Program.objects.all()
-    errors = []
-    total_seats = 50  # Default total seats for the first merit list
+    errors = [] # Default total seats for the first merit list
 
     if request.method == 'POST':
         program_id = request.POST.get('program')
@@ -1331,7 +1331,7 @@ def generate_merit_list(request):
         valid_until = request.POST.get('valid_until')
         notes = request.POST.get('notes', '')
         shift = request.POST.get('shift')
-        total_seats = request.POST.get('no_of_seats', 50)  # Default to 50 if not provided
+        total_seats = int(request.POST.get('no_of_seats'))  # Default to 50 if not provided
 
         # Validation
         if not program_id:
@@ -1450,7 +1450,7 @@ def generate_merit_list(request):
             relevant_applicants.sort(key=lambda x: x[2], reverse=True)
 
             if not relevant_applicants:
-                errors.append("No applicants found with paid status for the selected program and shift.")
+                errors.append("No student lies on the given criteria.")
                 logger.warning(f"No paid applicants for program {program.name}, shift {shift}, session {active_session}")
                 if is_ajax:
                     return JsonResponse({'success': False, 'errors': errors})
@@ -1648,6 +1648,38 @@ def grant_admission_single(request, entry_id):
             else:
                 student.college_roll_no = f"{applicant.program.id:02}{entry.merit_list.seccured_seats+ 51:02}"
             student.save()
+
+        # Check if semester 1 exists for the student's program and session
+        from academics.models import Semester
+        semester_1 = Semester.objects.filter(
+            program=applicant.program,
+            session=applicant.session,
+            number=1
+        ).first()
+
+        # If semester 1 does not exist, create it
+        if not semester_1:
+            print(f"Creating Semester 1 for program {applicant.program.name} and session {applicant.session.name}")
+            semester_1 = Semester.objects.create(
+                program=applicant.program,
+                session=applicant.session,
+                number=1,
+                name="Semester 1",
+                description="Automatically created semester 1",
+                is_active=True
+            )
+
+        # Enroll the student in semester 1
+        from students.models import StudentSemesterEnrollment
+        enrollment, enrollment_created = StudentSemesterEnrollment.objects.get_or_create(
+            student=student,
+            semester=semester_1,
+            defaults={
+                'status': 'enrolled',
+                'enrollment_date': date.today()
+            }
+        )
+        print(f"Enrollment created: {enrollment_created} for student {student.applicant.full_name} in semester {semester_1.name}")
         # Update entry status
         entry.status = 'admitted'
         entry.save()
@@ -1674,13 +1706,6 @@ def grant_admission_single(request, entry_id):
             'success': False,
             'message': f"{applicant.full_name} is already admitted."
         })
-
-
-
-
-
-
-
 
 
 @login_required

@@ -25,6 +25,10 @@ class Gallery(models.Model):
     image = models.ImageField(upload_to='gallery/', help_text="Upload the image for the gallery.")
     date_added = models.DateTimeField(auto_now_add=True, help_text="The date and time the image was added to the gallery.")
     
+    class Meta:
+        verbose_name = 'Gallery'
+        verbose_name_plural = 'Gallery'
+    
     def __str__(self):
         return self.title
 

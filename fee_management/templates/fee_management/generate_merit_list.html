@@ -34,7 +34,6 @@
       {% endfor %}
     </select>
   </div>
-
   <div class="form-control">
     <label class="label" for="id_shift">
       <span class="label-text">Shift</span>
@@ -53,8 +52,8 @@
     <input type="number" name="list_number" id="id_list_number" class="input input-bordered w-full" readonly>
   </div>
     <div class="form-control">
-    <label class="label" for="id_list_number">
-      <span class="label-text">Merit List Number</span>
+    <label class="label" for="total_seats">
+      <span class="label-text">Seats</span>
     </label>
     <input type="number" name="no_of_seats" id="no_of_seats" class="input input-bordered w-full">
   </div>
@@ -116,5 +115,35 @@ document.addEventListener('DOMContentLoaded', function() {
   programSelect.addEventListener('change', updateListNumber);
   shiftSelect.addEventListener('change', updateListNumber);
 });
+  // Existing script code
+  document.addEventListener('DOMContentLoaded', function() {
+    const programSelect = document.getElementById('id_program');
+    const shiftSelect = document.getElementById('id_shift');
+    const listNumberInput = document.getElementById('id_list_number');
+    const seatsInput = document.getElementById('no_of_seats');
+
+    function updateListNumber() {
+      const programId = programSelect.value;
+      const shift = shiftSelect.value;
+
+      if (programId && shift) {
+        fetch(`{% url 'fee_management:get_next_list_number' %}?program=${programId}&shift=${shift}`)
+          .then(response => response.json())
+          .then(data => {
+            listNumberInput.value = data.next_list_number;
+            // Disable seats input if list number is not 1
+            if (data.next_list_number != 1) {
+              seatsInput.setAttribute('disabled', 'disabled');
+            } else {
+              seatsInput.removeAttribute('disabled');
+            }
+          })
+          .catch(error => console.error('Error:', error));
+      }
+    }
+
+    programSelect.addEventListener('change', updateListNumber);
+    shiftSelect.addEventListener('change', updateListNumber);
+  });
 </script>
 {% endblock %}

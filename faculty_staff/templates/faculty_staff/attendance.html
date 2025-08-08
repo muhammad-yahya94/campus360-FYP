@@ -68,7 +68,7 @@
                                 <th>Day</th>
                                 <th>Start Time</th>
                                 <th>End Time</th>
-                                <th>Status</th>
+                                {% comment %} <th>Status</th> {% endcomment %}
                             </tr>
                         </thead>
                         <tbody>
@@ -641,7 +641,40 @@ $(document).ready(function() {
                 showMessageCard('error', 'Error', 'An error occurred: ' + error);
             }
         });
-    });
+    });   
+
+    // Create a simple radio button dialog
+    function showStatusDialog(currentStatus, callback) {
+        const dialog = $(
+            '<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:5px;box-shadow:0 0 10px rgba(0,0,0,0.2);z-index:9999;">' +
+            '<p>Select status:</p>' +
+            '<div style="margin:10px 0;">' +
+            '  <label style="display:block;margin:5px 0;"><input type="radio" name="status" value="present" ' + (currentStatus === 'present' ? 'checked' : '') + '> Present</label>' +
+            '  <label style="display:block;margin:5px 0;"><input type="radio" name="status" value="absent" ' + (currentStatus === 'absent' ? 'checked' : '') + '> Absent</label>' +
+            '  <label style="display:block;margin:5px 0 15px 0;"><input type="radio" name="status" value="leave" ' + (currentStatus === 'leave' ? 'checked' : '') + '> Leave</label>' +
+            '</div>' +
+            '<div style="text-align:right;">' +
+            '  <button id="cancelBtn" style="margin-right:10px;padding:5px 10px;">Cancel</button>' +
+            '  <button id="okBtn" style="padding:5px 15px;background:#4CAF50;color:white;border:none;border-radius:3px;">OK</button>' +
+            '</div>' +
+            '</div>'
+        );
+
+        $('body').append(dialog);
+
+        dialog.find('#okBtn').on('click', function() {
+            const selectedStatus = dialog.find('input[name="status"]:checked').val();
+            dialog.remove();
+            if (selectedStatus) {
+                callback(selectedStatus);
+            }
+        });
+
+        dialog.find('#cancelBtn').on('click', function() {
+            dialog.remove();
+            callback(null);
+        });
+    }
 
     // Handle edit attendance
     $(document).on('click', '.edit-attendance', function() {
@@ -650,38 +683,37 @@ $(document).ready(function() {
         let currentStatus = $(this).data('status');
         let currentShift = $(this).data('shift');
         console.log(`[EDIT] Editing attendance: attendanceId=${attendanceId}, studentId=${studentId}, currentStatus=${currentStatus}, shift=${currentShift}, courseOfferingId=${courseOfferingId}`);
-        let newStatus = prompt('Enter new status (present/absent/leave):', currentStatus);
-        if (newStatus && ['present', 'absent', 'leave'].includes(newStatus.toLowerCase())) {
-            $.ajax({
-                url: "{% url 'faculty_staff:edit_attendance' %}",
-                type: 'POST',
-                data: {
-                    attendance_id: attendanceId,
-                    student_id: studentId,
-                    status: newStatus.toLowerCase(),
-                    shift: currentShift,
-                    course_offering_id: courseOfferingId,
-                    csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
-                },
-                success: function(response) {
-                    console.log(`[EDIT] edit_attendance response: ${JSON.stringify(response)}`);
-                    if (response.success) {
-                        showMessageCard('success', 'Success', response.message);
-                        setTimeout(() => location.reload(), 1500);
-                    } else {
-                        showMessageCard('error', 'Error', response.message);
-                        console.error(`[EDIT] Error editing attendance: ${response.message}`);
+        
+        showStatusDialog(currentStatus, function(newStatus) {
+            if (newStatus) {
+                $.ajax({
+                    url: "{% url 'faculty_staff:edit_attendance' %}",
+                    type: 'POST',
+                    data: {
+                        attendance_id: attendanceId,
+                        student_id: studentId,
+                        status: newStatus,
+                        shift: currentShift,
+                        course_offering_id: courseOfferingId,
+                        csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+                    },
+                    success: function(response) {
+                        console.log(`[EDIT] edit_attendance response: ${JSON.stringify(response)}`);
+                        if (response.success) {
+                            showMessageCard('success', 'Success', response.message);
+                            setTimeout(() => location.reload(), 1500);
+                        } else {
+                            showMessageCard('error', 'Error', response.message);
+                            console.error(`[EDIT] Error editing attendance: ${response.message}`);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error(`[EDIT] AJAX error in edit_attendance: status=${status}, error=${error}, response=${xhr.responseText}`);
+                        showMessageCard('error', 'Error', 'An error occurred: ' + error);
                     }
-                },
-                error: function(xhr, status, error) {
-                    console.error(`[EDIT] AJAX error in edit_attendance: status=${status}, error=${error}, response=${xhr.responseText}`);
-                    showMessageCard('error', 'Error', 'An error occurred: ' + error);
-                }
             });
-        } else if (newStatus) {
-            showMessageCard('error', 'Error', 'Invalid status. Please enter "present", "absent", or "leave".');
-            console.error(`[EDIT] Invalid status entered: ${newStatus}`);
-        }
+            }
+        });
     });
 });
 </script>

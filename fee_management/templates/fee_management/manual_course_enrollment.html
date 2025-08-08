@@ -50,17 +50,15 @@
                 <input type="hidden" name="step" value="enroll">
                 <input type="hidden" name="student_id" value="{{ student.pk }}">
 
-                <!-- Semester Selection (Disabled) -->
+                <!-- Semester Selection (Hidden) -->
+                <input type="hidden" name="semester" id="semester-input" required>
                 <div class="form-control">
                     <label class="label">
                         <span class="label-text font-semibold">Selected Semester</span>
                     </label>
-                    <select name="semester" class="select select-bordered w-full" disabled required>
-                        <option value="" disabled selected>Select a semester</option>
-                        {% for semester in semesters %}
-                        <option value="{{ semester.pk }}">{{ semester }}</option>
-                        {% endfor %}
-                    </select>
+                    <div class="p-2 border rounded-lg bg-base-200">
+                        <span id="selected-semester-display">Select courses to automatically detect semester</span>
+                    </div>
                 </div>
 
                 <!-- Course Search -->
@@ -89,10 +87,13 @@
                                        {% if item.is_repeat %}data-repeat="true"{% endif %} />
                                 <div class="flex flex-col">
                                     <div class="flex items-center">
-                                        <span class="label-text ml-2">{{ course.course.code }} - {{ course.course.name }} ({{ course.semester }})</span>
+                                        <span class="label-text ml-2">{{ course.course.code }} - {{ course.course.name }}</span>
                                         {% if item.is_repeat %}
                                         <span class="badge badge-warning ml-2">Repeat</span>
                                         {% endif %}
+                                    </div>
+                                    <div class="text-xs text-gray-500 ml-2">
+                                        <span class="semester-name">{{ course.semester }}</span>
                                     </div>
                                 </div>
                             </label>
@@ -133,12 +134,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Auto-select semester when a course is selected
     const courseCheckboxes = document.querySelectorAll('input[name="courses"]');
-    const semesterSelect = document.querySelector('select[name="semester"]');
     
-    // Create a map of course IDs to their semester IDs
+    // Create a map of course IDs to their semester IDs and names
     const courseSemesterMap = {
         {% for item in course_data %}
-            '{{ item.course.id }}': '{{ item.course.semester.id }}',
+            '{{ item.course.id }}': {
+                id: '{{ item.course.semester.id }}',
+                name: '{{ item.course.semester }}'
+            },
         {% endfor %}
     };
 
@@ -165,9 +168,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update semester selection based on selected courses
     function updateSemesterSelection() {
         const checkedCourses = Array.from(document.querySelectorAll('input[name="courses"]:checked'));
+        const semesterInput = document.getElementById('semester-input');
+        const semesterDisplay = document.getElementById('selected-semester-display');
         
         if (checkedCourses.length === 0) {
-            semesterSelect.value = '';
+            semesterInput.value = '';
+            semesterDisplay.textContent = 'Select courses to automatically detect semester';
             return;
         }
         
@@ -177,11 +183,16 @@ document.addEventListener('DOMContentLoaded', function() {
             
         if (semesterIds.length === 1) {
             // All selected courses are from the same semester
-            semesterSelect.value = semesterIds[0];
+            const semesterId = semesterIds[0];
+            const semesterName = checkedCourses[0].closest('.course-item').querySelector('.semester-name')?.textContent || 'Selected Semester';
+            
+            semesterInput.value = semesterId;
+            semesterDisplay.textContent = semesterName;
         } else if (semesterIds.length > 1) {
             // Courses from multiple semesters selected
             console.warn('Courses from multiple semesters selected');
-            semesterSelect.value = ''; // Reset if multiple semesters
+            semesterInput.value = '';
+            semesterDisplay.textContent = 'Multiple semesters selected';
             alert('Please select courses from only one semester.');
             checkedCourses.forEach(checkbox => checkbox.checked = false); // Uncheck all
         }
@@ -192,8 +203,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const checkbox = event.target;
         
         if (checkbox.checked) {
-            const semesterId = courseSemesterMap[checkbox.value];
-            if (semesterSelect.value && semesterSelect.value !== semesterId) {
+            const semesterData = courseSemesterMap[checkbox.value];
+            const semesterInput = document.getElementById('semester-input');
+            if (semesterInput.value && semesterInput.value !== semesterData.id) {
                 // If a different semester is already selected, prevent checking
                 checkbox.checked = false;
                 alert('Please select courses from only one semester.');

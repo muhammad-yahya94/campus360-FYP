@@ -93,7 +93,12 @@
                             <label class="label">
                                 <span class="label-text font-medium">Semester Number</span>
                             </label>
-                            <input type="number" name="number" id="add_number" class="input input-bordered w-full" required min="1">
+                            <select name="number" id="add_number" class="select select-bordered w-full" required>
+                                <option value="" disabled selected>Select semester number</option>
+                                {% for i in "0123456789"|make_list %}
+                                    <option value="{{ forloop.counter }}">{{ forloop.counter }}</option>
+                                {% endfor %}
+                            </select>
                             <span id="add-number-error" class="text-error text-xs mt-1"></span>
                         </div>
                         <div class="form-control">

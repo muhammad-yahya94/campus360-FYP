@@ -87,10 +87,13 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# FREEZE_TIME = "2025-08-06 7:30:00"
+from datetime import datetime
+import pytz
 
-# if DEBUG:
-#     MIDDLEWARE.insert(0, 'utils.middleware.FreezeTimeMiddleware')
+FREEZE_TIME = datetime(2025, 8, 9, 11, 0, 0, tzinfo=pytz.timezone('Asia/Karachi'))
+
+if DEBUG:
+    MIDDLEWARE.insert(0, 'utils.middleware.FreezeTimeMiddleware')
 
 ROOT_URLCONF = 'campus360FYP.urls'
 
@@ -119,8 +122,8 @@ TEMPLATES = [
 WSGI_APPLICATION = 'campus360FYP.wsgi.application'
 
 
-# Redirect after logout
-LOGOUT_REDIRECT_URL = '//' 
+# # Redirect after logout
+# LOGOUT_REDIRECT_URL = '//' 
 
 
 # Database

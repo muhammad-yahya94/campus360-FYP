@@ -1735,8 +1735,7 @@ VALID_SHIFTS = ['morning', 'evening']
 @office_required
 def generate_merit_list(request):
     programs = Program.objects.all()
-    errors = []
-    total_seats = 50  # Default total seats for the first merit list
+    errors = [] # Default total seats for the first merit list
 
     if request.method == 'POST':
         program_id = request.POST.get('program')
@@ -1744,7 +1743,7 @@ def generate_merit_list(request):
         valid_until = request.POST.get('valid_until')
         notes = request.POST.get('notes', '')
         shift = request.POST.get('shift')
-        total_seats = int(request.POST.get('no_of_seats', 50))   # Default to 50 if not provided
+        total_seats = int(request.POST.get('no_of_seats'))  # Default to 50 if not provided
 
         # Validation
         if not program_id:
@@ -1863,7 +1862,7 @@ def generate_merit_list(request):
             relevant_applicants.sort(key=lambda x: x[2], reverse=True)
 
             if not relevant_applicants:
-                errors.append("No applicants found with paid status for the selected program and shift.")
+                errors.append("No student lies on the given criteria.")
                 logger.warning(f"No paid applicants for program {program.name}, shift {shift}, session {active_session}")
                 if is_ajax:
                     return JsonResponse({'success': False, 'errors': errors})
@@ -2037,6 +2036,7 @@ def manage_merit_lists(request):
     })
 
 @office_required
+@office_required
 def grant_admission_single(request, entry_id):
     entry = get_object_or_404(MeritListEntry, pk=entry_id)
     applicant = entry.applicant
@@ -2061,6 +2061,38 @@ def grant_admission_single(request, entry_id):
             else:
                 student.college_roll_no = f"{applicant.program.id:02}{entry.merit_list.seccured_seats+ 51:02}"
             student.save()
+
+        # Check if semester 1 exists for the student's program and session
+        from academics.models import Semester
+        semester_1 = Semester.objects.filter(
+            program=applicant.program,
+            session=applicant.session,
+            number=1
+        ).first()
+
+        # If semester 1 does not exist, create it
+        if not semester_1:
+            print(f"Creating Semester 1 for program {applicant.program.name} and session {applicant.session.name}")
+            semester_1 = Semester.objects.create(
+                program=applicant.program,
+                session=applicant.session,
+                number=1,
+                name="Semester 1",
+                description="Automatically created semester 1",
+                is_active=True
+            )
+
+        # Enroll the student in semester 1
+        from students.models import StudentSemesterEnrollment
+        enrollment, enrollment_created = StudentSemesterEnrollment.objects.get_or_create(
+            student=student,
+            semester=semester_1,
+            defaults={
+                'status': 'enrolled',
+                'enrollment_date': date.today()
+            }
+        )
+        print(f"Enrollment created: {enrollment_created} for student {student.applicant.full_name} in semester {semester_1.name}")
         # Update entry status
         entry.status = 'admitted'
         entry.save()
@@ -2095,7 +2127,6 @@ def grant_admission_single(request, entry_id):
 
 
 
-
 @login_required
 def manual_course_enrollment(request):
     context = {
@@ -2120,14 +2151,16 @@ def manual_course_enrollment(request):
                 # Get the student's department from their program
                 student_department = student_program.department
                 
-                # Filter semesters by the student's department
+                # Filter active semesters by the student's department
                 context['semesters'] = Semester.objects.filter(
-                    program__department=student_department
+                    program__department=student_department,
+                    is_active=True  # Only include active semesters
                 ).select_related('session').order_by('start_time', 'number')
                 
-                # Filter courses by the student's department
+                # Filter courses by the student's department and active semesters
                 courses = CourseOffering.objects.filter(
-                    program__department=student_department
+                    program__department=student_department,
+                    semester__is_active=True  # Only include courses from active semesters
                 ).select_related('course', 'semester', 'academic_session').order_by('academic_session__start_year', 'course__code')
                 
                 # Check for previously taken courses
@@ -2186,7 +2219,25 @@ def manual_course_enrollment(request):
             try:
                 with transaction.atomic():
                     student = Student.objects.select_related('applicant').get(pk=student_id)
-                    semester = Semester.objects.get(pk=semester_id)
+                    # Ensure the semester exists and is active
+                    try:
+                        semester = Semester.objects.get(pk=semester_id)
+                        if not semester.is_active:
+                            messages.error(request, f"The selected semester '{semester.name}' exists but is not marked as active.")
+                            context['student'] = student
+                            # Debug: Log semester status
+                            print(f"Debug - Semester ID {semester_id} status: Active={semester.is_active}")
+                            return render(request, 'fee_management/manual_course_enrollment.html', context)
+                    except Semester.DoesNotExist:
+                        messages.error(request, f"No semester found with ID: {semester_id}")
+                        context['student'] = student
+                        # Debug: List available semesters
+                        available_semesters = Semester.objects.filter(
+                            program__department=student.applicant.program.department,
+                            is_active=True
+                        ).values('id', 'name', 'is_active')
+                        print(f"Debug - Available semesters: {list(available_semesters)}")
+                        return render(request, 'fee_management/manual_course_enrollment.html', context)
                     semester_enrollment, created = StudentSemesterEnrollment.objects.get_or_create(
                         student=student,
                         semester=semester,

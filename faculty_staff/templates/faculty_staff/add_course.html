@@ -47,7 +47,13 @@
                             <label class="label">
                                 <span class="label-text text-sm text-base-content">Credits</span>
                             </label>
-                            <input type="number" name="credits" id="credits" class="input input-bordered text-sm text-base-content" value="{{ form.credits.value|default:3 }}" min="1" required>
+                            <select name="credits" id="credits" class="select select-bordered w-full text-sm text-base-content" required>
+                                {% for credit in "1234"|make_list %}
+                                    <option value="{{ credit }}" {% if form.credits.value == credit or forloop.counter == 3 and not form.credits.value %}selected{% endif %}>
+                                        {{ credit }} Credit Hour{% if credit != '1' %}s{% endif %}
+                                    </option>
+                                {% endfor %}
+                            </select>
                             {% if form.credits.errors %}
                             <span class="text-error text-xs">{{ form.credits.errors.0 }}</span>
                             {% endif %}
@@ -56,7 +62,11 @@
                             <label class="label">
                                 <span class="label-text text-sm text-base-content">Lab Work</span>
                             </label>
-                            <input type="number" name="lab_work" id="lab_work" class="input input-bordered text-sm text-base-content" value="{{ form.lab_work.value|default:0 }}" min="0">
+                            <select name="lab_work" id="lab_work" class="select select-bordered w-full text-sm text-base-content">
+                                <option value="0" {% if not form.lab_work.value or form.lab_work.value == '0' %}selected{% endif %}>No Lab</option>
+                                <option value="1" {% if form.lab_work.value == '1' %}selected{% endif %}>1 Credit Lab</option>
+                                <option value="6" {% if form.lab_work.value == '6' %}selected{% endif %}>6 Credit Lab</option>
+                            </select>
                             {% if form.lab_work.errors %}
                             <span class="text-error text-xs">{{ form.lab_work.errors.0 }}</span>
                             {% endif %}
@@ -66,9 +76,10 @@
                                 <span class="label-text text-sm text-base-content">Optional</span>
                             </label>
                             <select name="opt" id="opt" class="select select-bordered text-sm text-base-content">
-                                <option value="False" {% if not form.opt.value|default:False %}selected{% endif %}>No</option>
-                                <option value="True" {% if form.opt.value|default:True %}selected{% endif %}>Yes</option>
+                                <option value="False" selected>No</option>
+                                <option value="True">Yes</option>
                             </select>
+                            <span class="text-xs text-gray-500 mt-1 block">If set to 'Yes', this course will not be included in final results</span>
                             {% if form.opt.errors %}
                             <span class="text-error text-xs">{{ form.opt.errors.0 }}</span>
                             {% endif %}

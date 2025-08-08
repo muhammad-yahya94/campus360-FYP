@@ -87,13 +87,13 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-from datetime import datetime
-import pytz
+# from datetime import datetime
+# import pytz
 
-FREEZE_TIME = datetime(2025, 8, 9, 11, 0, 0, tzinfo=pytz.timezone('Asia/Karachi'))
+# FREEZE_TIME = datetime(2025, 8, 9, 11, 0, 0, tzinfo=pytz.timezone('Asia/Karachi'))
 
-if DEBUG:
-    MIDDLEWARE.insert(0, 'utils.middleware.FreezeTimeMiddleware')
+# if DEBUG:
+#     MIDDLEWARE.insert(0, 'utils.middleware.FreezeTimeMiddleware')
 
 ROOT_URLCONF = 'campus360FYP.urls'
 

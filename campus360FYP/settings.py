@@ -28,19 +28,19 @@ DEBUG = True
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.trycloudflare.com']
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://bruce-granted-pounds-homework.trycloudflare.com',
+    'https://batch-wife-participated-wood.trycloudflare.com',
     'http://127.0.0.1:8000',
     'http://localhost:8000',
 ]
 
 STRIPE_PUBLIC_KEY = 'pk_test_51RVc14DCFgsH63aPMLiGzlXEuqSGbyxbqTXyWsnqFbx6IXnTjDF0crV3RB3Avil0rAeRU7KVQsrA369EZdzQWmUx00numghDOP'
 STRIPE_SECRET_KEY = 'sk_test_51RVc14DCFgsH63aPcCG3IteORSTlv0oPziVNNsLZkB3cx9Wtb9q7InvToT8CRHZf5wJ1pqsJGGdGe9LjOuzVAZ1P00STSNm7U3'
-STRIPE_ENDPOINT_SECRET = 'whsec_etRtmwacOWudfKX2BIHNHgBgn6jb4djo'  # Update if Stripe CLI gives new one
+STRIPE_ENDPOINT_SECRET = 'whsec_etRtmwacOWudfKX2BIHNHgBgn6jb4djo'  
 
 from urllib.parse import urljoin
 
 # LOCAL development site URL
-SITE_URL = 'https://bruce-granted-pounds-homework.trycloudflare.com'
+SITE_URL = 'https://batch-wife-participated-wood.trycloudflare.com'
 
 PAYMENT_SUCCESS_URL = urljoin(SITE_URL, '/payments/success/?session_id={CHECKOUT_SESSION_ID}')
 PAYMENT_CANCEL_URL = urljoin(SITE_URL, '/payments/cancel/?session_id={CHECKOUT_SESSION_ID}')

@@ -579,7 +579,7 @@
                                                 <h5>${program.name}</h5>
                                                 <span class="badge badge-open">Open</span>
                                             </div>
-                                            <p class="text-muted mt-2">${program.duration || '4-year'} degree program</p>
+                                            <p class="text-muted mt-2">${program.duration || '4-year'} years degree program</p>
                                         </div>
                                     </div>
                                 </div>
@@ -818,7 +818,7 @@
             dob: "required",
             contact_no: {
                 required: true,
-                pattern: /^\d{11,15}$/
+                pattern: /^\d{11}$/
             },
             father_name: "required",
             father_occupation: "required",
@@ -877,7 +877,7 @@
             contact_no: {
                 pattern: "Contact number must be 11-15 digits"
             },
-            shift: {
+            shift: {  
                 required: "Please select a preferred shift"
             }
         },
@@ -930,7 +930,7 @@
 
     // Phone number formatting
     $('input[name="contact_no"]').on('input', function () {
-        $(this).val($(this).val().replace(/\D/g, '').slice(0, 15));
+        $(this).val($(this).val().replace(/\D/g, '').slice(0, 11));
     });
 
     // Date validation (minimum age 16 years)

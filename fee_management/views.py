@@ -1736,7 +1736,6 @@ VALID_SHIFTS = ['morning', 'evening']
 def generate_merit_list(request):
     programs = Program.objects.all()
     errors = [] # Default total seats for the first merit list
-
     if request.method == 'POST':
         program_id = request.POST.get('program')
         list_number = request.POST.get('list_number')
@@ -1744,7 +1743,7 @@ def generate_merit_list(request):
         notes = request.POST.get('notes', '')
         shift = request.POST.get('shift')
         total_seats = int(request.POST.get('no_of_seats'))  # Default to 50 if not provided
-
+        print(f'this is type of -- {type(total_seats)}')
         # Validation
         if not program_id:
             errors.append("Program is required")

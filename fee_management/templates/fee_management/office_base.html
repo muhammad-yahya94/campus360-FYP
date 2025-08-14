@@ -270,11 +270,11 @@
                                 <i class="fas fa-user-check text-lg w-6"></i> Applicant Verification
                             </a>
                         </li>
-                        <li>
+                        {% comment %} <li>
                             <a href="{% url 'fee_management:student_management' %}" class="{% if request.resolver_match.url_name == 'student_management' %}active{% endif %} text-lg py-3">
                                 <i class="fas fa-users text-lg w-6"></i> Student Management
                             </a>
-                        </li>
+                        </li> {% endcomment %}
                         <li>
                             <a href="{% url 'fee_management:results' %}" class="{% if request.resolver_match.url_name == 'results' %}active{% endif %} text-lg py-3">
                                 <i class="fas fa-money-bill-wave text-lg w-6"></i> Results

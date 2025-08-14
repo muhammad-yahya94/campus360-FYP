@@ -120,13 +120,17 @@
         <div class="col-lg-10">
             <h2 class="text-center mb-4">Online Admission Portal</h2>
 
-            {% if not user.is_authenticated %}
-                <div class="alert alert-warning text-center">
-                    <h4>Please Log In</h4>
-                    <p>You must be logged in to submit an application.</p>
-                    <a href="{% url 'login' %}?next={% url 'apply' %}" class="btn btn-primary">Log In</a>
+            {% if not admissions_open %}
+                <div class="alert alert-info text-center">
+                    <h4 class="alert-heading">Admissions Are Currently Closed</h4>
+                    <p>We're sorry, but admissions are not open at this time. Please check back later for updates on when the next admission cycle will begin.</p>
                 </div>
-            {% else %}
+            {% elif not user.is_authenticated %}
+                <div class="alert alert-warning text-center">
+                    <h4 class="alert-heading">Login Required</h4>
+                    <p>Please <a href="{% url 'login' %}?next={{ request.path }}" class="alert-link">login</a> to start your application.</p>
+                </div>  
+            {% else %}  
 
             <!-- Progress Steps -->
             <ul class="nav nav-pills mb-4 justify-content-center" id="progressSteps">
@@ -309,7 +313,13 @@
                                     <div class="row mb-4 g-3">
                                         <div class="col-md-6">
                                             <label for="monthlyIncome" class="form-label text-dark">Monthly Income</label>
-                                            <input type="number" class="form-control form-control-lg" id="monthlyIncome" name="monthly_income" required>
+                                            <div class="input-group">
+                                                <span class="input-group-text">Rs.</span>
+                                                <input type="text" class="form-control form-control-lg" id="monthlyIncome" name="monthly_income" data-inputmask="'alias': 'numeric', 'groupSeparator': ',', 'autoGroup': true, 'digits': 0, 'digitsOptional': false, 'prefix': '', 'placeholder': '0'" required>
+                                            </div>
+                                            <div class="invalid-feedback">
+                                                Please enter a valid monthly income between 10,000 and 200,000
+                                            </div>
                                         </div>
                                         <div class="col-md-6">
                                             <label for="relationship" class="form-label text-dark">Relationship with Applicant</label>
@@ -353,11 +363,17 @@
                                                 </div>
                                                 <div class="col-md-2">
                                                     <label for="academic_total_marks_0" class="form-label text-dark">Total Marks</label>
-                                                    <input type="number" class="form-control form-control-lg" id="academic_total_marks_0" name="academic_total_marks[]" required>
+                                                    <input type="text" class="form-control form-control-lg marks-input" id="academic_total_marks_0" name="academic_total_marks[]" data-inputmask="'alias': 'numeric', 'digits': 0, 'rightAlign': false, 'max': 99999" required>
+                                                    <div class="invalid-feedback">
+                                                        Total marks must be between 1100 and 99999
+                                                    </div>
                                                 </div>
                                                 <div class="col-md-2">
                                                     <label for="academic_marks_obtained_0" class="form-label text-dark">Marks Obtained</label>
-                                                    <input type="number" class="form-control form-control-lg" id="academic_marks_obtained_0" name="academic_marks_obtained[]" required>
+                                                    <input type="text" class="form-control form-control-lg marks-input" id="academic_marks_obtained_0" name="academic_marks_obtained[]" data-inputmask="'alias': 'numeric', 'digits': 0, 'rightAlign': false" required>
+                                                    <div class="invalid-feedback">
+                                                        Marks obtained must be at least 33% of total marks
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div class="row g-3 mt-3">
@@ -829,7 +845,8 @@
             monthly_income: {
                 required: true,
                 number: true,
-                min: 0
+                min: 10000,
+                max: 200000
             },
             relationship: "required",
             permanent_address: "required",
@@ -847,18 +864,30 @@
             "academic_passing_year[]": {
                 required: true,
                 digits: true,
-                min: 1950,
+                min: 2015,
                 max: new Date().getFullYear()
             },
             "academic_total_marks[]": {
                 required: true,
                 number: true,
-                min: 0
+                min: 1100,
+                max: 99999,
+                digits: true
             },
             "academic_marks_obtained[]": {
                 required: true,
                 number: true,
-                min: 0
+                min: function() {
+                    const row = $(this).closest('.academic-qualification-row');
+                    const totalMarks = parseInt(row.find('[name="academic_total_marks[]"]').val()) || 0;
+                    return Math.ceil(totalMarks * 0.33);
+                },
+                max: function() {
+                    const row = $(this).closest('.academic-qualification-row');
+                    const totalMarks = parseInt(row.find('[name="academic_total_marks[]"]').val()) || 0;
+                    return totalMarks > 0 ? totalMarks : 99999;
+                },
+                digits: true
             },
             "academic_grade[]": {
                 required: true
@@ -868,6 +897,11 @@
             }
         },
         messages: {
+            monthly_income: {
+                required: "Please enter monthly income",
+                min: "Monthly income must be at least 10,000",
+                max: "Monthly income cannot exceed 200,000"
+            },
             cnic: {
                 cnicFormat: "Please enter a valid CNIC (XXXXX-XXXXXXX-X)"
             },
@@ -876,6 +910,23 @@
             },
             contact_no: {
                 pattern: "Contact number must be 11-15 digits"
+            },
+            "academic_total_marks[]": {
+                min: "Total marks must be at least 1100",
+                max: "Total marks cannot exceed 99999"
+            },
+            "academic_marks_obtained[]": {
+                min: function() {
+                    const row = $(this.element).closest('.academic-qualification-row');
+                    const totalMarks = parseInt(row.find('[name="academic_total_marks[]"]').val()) || 0;
+                    const minMarks = Math.ceil(totalMarks * 0.33);
+                    return `Marks obtained must be at least ${minMarks} (33% of total marks)`;
+                },
+                max: function() {
+                    const row = $(this.element).closest('.academic-qualification-row');
+                    const totalMarks = parseInt(row.find('[name="academic_total_marks[]"]').val()) || 0;
+                    return `Marks obtained cannot exceed total marks (${totalMarks})`;
+                }
             },
             shift: {  
                 required: "Please select a preferred shift"
@@ -933,13 +984,23 @@
         $(this).val($(this).val().replace(/\D/g, '').slice(0, 11));
     });
 
-    // Date validation (minimum age 16 years)
+    // Date validation (minimum age 16 years and year not before 2000)
     $('input[name="dob"]').on('change', function () {  
         const dob = new Date($(this).val());
         const today = new Date();
+        
+        // Check if year is before 2000
+        if (dob.getFullYear() < 2000) {
+            $(this).val('');
+            alert('Year of birth cannot be before 2000');
+            return;
+        }
+        
+        // Check minimum age requirement (16 years)
         let age = today.getFullYear() - dob.getFullYear();
         const m = today.getMonth() - dob.getMonth();
         if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+        
         if (age < 16) {
             $(this).val('');
             alert('Applicant must be at least 16 years old');
@@ -968,31 +1029,57 @@
         return true;
     }
 
-    // Add marks validation function
+    // Add marks validation function with 33% minimum check
     function validateMarks(input) {
-        const row = input.closest('.academic-qualification-row');
-        const totalMarks = parseInt(row.querySelector('input[name="academic_total_marks[]"]').value) || 0;
-        const obtainedMarks = parseInt(input.value) || 0;
+        const row = $(input).closest('.academic-qualification-row');
+        const totalMarks = parseInt(row.find('input[name="academic_total_marks[]"]').val()) || 0;
+        const obtainedMarks = parseInt($(input).val()) || 0;
+        const minRequired = Math.ceil(totalMarks * 0.33);
         
-        if (obtainedMarks > totalMarks) {
-            alert('Obtained marks cannot be greater than total marks');
-            input.value = '';
+        if (isNaN(obtainedMarks)) {
             return false;
         }
+        
+        if (totalMarks > 0) {
+            if (obtainedMarks > totalMarks) {
+                alert(`Obtained marks (${obtainedMarks}) cannot be greater than total marks (${totalMarks})`);
+                $(input).val('').focus();
+                return false;
+            }
+            
+            if (obtainedMarks < minRequired) {
+                alert(`Marks obtained must be at least ${minRequired} (33% of total marks ${totalMarks})`);
+                $(input).val('').focus();
+                return false;
+            }
+        }
+        
         return true;
     }
 
-    // Function to validate total marks
+    // Function to validate total marks and update obtained marks validation
     function validateTotalMarks(input) {
-        const row = input.closest('.academic-qualification-row');
-        const totalMarks = parseInt(input.value) || 0;
-        const obtainedMarks = parseInt(row.querySelector('input[name="academic_marks_obtained[]"]').value) || 0;
+        const row = $(input).closest('.academic-qualification-row');
+        const totalMarks = parseInt($(input).val()) || 0;
+        const obtainedInput = row.find('input[name="academic_marks_obtained[]"]');
+        const obtainedMarks = parseInt(obtainedInput.val()) || 0;
+        
+        if (totalMarks < 1100) {
+            alert('Total marks must be at least 1100');
+            return false;
+        }
         
         if (obtainedMarks > totalMarks) {
             alert('Total marks cannot be less than obtained marks');
-            input.value = '';
             return false;
         }
+        
+        // Re-validate obtained marks when total marks change
+        if (obtainedMarks > 0) {
+            validateMarks(obtainedInput[0]);
+        }
+        
+        return true;
         return true;
     }
 

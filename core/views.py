@@ -293,11 +293,16 @@ def apply(request):
         messages.warning(request, 'Please verify your email address before submitting an application.')
         return redirect('admission')
         
-    faculties = Faculty.objects.prefetch_related('departments')
     admission_cycles = AdmissionCycle.objects.filter(is_open=True).select_related('session', 'program')
+    
+    if not admission_cycles.exists():
+        return render(request, 'apply.html', {'admissions_open': False})
+        
+    faculties = Faculty.objects.prefetch_related('departments')
     
     # Prepare context with faculties and admission cycles
     context = {
+        'admissions_open': True,
         'faculties': faculties,
         'admission_cycles': admission_cycles,
     }
@@ -307,17 +312,6 @@ def apply(request):
 def get_session_for_program(request):
     """
     View to retrieve the academic session for a given program based on an open admission cycle.
-    Only accessible to logged-in users.
-    Returns JSON response with session details or an error message.
-
-    Query Parameter:
-        program_id (int): The ID of the program to fetch the session for.
-
-    Response:
-        - success: boolean indicating if the request was successful
-        - session: dict with id and name if successful, or None
-        - message/error: string with error message if unsuccessful
-        - status: HTTP status code
     """
     # Extract program_id from query parameters
     program_id = request.GET.get('program_id')

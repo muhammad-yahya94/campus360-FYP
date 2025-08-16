@@ -171,9 +171,9 @@ def applicant_verification(request):
     try:
         page_obj = paginator.page(page_number)
     except:
-        page_obj = paginator.page(1)
+        page_obj = paginator.page(1)  
 
-    programs = Program.objects.all()
+    programs = Program.objects.filter(is_active=True)
 
     context = {
         'applicants': page_obj,

@@ -28,7 +28,7 @@ DEBUG = True
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.trycloudflare.com']
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://batch-wife-participated-wood.trycloudflare.com',
+    'https://blades-cap-xml-sponsor.trycloudflare.com',
     'http://127.0.0.1:8000',
     'http://localhost:8000',
 ]
@@ -40,7 +40,7 @@ STRIPE_ENDPOINT_SECRET = 'whsec_etRtmwacOWudfKX2BIHNHgBgn6jb4djo'
 from urllib.parse import urljoin
 
 # LOCAL development site URL
-SITE_URL = 'https://batch-wife-participated-wood.trycloudflare.com'
+SITE_URL = 'https://blades-cap-xml-sponsor.trycloudflare.com'
 
 PAYMENT_SUCCESS_URL = urljoin(SITE_URL, '/payments/success/?session_id={CHECKOUT_SESSION_ID}')
 PAYMENT_CANCEL_URL = urljoin(SITE_URL, '/payments/cancel/?session_id={CHECKOUT_SESSION_ID}')

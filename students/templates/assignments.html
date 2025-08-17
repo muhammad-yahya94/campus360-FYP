@@ -9,209 +9,413 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
 
 <style>
+  .assignment-card {
+    transition: all 0.3s ease;
+    border-left: 4px solid transparent;
+  }
+  
+  .assignment-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  
+  .assignment-card.pending {
+    border-left-color: #f59e0b;
+  }
+  
+  .assignment-card.submitted {
+    border-left-color: #10b981;
+  }
+  
+  .assignment-card.overdue {
+    border-left-color: #ef4444;
+  }
+  
+  .due-date {
+    font-size: 0.875rem;
+    color: #6b7280;
+  }
+  
+  .status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: capitalize;
+  }
+  
+  .status-pending {
+    background-color: #fef3c7;
+    color: #92400e;
+  }
+  
+  .status-submitted {
+    background-color: #d1fae5;
+    color: #065f46;
+  }
+  
+  .status-overdue {
+    background-color: #fee2e2;
+    color: #991b1b;
+  }
+  
+  .modal-box {
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 2rem;
+  }
+  
+  .submission-section {
+    background-color: #f9fafb;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .submission-section h4 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .file-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.375rem;
+    text-decoration: none;
+    color: #1f2937;
+    transition: all 0.2s;
+  }
+  
+  .file-download:hover {
+    background-color: #f3f4f6;
+    border-color: #d1d5db;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    background-color: #f9fafb;
+    border-radius: 0.5rem;
+    border: 1px dashed #e5e7eb;
+  }
+  
+  .empty-state-icon {
+    font-size: 2.5rem;
+    color: #9ca3af;
+    margin-bottom: 1rem;
+  }
+  
+  .empty-state-text {
+    color: #6b7280;
+    margin-bottom: 1.5rem;
+  }
+  
+  .code-container {
+    background: #1e1e1e;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin: 1rem 0;
+    overflow-x: auto;
+  }
+  
+  .code-container pre {
+    margin: 0;
+    background: transparent;
+  }
+  
+  .code-container code {
+    font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+  
   .prose {
     max-width: 100%;
     word-wrap: break-word;
   }
+  
   .prose img {
     max-width: 100%;
     height: auto;
     margin: 1rem 0;
     border-radius: 0.5rem;
   }
+  
   .prose p {
     margin: 0.5rem 0;
+    line-height: 1.6;
   }
+  
   .prose ul, .prose ol {
     margin: 0.5rem 0 0.5rem 1.5rem;
   }
-  .modal-box {
-    max-height: 80vh;
-    overflow-y: auto;
+  
+  .prose li {
+    margin: 0.25rem 0;
   }
-  .code-container {
-    background: #2d3748;
-    border-radius: 8px;
-    padding: 1rem;
-    margin: 1rem 0;
-    overflow-x: auto;
+  
+  .assignment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
   }
-  .code-container pre {
+  
+  .assignment-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #111827;
     margin: 0;
-    background: transparent;
   }
-  .code-container code {
-    color: #e2e8f0;
-    font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
-    font-size: 14px;
-    line-height: 1.5;
+  
+  .assignment-meta {
+    display: flex;
+    gap: 1.5rem;
+    color: #6b7280;
+    font-size: 0.875rem;
   }
-  .submission-type-badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 500;
-    margin-bottom: 8px;
+  
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
   }
-  .submission-type-text {
-    background: #dbeafe;
-    color: #1e40af;
+  
+  .meta-icon {
+    color: #9ca3af;
   }
-  .submission-type-code {
-    background: #dcfce7;
-    color: #166534;
+  
+  @media (max-width: 768px) {
+    .assignment-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    
+    .assignment-meta {
+      width: 100%;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
+<div class="container mx-auto px-4 py-8">
   <!-- Header Section -->
-  <div class="hero bg-base-200 rounded-lg shadow-lg mb-6">
-    <div class="hero-content text-center">
-      <div class="max-w-md">
-        <h1 class="text-3xl sm:text-4xl font-bold text-base-content mb-2">Assignments</h1>
-        <p class="text-base sm:text-lg text-base-content/90"> {{ selected_course_offering.course.name }} ({{ selected_course_offering.course.code }})</p>
-      </div>
+  <div class="mb-8">
+    <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Course Assignments</h1>
+    <div class="flex items-center gap-2 text-gray-600">
+      <span>{{ selected_course_offering.course.name }} ({{ selected_course_offering.course.code }})</span>
+      <span>•</span>
+      <span>{{ selected_course_offering.semester.name }} {{ selected_course_offering.year }}</span>
     </div>
   </div>
 
-  <!-- All Assignments Table -->
-  <div>
-    <h3 class="text-2xl font-semibold text-base-content mb-4">All Assignments</h3>
-    <div class="card bg-base-100 shadow-xl">
-      <div class="card-body p-0">
-        <div class="overflow-x-auto">
-          <table class="table w-full">
-            <thead>
-              <tr class="bg-base-200">
-                <th class="px-4 py-3 text-left text-xs font-medium text-base-content/70 uppercase tracking-wider">Title</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-base-content/70 uppercase tracking-wider">Resources File</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-base-content/70 uppercase tracking-wider">Due Date</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-base-content/70 uppercase tracking-wider">Marks</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-base-content/70 uppercase tracking-wider">Status</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-base-content/70 uppercase tracking-wider">Submission</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-base-content/70 uppercase tracking-wider">Feedback/Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for item in all_assignments %}
-              <tr class="{% if item.is_pending %}bg-primary/10{% else %}hover:bg-base-200/50{% endif %}">
-                <td class="px-4 py-4 text-sm text-base-content">
+  <!-- Assignments List -->
+  <div class="space-y-4">
+    {% if all_assignments %}
+      {% for item in all_assignments %}
+        <div class="assignment-card bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden {% if item.status == 'Submitted' %}submitted{% elif item.status == 'Pending' %}pending{% else %}overdue{% endif %}">
+          <div class="p-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div class="flex-1 min-w-0">
+                <h3 class="text-lg font-semibold text-gray-900 mb-1 truncate">
                   {% if item.status == "Submitted" %}
                     {{ item.assignment_data.assignment.title }}
                   {% else %}
                     {{ item.assignment_data.submission.assignment.title }}
                   {% endif %}
-                </td>
-                <td class="px-4 py-4 text-sm text-base-content">
-                  {% if item.status == "Submitted" %}
-                    {% if item.assignment_data.assignment.resource_file %}
-                      <a href="{{ item.assignment_data.assignment.resource_file.url }}" class="link link-primary" target="_blank">View Resource</a>
+                </h3>
+                <div class="flex flex-wrap items-center gap-3 text-sm text-gray-600 mt-2">
+                  <span class="status-badge {% if item.status == 'Submitted' %}status-submitted{% elif item.status == 'Pending' %}status-pending{% else %}status-overdue{% endif %}">
+                    {{ item.status }}
+                  </span>
+                  <span class="flex items-center">
+                    <i class="fas fa-calendar-day mr-1.5 text-gray-400"></i>
+                    Due: 
+                    {% if item.status == "Submitted" %}
+                      {{ item.assignment_data.assignment.due_date|date:"M d, Y H:i" }}
                     {% else %}
-                      N/A
+                      {{ item.assignment_data.submission.assignment.due_date|date:"M d, Y H:i" }}
                     {% endif %}
-                  {% else %}
-                    {% if item.assignment_data.submission.assignment.resource_file %}
-                      <a href="{{ item.assignment_data.submission.assignment.resource_file.url }}" class="link link-primary" target="_blank">View Resource</a>
+                  </span>
+                  <span class="flex items-center">
+                    <i class="fas fa-tasks mr-1.5 text-gray-400"></i>
+                    {% if item.status == "Submitted" %}
+                      {{ item.assignment_data.marks_obtained|default:"-" }}/{{ item.assignment_data.assignment.max_points }} points
                     {% else %}
-                      N/A
+                      {{ item.assignment_data.submission.marks_obtained|default:"-" }}/{{ item.assignment_data.submission.assignment.max_points }} points
                     {% endif %}
-                  {% endif %}
-                </td>
-                <td class="px-4 py-4 text-sm text-base-content">
-                  {% if item.status == "Submitted" %}
-                    {{ item.assignment_data.assignment.due_date|date:"Y-m-d H:i" }}
-                  {% else %}
-                    {{ item.assignment_data.submission.assignment.due_date|date:"Y-m-d H:i" }}
-                  {% endif %}
-                </td>
-                <td class="px-4 py-4 text-sm text-base-content">
-                  {% if item.status == "Submitted" %}
-                    {{ item.assignment_data.marks_obtained|default:"N/A" }} / {{ item.assignment_data.assignment.max_points }}
-                  {% else %}
-                    {{ item.assignment_data.submission.marks_obtained|default:"N/A" }} / {{ item.assignment_data.submission.assignment.max_points }}
-                  {% endif %}
-                </td>
-                <td class="px-4 py-4">
-                  {% if item.status == "Submitted" %}
-                    <span class="badge badge-success badge-sm">Submitted</span>
-                  {% elif item.status == "Pending" %}
-                    <span class="badge badge-warning badge-sm">Pending</span>
-                  {% else %}
-                    <span class="badge badge-error badge-sm">Overdue</span>
-                  {% endif %}
-                </td>
-                <td class="px-4 py-4 text-sm text-base-content">
-                  {% if item.status == "Submitted" %}
-                    <button 
-                      class="btn btn-ghost btn-xs view-submission-btn"
-                      data-assignment-number="{{ forloop.counter }}"
-                      data-assignment-title="{% if item.status == 'Submitted' %}{{ item.assignment_data.assignment.title }}{% else %}{{ item.assignment_data.submission.assignment.title }}{% endif %}"
-                      data-text-content="{% if item.status == 'Submitted' %}{{ item.assignment_data.text_content|escapejs }}{% else %}{{ item.assignment_data.submission.text_content|escapejs }}{% endif %}"
-                      data-code-content="{% if item.status == 'Submitted' %}{{ item.assignment_data.code_content|escapejs }}{% else %}{{ item.assignment_data.submission.code_content|escapejs }}{% endif %}"
-                      data-file-url="{% if item.status == 'Submitted' and item.assignment_data.file and item.assignment_data.file.url %}{{ item.assignment_data.file.url }}{% elif item.assignment_data.submission.file and item.assignment_data.submission.file.url %}{{ item.assignment_data.submission.file.url }}{% else %}{% endif %}"
-                      data-file-name="{% if item.status == 'Submitted' and item.assignment_data.file and item.assignment_data.file.name %}{{ item.assignment_data.file.name }}{% elif item.assignment_data.submission.file and item.assignment_data.submission.file.name %}{{ item.assignment_data.submission.file.name }}{% else %}No file{% endif %}"
-                      data-code-language="{% if item.status == 'Submitted' %}{{ item.assignment_data.code_language|default:'none' }}{% else %}{{ item.assignment_data.submission.code_language|default:'none' }}{% endif %}">
-                      View Submission
-                    </button>
-                  {% else %}
-                    <span class="text-gray-400">Not submitted</span>
-                  {% endif %}
-                </td>
-                <td class="px-4 py-4 text-sm text-base-content">
-                  {% if item.status == "Submitted" %}
-                    {{ item.assignment_data.feedback|default:"No feedback yet" }}
-                  {% elif item.status == "Pending" %}
-                    <a href="{% url 'students:submit_assignment' assignment_id=item.assignment_data.submission.assignment.id %}" class="btn btn-primary btn-xs">Submit</a>
-                  {% else %}
-                    <span class="text-error">Overdue</span>
-                  {% endif %}
-                </td>
-              </tr>
-              {% empty %}
-              <tr>
-                <td colspan="7" class="px-4 py-4 text-sm text-base-content/70 text-center">No assignments found.</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+                  </span>
+                </div>
+              </div>
+              
+              <div class="flex items-center gap-3 flex-shrink-0">
+                {% if item.status == "Submitted" %}
+                  <button 
+                    class="btn btn-outline btn-sm view-submission-btn"
+                    data-assignment-number="{{ forloop.counter }}"
+                    data-assignment-title="{{ item.assignment_data.assignment.title }}"
+                    data-text-content="{{ item.assignment_data.text_content|escapejs }}"
+                    data-code-content="{{ item.assignment_data.code_content|escapejs }}"
+                    data-file-url="{% if item.assignment_data.file %}{{ item.assignment_data.file.url }}{% endif %}"
+                    data-file-name="{% if item.assignment_data.file %}{{ item.assignment_data.file.name }}{% endif %}"
+                    data-code-language="{{ item.assignment_data.code_language|default:'none' }}">
+                    <i class="fas fa-eye mr-1.5"></i> View Submission
+                  </button>
+                {% elif item.status == "Pending" %}
+                  <a href="{% url 'students:submit_assignment' assignment_id=item.assignment_data.submission.assignment.id %}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-paper-plane mr-1.5"></i> Submit Now
+                  </a>
+                {% else %}
+                  <span class="text-red-600 text-sm font-medium">
+                    <i class="fas fa-exclamation-circle mr-1"></i> Submission Closed
+                  </span>
+                {% endif %}
+                
+                {% if item.status == "Submitted" and item.assignment_data.feedback %}
+                  <button class="btn btn-ghost btn-sm" onclick="document.getElementById('feedback-{{ forloop.counter }}').classList.toggle('hidden')">
+                    <i class="fas fa-comment-dots"></i>
+                    <span class="ml-1.5">Feedback</span>
+                  </button>
+                {% endif %}
+              </div>
+            </div>
+            
+            <!-- Feedback Section -->
+            {% if item.status == "Submitted" and item.assignment_data.feedback %}
+              <div id="feedback-{{ forloop.counter }}" class="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100 hidden">
+                <h4 class="font-medium text-blue-800 mb-2">
+                  <i class="fas fa-comment-alt mr-2"></i>Instructor's Feedback
+                </h4>
+                <div class="prose text-blue-900 max-w-none">
+                  {{ item.assignment_data.feedback|linebreaks }}
+                </div>
+              </div>
+            {% endif %}
+          </div>
+          
+          <div class="bg-gray-50 px-6 py-3 border-t border-gray-100 flex justify-between items-center">
+            <div class="text-sm text-gray-500">
+              {% if item.status == "Submitted" %}
+                Submitted on {{ item.assignment_data.submission_date|date:"M d, Y H:i" }}
+              {% else %}
+                {% if item.status == "Pending" %}
+                  Due in 
+                  {% with due_date=item.assignment_data.submission.assignment.due_date %}
+                    {{ due_date|timeuntil }}
+                  {% endwith %}
+                {% else %}
+                  Assignment closed
+                {% endif %}
+              {% endif %}
+            </div>
+            
+            {% if item.status == "Submitted" and item.assignment_data.assignment.resource_file %}
+              <a href="{{ item.assignment_data.assignment.resource_file.url }}" class="text-sm text-blue-600 hover:text-blue-800 flex items-center" target="_blank">
+                <i class="fas fa-file-alt mr-1.5"></i> Assignment Resources
+              </a>
+            {% elif item.status != "Submitted" and item.assignment_data.submission.assignment.resource_file %}
+              <a href="{{ item.assignment_data.submission.assignment.resource_file.url }}" class="text-sm text-blue-600 hover:text-blue-800 flex items-center" target="_blank">
+                <i class="fas fa-file-alt mr-1.5"></i> Assignment Resources
+              </a>
+            {% endif %}
+          </div>
         </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-state-icon">
+          <i class="fas fa-tasks"></i>
+        </div>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">No Assignments Yet</h3>
+        <p class="empty-state-text">There are no assignments available for this course at the moment.</p>
       </div>
-    </div>
+    {% endif %}
   </div>
 </div>
 
 <!-- Submission Content Modal -->
 <dialog id="submissionModal" class="modal">
-  <div class="modal-box max-w-4xl">
-    <div class="flex justify-between items-center mb-4">
-      <h3 class="font-bold text-lg" id="modalAssignmentTitle">Assignment # - Title</h3>
-      <button onclick="document.getElementById('submissionModal').close()" class="btn btn-sm btn-circle">
-        &times;
+  <div class="modal-box">
+    <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-200">
+      <div>
+        <h3 class="text-xl font-bold text-gray-900" id="modalAssignmentTitle">Assignment Details</h3>
+        <p class="text-sm text-gray-500" id="modalAssignmentDate"></p>
+      </div>
+      <button onclick="document.getElementById('submissionModal').close()" class="btn btn-ghost btn-circle btn-sm">
+        <i class="fas fa-times"></i>
       </button>
     </div>
     
-    <div class="mb-4">
-      <h4 class="font-semibold mb-2">Text Content</h4>
-      <div id="modalTextContent" class="prose max-w-none" style="white-space: pre-wrap;">
-        <!-- Text content will be inserted here -->
+    <div class="space-y-6">
+      <!-- Text Content Section -->
+      <div id="textContentSection" class="submission-section hidden">
+        <h4>
+          <i class="fas fa-file-alt text-blue-500"></i>
+          Text Submission
+        </h4>
+        <div id="modalTextContent" class="prose max-w-none bg-white p-4 rounded border border-gray-200">
+          <!-- Text content will be inserted here -->
+        </div>
+      </div>
+      
+      <!-- Code Content Section -->
+      <div id="codeContentSection" class="submission-section hidden">
+        <h4>
+          <i class="fas fa-code text-green-500"></i>
+          Code Submission
+        </h4>
+        <div class="bg-gray-800 rounded-lg overflow-hidden">
+          <div class="px-4 py-2 bg-gray-900 text-gray-300 text-sm font-mono flex justify-between items-center">
+            <span id="codeLanguageBadge" class="px-2 py-1 bg-gray-700 rounded text-xs"></span>
+            <button id="copyCodeBtn" class="text-gray-400 hover:text-white" title="Copy to clipboard">
+              <i class="far fa-copy"></i>
+            </button>
+          </div>
+          <pre id="modalCodeContent" class="p-4 overflow-x-auto m-0"><code class="language-none"></code></pre>
+        </div>
+      </div>
+      
+      <!-- File Upload Section -->
+      <div id="fileContentSection" class="submission-section hidden">
+        <h4>
+          <i class="fas fa-paperclip text-purple-500"></i>
+          Attached Files
+        </h4>
+        <div id="modalFileContent" class="space-y-3">
+          <!-- File content will be inserted here -->
+        </div>
+      </div>
+      
+      <!-- Empty State -->
+      <div id="emptySubmission" class="text-center py-8">
+        <div class="text-gray-400 mb-4">
+          <i class="fas fa-inbox text-4xl"></i>
+        </div>
+        <h4 class="text-lg font-medium text-gray-700 mb-1">No Submission Content</h4>
+        <p class="text-gray-500">This submission doesn't contain any content.</p>
       </div>
     </div>
     
-    <div class="mb-4">
-      <h4 class="font-semibold mb-2">Code Content</h4>
-      <pre id="modalCodeContent" class="bg-gray-100 p-3 rounded overflow-x-auto"><code></code></pre>
-    </div>
-    
-    <div class="mb-4">
-      <h4 class="font-semibold mb-2">Uploaded Files</h4>
-      <div id="modalFileContent" class="space-y-4">
-        <!-- Uploaded files will be inserted here -->
-      </div>
+    <div class="modal-action mt-6 pt-4 border-t border-gray-200">
+      <button onclick="document.getElementById('submissionModal').close()" class="btn btn-ghost">Close</button>
     </div>
   </div>
+  
+  <!-- Click outside to close -->
   <form method="dialog" class="modal-backdrop">
     <button>close</button>
   </form>
@@ -233,6 +437,26 @@
         openSubmissionModal(assignmentNumber, assignmentTitle, textContent, codeContent, fileUrl, fileName, codeLanguage);
       });
     });
+    
+    // Initialize clipboard.js for copy button
+    document.addEventListener('click', function(e) {
+      if (e.target.closest('#copyCodeBtn')) {
+        const codeElement = document.querySelector('#modalCodeContent code');
+        if (codeElement) {
+          navigator.clipboard.writeText(codeElement.textContent)
+            .then(() => {
+              const copyBtn = document.getElementById('copyCodeBtn');
+              const originalHTML = copyBtn.innerHTML;
+              copyBtn.innerHTML = '<i class="fas fa-check"></i>';
+              copyBtn.classList.add('text-green-500');
+              setTimeout(() => {
+                copyBtn.innerHTML = originalHTML;
+                copyBtn.classList.remove('text-green-500');
+              }, 2000);
+            });
+        }
+      }
+    });
   });
 
   function openSubmissionModal(assignmentNumber, assignmentTitle, textContent, codeContent, fileUrl, fileName, codeLanguage) {
@@ -241,20 +465,28 @@
     const modalText = document.getElementById('modalTextContent');
     const modalCode = document.getElementById('modalCodeContent').querySelector('code');
     const modalFile = document.getElementById('modalFileContent');
-
+    const textSection = document.getElementById('textContentSection');
+    const codeSection = document.getElementById('codeContentSection');
+    const fileSection = document.getElementById('fileContentSection');
+    const emptyState = document.getElementById('emptySubmission');
+    const codeLanguageBadge = document.getElementById('codeLanguageBadge');
+    
+    // Reset all sections
+    textSection.classList.add('hidden');
+    codeSection.classList.add('hidden');
+    fileSection.classList.add('hidden');
+    emptyState.classList.add('hidden');
+    
     // Set assignment title
-    modalTitle.textContent = `Assignment ${assignmentNumber} - ${assignmentTitle}`;
-
-    // Set text content
+    modalTitle.textContent = `${assignmentNumber}. ${assignmentTitle}`;
+    
+    let hasContent = false;
+    
+    // Set text content if exists
     if (textContent && textContent.trim() !== '') {
       // Decode unicode escape sequences in text content
-      function decodeUnicodeEscape(str) {
-        return str.replace(/\\u[\dA-Fa-f]{4}/g, function(match) {
-          return String.fromCharCode(parseInt(match.replace('\\u', ''), 16));
-        });
-      }
       const decodedText = decodeUnicodeEscape(textContent);
-
+      
       try {
         // Try to parse JSON encoded content (if stored as JSON string)
         const parsedContent = JSON.parse(decodedText);
@@ -263,75 +495,126 @@
         // If not JSON, treat as raw HTML
         modalText.innerHTML = decodedText;
       }
-    } else {
-      modalText.innerHTML = '<p class="text-gray-500 italic">No text content available.</p>';
+      
+      textSection.classList.remove('hidden');
+      hasContent = true;
     }
-
-    // Set code content
+    
+    // Set code content if exists
     if (codeContent && codeContent.trim() !== '') {
-      // Decode unicode escape sequences
-      function decodeUnicodeEscape(str) {
-        return str.replace(/\\u[\dA-Fa-f]{4}/g, function(match) {
-          return String.fromCharCode(parseInt(match.replace('\\u', ''), 16));
-        });
-      }
       const decodedCode = decodeUnicodeEscape(codeContent);
-
-      // Escape HTML special characters in code content
-      const escapedCode = decodedCode.replace(/&/g, '&amp;')
-                                    .replace(/</g, '&lt;')
-                                    .replace(/>/g, '&gt;')
-                                    .replace(/"/g, '&quot;')
-                                    .replace(/'/g, '&#039;');
-      modalCode.innerHTML = escapedCode;
-
-      // Remove existing language classes
-      modalCode.className = '';
-
-      // Map codeLanguage to Prism language class
+      
+      // Set the language class for syntax highlighting
       const languageMap = {
         'python': 'language-python',
         'javascript': 'language-javascript',
-        'html': 'language-markup',
+        'html': 'language-html',
         'css': 'language-css',
         'c': 'language-c',
         'cpp': 'language-cpp',
         'java': 'language-java',
         'php': 'language-php',
+        'ruby': 'language-ruby',
+        'swift': 'language-swift',
+        'go': 'language-go',
+        'rust': 'language-rust',
+        'typescript': 'language-typescript',
+        'bash': 'language-bash',
         'sql': 'language-sql',
-        'none': ''
+        'json': 'language-json',
+        'yaml': 'language-yaml',
+        'markdown': 'language-markdown',
+        'xml': 'language-markup',
+        'none': 'language-none'
       };
-      const prismClass = languageMap[codeLanguage.toLowerCase()] || '';
-      if (prismClass) {
-        modalCode.classList.add(prismClass);
-      }
-
-      // Apply syntax highlighting if Prism is available
+      
+      const languageClass = languageMap[codeLanguage] || 'language-none';
+      const languageName = codeLanguage === 'none' ? 'Plain Text' : codeLanguage.charAt(0).toUpperCase() + codeLanguage.slice(1);
+      
+      // Update code language badge
+      codeLanguageBadge.textContent = languageName;
+      
+      // Set code content with proper escaping
+      const escapedCode = decodedCode
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+      
+      // Update code element
+      modalCode.className = languageClass;
+      modalCode.innerHTML = escapedCode;
+      
+      // Apply syntax highlighting
       if (typeof Prism !== 'undefined') {
         Prism.highlightElement(modalCode);
       }
-    } else {
-      modalCode.textContent = 'No code content available.';
-      modalCode.className = '';
+      
+      codeSection.classList.remove('hidden');
+      hasContent = true;
     }
-
-    // Set file content
-    if (fileUrl && fileUrl.trim() !== '') {
-      let fileHtml = '';
-      const lowerUrl = fileUrl.toLowerCase();
-      if (lowerUrl.endsWith('.jpg') || lowerUrl.endsWith('.jpeg') || lowerUrl.endsWith('.png') || lowerUrl.endsWith('.gif')) {
-        fileHtml = `<img src="${fileUrl}" alt="Uploaded Image" class="max-w-full h-auto rounded" />`;
-      } else {
-        fileHtml = `<a href="${fileUrl}" target="_blank" class="text-primary underline">${fileName || 'Download File'}</a>`;
-      }
-      modalFile.innerHTML = fileHtml;
-    } else {
-      modalFile.innerHTML = '<p class="text-gray-500 italic">No files uploaded.</p>';
+    
+    // Set file content if exists
+    if (fileUrl && fileName && fileName !== 'No file') {
+      let fileType = 'file';
+      const fileExt = fileName.split('.').pop().toLowerCase();
+      const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+      const docExts = ['pdf', 'doc', 'docx', 'txt', 'rtf'];
+      const sheetExts = ['xls', 'xlsx', 'csv'];
+      
+      let fileIcon = 'file';
+      if (imageExts.includes(fileExt)) fileIcon = 'file-image';
+      else if (docExts.includes(fileExt)) fileIcon = 'file-word';
+      else if (sheetExts.includes(fileExt)) fileIcon = 'file-excel';
+      else if (['zip', 'rar', '7z', 'tar', 'gz'].includes(fileExt)) fileIcon = 'file-archive';
+      else if (['mp3', 'wav', 'ogg'].includes(fileExt)) fileIcon = 'file-audio';
+      else if (['mp4', 'avi', 'mov', 'wmv'].includes(fileExt)) fileIcon = 'file-video';
+      
+      modalFile.innerHTML = `
+        <div class="flex items-center p-3 bg-white rounded-lg border border-gray-200">
+          <div class="p-2 rounded-full bg-gray-100 text-gray-600 mr-3">
+            <i class="fas fa-${fileIcon} text-lg"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-900 truncate">${fileName}</p>
+            <p class="text-xs text-gray-500">${formatFileSize(fileUrl)}</p>
+          </div>
+          <a href="${fileUrl}" class="ml-2 btn btn-sm btn-ghost" download>
+            <i class="fas fa-download"></i>
+          </a>
+          <a href="${fileUrl}" target="_blank" class="btn btn-sm btn-ghost">
+            <i class="fas fa-external-link-alt"></i>
+          </a>
+        </div>
+      `;
+      
+      fileSection.classList.remove('hidden');
+      hasContent = true;
     }
-
+    
+    // Show empty state if no content
+    if (!hasContent) {
+      emptyState.classList.remove('hidden');
+    }
+    
+    // Show the modal
     modal.showModal();
   }
-
+  
+  // Helper function to decode unicode escape sequences
+  function decodeUnicodeEscape(str) {
+    return str.replace(/\\u[\dA-Fa-f]{4}/g, function(match) {
+      return String.fromCharCode(parseInt(match.replace('\\u', ''), 16));
+    });
+  }
+  
+  // Helper function to format file size
+  function formatFileSize(url) {
+    // This is a placeholder - in a real app, you'd get the file size from the server
+    return '-- KB';
+  }
+  
   // Close modal when clicking outside
   document.getElementById('submissionModal').addEventListener('click', function(e) {
     if (e.target === this) {

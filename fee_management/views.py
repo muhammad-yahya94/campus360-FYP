@@ -1066,7 +1066,6 @@ def fee_verification(request):
                                 # Add Late Fee 100%
                                 late_fee_type = 'Late Fee 100%'
                                 late_fee_amount = total_amount
-                                dynamic_fee_amount = total_amount
                                 dynamic_fees[late_fee_type] = str(late_fee_amount)
                                 total_amount += late_fee_amount
                         elif not is_active_semester and not voucher.is_paid:
@@ -1742,9 +1741,11 @@ def generate_merit_list(request):
         valid_until = request.POST.get('valid_until')
         notes = request.POST.get('notes', '')
         shift = request.POST.get('shift')
-        total_seats = int(request.POST.get('no_of_seats'))  # Default to 50 if not provided
-        print(f'this is type of -- {type(total_seats)}')
+        total_seats = request.POST.get('no_of_seats')  
+        
         # Validation
+        if total_seats:
+            total_seats = int(total_seats)
         if not program_id:
             errors.append("Program is required")
         if not list_number:
@@ -1884,7 +1885,7 @@ def generate_merit_list(request):
                         admitted_count = MeritListEntry.objects.filter(
                             merit_list__program=program,
                             merit_list__shift=shift,
-                            merit_list_list_number_lte=prev_list_num,
+                            merit_list__list_number__lte=prev_list_num,
                             applicant__status='admitted'
                         ).count()
                         logger.info(f"Admitted count for program {program.name}, shift {shift}, list #{list_num}: {admitted_count}")

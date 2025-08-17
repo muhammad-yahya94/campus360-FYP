@@ -297,7 +297,7 @@ def setup_initial_data():
 def generate_fake_data():
     """Main function to generate fake data using multiprocessing."""
     # Get all programs
-    programs = Program.objects.all()
+    programs = list(Program.objects.all())
     if not programs:
         print("No programs found. Please create programs first.")
         return
@@ -313,10 +313,18 @@ def generate_fake_data():
     
     # Prepare tasks for multiprocessing
     tasks = []
-    applicants_per_program = 50
+    total_applicants = 50
+    num_programs = len(programs)
+    applicants_per_program = max(1, total_applicants // num_programs)
+    remaining = total_applicants % num_programs
     start_year = 2024
     
-    for program in programs:
+    for i, program in enumerate(programs):
+        # Distribute remaining applicants among first few programs
+        current_program_applicants = applicants_per_program + (1 if i < remaining else 0)
+        if current_program_applicants <= 0:
+            continue
+            
         # Create AcademicSession based on program duration
         end_year = start_year + program.duration_years
         session_name = f"{start_year}-{end_year}"
@@ -335,18 +343,20 @@ def generate_fake_data():
             application_end=timezone.now() + timedelta(days=30),
             is_open=True
         )
-        tasks.append((program.id, session.id, applicants_per_program, existing_cnics, existing_emails, existing_usernames, cnic_lock, email_lock, username_lock))
+        tasks.append((program.id, session.id, current_program_applicants, existing_cnics, existing_emails, existing_usernames, cnic_lock, email_lock, username_lock))
     
     # Use multiprocessing to generate data
-    with Pool(processes=multiprocessing.cpu_count()) as pool:
+    with Pool(processes=min(multiprocessing.cpu_count(), len(tasks))) as pool:
         results = pool.starmap(create_applicant_data, tasks)
     
     # Flatten results and save applicants
+    total_created = 0
     for applicants_data in results:
         for applicant_data in applicants_data:
             save_applicant(applicant_data)
+            total_created += 1
     
-    print(f"Generated {applicants_per_program} applicants for {len(programs)} programs.")
+    print(f"Generated {total_created} applicants across {len(programs)} programs.")
 
 if __name__ == '__main__':
 

@@ -1,0 +1,328 @@
+{% extends 'base_student.html' %}
+
+{% block title %}Submission Details - {{ assignment.title }}{% endblock %}
+
+{% block extra_head %}
+<!-- Prism.js for syntax highlighting -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
+<style>
+  .submission-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+  }
+  
+  .submission-header {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 0.75rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+  
+  .submission-title {
+    font-size: 1.875rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+  
+  .submission-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-top: 1rem;
+    opacity: 0.9;
+  }
+  
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+  }
+  
+  .meta-icon {
+    font-size: 1.1rem;
+  }
+  
+  .submission-card {
+    background: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    margin-bottom: 2rem;
+    overflow: hidden;
+  }
+  
+  .card-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #f9fafb;
+  }
+  
+  .card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+  }
+  
+  .card-body {
+    padding: 1.5rem;
+  }
+  
+  .submission-content {
+    line-height: 1.7;
+    color: #374151;
+  }
+  
+  .file-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    transition: all 0.2s;
+  }
+  
+  .file-card:hover {
+    background-color: #f1f5f9;
+    transform: translateY(-1px);
+  }
+  
+  .file-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  
+  .file-icon {
+    font-size: 1.5rem;
+    color: #4f46e5;
+  }
+  
+  .file-name {
+    font-weight: 500;
+    color: #1e293b;
+  }
+  
+  .file-size {
+    font-size: 0.875rem;
+    color: #64748b;
+  }
+  
+  .btn-download {
+    background-color: #4f46e5;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .btn-download:hover {
+    background-color: #4338ca;
+    transform: translateY(-1px);
+  }
+  
+  .feedback-section {
+    background-color: #f0fdf4;
+    border-left: 4px solid #10b981;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    margin-top: 2rem;
+  }
+  
+  .feedback-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  
+  .feedback-icon {
+    font-size: 1.5rem;
+    color: #10b981;
+  }
+  
+  .feedback-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #064e3b;
+    margin: 0;
+  }
+  
+  .feedback-content {
+    color: #065f46;
+    line-height: 1.7;
+  }
+  
+  .grade-badge {
+    background-color: #4f46e5;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  @media (max-width: 768px) {
+    .submission-header {
+      padding: 1.5rem 1rem;
+    }
+    
+    .submission-title {
+      font-size: 1.5rem;
+    }
+    
+    .submission-meta {
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    
+    .file-card {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    
+    .btn-download {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="submission-container">
+  <!-- Header Section -->
+  <div class="submission-header">
+    <h1 class="submission-title">{{ assignment.title }}</h1>
+    <p class="text-white/90">Submission Details</p>
+    
+    <div class="submission-meta">
+      <div class="meta-item">
+        <i class="fas fa-calendar-alt meta-icon"></i>
+        <span>Submitted on: {{ submission.submitted_at|date:"F j, Y \a\t g:i A" }}</span>
+      </div>
+      <div class="meta-item">
+        <i class="fas fa-clock meta-icon"></i>
+        <span>Status: 
+          <span class="font-medium">
+            {% if submission.is_late %}
+              <span class="text-yellow-300">Submitted Late</span>
+            {% else %}
+              <span class="text-green-300">Submitted On Time</span>
+            {% endif %}
+          </span>
+        </span>
+      </div>
+      {% if submission.grade %}
+      <div class="meta-item">
+        <i class="fas fa-star meta-icon"></i>
+        <span>Grade: <span class="font-medium">{{ submission.grade }}/{{ assignment.total_marks }}</span></span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  
+  <!-- Submission Content -->
+  <div class="submission-card">
+    <div class="card-header">
+      <h2 class="card-title">Your Submission</h2>
+    </div>
+    <div class="card-body">
+      {% if submission.text_content %}
+      <div class="mb-6">
+        <h3 class="text-lg font-semibold mb-3 text-gray-800">Written Response</h3>
+        <div class="submission-content prose max-w-none">
+          {{ submission.text_content|safe }}
+        </div>
+      </div>
+      {% endif %}
+      
+      {% if submission.code_content %}
+      <div class="mb-6">
+        <h3 class="text-lg font-semibold mb-3 text-gray-800">Code Submission</h3>
+        <div class="code-container">
+          <pre><code class="language-{{ submission.code_language|default:'python' }}">{{ submission.code_content }}</code></pre>
+        </div>
+      </div>
+      {% endif %}
+      
+      {% if submission.files.all %}
+      <div>
+        <h3 class="text-lg font-semibold mb-3 text-gray-800">Attached Files</h3>
+        {% for file in submission.files.all %}
+        <div class="file-card">
+          <div class="file-info">
+            <i class="fas fa-paperclip file-icon"></i>
+            <div>
+              <div class="file-name">{{ file.filename }}</div>
+              <div class="file-size">{{ file.file.size|filesizeformat }}</div>
+            </div>
+          </div>
+          <a href="{{ file.file.url }}" class="btn-download" download>
+            <i class="fas fa-download"></i>
+            Download
+          </a>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  
+  <!-- Feedback Section -->
+  {% if submission.feedback %}
+  <div class="feedback-section">
+    <div class="feedback-header">
+      <i class="fas fa-comment-alt feedback-icon"></i>
+      <h3 class="feedback-title">Instructor's Feedback</h3>
+      {% if submission.grade %}
+      <span class="grade-badge ml-auto">
+        <i class="fas fa-star"></i>
+        {{ submission.grade }}/{{ assignment.total_marks }}
+      </span>
+      {% endif %}
+    </div>
+    <div class="feedback-content prose max-w-none">
+      {{ submission.feedback|safe }}
+    </div>
+  </div>
+  {% endif %}
+  
+  <div class="mt-8 flex justify-end">
+    <a href="{% url 'assignment_list' course_id=assignment.course_offering.id %}" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md transition-colors duration-200 flex items-center gap-2">
+      <i class="fas fa-arrow-left"></i>
+      Back to Assignments
+    </a>
+  </div>
+</div>
+
+<script>
+  // Initialize Prism.js for syntax highlighting
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof Prism !== 'undefined') {
+      Prism.highlightAll();
+    }
+  });
+</script>
+{% endblock %}

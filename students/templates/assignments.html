@@ -227,11 +227,12 @@
   <div class="space-y-4">
     {% if all_assignments %}
       {% for item in all_assignments %}
-        <div class="assignment-card bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden {% if item.status == 'Submitted' %}submitted{% elif item.status == 'Pending' %}pending{% else %}overdue{% endif %}">
-          <div class="p-6">
+        <div class="assignment-card bg-white rounded-lg shadow-sm border overflow-hidden {% if item.status == 'Submitted' %}submitted border-green-200{% elif item.status == 'Pending' %}pending border-amber-200{% else %}overdue border-red-200{% endif %}">
+          <div class="p-6 {% if item.status == 'Submitted' %}bg-green-50{% elif item.status == 'Pending' %}bg-amber-50{% else %}bg-red-50{% endif %}">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div class="flex-1 min-w-0">
-                <h3 class="text-lg font-semibold text-gray-900 mb-1 truncate">
+                <h3 class="text-lg font-semibold {% if item.status == 'Submitted' %}text-green-900{% elif item.status == 'Pending' %}text-amber-900{% else %}text-red-900{% endif %} mb-1 truncate">
+
                   {% if item.status == "Submitted" %}
                     {{ item.assignment_data.assignment.title }}
                   {% else %}
@@ -263,16 +264,40 @@
               </div>
               
               <div class="flex items-center gap-3 flex-shrink-0">
+                <button 
+                  class="btn btn-ghost btn-sm view-details-btn"
+                  {% if item.status == "Submitted" %}
+                    data-title="{{ item.assignment_data.assignment.title }}"
+                    data-description="{{ item.assignment_data.assignment.description|escapejs }}"
+                    data-points="{{ item.assignment_data.assignment.max_points }}"
+                    data-due-date="{{ item.assignment_data.assignment.due_date|date:"M d, Y H:i" }}"
+                    data-resource-url="{% if item.assignment_data.assignment.resource_file %}{{ item.assignment_data.assignment.resource_file.url }}{% endif %}"
+                    data-resource-name="{% if item.assignment_data.assignment.resource_file %}{{ item.assignment_data.assignment.resource_file.name }}{% endif %}"
+                  {% else %}
+                    data-title="{{ item.assignment_data.submission.assignment.title }}"
+                    data-description="{{ item.assignment_data.submission.assignment.description|escapejs }}"
+                    data-points="{{ item.assignment_data.submission.assignment.max_points }}"
+                    data-due-date="{{ item.assignment_data.submission.assignment.due_date|date:"M d, Y H:i" }}"
+                    data-resource-url="{% if item.assignment_data.submission.assignment.resource_file %}{{ item.assignment_data.submission.assignment.resource_file.url }}{% endif %}"
+                    data-resource-name="{% if item.assignment_data.submission.assignment.resource_file %}{{ item.assignment_data.submission.assignment.resource_file.name }}{% endif %}"
+                  {% endif %}
+                >
+                  <i class="fas fa-info-circle mr-1.5"></i> Details
+                </button>
                 {% if item.status == "Submitted" %}
                   <button 
                     class="btn btn-outline btn-sm view-submission-btn"
                     data-assignment-number="{{ forloop.counter }}"
+                    data-student-name="{{ item.assignment_data.student.user.get_full_name }}"
+                    data-student-id="{{ item.assignment_data.student.student_id }}"
                     data-assignment-title="{{ item.assignment_data.assignment.title }}"
                     data-text-content="{{ item.assignment_data.text_content|escapejs }}"
+
                     data-code-content="{{ item.assignment_data.code_content|escapejs }}"
                     data-file-url="{% if item.assignment_data.file %}{{ item.assignment_data.file.url }}{% endif %}"
                     data-file-name="{% if item.assignment_data.file %}{{ item.assignment_data.file.name }}{% endif %}"
                     data-code-language="{{ item.assignment_data.code_language|default:'none' }}">
+
                     <i class="fas fa-eye mr-1.5"></i> View Submission
                   </button>
                 {% elif item.status == "Pending" %}
@@ -296,15 +321,16 @@
             
             <!-- Feedback Section -->
             {% if item.status == "Submitted" and item.assignment_data.feedback %}
-              <div id="feedback-{{ forloop.counter }}" class="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100 hidden">
-                <h4 class="font-medium text-blue-800 mb-2">
+              <div id="feedback-{{ forloop.counter }}" class="mt-4 p-4 bg-sky-50 rounded-lg border border-sky-200 hidden">
+                <h4 class="font-semibold text-sky-800 mb-2 flex items-center">
                   <i class="fas fa-comment-alt mr-2"></i>Instructor's Feedback
                 </h4>
-                <div class="prose text-blue-900 max-w-none">
+                <div class="prose prose-sm text-sky-900 max-w-none">
                   {{ item.assignment_data.feedback|linebreaks }}
                 </div>
               </div>
             {% endif %}
+
           </div>
           
           <div class="bg-gray-50 px-6 py-3 border-t border-gray-100 flex justify-between items-center">
@@ -349,69 +375,148 @@
 
 <!-- Submission Content Modal -->
 <dialog id="submissionModal" class="modal">
-  <div class="modal-box">
-    <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-200">
+  <div class="modal-box w-11/12 max-w-4xl bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-lg">
+    <div class="flex justify-between items-start mb-6 pb-4 border-b border-slate-200">
       <div>
-        <h3 class="text-xl font-bold text-gray-900" id="modalAssignmentTitle">Assignment Details</h3>
-        <p class="text-sm text-gray-500" id="modalAssignmentDate"></p>
+        <h3 class="text-2xl font-bold text-gray-800" id="modalAssignmentTitle">Assignment Details</h3>
+
+        <p class="text-sm text-gray-500 mt-1" id="modalAssignmentDate"></p>
       </div>
-      <button onclick="document.getElementById('submissionModal').close()" class="btn btn-ghost btn-circle btn-sm">
-        <i class="fas fa-times"></i>
+      <button onclick="document.getElementById('submissionModal').close()" class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4">
+        <i class="fas fa-times text-lg"></i>
       </button>
     </div>
     
     <div class="space-y-6">
       <!-- Text Content Section -->
-      <div id="textContentSection" class="submission-section hidden">
-        <h4>
-          <i class="fas fa-file-alt text-blue-500"></i>
+      <div id="textContentSection" class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hidden">
+        <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center bg-blue-50 border-l-4 border-blue-400 p-3 rounded-md">
+          <i class="fas fa-file-alt text-blue-500 mr-3"></i>
           Text Submission
         </h4>
-        <div id="modalTextContent" class="prose max-w-none bg-white p-4 rounded border border-gray-200">
+
+        <div id="modalTextContent" class="prose max-w-none bg-gray-50 p-4 rounded-lg border border-gray-200">
           <!-- Text content will be inserted here -->
         </div>
       </div>
       
       <!-- Code Content Section -->
-      <div id="codeContentSection" class="submission-section hidden">
-        <h4>
-          <i class="fas fa-code text-green-500"></i>
+      <div id="codeContentSection" class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hidden">
+        <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center bg-green-50 border-l-4 border-green-400 p-3 rounded-md">
+          <i class="fas fa-code text-green-500 mr-3"></i>
           Code Submission
         </h4>
-        <div class="bg-gray-800 rounded-lg overflow-hidden">
-          <div class="px-4 py-2 bg-gray-900 text-gray-300 text-sm font-mono flex justify-between items-center">
-            <span id="codeLanguageBadge" class="px-2 py-1 bg-gray-700 rounded text-xs"></span>
-            <button id="copyCodeBtn" class="text-gray-400 hover:text-white" title="Copy to clipboard">
-              <i class="far fa-copy"></i>
+
+        <div class="bg-gray-800 rounded-lg overflow-hidden ring-1 ring-gray-700">
+          <div class="px-4 py-2 bg-gray-900/80 text-gray-300 text-sm font-mono flex justify-between items-center">
+            <span id="codeLanguageBadge" class="px-2 py-1 bg-gray-700 rounded text-xs font-semibold"></span>
+            <button id="copyCodeBtn" class="btn btn-ghost btn-xs text-gray-400 hover:text-white" title="Copy to clipboard">
+              <i class="far fa-copy mr-1.5"></i> Copy
             </button>
           </div>
-          <pre id="modalCodeContent" class="p-4 overflow-x-auto m-0"><code class="language-none"></code></pre>
+          <pre id="modalCodeContent" class="p-4 overflow-x-auto m-0 text-slate-300"><code class="language-none"></code></pre>
         </div>
       </div>
+
       
       <!-- File Upload Section -->
-      <div id="fileContentSection" class="submission-section hidden">
-        <h4>
-          <i class="fas fa-paperclip text-purple-500"></i>
-          Attached Files
+      <div id="fileContentSection" class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hidden">
+        <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center bg-purple-50 border-l-4 border-purple-400 p-3 rounded-md">
+          <i class="fas fa-paperclip text-purple-500 mr-3"></i>
+          Attached File
         </h4>
-        <div id="modalFileContent" class="space-y-3">
+
+        <div id="modalFileContent">
           <!-- File content will be inserted here -->
         </div>
       </div>
       
       <!-- Empty State -->
-      <div id="emptySubmission" class="text-center py-8">
+      <div id="emptySubmission" class="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-200 hidden">
         <div class="text-gray-400 mb-4">
-          <i class="fas fa-inbox text-4xl"></i>
+          <i class="fas fa-inbox text-5xl"></i>
         </div>
-        <h4 class="text-lg font-medium text-gray-700 mb-1">No Submission Content</h4>
-        <p class="text-gray-500">This submission doesn't contain any content.</p>
+        <h4 class="text-xl font-semibold text-gray-700 mb-2">No Submission Content</h4>
+        <p class="text-gray-500 max-w-sm mx-auto">This submission appears to be empty. No text, code, or files were attached.</p>
       </div>
     </div>
     
-    <div class="modal-action mt-6 pt-4 border-t border-gray-200">
-      <button onclick="document.getElementById('submissionModal').close()" class="btn btn-ghost">Close</button>
+    <div class="modal-action mt-6 p-6 bg-slate-50 rounded-b-2xl border-t border-slate-200">
+      <button onclick="document.getElementById('submissionModal').close()" class="btn btn-primary">Close</button>
+    </div>
+
+
+
+  </div>
+
+  
+  <!-- Click outside to close -->
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
+
+<!-- Assignment Details Modal -->
+<dialog id="assignmentDetailsModal" class="modal">
+  <div class="modal-box w-11/12 max-w-3xl bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-lg">
+    <!-- Header -->
+    <div class="flex justify-between items-start mb-4 pb-4 border-b border-slate-200">
+      <div>
+        <h3 class="text-2xl font-bold text-gray-800" id="modalDetailsTitle"></h3>
+        <div class="flex items-center gap-6 text-sm text-gray-500 mt-2">
+          <div class="flex items-center gap-1.5">
+            <i class="fas fa-calendar-day meta-icon"></i>
+            <span id="modalDetailsDueDate"></span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <i class="fas fa-tasks meta-icon"></i>
+            <span id="modalDetailsPoints"></span>
+          </div>
+        </div>
+      </div>
+      <button onclick="document.getElementById('assignmentDetailsModal').close()" class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4">
+        <i class="fas fa-times text-lg"></i>
+      </button>
+    </div>
+    
+    <!-- Content -->
+    <div class="space-y-6 max-h-[65vh] overflow-y-auto pr-4 -mr-4 py-2">
+      <!-- Description Section -->
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+        <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center bg-blue-50 border-l-4 border-blue-400 p-3 rounded-md">
+          <i class="fas fa-book-open text-blue-500 mr-3"></i>
+          Assignment Instructions
+        </h4>
+        <div class="prose max-w-none text-gray-700" id="modalDetailsDescription">
+          <!-- Description will be inserted here -->
+        </div>
+      </div>
+      
+      <!-- Resource Section -->
+      <div id="modalDetailsResource" class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hidden">
+        <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center bg-purple-50 border-l-4 border-purple-400 p-3 rounded-md">
+          <i class="fas fa-paperclip text-purple-500 mr-3"></i>
+          Resources & Attachments
+        </h4>
+        <div class="flex items-center p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
+            <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-gray-200 text-gray-600 mr-4">
+                <i class="fas fa-file-alt text-xl"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p id="modalDetailsResourceName" class="text-sm font-semibold text-gray-800 truncate"></p>
+            </div>
+            <div class="flex items-center ml-4">
+                <a href="#" id="modalDetailsResourceLink" class="btn btn-sm btn-outline" download>
+                    <i class="fas fa-download mr-1.5"></i> Download
+                </a>
+            </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="modal-action mt-6 pt-4 border-t border-slate-200">
+      <button onclick="document.getElementById('assignmentDetailsModal').close()" class="btn btn-primary">Close</button>
     </div>
   </div>
   
@@ -421,12 +526,16 @@
   </form>
 </dialog>
 
+
 <script>
+
   // Add event listeners for view submission buttons
   document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.view-submission-btn').forEach(button => {
       button.addEventListener('click', function() {
         const assignmentNumber = this.dataset.assignmentNumber;
+        const studentName = this.dataset.studentName;
+        const studentId = this.dataset.studentId;
         const assignmentTitle = this.dataset.assignmentTitle;
         const textContent = this.dataset.textContent;
         const codeContent = this.dataset.codeContent;
@@ -434,7 +543,22 @@
         const fileName = this.dataset.fileName;
         const codeLanguage = this.dataset.codeLanguage;
         
-        openSubmissionModal(assignmentNumber, assignmentTitle, textContent, codeContent, fileUrl, fileName, codeLanguage);
+        openSubmissionModal(assignmentNumber, studentName, studentId, assignmentTitle, textContent, codeContent, fileUrl, fileName, codeLanguage);
+      });
+    });
+
+
+
+    document.querySelectorAll('.view-details-btn').forEach(button => {
+      button.addEventListener('click', function() {
+        const title = this.dataset.title;
+        const description = this.dataset.description;
+        const points = this.dataset.points;
+        const dueDate = this.dataset.dueDate;
+        const resourceUrl = this.dataset.resourceUrl;
+        const resourceName = this.dataset.resourceName;
+        
+        openAssignmentDetailsModal(title, description, points, dueDate, resourceUrl, resourceName);
       });
     });
     
@@ -447,24 +571,54 @@
             .then(() => {
               const copyBtn = document.getElementById('copyCodeBtn');
               const originalHTML = copyBtn.innerHTML;
-              copyBtn.innerHTML = '<i class="fas fa-check"></i>';
-              copyBtn.classList.add('text-green-500');
+              copyBtn.innerHTML = '<i class="fas fa-check mr-1.5"></i> Copied!';
+              copyBtn.classList.add('text-green-500', 'btn-success');
               setTimeout(() => {
                 copyBtn.innerHTML = originalHTML;
-                copyBtn.classList.remove('text-green-500');
+                copyBtn.classList.remove('text-green-500', 'btn-success');
               }, 2000);
+
             });
         }
       }
     });
   });
 
-  function openSubmissionModal(assignmentNumber, assignmentTitle, textContent, codeContent, fileUrl, fileName, codeLanguage) {
+  function openAssignmentDetailsModal(title, description, points, dueDate, resourceUrl, resourceName) {
+    const modal = document.getElementById('assignmentDetailsModal');
+    
+    document.getElementById('modalDetailsTitle').textContent = title;
+    
+    const decodedDescription = decodeUnicodeEscape(description);
+    document.getElementById('modalDetailsDescription').innerHTML = decodedDescription;
+    
+    document.getElementById('modalDetailsDueDate').textContent = `Due: ${dueDate}`;
+    document.getElementById('modalDetailsPoints').textContent = `${points} points`;
+    
+    const resourceSection = document.getElementById('modalDetailsResource');
+    const resourceLink = document.getElementById('modalDetailsResourceLink');
+    const resourceNameEl = document.getElementById('modalDetailsResourceName');
+
+    if (resourceUrl && resourceName) {
+      resourceLink.href = resourceUrl;
+      // Get just the filename from the path
+      resourceNameEl.textContent = resourceName.split('/').pop();
+      resourceSection.classList.remove('hidden');
+    } else {
+      resourceSection.classList.add('hidden');
+    }
+    
+    modal.showModal();
+  }
+
+  function openSubmissionModal(assignmentNumber, studentName, studentId, assignmentTitle, textContent, codeContent, fileUrl, fileName, codeLanguage) {
     const modal = document.getElementById('submissionModal');
     const modalTitle = document.getElementById('modalAssignmentTitle');
+    const modalSubmissionInfo = document.getElementById('modalSubmissionInfo');
     const modalText = document.getElementById('modalTextContent');
     const modalCode = document.getElementById('modalCodeContent').querySelector('code');
     const modalFile = document.getElementById('modalFileContent');
+
     const textSection = document.getElementById('textContentSection');
     const codeSection = document.getElementById('codeContentSection');
     const fileSection = document.getElementById('fileContentSection');
@@ -479,6 +633,8 @@
     
     // Set assignment title
     modalTitle.textContent = `${assignmentNumber}. ${assignmentTitle}`;
+
+
     
     let hasContent = false;
     
@@ -537,10 +693,11 @@
       // Set code content with proper escaping
       const escapedCode = decodedCode
         .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
+        .replace(/</g, '<')
+        .replace(/>/g, '>')
+        .replace(/"/g, '"')
         .replace(/'/g, '&#039;');
+
       
       // Update code element
       modalCode.className = languageClass;
@@ -572,22 +729,25 @@
       else if (['mp4', 'avi', 'mov', 'wmv'].includes(fileExt)) fileIcon = 'file-video';
       
       modalFile.innerHTML = `
-        <div class="flex items-center p-3 bg-white rounded-lg border border-gray-200">
-          <div class="p-2 rounded-full bg-gray-100 text-gray-600 mr-3">
-            <i class="fas fa-${fileIcon} text-lg"></i>
+        <div class="flex items-center p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
+          <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-gray-200 text-gray-600 mr-4">
+            <i class="fas fa-${fileIcon} text-xl"></i>
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-gray-900 truncate">${fileName}</p>
+            <p class="text-sm font-semibold text-gray-800 truncate">${fileName}</p>
             <p class="text-xs text-gray-500">${formatFileSize(fileUrl)}</p>
           </div>
-          <a href="${fileUrl}" class="ml-2 btn btn-sm btn-ghost" download>
-            <i class="fas fa-download"></i>
-          </a>
-          <a href="${fileUrl}" target="_blank" class="btn btn-sm btn-ghost">
-            <i class="fas fa-external-link-alt"></i>
-          </a>
+          <div class="flex items-center ml-4">
+            <a href="${fileUrl}" class="btn btn-sm btn-outline" download>
+              <i class="fas fa-download mr-1.5"></i> Download
+            </a>
+            <a href="${fileUrl}" target="_blank" class="btn btn-sm btn-ghost ml-2">
+              <i class="fas fa-external-link-alt"></i>
+            </a>
+          </div>
         </div>
       `;
+
       
       fileSection.classList.remove('hidden');
       hasContent = true;
@@ -621,5 +781,12 @@
       this.close();
     }
   });
+
+  document.getElementById('assignmentDetailsModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      this.close();
+    }
+  });
 </script>
+
 {% endblock %}

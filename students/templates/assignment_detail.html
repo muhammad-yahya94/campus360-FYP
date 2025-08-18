@@ -1,0 +1,224 @@
+{% extends 'base_student.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .assignment-detail {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+  }
+  
+  .assignment-header {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 0.75rem;
+    margin-bottom: 2rem;
+  }
+  
+  .assignment-title {
+    font-size: 1.875rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+  
+  .assignment-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+  
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+  }
+  
+  .meta-icon {
+    font-size: 1.1rem;
+  }
+  
+  .assignment-content {
+    background: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    padding: 2rem;
+    margin-bottom: 2rem;
+  }
+  
+  .assignment-description {
+    line-height: 1.7;
+    color: #374151;
+    white-space: pre-line;
+  }
+  
+  .assignment-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid #e5e7eb;
+  }
+  
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    text-decoration: none;
+  }
+  
+  .btn-primary {
+    background-color: #4f46e5;
+    color: white;
+  }
+  
+  .btn-primary:hover {
+    background-color: #4338ca;
+  }
+  
+  .btn-outline {
+    border: 1px solid #d1d5db;
+    color: #374151;
+  }
+  
+  .btn-outline:hover {
+    background-color: #f9fafb;
+  }
+  
+  .due-date {
+    color: #ef4444;
+    font-weight: 600;
+  }
+  
+  .submission-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+  
+  .status-submitted {
+    background-color: #ecfdf5;
+    color: #065f46;
+  }
+  
+  .status-pending {
+    background-color: #fffbeb;
+    color: #92400e;
+  }
+  
+  .status-not-submitted {
+    background-color: #f3f4f6;
+    color: #6b7280;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="assignment-detail">
+  <!-- Header Section -->
+  <div class="assignment-header">
+    <h1 class="assignment-title">{{ assignment.title }}</h1>
+    <p>{{ course_offering.course.name }} - {{ course_offering.section }}</p>
+    
+    <div class="assignment-meta">
+      <div class="meta-item">
+        <i class="fas fa-calendar-alt meta-icon"></i>
+        <span>Due: <span class="due-date">{{ assignment.due_date|date:"F j, Y \a\t g:i A" }}</span></span>
+      </div>
+      
+      <div class="meta-item">
+        <i class="fas fa-star meta-icon"></i>
+        <span>Points: {{ assignment.max_points }}</span>
+      </div>
+      
+      {% if submission %}
+      <div class="meta-item">
+        <i class="fas fa-paper-plane meta-icon"></i>
+        <span>Status: 
+          <span class="submission-status status-{{ submission.status|lower }}">
+            {% if submission.status == 'submitted' %}
+              <i class="fas fa-check-circle"></i>
+              Submitted
+            {% else %}
+              <i class="fas fa-clock"></i>
+              {{ submission.status|title }}
+            {% endif %}
+          </span>
+        </span>
+      </div>
+      {% else %}
+      <div class="meta-item">
+        <i class="fas fa-paper-plane meta-icon"></i>
+        <span>Status: 
+          <span class="submission-status status-not-submitted">
+            <i class="far fa-clock"></i>
+            Not Submitted
+          </span>
+        </span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  
+  <!-- Assignment Content -->
+  <div class="assignment-content">
+    <h2 class="text-xl font-semibold mb-4">Assignment Instructions</h2>
+    <div class="assignment-description">
+      {{ assignment.description|linebreaksbr }}
+    </div>
+    
+    {% if assignment.attachment %}
+    <div class="mt-6">
+      <h3 class="text-lg font-medium mb-2">Attachments</h3>
+      <a href="{{ assignment.attachment.url }}" 
+         class="inline-flex items-center text-blue-600 hover:text-blue-800"
+         download>
+        <i class="fas fa-paperclip mr-2"></i>
+        {{ assignment.attachment.name|cut:"assignments/" }}
+      </a>
+    </div>
+    {% endif %}
+    
+    <div class="assignment-actions">
+      <a href="{% url 'students:assignments' course_offering_id=course_offering.id %}" 
+         class="btn btn-outline">
+        <i class="fas fa-arrow-left mr-2"></i>
+        Back to Assignments
+      </a>
+      
+      {% if can_submit %}
+      <a href="{% url 'students:submit_assignment' assignment_id=assignment.id %}" 
+         class="btn btn-primary ml-auto">
+        <i class="fas fa-paper-plane mr-2"></i>
+        {% if submission and submission.status == 'draft' %}
+          Continue Submission
+        {% else %}
+          Submit Assignment
+        {% endif %}
+      </a>
+      {% elif submission %}
+      <a href="{% url 'students:assignment_submission' course_offering_id=course_offering.id assignment_id=assignment.id %}" 
+         class="btn btn-outline ml-auto">
+        <i class="fas fa-eye mr-2"></i>
+        View Submission
+      </a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

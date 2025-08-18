@@ -10,6 +10,34 @@
   </div>
 </div>
 <div class="max-w-100 mx-auto bg-base-100 rounded-lg shadow p-6">
-    <!-- Workflow content goes here -->
+    <div class="overflow-x-auto">
+      <table class="table w-full">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Student Name</th>
+<th>University Roll Number</th>
+<th>Session</th>
+<th>Program</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for student in students %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ student.name }}</td>
+            <td>{{ student.roll_number }}</td>
+<td>{{ student.session }}</td>
+<td>{{ student.program }}</td>
+            <td>
+              <a href="{% url 'fee_management:student_detail' student.id %}" class="btn btn-sm btn-ghost">View</a>
+              <a href="{% url 'fee_management:student_edit' student.id %}" class="btn btn-sm btn-ghost">Edit</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
 </div>
-{% endblock %} 
+{% endblock %}

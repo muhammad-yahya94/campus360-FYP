@@ -1861,7 +1861,7 @@ def generate_merit_list(request):
                     relevant_applicants.append((applicant, qualification, percentage))
 
             relevant_applicants.sort(key=lambda x: x[2], reverse=True)
-
+ 
             if not relevant_applicants:
                 errors.append("No student lies on the given criteria.")
                 logger.warning(f"No paid applicants for program {program.name}, shift {shift}, session {active_session}")

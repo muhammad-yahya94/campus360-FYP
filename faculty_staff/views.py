@@ -4931,6 +4931,7 @@ def teacher_course_list(request):
 
 
 
+
 @login_required
 def logout_view(request):
     logout(request)   

@@ -2,7 +2,7 @@
 
 {% block title %}Courses{% endblock %}
 {% block content %}
-<style>
+ <style>
   body {
     overflow-x: hidden;
     margin: 0;
@@ -15,6 +15,7 @@
   }
   .filter-section {
     display: flex;
+    flex-wrap: wrap;
     gap: 1rem;
     margin-bottom: 1rem;
     padding: 1rem;
@@ -22,7 +23,14 @@
     border-radius: 0.5rem;
   }
   .filter-section .form-control {
-    min-width: 200px;
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  @media (min-width: 640px) {
+    .filter-section .form-control {
+      flex: 1 1 auto;
+      min-width: 200px;
+    }
   }
   .overflow-x-auto::before,
   .overflow-x-auto::after {
@@ -80,7 +88,7 @@
   .border-red-500 {
     border-color: #ef4444 !important;
   }
-</style>
+</style> 
 
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">

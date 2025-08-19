@@ -4,24 +4,6 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 py-6">
-  <!-- Debug Info (Temporary) -->
-  {% comment %} {% if debug_info %}
-  <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded">
-    <div class="flex">
-      <div class="flex-shrink-0">
-        <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-          <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-        </svg>
-      </div>
-      <div class="ml-3">
-        <p class="text-sm text-yellow-700">
-          Debug Info: Found {{ debug_info.offerings_count }} course offerings and {{ debug_info.replacements_count }} replacements.
-          {% if error %}<br>Error: {{ error }}{% endif %}
-        </p>
-      </div>
-    </div>
-  </div>
-  {% endif %} {% endcomment %}
 
   <!-- Hero Section -->
   <div class="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-xl shadow-lg mb-6">
@@ -29,6 +11,48 @@
       <h1 class="text-4xl font-bold">Assigned Courses</h1>
       <p class="text-lg text-white/80">Manage and track your assigned courses</p>
     </div>
+  </div>
+
+  <!-- Filter Form -->
+  <div class="card bg-base-100 shadow-md mb-6 p-4">
+    <form method="get" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <!-- Session Filter -->
+      <div>
+        <label for="session" class="block text-sm font-medium text-gray-700">Academic Session</label>
+        <select name="session" id="session" class="select select-bordered w-full">
+          <option value="">All Sessions</option>
+          {% for session in sessions %}
+            <option value="{{ session.id }}" {% if selected_session == session.id|stringformat:"s" %}selected{% endif %}>
+              {{ session.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Department Filter -->
+      <div>
+        <label for="department" class="block text-sm font-medium text-gray-700">Department</label>
+        <select name="department" id="department" class="select select-bordered w-full">
+          <option value="">All Departments</option>
+          {% for department in departments %}
+            <option value="{{ department.id }}" {% if selected_department == department.id|stringformat:"s" %}selected{% endif %}>
+              {{ department.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Show Inactive Semesters -->
+      <div class="flex items-center mt-6">
+        <input type="checkbox" name="show_inactive" id="show_inactive" value="true" {% if show_inactive %}checked{% endif %} class="checkbox checkbox-primary">
+        <label for="show_inactive" class="ml-2 text-sm font-medium text-gray-700">Show Inactive Semesters</label>
+      </div>
+
+      <!-- Submit Button -->
+      <div class="flex items-end">
+        <button type="submit" class="btn btn-primary w-full">Apply Filters</button>
+      </div>
+    </form>
   </div>
 
   {% if course_offerings %}
@@ -54,7 +78,7 @@
               {% endif %}
             </h2>
             
-            {% if offering.is_replacement %}
+            {% if offering.is_replacement %}  
               <div class="flex flex-col items-end gap-1">
                 <span class="badge {% if offering.replacement_type == 'permanent' %}badge-warning{% else %}badge-info{% endif %}">
                   {{ offering.replacement_type|default:'replacement'|title }}
@@ -90,6 +114,7 @@
             <li><i class="fas fa-calendar-week mr-1 text-indigo-400"></i><strong>Semester:</strong> 
               {{ offering.semester.name }}
               {% if offering.semester.number %}({{ offering.semester.number }}){% endif %}
+              {% if not offering.semester.is_active %}<span class="badge badge-error ml-2">Inactive</span>{% endif %}
             </li>
           {% endif %}
           
@@ -105,10 +130,10 @@
         <div class="mt-4 grid grid-cols-2 gap-2 text-sm">
           <a href="{% url 'faculty_staff:exam_results' course_offering_id=offering.id %}"
              class="btn btn-sm btn-primary w-full">Results</a>
-
-          <a href="{% url 'faculty_staff:attendance' offering.id %}"
+     {% if offering.semester.is_active %}
+               <a href="{% url 'faculty_staff:attendance' offering.id %}"
              class="btn btn-sm btn-info w-full">Attendance</a>
-
+     {% endif %}
           <a href="{% url 'faculty_staff:study_materials' offering.id %}"
              class="btn btn-sm btn-success col-span-2">Course Content</a>
              
@@ -131,7 +156,7 @@
     {% if error %}
       Error loading courses: {{ error }}
     {% else %}
-      No courses are currently assigned to you.
+      No courses are currently assigned to you for the selected filters.
     {% endif %}
   </div>
   {% endif %}

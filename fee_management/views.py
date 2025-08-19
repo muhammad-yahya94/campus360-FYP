@@ -1,7 +1,7 @@
 import os
 import tempfile
 import subprocess
-import logging
+import logging   
 from django.urls import reverse 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
@@ -1742,9 +1742,11 @@ def generate_merit_list(request):
         valid_until = request.POST.get('valid_until')
         notes = request.POST.get('notes', '')
         shift = request.POST.get('shift')
-        total_seats = int(request.POST.get('no_of_seats'))  # Default to 50 if not provided
-        print(f'this is type of -- {type(total_seats)}')
+        total_seats = request.POST.get('no_of_seats')  
+        
         # Validation
+        if total_seats:
+            total_seats = int(total_seats)
         if not program_id:
             errors.append("Program is required")
         if not list_number:
@@ -1869,7 +1871,7 @@ def generate_merit_list(request):
                     'errors': errors,
                     'programs': programs
                 })
-
+ 
             admitted_count = 0
             relevant_applicants_for_current = []
             if list_num > 1:

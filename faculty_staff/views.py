@@ -1,7 +1,7 @@
 # Standard Library Imports
 import os
 import re
-import logging
+import logging    
 import datetime
 import json
 import random   
@@ -4793,10 +4793,7 @@ def record_exam_results(request):
 #         messages.error(request, f'An error occurred: {str(e)}')
 #         return redirect('faculty_staff:dashboard')
     
-
 def teacher_course_list(request):
-    logger.info(f"Current user: {request.user} (ID: {request.user.id})")
-    
     try:
         # Deactivate expired temporary replacements
         expired_replacements = LectureReplacement.objects.filter(
@@ -4806,11 +4803,11 @@ def teacher_course_list(request):
         )
         for replacement in expired_replacements:
             replacement.is_active = False
-            replacement.save()  # Triggers update_course_offering
+            replacement.save()
             logger.info(f"Deactivated replacement {replacement.id} for course {replacement.course_offering.id}")
 
-        # Filter course offerings for active assignments
-        course_offerings = CourseOffering.objects.filter(
+        # Base queryset for course offerings
+        course_offerings_query = CourseOffering.objects.filter(
             Q(teacher__user_id=request.user.id) |
             Q(
                 id__in=LectureReplacement.objects.filter(
@@ -4819,18 +4816,32 @@ def teacher_course_list(request):
                     replacement_teacher__user_id=request.user.id,
                     is_active=True,
                 ).values('course_offering__id')
-            ),
-            semester__is_active=True
+            )
         ).select_related('course', 'semester', 'academic_session', 'teacher__user', 'replacement_teacher__user', 'program', 'department')
-        
+
+        # Get filter parameters from request
+        session_id = request.GET.get('session')
+        department_id = request.GET.get('department')
+        show_inactive = request.GET.get('show_inactive') == 'true'
+
+        # Apply filters
+        if session_id:
+            course_offerings_query = course_offerings_query.filter(academic_session__id=session_id)
+        if department_id:
+            course_offerings_query = course_offerings_query.filter(department__id=department_id)
+        if not show_inactive:
+            course_offerings_query = course_offerings_query.filter(semester__is_active=True)
+
+        course_offerings = course_offerings_query.distinct()
         logger.info(f"Found {len(course_offerings)} course offerings for user {request.user.id}")
-        
+
+        # Log course offering details
         if not course_offerings.exists():
             logger.warning("No course offerings found for the current user")
         else:
             for i, offering in enumerate(course_offerings, 1):
                 logger.info(f"Offering {i}: {offering.course.code} - {offering.course.name} (Teacher: {getattr(offering.teacher, 'user', None)}, Replacement: {getattr(offering.replacement_teacher, 'user', None)})")
-        
+
         # Get active replacements
         replacements = LectureReplacement.objects.filter(
             Q(replacement_type='permanent') | Q(replacement_type='temporary', replacement_date__gte=timezone.now().date()),
@@ -4838,9 +4849,9 @@ def teacher_course_list(request):
             replacement_teacher__user=request.user,
             is_active=True,
         ).select_related('course_offering', 'original_teacher__user', 'replacement_teacher__user')
-        
+
         logger.info(f"Found {len(replacements)} replacements for user {request.user.id}")
-        
+
         replacement_info = {}
         for replacement in replacements:
             replacement_info[replacement.course_offering_id] = {
@@ -4857,33 +4868,68 @@ def teacher_course_list(request):
             offering.replacement_type = info.get('replacement_type')
             offering.replacement_end_date = info.get('replacement_end_date')
             offering.original_teacher = info.get('original_teacher', offering.teacher)
-            
+
             logger.info(f"Processing offering {offering.id}: {offering.course.code} - {offering.course.name}")
             logger.info(f"  - Teacher: {getattr(offering.teacher, 'user', None)}")
             logger.info(f"  - Replacement Teacher: {getattr(offering.replacement_teacher, 'user', None)}")
             logger.info(f"  - Is replacement: {offering.is_replacement}")
-            
+
             if not offering.is_replacement and offering.replacement_teacher_id and offering.replacement_teacher.user_id == request.user.id:
                 logger.info("  - Marked as permanent replacement")
                 offering.is_replacement = True
                 offering.replacement_type = 'permanent'
                 offering.original_teacher = offering.teacher
-                
+
+        # Fetch filter options
+        sessions = AcademicSession.objects.filter(
+            id__in=CourseOffering.objects.filter(
+                Q(teacher__user_id=request.user.id) |
+                Q(id__in=LectureReplacement.objects.filter(
+                    replacement_teacher__user_id=request.user.id,
+                    is_active=True
+                ).values('course_offering__id'))
+            ).values('academic_session__id').distinct()
+        ).order_by('-start_year')
+        print("Academic Sessions:", [(s.id, s.name) for s in sessions])
+
+        departments = Department.objects.filter(
+            id__in=CourseOffering.objects.filter(
+                Q(teacher__user_id=request.user.id) |
+                Q(id__in=LectureReplacement.objects.filter(
+                    replacement_teacher__user_id=request.user.id,
+                    is_active=True
+                ).values('course_offering__id'))
+            ).values('department__id').distinct()
+        )
+        print("Departments:", [(d.id, d.name) for d in departments])
+
         context = {
             'course_offerings': course_offerings,
+            'sessions': sessions,
+            'departments': departments,
+            'selected_session': session_id,
+            'selected_department': department_id,
+            'show_inactive': show_inactive,
             'debug_info': {
                 'offerings_count': len(course_offerings),
                 'replacements_count': len(replacements),
             }
         }
-        
+
     except Exception as e:
         logger.error(f"Error in teacher_course_list: {str(e)}", exc_info=True)
+        print(f"Error occurred: {str(e)}")
         context = {
             'course_offerings': [],
+            'sessions': [],
+            'departments': [],
             'error': str(e)
         }
-    return render(request, 'faculty_staff/teacher_course_list.html', context)    
+
+    return render(request, 'faculty_staff/teacher_course_list.html', context)
+
+
+
 
 @login_required
 def logout_view(request):
@@ -5630,7 +5676,7 @@ def view_students(request , offering_id):
         }, status=404)
 
     # Fetch enrolled students via CourseEnrollment
-    enrollments = CourseEnrollment.objects.filter(course_offering=course_offering, status='enrolled')
+    enrollments = CourseEnrollment.objects.filter(course_offering=course_offering)
     students = []
     for enrollment in enrollments:
         student = enrollment.student_semester_enrollment.student

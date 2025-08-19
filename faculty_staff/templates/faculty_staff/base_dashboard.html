@@ -69,6 +69,9 @@
                     <li><a href="{% url 'faculty_staff:weekly_timetable' %}" class="{% if request.resolver_match.url_name == 'weekly_timetable' %}active{% endif %} text-base">
                         <i class="fas fa-calendar-week"></i> Weekly Timetable
                     </a></li>
+                    <li><a href="{% url 'faculty_staff:exam_datesheet' %}" class="{% if request.resolver_match.url_name == 'exam_datesheet' %}active{% endif %} text-base">
+                        <i class="fas fa-calendar-day"></i> Exam Datesheet
+                    </a></li>
                     {% elif request.user.teacher_profile.designation == 'professor' %}
                     <li><a href="{% url 'faculty_staff:professor_dashboard' %}" class="{% if request.resolver_match.url_name == 'professor_dashboard' %}active{% endif %} text-base">
                         <i class="fas fa-user-tie"></i> Professor Dashboard
@@ -82,6 +85,9 @@
                     </a></li>
                     <li><a href="{% url 'faculty_staff:notice_board' %}" class="{% if request.resolver_match.url_name == 'notice_board' %}active{% endif %} text-base">
                         <i class="fas fa-bullhorn"></i> Notice Board
+                    </a></li>
+                    <li><a href="{% url 'faculty_staff:hod_office_notices' %}" class="{% if request.resolver_match.url_name == 'hod_office_notices' %}active{% endif %} text-base">
+                        <i class="fas fa-bell"></i> Office Notices
                     </a></li>
                     <li><a href="{% url 'faculty_staff:settings' %}" class="{% if request.resolver_match.url_name == 'settings' %}active{% endif %} text-base">
                         <i class="fas fa-cog"></i> Settings
